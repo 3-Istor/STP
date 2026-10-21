@@ -92,8 +92,9 @@ En tant que chef de projet, je veux voir les prix et les taux de change actuels 
 - Must : un simulateur implémente l'interface et il est déterministe avec une graine (tests reproductibles) :
   - les prix fluctuent dans la fourchette prix mini / prix maxi de la pièce
   - les taux fluctuent autour d'un taux de référence par paire, dans une bande paramétrable (ex. ±5 %)
-- Should : rafraîchissement périodique des prix et des taux en direct, avec un intervalle paramétrable
-- Should : historique du prix d'une pièce ou d'un taux affiché sous forme de courbe, à la demande
+  - au premier démarrage, il génère un historique d'un an (une cotation par jour et par pièce, et par paire de devises), enregistré comme des cotations normales
+- Must : rafraîchissement périodique des prix et des taux en direct, avec un intervalle paramétrable ; les clients (UI) sont notifiés des nouvelles cotations
+- Must : lire l'historique des cotations d'une pièce ou d'une paire de devises sur une période (sert aux courbes de la page fournisseur)
 - Won't : brancher une vraie API fournisseur ou de change (plus tard, nouvelle implémentation de la même interface)
 - Won't : prévision de l'évolution des prix ou des taux
 
@@ -105,6 +106,8 @@ En tant que chef de projet, je veux voir les prix et les taux de change actuels 
 - SI je tente de modifier un snapshot de prix ou une cotation ALORS le système DOIT refuser
 - SI l'API ne renvoie pas de prix pour une pièce, ou pas de taux pour une devise ALORS le système DOIT signaler la pièce (pas de prix silencieusement à zéro, pas de conversion ignorée)
 - QUAND le simulateur tourne avec la même graine ALORS il DOIT produire la même suite de prix et de taux, les prix toujours entre le prix mini et le prix maxi, les taux toujours dans leur bande
+- QUAND le système démarre pour la première fois avec le simulateur ALORS chaque pièce DOIT avoir un an de cotations quotidiennes
+- QUAND le système redémarre ALORS l'historique déjà généré NE DOIT PAS être regénéré ni dupliqué
 
 ---
 
@@ -155,24 +158,35 @@ Les pièces viennent de fournisseurs de différents pays. Il faut un coût total
 
 ## Feature : suppliers-and-contracts
 **Priorité** : P1
-**Dépend de** : part-catalog
+**Dépend de** : part-catalog, live-price-feed
 
 ### Pourquoi
-Il faut voir tous les fournisseurs, leurs pièces et leurs contrats, et tenir compte des remises.
+Il faut voir tous les fournisseurs, leurs pièces et leurs contrats, et tenir compte des remises. Comme les prix fluctuent, l'acheteur doit aussi voir où en est le prix de chaque pièce et comment il a évolué sur l'année.
 
 ### User story
-En tant qu'acheteur, je veux un onglet fournisseurs, afin de voir d'un coup d'œil ce que chacun fournit et à quelles conditions.
+En tant qu'acheteur, je veux un onglet fournisseurs, afin de voir d'un coup d'œil ce que chacun fournit, à quelles conditions et à quel prix en ce moment.
 
 ### Exigences
 - Must : onglet listant les fournisseurs, avec leurs pièces et leurs contrats
 - Must : un contrat a des dates, des paliers de remise par volume et des conditions
 - Must : note de qualité et de confiance par fournisseur
+- Must : page fournisseur listant ses pièces ; pour chaque pièce, le prix en direct (dernière cotation, dans sa devise d'origine), la variation sur les 12 derniers mois en pourcentage et une mini-courbe (sparkline) de l'année
+- Must : la page se met à jour quand de nouvelles cotations arrivent, sans recharger
+- Must : au clic sur une pièce, un panneau latéral affiche le graphique détaillé du prix sur 12 mois, avec le prix actuel, le minimum, le maximum et la date de chaque cotation au survol
+- Must : variation colorée : vert si le prix a baissé, rouge s'il a augmenté, neutre si stable
+- Must : la variation et les extrêmes sont calculés en décimal à partir des cotations enregistrées (aucun float)
 - Should : application automatique de la remise au coût de la BOM selon les quantités
+- Should : afficher les prix convertis dans une devise choisie (taux en direct de live-price-feed)
 - Won't : signature électronique de contrats
+- Won't : alertes automatiques sur les variations de prix
 
 ### Critères d'acceptation
 - QUAND la quantité commandée d'une pièce atteint un palier de remise du contrat ALORS le coût DOIT appliquer la remise
 - SI un contrat est expiré ALORS le système DOIT l'indiquer et ne plus appliquer sa remise
+- QUAND j'ouvre la page d'un fournisseur ALORS je DOIS voir toutes ses pièces, et seulement les siennes, chacune avec son prix en direct et sa variation sur 12 mois
+- QUAND une pièce valait 100 € il y a 12 mois et vaut 110 € aujourd'hui ALORS la variation DOIT afficher +10,0 % en rouge
+- QUAND une nouvelle cotation arrive pour une pièce affichée ALORS son prix et sa variation DOIVENT se mettre à jour sur la page
+- SI une pièce a moins de 12 mois d'historique ALORS la variation DOIT être calculée depuis la première cotation et indiquer la période réelle
 
 ---
 
