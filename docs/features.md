@@ -71,9 +71,41 @@ En tant que chef de projet, je veux manipuler la BOM comme un arbre, afin de str
 
 ---
 
+## Feature : live-price-feed
+**Priorité** : P1
+**Dépend de** : part-catalog
+
+### Pourquoi
+Les prix des pièces fluctuent en continu. Ils viennent d'une API de prix externe (simulée pour l'instant). Pour comparer, décider et publier, il faut pouvoir figer ces prix à un instant donné.
+
+### User story
+En tant que chef de projet, je veux voir les prix actuels des pièces et pouvoir les figer dans un snapshot de prix, afin de travailler sur des chiffres stables et traçables.
+
+### Exigences
+- Must : l'API de prix est appelée derrière une interface Go, avec trois requêtes : le prix d'une pièce précise, les prix de toutes les pièces d'un fournisseur, les prix de toutes les pièces
+- Must : chaque prix renvoyé est un montant décimal avec sa devise ISO 4217, la source et l'horodatage de la cotation
+- Must : chaque prix récupéré est enregistré en base comme une cotation datée ; une cotation n'est jamais modifiée ni écrasée (historique)
+- Must : créer un snapshot de prix (une pièce, un fournisseur ou tout le catalogue) qui fige les cotations du moment ; un snapshot de prix est immuable
+- Must : un calcul de coût indique toujours sur quels prix il repose : prix en direct (dernière cotation) ou snapshot de prix choisi
+- Must : un simulateur implémente l'interface ; ses prix fluctuent dans la fourchette prix mini / prix maxi de la pièce, et il est déterministe avec une graine (tests reproductibles)
+- Should : rafraîchissement périodique des prix en direct, avec un intervalle paramétrable
+- Should : historique du prix d'une pièce affiché sous forme de courbe, à la demande
+- Won't : brancher une vraie API fournisseur (plus tard, nouvelle implémentation de la même interface)
+- Won't : prévision de l'évolution des prix
+
+### Critères d'acceptation
+- QUAND je demande le prix d'une pièce ALORS le système DOIT renvoyer le montant, la devise et l'horodatage de la cotation
+- QUAND je demande les prix d'un fournisseur ALORS le système DOIT renvoyer une cotation pour chacune de ses pièces et aucune pour les autres
+- QUAND je crée un snapshot de prix puis que l'API renvoie un nouveau prix ALORS le snapshot DOIT toujours contenir l'ancien prix
+- SI je tente de modifier un snapshot de prix ou une cotation ALORS le système DOIT refuser
+- SI l'API ne renvoie pas de prix pour une pièce ALORS le système DOIT signaler la pièce (pas de prix silencieusement à zéro)
+- QUAND le simulateur tourne avec la même graine ALORS il DOIT produire la même suite de prix, toujours comprise entre le prix mini et le prix maxi
+
+---
+
 ## Feature : bom-draft-and-snapshots
 **Priorité** : P1
-**Dépend de** : bom-tree-editor
+**Dépend de** : bom-tree-editor, live-price-feed, multi-currency-costing
 
 ### Pourquoi
 On doit pouvoir expérimenter sans risque (brouillon), et garder des versions de référence qui ne bougent plus, y compris les prix de l'API au moment de la publication.
@@ -84,7 +116,7 @@ En tant que chef de projet, je veux un mode brouillon et des versions figées, a
 ### Exigences
 - Must : une BOM en brouillon est modifiable librement
 - Must : publier un brouillon crée un snapshot immuable de la BOM et de ses réglages
-- Must : le snapshot fige aussi les prix fournisseurs et les taux de change utilisés à ce moment
+- Must : le snapshot fige aussi les prix fournisseurs et les taux de change utilisés à ce moment : il référence un snapshot de prix (live-price-feed), créé à la publication si le brouillon travaillait en prix en direct
 - Must : créer un nouveau brouillon à partir d'un snapshot
 - Should : comparer deux snapshots (pièces ajoutées, retirées, écarts de coût)
 - Won't : fusion automatique de deux brouillons
