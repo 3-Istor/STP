@@ -76,30 +76,35 @@ En tant que chef de projet, je veux manipuler la BOM comme un arbre, afin de str
 **Dépend de** : part-catalog
 
 ### Pourquoi
-Les prix des pièces fluctuent en continu. Ils viennent d'une API de prix externe (simulée pour l'instant). Pour comparer, décider et publier, il faut pouvoir figer ces prix à un instant donné.
+Les prix des pièces et les taux de change entre devises fluctuent en continu. Ils viennent d'une API de prix externe (simulée pour l'instant), qui sert aussi aux conversions de devises. Pour comparer, décider et publier, il faut pouvoir figer ces prix et ces taux à un instant donné.
 
 ### User story
-En tant que chef de projet, je veux voir les prix actuels des pièces et pouvoir les figer dans un snapshot de prix, afin de travailler sur des chiffres stables et traçables.
+En tant que chef de projet, je veux voir les prix et les taux de change actuels et pouvoir les figer dans un snapshot de prix, afin de travailler sur des chiffres stables et traçables.
 
 ### Exigences
-- Must : l'API de prix est appelée derrière une interface Go, avec trois requêtes : le prix d'une pièce précise, les prix de toutes les pièces d'un fournisseur, les prix de toutes les pièces
+- Must : l'API de prix est appelée derrière une interface Go, avec trois requêtes de prix : le prix d'une pièce précise, les prix de toutes les pièces d'un fournisseur, les prix de toutes les pièces
+- Must : la même API fournit les taux de change, avec deux requêtes : le taux d'une paire de devises (ex. USD → EUR), tous les taux disponibles
 - Must : chaque prix renvoyé est un montant décimal avec sa devise ISO 4217, la source et l'horodatage de la cotation
-- Must : chaque prix récupéré est enregistré en base comme une cotation datée ; une cotation n'est jamais modifiée ni écrasée (historique)
-- Must : créer un snapshot de prix (une pièce, un fournisseur ou tout le catalogue) qui fige les cotations du moment ; un snapshot de prix est immuable
-- Must : un calcul de coût indique toujours sur quels prix il repose : prix en direct (dernière cotation) ou snapshot de prix choisi
-- Must : un simulateur implémente l'interface ; ses prix fluctuent dans la fourchette prix mini / prix maxi de la pièce, et il est déterministe avec une graine (tests reproductibles)
-- Should : rafraîchissement périodique des prix en direct, avec un intervalle paramétrable
-- Should : historique du prix d'une pièce affiché sous forme de courbe, à la demande
-- Won't : brancher une vraie API fournisseur (plus tard, nouvelle implémentation de la même interface)
-- Won't : prévision de l'évolution des prix
+- Must : chaque taux renvoyé est un décimal avec sa paire de devises ISO 4217, la source et l'horodatage de la cotation
+- Must : chaque prix et chaque taux récupérés sont enregistrés en base comme des cotations datées ; une cotation n'est jamais modifiée ni écrasée (historique)
+- Must : créer un snapshot de prix (une pièce, un fournisseur ou tout le catalogue) qui fige les cotations de prix du moment **et** les taux de change nécessaires pour les convertir ; un snapshot de prix est immuable
+- Must : un calcul de coût indique toujours sur quels prix et quels taux il repose : en direct (dernières cotations) ou snapshot de prix choisi
+- Must : un simulateur implémente l'interface et il est déterministe avec une graine (tests reproductibles) :
+  - les prix fluctuent dans la fourchette prix mini / prix maxi de la pièce
+  - les taux fluctuent autour d'un taux de référence par paire, dans une bande paramétrable (ex. ±5 %)
+- Should : rafraîchissement périodique des prix et des taux en direct, avec un intervalle paramétrable
+- Should : historique du prix d'une pièce ou d'un taux affiché sous forme de courbe, à la demande
+- Won't : brancher une vraie API fournisseur ou de change (plus tard, nouvelle implémentation de la même interface)
+- Won't : prévision de l'évolution des prix ou des taux
 
 ### Critères d'acceptation
 - QUAND je demande le prix d'une pièce ALORS le système DOIT renvoyer le montant, la devise et l'horodatage de la cotation
 - QUAND je demande les prix d'un fournisseur ALORS le système DOIT renvoyer une cotation pour chacune de ses pièces et aucune pour les autres
-- QUAND je crée un snapshot de prix puis que l'API renvoie un nouveau prix ALORS le snapshot DOIT toujours contenir l'ancien prix
+- QUAND je demande le taux USD → EUR ALORS le système DOIT renvoyer le taux, la paire et l'horodatage de la cotation
+- QUAND je crée un snapshot de prix puis que l'API renvoie un nouveau prix ou un nouveau taux ALORS le snapshot DOIT toujours contenir l'ancien prix et l'ancien taux
 - SI je tente de modifier un snapshot de prix ou une cotation ALORS le système DOIT refuser
-- SI l'API ne renvoie pas de prix pour une pièce ALORS le système DOIT signaler la pièce (pas de prix silencieusement à zéro)
-- QUAND le simulateur tourne avec la même graine ALORS il DOIT produire la même suite de prix, toujours comprise entre le prix mini et le prix maxi
+- SI l'API ne renvoie pas de prix pour une pièce, ou pas de taux pour une devise ALORS le système DOIT signaler la pièce (pas de prix silencieusement à zéro, pas de conversion ignorée)
+- QUAND le simulateur tourne avec la même graine ALORS il DOIT produire la même suite de prix et de taux, les prix toujours entre le prix mini et le prix maxi, les taux toujours dans leur bande
 
 ---
 
@@ -130,16 +135,16 @@ En tant que chef de projet, je veux un mode brouillon et des versions figées, a
 
 ## Feature : multi-currency-costing
 **Priorité** : P1
-**Dépend de** : part-catalog
+**Dépend de** : part-catalog, live-price-feed
 
 ### Pourquoi
 Les pièces viennent de fournisseurs de différents pays. Il faut un coût total cohérent dans une devise de référence.
 
 ### Exigences
 - Must : chaque BOM a une devise de référence
-- Must : conversion avec des taux de change datés, enregistrés en base
+- Must : conversion avec les taux de change datés fournis par l'API de prix (live-price-feed) : dernière cotation en direct, ou taux du snapshot de prix choisi
+- Must : chaque montant converti indique le taux utilisé et sa date
 - Must : aucun calcul monétaire en float
-- Should : récupération des taux via une API externe, chaque récupération étant enregistrée comme snapshot
 - Won't : couverture du risque de change
 
 ### Critères d'acceptation
