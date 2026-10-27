@@ -1,7 +1,7 @@
 # BOM Studio
 
 Conception et pilotage de la nomenclature (BOM) d'une voiture : coût, délais, CO2, recyclabilité.
-Spec : [docs/features.md](docs/features.md) · Règles du projet : [CLAUDE.md](CLAUDE.md).
+Spec : [docs/features.md](docs/features.md) · Règles du projet (humains et agents IA) : [AGENTS.md](AGENTS.md).
 
 ## Prérequis (dans WSL / Linux)
 
