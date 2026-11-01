@@ -1,13 +1,21 @@
 DATABASE_URL ?= postgres://bom:bom@localhost:5432/bomstudio?sslmode=disable
 export DATABASE_URL
 
-.PHONY: run test lint migrate db dev web
+.PHONY: run test cover sec lint migrate db dev web
 
 run: ## API sur :8080
 	go run ./cmd/server
 
 test:
 	go test ./...
+
+cover: ## tests + couverture (indicateur, voir docs/workflow.md §5)
+	go test -race -covermode=atomic -coverprofile=coverage.out ./...
+	go tool cover -func=coverage.out | tail -n 1
+
+sec: ## failles connues dans les dépendances Go et npm (voir ADR 0001)
+	go tool govulncheck ./...
+	cd web && npm audit --omit=dev --audit-level=high
 
 lint: web/node_modules
 	go vet ./...

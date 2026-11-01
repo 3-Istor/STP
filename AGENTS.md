@@ -14,7 +14,7 @@ Principe du cours : **l'IA produit, l'humain garantit.** La responsabilité ne s
 ## 1. Environnement
 
 - Tout se lance **dans WSL (Ubuntu)** : Go, make, Docker, Node y sont installés, pas côté Windows.
-- `make run | test | lint | migrate | dev` (voir `Makefile`). Les outils Go (goose, golangci-lint, puis sqlc)
+- `make run | test | cover | sec | lint | migrate | dev` (voir `Makefile`). Les outils Go (goose, golangci-lint, govulncheck, puis sqlc)
   sont déclarés en `tool` dans `go.mod` et lancés par `go tool <nom>` : rien à installer globalement.
 - Front : `npm ci` (pas `npm install`, qui plante avec le npm 10 du système ; pour ajouter une dépendance :
   `npx npm@11 install <pkg>`).
@@ -215,10 +215,11 @@ Sinon l'agent le dit, avec la sortie de la commande qui échoue.
 
 ## 16. Pipeline CI
 
-`.github/workflows/ci.yml`, sur chaque push vers `main` et chaque PR :
+`.github/workflows/ci.yml`, sur chaque push vers `main` et chaque PR (voir ADR 0001, `docs/workflow.md`) :
 
-- **go** : `go vet`, `golangci-lint`, `go test ./...` ;
-- **web** : `npm ci`, `oxlint`, build (`tsc` + Vite).
+- **go** : `go mod tidy -diff`, `go vet`, `golangci-lint` (dont `gosec`), `go test -race` + couverture (non bloquante) ;
+- **web** : `npm ci`, `oxlint`, build (`tsc` + Vite), `npm audit` ;
+- **security** : `govulncheck`.
 
 Une PR ne se merge pas si la CI est rouge. On ajoute une étape quand le besoin existe
 (ex. service Postgres + `goose up` dès le premier test qui touche la base).
