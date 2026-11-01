@@ -1,5 +1,5 @@
 # 0001 — Pipeline CI : qualité, sécurité et couverture
-Statut : Proposé — Date : 2026-11-01 — Décideurs : à compléter
+Statut : Accepté — Date : 2026-11-01 — Décideurs : Arthur.presle
 
 ## Contexte
 La CI actuelle rejoue lint, tests et build (AGENTS §16). Il manque : un contrôle des failles connues dans les
