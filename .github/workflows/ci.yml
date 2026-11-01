@@ -1,9 +1,19 @@
+# Pipeline CI — voir docs/workflow.md §7 et ADR 0001.
 name: CI
 
 on:
   push:
     branches: [main]
   pull_request:
+
+# Moindre privilège : aucun job n'écrit dans le dépôt.
+permissions:
+  contents: read
+
+# Un nouveau push sur la même branche annule la CI précédente.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   go:
@@ -13,9 +23,26 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
+      - name: go mod tidy à jour
+        run: go mod tidy -diff
       - run: go vet ./...
-      - run: go tool golangci-lint run ./...
-      - run: go test ./...
+      - name: golangci-lint (dont gosec)
+        run: go tool golangci-lint run ./...
+      - name: Tests (race) + couverture
+        run: go test -race -covermode=atomic -coverprofile=coverage.out ./...
+      - name: Résumé de couverture
+        run: |
+          {
+            echo "### Couverture Go (indicateur, non bloquant)"
+            echo '```'
+            go tool cover -func=coverage.out
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: coverage-go
+          path: coverage.out
+          retention-days: 14
 
   web:
     runs-on: ubuntu-latest
@@ -32,3 +59,15 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npm run build
+      - name: Failles connues (dépendances de prod)
+        run: npm audit --omit=dev --audit-level=high
+
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: govulncheck
+        run: go tool govulncheck ./...
