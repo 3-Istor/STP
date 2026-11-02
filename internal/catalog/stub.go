@@ -21,6 +21,9 @@ func NewStub(parts []Part, offers []Offer) (*Stub, error) {
 		if _, dup := s.parts[p.ID]; dup {
 			return nil, fmt.Errorf("catalog stub: duplicate part %d", p.ID)
 		}
+		if p.CO2Kg.IsNegative() || p.MassKg.IsNegative() || p.ProductionDays < 0 {
+			return nil, fmt.Errorf("catalog stub: part %d: negative CO2, mass or production days", p.ID)
+		}
 		s.parts[p.ID] = p
 	}
 	for _, o := range offers {
