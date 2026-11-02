@@ -2,7 +2,7 @@
 id: docker-compose-stack
 status: in-progress
 branch: docker-compose-stack
-current_task: T6
+current_task: T7
 started: 2026-11-02
 updated: 2026-11-02
 ---
@@ -12,7 +12,7 @@ updated: 2026-11-02
 ## Progress
 
 En cours : T1 terminée (ADR 0005 acceptée par Arthur.presle, commit 3e85deb).
-- Tasks: 5/7 completed
+- Tasks: 6/7 completed
 - Branch: `docker-compose-stack`
 
 ## Task Log
@@ -50,6 +50,11 @@ En cours : T1 terminée (ADR 0005 acceptée par Arthur.presle, commit 3e85deb).
 - **Time**: 2026-11-02
 - **Commit**: 9e6f239
 - **Notes**: up --build --wait rend la main, tous healthy, migrate Exited (0) ; curl :8000/healthz 200 via nginx ; priceapi /healthz 200 dans son conteneur ; PRICE_API_URL présent dans back. Migration forcée en échec (override local) : back reste Created. Écart : back ne dépend pas de priceapi (voir Decisions).
+### T6: `make up` / `make down` + README
+- **Status**: completed
+- **Time**: 2026-11-02
+- **Commit**: 8c100db
+- **Notes**: make up = docker compose up -d --build --wait ; make down = docker compose down (sans -v, volume pgdata conservé). README : section Docker (ports, services, down -v) et section Développer. make up puis make down vérifiés ; make db relancé ensuite (ne démarre que db).
 
 ## Decisions
 

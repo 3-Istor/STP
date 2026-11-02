@@ -137,7 +137,7 @@ docker compose up --build --wait
     `migrate` en `exited (0)` ; `curl localhost:8000/healthz` renvoie 200 ; `make db` démarre toujours
     seulement `db`.
 
-- [ ] T6: `make up` / `make down` + README
+- [x] T6: `make up` / `make down` + README
   - **Files**: `Makefile`, `README.md`
   - **Approach**: `up: ## toute l'app en Docker (front :8000)` → `docker compose up -d --build --wait` ;
     `down` → `docker compose down` (sans `-v`, on garde les données). README : commande unique, ports,
