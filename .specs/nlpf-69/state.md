@@ -2,7 +2,7 @@
 id: nlpf-69
 status: in-progress
 branch: nlpf-69
-current_task: T3
+current_task: T4
 started: 2026-11-02
 updated: 2026-11-02
 ---
@@ -11,7 +11,7 @@ updated: 2026-11-02
 
 ## Progress
 
-T1-T2 terminées (2/9). ADR 0006 et 0007 acceptées (Arthur.presle) : reprise à T3.
+T1-T3 terminées (3/9). En attente avant T4 : choix store/pgx (voir Decisions).
 
 ## Task Log
 
@@ -31,6 +31,18 @@ T1-T2 terminées (2/9). ADR 0006 et 0007 acceptées (Arthur.presle) : reprise à
   `Pricing` + `FreezePrices(ctx, offerIDs, currencies, at)`, `SnapshotOfferPrice`, `SnapshotRate`,
   sentinelle `ErrPriceSnapshotNotFound`. Stub rendu mutable (`AddQuote`, `AddRate`, mutex) pour simuler
   l'arrivée de cotations. Contrat d'interface partagé : à annoncer à Joe (NLPF-67, NLPF-68).
+
+### T3: Migration 00002 — colonnes brouillon et tables de snapshot de BOM
+- **Status**: completed
+- **Time**: 2026-11-02
+- **Commit**: 0e6c472
+- **Notes**: `bom_nodes.production_days`, `boms.price_snapshot_id` / `source_snapshot_id`, `bom_snapshots`
+  (FK `bom_id` sans cascade, `price_snapshot_id` NOT NULL) et `bom_snapshot_nodes` (PK `(snapshot_id, node_key)`,
+  FK parent **différée** pour insérer dans n'importe quel ordre, une seule racine, CHECK : un nœud pièce a
+  CO2/masse/délai de livraison figés, un sous-ensemble n'en a pas). Triggers `reject_mutation`.
+  `goose up/reset/up` vérifié sur une base jetable (`bomstudio_t3_check`, supprimée ensuite) : `reset` sur la
+  base de dev a été refusé par le garde-fou (destruction des données locales). Test d'intégration : refus
+  UPDATE/DELETE/TRUNCATE (23001), DELETE d'une BOM publiée (23503), brouillon toujours modifiable, lignes figées invalides refusées.
 
 ## Decisions
 

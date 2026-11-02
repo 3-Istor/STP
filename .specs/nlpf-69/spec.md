@@ -155,7 +155,7 @@ flowchart TD
   - **Done when**: `go test ./internal/catalog/... ./internal/pricing/...` passe ; un test prouve qu'une
     cotation ajoutée après `FreezePrices` ne change pas `SnapshotOfferPrice`.
 
-- [ ] T3: Migration 00002 — colonnes brouillon et tables de snapshot de BOM
+- [x] T3: Migration 00002 — colonnes brouillon et tables de snapshot de BOM
   - **Files**: `migrations/00002_bom_snapshots.sql`, `internal/snapshot/immutability_integration_test.go`
   - **Approach**: `bom_nodes.production_days INTEGER NOT NULL DEFAULT 0 CHECK (>= 0)` ; `boms.price_snapshot_id`
     et `boms.source_snapshot_id` (nullables) ; `bom_snapshots` (FK `bom_id` **sans** cascade) et
