@@ -1,5 +1,5 @@
 # 0003 — Canal temps réel : comment l'UI apprend qu'il y a de nouvelles cotations
-Statut : Proposé — Date : 2026-11-02 — Décideurs : à compléter (les 3)
+Statut : Accepté — Date : 2026-11-02 — Décideurs : Arthur.presle
 
 ## Contexte
 live-price-feed (`docs/features.md`) : « les clients (UI) sont notifiés des nouvelles cotations ». Le
@@ -24,7 +24,7 @@ proxy `/api` → `:8080`, stdlib d'abord (AGENTS §2). Choix transverse du §7 (
    (ping, reconnexion, reprise) ; le sens client → serveur n'a pas d'usage ici.
 
 ## Décision
-Proposé : **option 3, SSE, comme simple signal**. Chaque évènement porte l'horloge simulée et un numéro de
+**Option 3, SSE, comme simple signal**. Chaque évènement porte l'horloge simulée et un numéro de
 tick (`id:`), pas les prix : l'UI relit ensuite les totaux par l'API REST habituelle. Le flux reste petit
 (un évènement par tick), le calcul reste unique côté Go, et l'API REST demeure la seule source de vérité.
 

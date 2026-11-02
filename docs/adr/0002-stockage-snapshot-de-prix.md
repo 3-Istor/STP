@@ -1,5 +1,5 @@
 # 0002 — Où vit le snapshot de prix
-Statut : Proposé — Date : 2026-11-02 — Décideurs : à compléter (les 3)
+Statut : Accepté — Date : 2026-11-02 — Décideurs : Arthur.presle
 
 ## Contexte
 live-price-feed (`docs/features.md`) : chaque prix d'offre et chaque taux de change récupérés sont enregistrés
@@ -29,7 +29,7 @@ Propriétaire : (a) domaine `pricing`, qui possède déjà cotations et taux ; (
 regrouperait tout ce qui est figé (BOM + prix).
 
 ## Décision
-Proposé : **option 1, portée par le domaine `pricing`**. Les cotations sont déjà immuables et datées :
+**Option 1, portée par le domaine `pricing`**. Les cotations sont déjà immuables et datées :
 les référencer suffit à figer les prix et les taux sans dupliquer, et garde la provenance exacte de chaque
 valeur. `snapshot` (BOM) référence un `price_snapshot_id`, il ne connaît pas le détail des cotations.
 

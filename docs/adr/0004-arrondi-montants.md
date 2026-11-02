@@ -1,5 +1,5 @@
 # 0004 — Arrondi des montants : half-even, aux unités mineures, en sortie seulement
-Statut : Proposé — Date : 2026-11-02 — Décideurs : à compléter (règle tranchée en cadrage par Arthur.presle)
+Statut : Accepté — Date : 2026-11-02 — Décideurs : Arthur.presle
 
 ## Contexte
 AGENTS §3 impose un « arrondi explicite aux unités mineures de la devise, uniquement en sortie », sans dire
