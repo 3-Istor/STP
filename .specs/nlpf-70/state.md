@@ -14,7 +14,7 @@ updated: 2026-11-02
 All tasks completed. Ready for verification.
 - Tasks: 7/7 completed
 - Branch: `nlpf-70`
-- Commits: 18 (dont suivi)
+- Commits: 15 sur la branche (dont suivi)
 - Reste à faire côté humain : pousser la branche et ouvrir la PR (CI GitHub jamais exécutée sur ce
   workflow) ; confirmer l'acceptation des ADR 0002/0003 par les 3 membres (un seul nom inscrit).
 
