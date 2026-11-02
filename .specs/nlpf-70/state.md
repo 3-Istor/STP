@@ -2,7 +2,7 @@
 id: nlpf-70
 status: in-progress
 branch: nlpf-70
-current_task: T6
+current_task: T7
 started: 2026-11-02
 updated: 2026-11-02
 ---
@@ -11,7 +11,7 @@ updated: 2026-11-02
 
 ## Progress
 
-T1–T5 faites (5/7). Reprise à T4 : ADR 0002, 0003, 0004 passées à `Accepté` (commit 2ab236d).
+T1–T6 faites (6/7). Reprise à T4 : ADR 0002, 0003, 0004 passées à `Accepté` (commit 2ab236d).
 
 ## Task Log
 
@@ -62,6 +62,18 @@ T1–T5 faites (5/7). Reprise à T4 : ADR 0002, 0003, 0004 passées à `Accepté
   (test jetable, non commité : le test d'intégration durable est en T7). Cible `make sqlc` ajoutée, citée
   dans AGENTS §1.
 
+### T6: Interfaces `catalog` et `pricing` + stubs, `bom` les consomme
+- **Status**: completed
+- **Time**: 2026-11-02
+- **Commit**: 458545f
+- **Notes**: `catalog.Catalog` (Part, Offer ; ErrPartNotFound/ErrOfferNotFound), `pricing.Pricing`
+  (OfferPrice → Quote{Price money.Money, Source, QuotedAt} ; Rate → Rate{From, To, decimal, Source, QuotedAt} ;
+  ErrNoQuote/ErrNoRate). Stubs en mémoire : la cotation la plus récente gagne, à égalité la dernière de la
+  liste. `bom.Service` + `PricedOffer` (offre + cotation) pour consommer réellement les interfaces.
+  Tests table-driven ; `TestDomainHasNoForbiddenDependency` (`go list -deps`) refuse net/http et pgx dans
+  le graphe de `bom`. Mutations vérifiées : import net/http dans catalog → test rouge ; stub qui renvoie une
+  cotation vide au lieu d'ErrNoQuote → tests pricing et bom rouges.
+
 ## Decisions
 
 - 2026-11-02 — Q1 : `Money` vit dans `internal/money` (package transverse). Décideur : Arthur.presle.
@@ -91,6 +103,10 @@ T1–T5 faites (5/7). Reprise à T4 : ADR 0002, 0003, 0004 passées à `Accepté
   plutôt qu'un `internal/db` commun : AGENTS §2 dit que chaque domaine porte son accès aux données, et le
   package métier (`catalog`, `pricing`) n'importe pas pgx. Les modèles générés dupliquent les structs de
   toutes les tables dans chaque sous-package (comportement de sqlc) ; à revoir si gênant.
+- 2026-11-02 — T6 : `pricing.Rate` ne renvoie que la paire exacte (pas d'inversion) ; l'inversion
+  EUR → USD = 1 ÷ USD → EUR relève de multi-currency-costing.
+- 2026-11-02 — T6 : ajout de `bom.Service.PricedOffer` (non demandé explicitement) pour que `bom` utilise
+  les interfaces et porte le test « pas de cotation = erreur nommée ». Aucun calcul de total.
 
 ## Blockers
 

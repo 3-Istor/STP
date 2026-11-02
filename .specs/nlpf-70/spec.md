@@ -142,7 +142,7 @@ sqlc.yaml
     quelques requêtes minimales (insert/get pièce, insert cotation) pour que le code généré soit utilisé.
   - **Done when**: `go tool sqlc generate && git diff --exit-code` propre ; `go build ./...` passe.
 
-- [ ] T6 : Interfaces `catalog` et `pricing` + stubs, `bom` les consomme
+- [x] T6 : Interfaces `catalog` et `pricing` + stubs, `bom` les consomme
   - **Files**: `internal/catalog/catalog.go`, `internal/catalog/stub.go`, `internal/pricing/pricing.go`,
     `internal/pricing/stub.go`, `internal/bom/service.go`, tests associés
   - **Approach**: `catalog.Catalog` (Part, Offer par id) ; `pricing.Pricing` (prix d'une offre, taux d'une
