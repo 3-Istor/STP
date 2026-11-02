@@ -1,6 +1,6 @@
 ---
 id: nlpf-70
-status: review
+status: in-progress
 branch: nlpf-70
 current_task: null
 started: 2026-11-02
@@ -11,7 +11,7 @@ updated: 2026-11-02
 
 ## Progress
 
-All tasks completed. Ready for verification.
+Verification FAIL (2026-11-02) : reste a faire cote humain, voir le rapport ci-dessous.
 - Tasks: 7/7 completed
 - Branch: `nlpf-70`
 - Commits: 15 sur la branche (dont suivi)
@@ -137,3 +137,51 @@ All tasks completed. Ready for verification.
   un seul nom figure. Le critère d'acceptation R1/R2 « acceptée par les 3 » reste à confirmer par l'équipe.
 
 ## Verification Report(s)
+
+## Verification Report — 2026-11-02
+
+### Overall: FAIL
+
+### Task Completion: 7/7
+
+### Commit Verification
+T1 3939deb, T2 6926ff4, T3 6146d5e, T4 28ae721, T5 8609d2b, T6 458545f, T7 d1e45bb : tous presents. Aucun manquant.
+
+### Automated Checks
+| Check | Result | Notes |
+|---|---|---|
+| `make lint` | PASS | 0 issues, oxlint OK |
+| `make test` | PASS | tous les packages OK |
+| `make migrate` | PASS | base deja a la version 1 (up-to-date) |
+| `go tool sqlc generate && git diff --exit-code` | PASS | aucune difference |
+| Test d'integration immutabilite (DATABASE_URL) | PASS | 10 sous-tests (UPDATE/DELETE/TRUNCATE) |
+| CI GitHub Actions verte | NOT RUN | branche non poussee |
+
+### Requirements Validation
+| Requirement | Status | Evidence |
+|---|---|---|
+| R1 ADR 0002 | PARTIALLY MET | redigee, Accepte, mais un seul decideur (Arthur.presle) sur les 3 |
+| R2 ADR 0003 | PARTIALLY MET | idem |
+| R3 Money | MET | money.go + tests (ErrCurrencyMismatch, Round half-even) |
+| R4 migration + triggers | MET | 00001_init.sql, triggers verifies par test d'integration |
+| R5 sqlc | MET | sqlc.yaml, tool, generate sans diff, etape CI presente |
+| R6 interfaces + stubs | MET | catalog/pricing + stubs, bom les consomme, test deps interdites |
+| R7 CI Postgres + goose + sqlc | PARTIALLY MET | workflow ecrit et rejoue en local, jamais execute sur GitHub |
+| S1 test d'integration trigger | MET | skip propre sans base, echoue si CI defini |
+| S2 JSON Money en chaine | MET | couvert dans money_test.go |
+
+### Acceptance Criteria
+| Criterion | Result | Evidence |
+|---|---|---|
+| ADR snapshot de prix acceptee par les 3 | FAIL | un seul nom dans Decideurs |
+| ADR canal temps reel acceptee par les 3 | FAIL | un seul nom dans Decideurs |
+| Money refuse EUR+USD, arrondi en sortie | PASS | tests verts |
+| make migrate + sqlc sans diff | PASS | verifie |
+| Interfaces + stubs, bom compile | PASS | verifie |
+| CI verte sur GitHub | FAIL | non executee |
+
+### Code Quality (/simplify)
+Etape non executee dans cette passe (aucun changement effectue). Observation : les modeles sqlc sont dupliques dans chaque sous-package (deja note dans Decisions).
+
+### Summary
+Le code est complet et tous les controles locaux passent. La verification echoue uniquement sur des points humains : acceptation des ADR 0002/0003 par les 3 membres et CI GitHub jamais executee (push + PR requis, AGENTS §11).
