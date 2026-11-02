@@ -1,5 +1,5 @@
 # 0006 — Stockage d'un snapshot de BOM : tables relationnelles immuables
-Statut : Proposé — Date : 2026-11-02 — Décideurs : —
+Statut : Accepté — Date : 2026-11-02 — Décideurs : Arthur.presle
 
 ## Contexte
 bom-draft-and-snapshots (`docs/features.md` l. 167-192) : publier un brouillon crée un **snapshot de BOM

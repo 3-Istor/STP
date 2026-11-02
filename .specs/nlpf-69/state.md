@@ -1,6 +1,6 @@
 ---
 id: nlpf-69
-status: blocked
+status: in-progress
 branch: nlpf-69
 current_task: T3
 started: 2026-11-02
@@ -11,7 +11,7 @@ updated: 2026-11-02
 
 ## Progress
 
-T1-T2 terminées (2/9). Bloqué avant T3 : ADR 0006 et 0007 à accepter par un humain.
+T1-T2 terminées (2/9). ADR 0006 et 0007 acceptées (Arthur.presle) : reprise à T3.
 
 ## Task Log
 
@@ -39,9 +39,9 @@ T1-T2 terminées (2/9). Bloqué avant T3 : ADR 0006 et 0007 à accepter par un h
 - 2026-11-02 — D3 : brouillon depuis snapshot = nouvelle BOM avec `source_snapshot_id` — choix humain.
 - 2026-11-02 — D4 : délai feuille = livraison de l'offre + production de la pièce (ADR 0007 à rédiger) — choix humain.
 - 2026-11-02 — Défaut agent : virtualisation de l'arbre sans dépendance npm ; figer les prix via extension de `pricing.Pricing` + stub (implémentation base : NLPF-68).
-- 2026-11-02 — T2 (agent, à valider) : `currencies` de `FreezePrices` = devises **cibles** ; on fige le taux
+- 2026-11-02 — T2 (validé par Arthur.presle) : `currencies` de `FreezePrices` = devises **cibles** ; on fige le taux
   de chaque devise d'offre vers chacune d'elles (paire exacte).
-- 2026-11-02 — T2 (agent, à valider) : `FreezePrices` **refuse** (rien n'est créé) s'il manque un prix ou un
+- 2026-11-02 — T2 (validé par Arthur.presle) : `FreezePrices` **refuse** (rien n'est créé) s'il manque un prix ou un
   taux, et liste tout ce qui manque (`ErrNoQuote` / `ErrNoRate` joints). Alternative écartée : figer
   partiellement, ce qui graverait un trou dans un snapshot immuable.
 - 2026-11-02 — T2 : le stub copie les cotations courantes et n'utilise pas `at` (pas d'historique) ;
@@ -51,18 +51,13 @@ T1-T2 terminées (2/9). Bloqué avant T3 : ADR 0006 et 0007 à accepter par un h
   `internal/bom`. Or T4 place `store.go` (pgx + sqlc) dans ce même package. Options : (a) mettre le store
   dans un sous-package `internal/bom/bomstore` (le domaine reste sans pgx, le test inchangé) ;
   (b) restreindre le test (affaiblir un test : interdit sans accord, AGENTS §11). L'agent propose (a).
+- 2026-11-02 — ADR 0006 et 0007 passées à `Accepté` par Arthur.presle (y compris, pour 0007, le parent sans
+  total de coût quand un prix/taux manque et la masse traitée comme le CO2).
 - 2026-11-02 — `.specs/CLAUDE.md` (règles du skill spec) n'existe pas ; exécution faite avec `AGENTS.md`.
 
 ## Blockers
 
-### T3: Migration 00002 — colonnes brouillon et tables de snapshot de BOM
-- **Error**: condition de la spec (T1 « Done when ») : ADR 0006 et 0007 doivent être acceptées par un
-  humain avant T3. Elles sont au statut `Proposé`.
-- **Attempts**: 0 (blocage volontaire, AGENTS §6 et §8)
-- **Analysis**: T3 implémente ADR 0006 ; T5 implémente ADR 0007.
-- **Suggested fix**: relire `docs/adr/0006-stockage-snapshot-de-bom.md` et `docs/adr/0007-calcul-des-totaux-bom.md`,
-  passer `Statut : Accepté` et remplir `Décideurs`, trancher le point store/pgx (Decisions), puis relancer
-  `/spec-execute nlpf-69`.
+Aucun. (Blocage T3 levé le 2026-11-02 : ADR 0006 et 0007 acceptées par Arthur.presle.)
 
 ## Verification Report(s)
 

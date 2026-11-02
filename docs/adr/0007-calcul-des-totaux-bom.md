@@ -1,5 +1,5 @@
 # 0007 — Règles de calcul des totaux d'une BOM (coût, CO2, délai)
-Statut : Proposé — Date : 2026-11-02 — Décideurs : —
+Statut : Accepté — Date : 2026-11-02 — Décideurs : Arthur.presle
 
 ## Contexte
 bom-tree-editor (`docs/features.md` l. 94-121) : totaux par nœud en remontant l'arbre ; quantités multipliées
