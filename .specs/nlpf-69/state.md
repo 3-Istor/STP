@@ -2,7 +2,7 @@
 id: nlpf-69
 status: in-progress
 branch: nlpf-69
-current_task: T5
+current_task: T6
 started: 2026-11-02
 updated: 2026-11-02
 ---
@@ -11,7 +11,7 @@ updated: 2026-11-02
 
 ## Progress
 
-T1-T4 terminées (4/9). Prochaine : T5 (calcul des totaux).
+T1-T5 terminées (5/9). Prochaine : T6 (service BOM).
 
 ## Task Log
 
@@ -59,6 +59,17 @@ T1-T4 terminées (4/9). Prochaine : T5 (calcul des totaux).
   Deadlock 40P01 entre le `TRUNCATE bom_snapshots CASCADE` du test T3 et les nouveaux tests quand les paquets
   tournent en parallèle : verrou `pg_advisory_xact_lock(69)` dans le `testDB` des deux paquets (5 runs verts).
   Mutation vérifiée : sans le contrôle de cycle, 4 cas de `TestMoveNode` échouent.
+
+### T5: Calcul des totaux en Go (pur, sans base) + benchmark
+- **Status**: completed
+- **Time**: 2026-11-02
+- **Commit**: b0cfcb2
+- **Notes**: Signature `ComputeTotals(TotalsInput)` (struct au lieu de 4 paramètres) avec `CalcNode` détaché
+  du brouillon, pour que T7 calcule un snapshot avec ses attributs figés. Les 4 exemples de R6, `ErrNoQuote`,
+  `ErrNoRate`, taux de la mauvaise paire, absence d'arrondi intermédiaire, déterminisme et explication
+  (taux utilisés triés, dates, source) testés. Benchmark : ~35 ms/op pour 30 000 nœuds.
+  Choix agent à valider : une pièce qui a des enfants rend l'arbre invalide (`ErrInvalidTree`) plutôt que
+  d'inventer une règle de cumul ; T6 devra refuser d'ajouter/déplacer un nœud sous une pièce.
 
 ## Decisions
 

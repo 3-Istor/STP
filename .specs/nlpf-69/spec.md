@@ -172,7 +172,7 @@ flowchart TD
   - **Done when**: tests d'intégration : déplacement sous un descendant → `errors.Is(err, ErrCycle)` ;
     suppression d'un sous-ensemble supprime ses enfants ; suppression de la racine refusée.
 
-- [ ] T5: Calcul des totaux en Go (pur, sans base) + benchmark
+- [x] T5: Calcul des totaux en Go (pur, sans base) + benchmark
   - **Files**: `internal/bom/totals.go`, `internal/bom/totals_test.go`, `internal/bom/totals_bench_test.go`
   - **Approach**: `ComputeTotals(tree, prices, rates, currency)` : parcours post-ordre itératif, enfants triés par id,
     quantité réelle = produit du chemin, coût converti puis additionné (`money.Add`), CO2 sommé, délai selon ADR 0007 ;
