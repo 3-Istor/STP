@@ -2,7 +2,7 @@
 id: nlpf-69
 status: in-progress
 branch: nlpf-69
-current_task: T4
+current_task: T5
 started: 2026-11-02
 updated: 2026-11-02
 ---
@@ -11,7 +11,7 @@ updated: 2026-11-02
 
 ## Progress
 
-T1-T3 terminées (3/9). En attente avant T4 : choix store/pgx (voir Decisions).
+T1-T4 terminées (4/9). Prochaine : T5 (calcul des totaux).
 
 ## Task Log
 
@@ -44,6 +44,22 @@ T1-T3 terminées (3/9). En attente avant T4 : choix store/pgx (voir Decisions).
   base de dev a été refusé par le garde-fou (destruction des données locales). Test d'intégration : refus
   UPDATE/DELETE/TRUNCATE (23001), DELETE d'une BOM publiée (23503), brouillon toujours modifiable, lignes figées invalides refusées.
 
+### T4: Accès données BOM (sqlc) et opérations d'arbre
+- **Status**: completed
+- **Time**: 2026-11-02
+- **Commit**: 52d0865
+- **Notes**: Option (a) : `internal/bom/store.go` = interface `Store`, types `BOM`/`Node`, sentinelles
+  (`ErrBOMNotFound`, `ErrNodeNotFound`, `ErrCycle`, `ErrRootNode`, `ErrHasSnapshots`, `ErrNotAPart`) ;
+  implémentation pgx dans `internal/bom/bomstore` (au lieu de `internal/bom/store.go` prévu par la spec),
+  requêtes `internal/bom/queries.sql` → `internal/bom/bomdb`. `MoveNode` verrouille la ligne `boms`
+  (`FOR UPDATE`) avant la CTE pour que deux déplacements concurrents ne créent pas de cycle.
+  Ajouts hors liste de la spec, utiles à T6/T8 : `SetNodeQuantity`, `SetNodeProductionDays`, `SetPriceSnapshot`.
+  sqlc refuse `EXISTS (SELECT … FROM cte)` : contrôle écrit avec `bool_or`. Modèles `catalogdb`/`pricingdb`
+  régénérés (T3 les avait laissés périmés : la CI « code sqlc à jour » aurait échoué).
+  Deadlock 40P01 entre le `TRUNCATE bom_snapshots CASCADE` du test T3 et les nouveaux tests quand les paquets
+  tournent en parallèle : verrou `pg_advisory_xact_lock(69)` dans le `testDB` des deux paquets (5 runs verts).
+  Mutation vérifiée : sans le contrôle de cycle, 4 cas de `TestMoveNode` échouent.
+
 ## Decisions
 
 - 2026-11-02 — D1 : snapshot de BOM en tables relationnelles (ADR 0006 à rédiger) — choix humain.
@@ -65,6 +81,7 @@ T1-T3 terminées (3/9). En attente avant T4 : choix store/pgx (voir Decisions).
   (b) restreindre le test (affaiblir un test : interdit sans accord, AGENTS §11). L'agent propose (a).
 - 2026-11-02 — ADR 0006 et 0007 passées à `Accepté` par Arthur.presle (y compris, pour 0007, le parent sans
   total de coût quand un prix/taux manque et la masse traitée comme le CO2).
+- 2026-11-02 — Point avant T4 tranché par Arthur.presle : option (a), store dans `internal/bom/bomstore`.
 - 2026-11-02 — `.specs/CLAUDE.md` (règles du skill spec) n'existe pas ; exécution faite avec `AGENTS.md`.
 
 ## Blockers

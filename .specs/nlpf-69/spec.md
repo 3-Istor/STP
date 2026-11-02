@@ -163,7 +163,7 @@ flowchart TD
   - **Done when**: `goose up/reset/up` passe ; le test d'intégration montre `UPDATE`/`DELETE` refusés sur les
     deux tables et `DELETE FROM boms` refusé quand un snapshot existe.
 
-- [ ] T4: Accès données BOM (sqlc) et opérations d'arbre
+- [x] T4: Accès données BOM (sqlc) et opérations d'arbre
   - **Files**: `internal/bom/queries.sql`, `internal/bom/bomdb/*` (généré), `sqlc.yaml`, `internal/bom/store.go`,
     `internal/bom/store_integration_test.go`
   - **Approach**: Requêtes : créer BOM + racine (une transaction), lister, renommer, réglages, supprimer,
