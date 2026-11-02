@@ -126,7 +126,8 @@ Ne l'est pas : un nom de variable, un refactor local, un test en plus, un compos
 
 - Emplacement : `docs/adr/NNNN-titre-en-kebab.md` (numérotation continue, `0001`, `0002`…).
 - L'agent **rédige le brouillon** au statut `Proposé` ; **seul un humain** le passe à `Accepté`
-  et inscrit son nom dans `Décideurs`.
+  et inscrit son nom dans `Décideurs`. **Un seul membre de l'équipe suffit** : pas besoin
+  de l'accord des trois.
 - Une ADR acceptée **ne se réécrit pas** : on en crée une nouvelle qui la remplace (`Remplacée par 00XX`).
 - Une page max. Format :
 
