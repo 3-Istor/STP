@@ -45,8 +45,18 @@ func testDB(t *testing.T) pgx.Tx {
 		t.Fatalf("begin: %v", err)
 	}
 	t.Cleanup(func() { _ = tx.Rollback(context.Background()) })
+	// Les paquets de test tournent en parallèle sur la même base : sans ce verrou, un TRUNCATE ... CASCADE
+	// (test d'immutabilité des snapshots) et des insertions dans boms / bom_nodes se bloquent mutuellement
+	// (deadlock 40P01). Le verrou consultatif, libéré au rollback, fait passer ces tests l'un après l'autre.
+	if _, err := tx.Exec(t.Context(), `SELECT pg_advisory_xact_lock($1)`, bomTablesTestLock); err != nil {
+		t.Fatalf("advisory lock: %v", err)
+	}
 	return tx
 }
+
+// bomTablesTestLock : clé du verrou consultatif partagé par les tests d'intégration qui écrivent dans
+// les tables de BOM (même valeur dans internal/snapshot et internal/bom/bomstore).
+const bomTablesTestLock = 69
 
 // SI je tente de modifier un snapshot de BOM publié, ou de supprimer une BOM qui en a un,
 // ALORS la base DOIT refuser, quel que soit le code appelant (bom-draft-and-snapshots, ADR 0006).
