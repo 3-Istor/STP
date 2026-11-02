@@ -146,7 +146,7 @@ flowchart TD
     avant somme, délai feuille = livraison + production (D4), arrondi en sortie seulement, erreurs nommées.
   - **Done when**: les deux fichiers existent au statut `Proposé` ; **un humain les accepte avant T3**.
 
-- [ ] T2: Étendre `catalog.Part` et `pricing.Pricing` (+ stubs)
+- [x] T2: Étendre `catalog.Part` et `pricing.Pricing` (+ stubs)
   - **Files**: `internal/catalog/catalog.go`, `internal/catalog/stub.go`, `internal/catalog/stub_test.go`,
     `internal/pricing/pricing.go`, `internal/pricing/stub.go`, `internal/pricing/stub_test.go`
   - **Approach**: `Part` gagne `CO2Kg`, `MassKg` (`decimal.Decimal`) et `ProductionDays int` (D2).
