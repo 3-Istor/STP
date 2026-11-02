@@ -14,7 +14,7 @@ Principe du cours : **l'IA produit, l'humain garantit.** La responsabilité ne s
 ## 1. Environnement
 
 - Tout se lance **dans WSL (Ubuntu)** : Go, make, Docker, Node y sont installés, pas côté Windows.
-- `make run | test | cover | sec | lint | migrate | dev` (voir `Makefile`). Les outils Go (goose, golangci-lint, govulncheck, puis sqlc)
+- `make run | test | cover | sec | lint | migrate | sqlc | dev` (voir `Makefile`). Les outils Go (goose, golangci-lint, govulncheck, puis sqlc)
   sont déclarés en `tool` dans `go.mod` et lancés par `go tool <nom>` : rien à installer globalement.
 - Front : `npm ci` (pas `npm install`, qui plante avec le npm 10 du système ; pour ajouter une dépendance :
   `npx npm@11 install <pkg>`).

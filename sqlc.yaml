@@ -1,0 +1,31 @@
+# sqlc : requêtes SQL typées (AGENTS §2). Le schéma est lu depuis les migrations goose (seules les
+# sections Up sont prises en compte). Chaque domaine porte ses requêtes et son code généré dans un
+# sous-package `<domaine>db`, que seul le domaine importe.
+# Régénérer : `make sqlc` ; la CI vérifie que le code commité est à jour.
+version: "2"
+sql:
+  - engine: postgresql
+    schema: migrations
+    queries: internal/catalog/queries.sql
+    gen:
+      go: &go
+        package: catalogdb
+        out: internal/catalog/catalogdb
+        sql_package: pgx/v5
+        overrides:
+          # Montants, taux, quantités : jamais de float (AGENTS §3).
+          - db_type: pg_catalog.numeric
+            go_type: github.com/shopspring/decimal.Decimal
+          - db_type: pg_catalog.numeric
+            nullable: true
+            go_type: github.com/shopspring/decimal.NullDecimal
+          - db_type: timestamptz
+            go_type: time.Time
+  - engine: postgresql
+    schema: migrations
+    queries: internal/pricing/queries.sql
+    gen:
+      go:
+        <<: *go
+        package: pricingdb
+        out: internal/pricing/pricingdb
