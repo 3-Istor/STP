@@ -2,7 +2,7 @@
 id: nlpf-70
 status: in-progress
 branch: nlpf-70
-current_task: T5
+current_task: T6
 started: 2026-11-02
 updated: 2026-11-02
 ---
@@ -11,7 +11,7 @@ updated: 2026-11-02
 
 ## Progress
 
-T1–T4 faites (4/7). Reprise à T4 : ADR 0002, 0003, 0004 passées à `Accepté` (commit 2ab236d).
+T1–T5 faites (5/7). Reprise à T4 : ADR 0002, 0003, 0004 passées à `Accepté` (commit 2ab236d).
 
 ## Task Log
 
@@ -50,6 +50,18 @@ T1–T4 faites (4/7). Reprise à T4 : ADR 0002, 0003, 0004 passées à `Accepté
   supprimer la racine supprime le sous-arbre. Choix de schéma notés dans Decisions. Le test automatique du
   trigger est prévu en T7 (S1).
 
+### T5: sqlc — configuration, requêtes de base, code généré
+- **Status**: completed
+- **Time**: 2026-11-02
+- **Commit**: 8609d2b
+- **Notes**: `sqlc.yaml` (schéma = `migrations/`), sqlc v1.31.1 en `tool` (build wasm, pas de cgo), pgx/v5 en
+  direct. Code généré par domaine : `internal/catalog/catalogdb`, `internal/pricing/pricingdb`. Overrides
+  numeric → `decimal.Decimal` (NullDecimal si nullable), timestamptz → `time.Time`. `sqlc generate` puis
+  `git diff --exit-code` propre ; `go build`, `go mod tidy -diff`, `make lint` (0 issue), `make test` OK.
+  Aller-retour exact d'un `NUMERIC` à 29 chiffres via le code généré vérifié contre Postgres local
+  (test jetable, non commité : le test d'intégration durable est en T7). Cible `make sqlc` ajoutée, citée
+  dans AGENTS §1.
+
 ## Decisions
 
 - 2026-11-02 — Q1 : `Money` vit dans `internal/money` (package transverse). Décideur : Arthur.presle.
@@ -75,6 +87,10 @@ T1–T4 faites (4/7). Reprise à T4 : ADR 0002, 0003, 0004 passées à `Accepté
 - 2026-11-02 — T4 : triggers aussi sur TRUNCATE. Limite connue : rien n'empêche encore d'INSÉRER un lien
   dans un snapshot de prix déjà existant ; c'est au service `pricing` de créer en-tête et liens dans une
   seule transaction.
+- 2026-11-02 — T5 : code sqlc généré dans un sous-package par domaine (`internal/<domaine>/<domaine>db`)
+  plutôt qu'un `internal/db` commun : AGENTS §2 dit que chaque domaine porte son accès aux données, et le
+  package métier (`catalog`, `pricing`) n'importe pas pgx. Les modèles générés dupliquent les structs de
+  toutes les tables dans chaque sous-package (comportement de sqlc) ; à revoir si gênant.
 
 ## Blockers
 

@@ -135,7 +135,7 @@ sqlc.yaml
     selon ADR 0002.
   - **Done when**: `make migrate` sur base vide passe ; `goose down` puis `up` passe.
 
-- [ ] T5 : sqlc — configuration, requêtes de base, code généré
+- [x] T5 : sqlc — configuration, requêtes de base, code généré
   - **Files**: `sqlc.yaml`, `internal/<domaine>/queries.sql` (ou `queries/`), code généré, `go.mod`
     (`tool github.com/sqlc-dev/sqlc/cmd/sqlc`, `pgx/v5` en direct), `Makefile` (cible `sqlc`)
   - **Approach**: sqlc lit le schéma depuis `migrations/`, override `numeric` → `decimal.Decimal` ;
