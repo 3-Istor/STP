@@ -167,13 +167,13 @@ docker compose up --build --wait
 - `make dev` fonctionne toujours en parallèle d'une stack arrêtée (ports 8080/5173 libres).
 
 ### Acceptance Criteria
-- [ ] QUAND je lance `docker compose up --build` ALORS db, migrate, back, priceapi et web DOIVENT démarrer
+- [x] QUAND je lance `docker compose up --build` ALORS db, migrate, back, priceapi et web DOIVENT démarrer
   sans autre commande (M1)
-- [ ] SI une migration échoue ALORS le back NE DOIT PAS démarrer (M2)
-- [ ] QUAND j'ouvre `http://localhost:8000/healthz` ALORS la réponse DOIT venir du back via nginx (M3)
-- [ ] QUAND j'appelle `/healthz` de l'API de prix ALORS elle DOIT répondre 200 depuis son propre conteneur,
+- [x] SI une migration échoue ALORS le back NE DOIT PAS démarrer (M2)
+- [x] QUAND j'ouvre `http://localhost:8000/healthz` ALORS la réponse DOIT venir du back via nginx (M3)
+- [x] QUAND j'appelle `/healthz` de l'API de prix ALORS elle DOIT répondre 200 depuis son propre conteneur,
   et le back DOIT avoir `PRICE_API_URL` dans son environnement (M4)
-- [ ] QUAND je lance `docker compose up --wait` ALORS la commande DOIT rendre la main seulement quand tous les
+- [x] QUAND je lance `docker compose up --wait` ALORS la commande DOIT rendre la main seulement quand tous les
   services longs sont healthy (M5)
 - [x] ADR 0005 au statut `Accepté` avec un décideur (M6)
-- [ ] `make db`, `make dev`, `make test`, `make lint` se comportent comme avant (M7)
+- [x] `make db`, `make dev`, `make test`, `make lint` se comportent comme avant (M7)

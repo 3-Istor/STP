@@ -1,6 +1,6 @@
 ---
 id: docker-compose-stack
-status: in-progress
+status: review
 branch: docker-compose-stack
 current_task: null
 started: 2026-11-02
@@ -11,9 +11,13 @@ updated: 2026-11-02
 
 ## Progress
 
-En cours : T1 terminée (ADR 0005 acceptée par Arthur.presle, commit 3e85deb).
+All tasks completed. Ready for verification.
 - Tasks: 7/7 completed
 - Branch: `docker-compose-stack`
+- Commits: 17
+- Vérifié en local : make lint, make test, go test -race, go mod tidy -diff, docker compose config -q,
+  up --build --wait + /healthz via nginx + priceapi, migration en échec qui bloque le back.
+- Non vérifié : job CI `compose` (branche non poussée).
 
 ## Task Log
 
