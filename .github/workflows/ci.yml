@@ -98,3 +98,24 @@ jobs:
           go-version-file: go.mod
       - name: govulncheck
         run: go tool govulncheck ./...
+
+  # Smoke test de la stack complète (voir ADR 0005) : tout démarre, /healthz répond via nginx et
+  # depuis le conteneur de l'API de prix.
+  compose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Démarrer la stack
+        run: docker compose up -d --build --wait
+      - name: Back via nginx
+        run: curl -fsS localhost:8000/healthz
+      - name: API de prix dans son conteneur
+        run: docker compose exec -T priceapi wget -qO- localhost:8090/healthz
+      - name: Migrations appliquées
+        run: test "$(docker compose ps -a migrate --format '{{.ExitCode}}')" = "0"
+      - name: Journaux en cas d'échec
+        if: failure()
+        run: docker compose ps -a && docker compose logs
+      - name: Arrêt
+        if: always()
+        run: docker compose down -v
