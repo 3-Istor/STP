@@ -26,6 +26,8 @@ Principe du cours : **l'IA produit, l'humain garantit.** La responsabilité ne s
 - `internal/httpapi` : routeur `net/http` standard (patterns `GET /api/v1/parts/{id}`), handlers fins.
 - `internal/<domaine>` : `catalog`, `bom`, `supplier`, `pricing`, `snapshot`. Chaque domaine porte ses types,
   son service (règles métier) et son accès aux données.
+- `internal/money` : type transverse `Money` (montant décimal + devise ISO 4217, arrondi half-even en sortie,
+  voir ADR 0004). Utilisé par tous les domaines, il ne dépend d'aucun d'eux.
 - Base : PostgreSQL via pgx, requêtes typées générées par sqlc, migrations SQL goose dans `migrations/`.
   Jamais de modification d'une migration déjà commitée : on en ajoute une nouvelle.
 - `web/` : React + TypeScript + Vite, proxy `/api` → `:8080` en dev. Three.js arrivera avec la vue 3D.
