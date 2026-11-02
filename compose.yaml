@@ -1,3 +1,6 @@
+# Toute l'app : `docker compose up --build --wait`, front sur http://localhost:8000 (voir ADR 0005).
+# `make db` ne démarre que `db` ; `make dev` reste l'outil de développement (8080 / 5173 libres).
+# Identifiants de dev en clair, comme la CI : pas de secret réel ici.
 services:
   db:
     image: postgres:18-alpine
@@ -11,6 +14,64 @@ services:
       - pgdata:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U bom -d bomstudio"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+
+  # One-shot : applique les migrations puis s'arrête. En cas d'échec, `back` ne démarre pas.
+  migrate:
+    build:
+      context: .
+      target: migrate
+    environment:
+      DATABASE_URL: postgres://bom:bom@db:5432/bomstudio?sslmode=disable
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  back:
+    build:
+      context: .
+      target: server
+    environment:
+      PORT: "8080"
+      # Pas encore lues par le back (Won't Do du ticket) : posées pour live-price-feed.
+      DATABASE_URL: postgres://bom:bom@db:5432/bomstudio?sslmode=disable
+      PRICE_API_URL: http://priceapi:8090
+    # Volontairement pas de dépendance à `priceapi` : le back doit démarrer même si l'API de prix
+    # est en panne (fallback sur le dernier snapshot, AGENTS §2).
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/healthz"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+
+  priceapi:
+    build:
+      context: .
+      target: priceapi
+    environment:
+      PORT: "8090"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8090/healthz"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+
+  web:
+    build:
+      context: web
+    ports:
+      - "${WEB_PORT:-8000}:80"
+    depends_on:
+      back:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/"]
       interval: 2s
       timeout: 3s
       retries: 15
