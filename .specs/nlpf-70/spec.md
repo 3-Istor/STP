@@ -118,7 +118,7 @@ sqlc.yaml
     jour simulé), du proxy Vite, du pivot hors-ligne. Statut `Proposé`.
   - **Done when**: fichier présent au format §8 ; acceptée par les 3.
 
-- [ ] T3 : Type `Money` et ses tests
+- [x] T3 : Type `Money` et ses tests
   - **Files**: `internal/money/money.go`, `internal/money/money_test.go`, `go.mod`, `go.sum`,
     `docs/adr/0004-arrondi-montants.md`, `AGENTS.md` (§2 : mention de `internal/money`)
   - **Approach**: `type Money struct{ amount decimal.Decimal; currency Currency }`, constructeur validant le
