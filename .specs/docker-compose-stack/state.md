@@ -2,7 +2,7 @@
 id: docker-compose-stack
 status: in-progress
 branch: docker-compose-stack
-current_task: T4
+current_task: T5
 started: 2026-11-02
 updated: 2026-11-02
 ---
@@ -12,7 +12,7 @@ updated: 2026-11-02
 ## Progress
 
 En cours : T1 terminée (ADR 0005 acceptée par Arthur.presle, commit 3e85deb).
-- Tasks: 3/7 completed
+- Tasks: 4/7 completed
 - Branch: `docker-compose-stack`
 
 ## Task Log
@@ -40,6 +40,11 @@ En cours : T1 terminée (ADR 0005 acceptée par Arthur.presle, commit 3e85deb).
 - **Time**: 2026-11-02
 - **Commit**: f71586f
 - **Notes**: Dockerfile racine : stage build golang:1.27.2-alpine3.23 ; cibles server/priceapi/migrate sur alpine:3.23.2, utilisateur non root. Écart : migrate lance un binaire goose précompilé (même version que le tool de go.mod) au lieu de go tool goose sur l'image golang (voir Decisions). Trois docker build --target OK.
+### T4: Image front (build Vite + nginx)
+- **Status**: completed
+- **Time**: 2026-11-02
+- **Commit**: a067bb9
+- **Notes**: node:24.11.1-alpine3.23 (npm ci + build) puis nginx:1.29.4-alpine ; proxy /api/ et /healthz vers back:8080, proxy_buffering off, proxy_read_timeout 1h ; SPA fallback. Image sert index.html sur / et sur une route inconnue.
 
 ## Decisions
 

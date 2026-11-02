@@ -119,7 +119,7 @@ docker compose up --build --wait
     `go tool goose -dir migrations postgres "$DATABASE_URL" up`.
   - **Done when**: `docker build --target server .`, `--target priceapi` et `--target migrate` réussissent.
 
-- [ ] T4: Image front (build Vite + nginx)
+- [x] T4: Image front (build Vite + nginx)
   - **Files**: `web/Dockerfile`, `web/nginx.conf`, `web/.dockerignore`
   - **Approach**: Stage `node` épinglé : `npm ci` + `npm run build` ; stage `nginx` (alpine épinglé) qui sert
     `dist/` avec fallback `index.html`, proxifie `/api` et `/healthz` vers `http://back:8080`
