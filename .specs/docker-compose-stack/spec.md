@@ -126,7 +126,7 @@ docker compose up --build --wait
     (`proxy_buffering off`, `proxy_read_timeout` long pour SSE, cf. ADR 0003).
   - **Done when**: `docker build web` réussit et l'image sert `index.html` sur `/`.
 
-- [ ] T5: `compose.yaml` complet
+- [x] T5: `compose.yaml` complet
   - **Files**: `compose.yaml`
   - **Approach**: Garder `db` tel quel (5432 exposé, volume) ; ajouter `migrate` (`depends_on: db:
     service_healthy`), `back` (`depends_on: migrate: service_completed_successfully`, env `DATABASE_URL`

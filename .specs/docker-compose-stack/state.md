@@ -2,7 +2,7 @@
 id: docker-compose-stack
 status: in-progress
 branch: docker-compose-stack
-current_task: T5
+current_task: T6
 started: 2026-11-02
 updated: 2026-11-02
 ---
@@ -12,7 +12,7 @@ updated: 2026-11-02
 ## Progress
 
 En cours : T1 terminée (ADR 0005 acceptée par Arthur.presle, commit 3e85deb).
-- Tasks: 4/7 completed
+- Tasks: 5/7 completed
 - Branch: `docker-compose-stack`
 
 ## Task Log
@@ -45,6 +45,11 @@ En cours : T1 terminée (ADR 0005 acceptée par Arthur.presle, commit 3e85deb).
 - **Time**: 2026-11-02
 - **Commit**: a067bb9
 - **Notes**: node:24.11.1-alpine3.23 (npm ci + build) puis nginx:1.29.4-alpine ; proxy /api/ et /healthz vers back:8080, proxy_buffering off, proxy_read_timeout 1h ; SPA fallback. Image sert index.html sur / et sur une route inconnue.
+### T5: `compose.yaml` complet
+- **Status**: completed
+- **Time**: 2026-11-02
+- **Commit**: 9e6f239
+- **Notes**: up --build --wait rend la main, tous healthy, migrate Exited (0) ; curl :8000/healthz 200 via nginx ; priceapi /healthz 200 dans son conteneur ; PRICE_API_URL présent dans back. Migration forcée en échec (override local) : back reste Created. Écart : back ne dépend pas de priceapi (voir Decisions).
 
 ## Decisions
 
@@ -58,6 +63,8 @@ En cours : T1 terminée (ADR 0005 acceptée par Arthur.presle, commit 3e85deb).
   github.com/pressly/goose/v3/cmd/goose`, version figée par go.mod) sur alpine, au lieu de `go tool goose`
   sur l'image golang prévue par la spec : image 72 Mo au lieu d'environ 1 Go, pas de compilation au démarrage,
   même version d'outil et aucune dépendance ajoutée.
+- 2026-11-02 — T5 : `back` ne déclare pas `depends_on: priceapi` (la spec ne l'exigeait pas) : le back doit
+  démarrer même si l'API de prix est en panne (fallback dernier snapshot, AGENTS §2).
 
 ## Blockers
 
