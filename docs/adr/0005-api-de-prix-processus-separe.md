@@ -1,5 +1,5 @@
 # 0005 — API de prix en processus séparé, toute l'app lancée par un seul `docker compose`
-Statut : Proposé — Date : 2026-11-02 — Décideurs : <à compléter>
+Statut : Accepté — Date : 2026-11-02 — Décideurs : Arthur.presle
 
 ## Contexte
 `compose.yaml` ne lance que Postgres ; back et front tournent sur le poste (`make dev`, Go + Node dans WSL).
