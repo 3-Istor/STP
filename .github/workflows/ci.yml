@@ -18,6 +18,23 @@ concurrency:
 jobs:
   go:
     runs-on: ubuntu-latest
+    # Base réelle pour les migrations et les tests d'intégration (identifiants de test, cf. compose.yaml).
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: bom
+          POSTGRES_PASSWORD: bom
+          POSTGRES_DB: bomstudio
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U bom -d bomstudio"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 15
+    env:
+      DATABASE_URL: postgres://bom:bom@localhost:5432/bomstudio?sslmode=disable
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
@@ -25,10 +42,20 @@ jobs:
           go-version-file: go.mod
       - name: go mod tidy à jour
         run: go mod tidy -diff
+      - name: Code sqlc à jour
+        run: |
+          go tool sqlc generate
+          git diff --exit-code
+          test -z "$(git status --porcelain)" || { git status --porcelain; exit 1; }
+      - name: Migrations réversibles (up, reset, up)
+        run: |
+          go tool goose -dir migrations postgres "$DATABASE_URL" up
+          go tool goose -dir migrations postgres "$DATABASE_URL" reset
+          go tool goose -dir migrations postgres "$DATABASE_URL" up
       - run: go vet ./...
       - name: golangci-lint (dont gosec)
         run: go tool golangci-lint run ./...
-      - name: Tests (race) + couverture
+      - name: Tests (race) + couverture, dont intégration Postgres
         run: go test -race -covermode=atomic -coverprofile=coverage.out ./...
       - name: Résumé de couverture
         run: |

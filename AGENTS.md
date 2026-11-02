@@ -14,7 +14,7 @@ Principe du cours : **l'IA produit, l'humain garantit.** La responsabilité ne s
 ## 1. Environnement
 
 - Tout se lance **dans WSL (Ubuntu)** : Go, make, Docker, Node y sont installés, pas côté Windows.
-- `make run | test | cover | sec | lint | migrate | dev` (voir `Makefile`). Les outils Go (goose, golangci-lint, govulncheck, puis sqlc)
+- `make run | test | cover | sec | lint | migrate | sqlc | dev` (voir `Makefile`). Les outils Go (goose, golangci-lint, govulncheck, puis sqlc)
   sont déclarés en `tool` dans `go.mod` et lancés par `go tool <nom>` : rien à installer globalement.
 - Front : `npm ci` (pas `npm install`, qui plante avec le npm 10 du système ; pour ajouter une dépendance :
   `npx npm@11 install <pkg>`).
@@ -26,6 +26,8 @@ Principe du cours : **l'IA produit, l'humain garantit.** La responsabilité ne s
 - `internal/httpapi` : routeur `net/http` standard (patterns `GET /api/v1/parts/{id}`), handlers fins.
 - `internal/<domaine>` : `catalog`, `bom`, `supplier`, `pricing`, `snapshot`. Chaque domaine porte ses types,
   son service (règles métier) et son accès aux données.
+- `internal/money` : type transverse `Money` (montant décimal + devise ISO 4217, arrondi half-even en sortie,
+  voir ADR 0004). Utilisé par tous les domaines, il ne dépend d'aucun d'eux.
 - Base : PostgreSQL via pgx, requêtes typées générées par sqlc, migrations SQL goose dans `migrations/`.
   Jamais de modification d'une migration déjà commitée : on en ajoute une nouvelle.
 - `web/` : React + TypeScript + Vite, proxy `/api` → `:8080` en dev. Three.js arrivera avec la vue 3D.
@@ -124,7 +126,8 @@ Ne l'est pas : un nom de variable, un refactor local, un test en plus, un compos
 
 - Emplacement : `docs/adr/NNNN-titre-en-kebab.md` (numérotation continue, `0001`, `0002`…).
 - L'agent **rédige le brouillon** au statut `Proposé` ; **seul un humain** le passe à `Accepté`
-  et inscrit son nom dans `Décideurs`.
+  et inscrit son nom dans `Décideurs`. **Un seul membre de l'équipe suffit** : pas besoin
+  de l'accord des trois.
 - Une ADR acceptée **ne se réécrit pas** : on en crée une nouvelle qui la remplace (`Remplacée par 00XX`).
 - Une page max. Format :
 
@@ -217,7 +220,8 @@ Sinon l'agent le dit, avec la sortie de la commande qui échoue.
 
 `.github/workflows/ci.yml`, sur chaque push vers `main` et chaque PR (voir ADR 0001, `docs/workflow.md`) :
 
-- **go** : `go mod tidy -diff`, `go vet`, `golangci-lint` (dont `gosec`), `go test -race` + couverture (non bloquante) ;
+- **go** (service Postgres 18) : `go mod tidy -diff`, code sqlc à jour, migrations `goose up` / `reset` / `up`,
+  `go vet`, `golangci-lint` (dont `gosec`), `go test -race` + couverture (non bloquante), tests d'intégration compris ;
 - **web** : `npm ci`, `oxlint`, build (`tsc` + Vite), `npm audit` ;
 - **security** : `govulncheck`.
 

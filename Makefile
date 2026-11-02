@@ -1,7 +1,7 @@
 DATABASE_URL ?= postgres://bom:bom@localhost:5432/bomstudio?sslmode=disable
 export DATABASE_URL
 
-.PHONY: run test cover sec lint migrate db dev web
+.PHONY: run test cover sec lint migrate db dev web sqlc
 
 run: ## API sur :8080
 	go run ./cmd/server
@@ -28,6 +28,9 @@ db: ## Postgres local
 migrate: db
 	@if ls migrations/*.sql >/dev/null 2>&1; then go tool goose -dir migrations postgres "$(DATABASE_URL)" up; \
 	else echo "migrate: aucune migration"; fi
+
+sqlc: ## régénère le code des requêtes SQL typées (voir sqlc.yaml)
+	go tool sqlc generate
 
 web: web/node_modules
 	cd web && npm run dev
