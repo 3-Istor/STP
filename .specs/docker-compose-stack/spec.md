@@ -102,7 +102,7 @@ docker compose up --build --wait
     **Bloquer** jusqu'à acceptation humaine.
   - **Done when**: le fichier existe au format §8 et un humain l'a passé à `Accepté` avec son nom.
 
-- [ ] T2: Binaire `cmd/priceapi` (squelette `/healthz`)
+- [x] T2: Binaire `cmd/priceapi` (squelette `/healthz`)
   - **Files**: `cmd/priceapi/main.go`, `internal/priceapi/router.go`, `internal/priceapi/router_test.go`,
     `internal/priceapi/doc.go`
   - **Approach**: Copier le patron de `cmd/server` (PORT défaut `8090`, slog, arrêt propre) ; routeur

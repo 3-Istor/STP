@@ -2,7 +2,7 @@
 id: docker-compose-stack
 status: in-progress
 branch: docker-compose-stack
-current_task: T2
+current_task: T3
 started: 2026-11-02
 updated: 2026-11-02
 ---
@@ -12,7 +12,7 @@ updated: 2026-11-02
 ## Progress
 
 En cours : T1 terminée (ADR 0005 acceptée par Arthur.presle, commit 3e85deb).
-- Tasks: 1/7 completed
+- Tasks: 2/7 completed
 - Branch: `docker-compose-stack`
 
 ## Task Log
@@ -30,6 +30,11 @@ En cours : T1 terminée (ADR 0005 acceptée par Arthur.presle, commit 3e85deb).
 - **Time**: 2026-11-02
 - **Commit**: 3e85deb (acceptation humaine)
 - **Notes**: ADR 0005 passée à `Accepté` par Arthur.presle ; blocage levé, reprise à T2.
+### T2: Binaire `cmd/priceapi` (squelette `/healthz`)
+- **Status**: completed
+- **Time**: 2026-11-02
+- **Commit**: aad50f9
+- **Notes**: Patron de cmd/server (PORT défaut 8090, slog, arrêt propre) ; routeur net/http GET /healthz ; test table-driven 200/405/404. go run répond sur :8090/healthz, make lint vert.
 
 ## Decisions
 
