@@ -131,9 +131,12 @@ Préparé sans être anticipé (AGENTS §12) ; à activer quand l'interface IA e
 Fichier `.github/workflows/ci.yml`, déclenché sur push vers `main` et sur chaque PR. Décision : ADR 0001.
 
 ```
-          ┌── go ──────────── vet · golangci-lint (+gosec) · test -race + couverture
+          ┌── go ──────────── tidy · sqlc à jour · goose up/reset/up · vet · golangci-lint (+gosec)
+          │                   · test -race + couverture (service Postgres 18)
 push/PR ──┼── web ─────────── npm ci · oxlint · tsc+build · npm audit
           └── security ────── govulncheck
 ```
 
-Rejouer en local : `make lint test cover sec`.
+Rejouer en local : `make migrate lint test cover sec`, puis `make sqlc && git status` (aucun changement attendu).
+Les tests d'intégration lisent `DATABASE_URL` (exportée par le `Makefile`) : sans base joignable, ils sont
+sautés en local mais **échouent en CI** (`CI=true`).

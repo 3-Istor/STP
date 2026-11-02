@@ -219,7 +219,8 @@ Sinon l'agent le dit, avec la sortie de la commande qui échoue.
 
 `.github/workflows/ci.yml`, sur chaque push vers `main` et chaque PR (voir ADR 0001, `docs/workflow.md`) :
 
-- **go** : `go mod tidy -diff`, `go vet`, `golangci-lint` (dont `gosec`), `go test -race` + couverture (non bloquante) ;
+- **go** (service Postgres 18) : `go mod tidy -diff`, code sqlc à jour, migrations `goose up` / `reset` / `up`,
+  `go vet`, `golangci-lint` (dont `gosec`), `go test -race` + couverture (non bloquante), tests d'intégration compris ;
 - **web** : `npm ci`, `oxlint`, build (`tsc` + Vite), `npm audit` ;
 - **security** : `govulncheck`.
 
