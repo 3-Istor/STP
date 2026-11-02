@@ -1,6 +1,6 @@
 ---
 id: docker-compose-stack
-status: review
+status: done
 branch: docker-compose-stack
 current_task: null
 started: 2026-11-02
@@ -85,3 +85,45 @@ All tasks completed. Ready for verification.
 (aucun — blocage T1 levé le 2026-11-02 par l'acceptation de l'ADR 0005)
 
 ## Verification Report(s)
+
+## Verification Report — 2026-11-02
+
+### Overall: PASS (réserve : job CI `compose` non exécuté, branche non poussée)
+
+### Task Completion: 7/7
+
+### Commit Verification
+T1 (76a753b, 3e85deb), T2 aad50f9, T3 f71586f, T4 a067bb9, T5 9e6f239, T6 8c100db, T7 b6de80c : tous présents.
+
+### Automated Checks
+| Check | Result | Notes |
+|---|---|---|
+| `make lint` | PASS | golangci-lint + oxlint |
+| `make test` | PASS | dont `internal/priceapi` |
+| `go test -race ./...` | PASS | |
+| `docker compose config -q` | PASS | |
+| `up -d --build --wait` + curl /healthz + `down -v` | PASS | tous healthy, migrate Exited (0), web 200 sur / et /healthz |
+| Job CI `compose` | NON EXÉCUTÉ | push interdit sans accord (AGENTS §11) ; étapes rejouées en local |
+
+### Requirements Validation
+| Requirement | Status | Evidence |
+|---|---|---|
+| M1 une commande | MET | up --build --wait démarre les 5 services |
+| M2 ordre migrate/back | MET | depends_on service_completed_successfully ; échec de migration testé en T5 |
+| M3 front :8000 + proxy | MET | /healthz 200 via nginx |
+| M4 priceapi + PRICE_API_URL | MET | wget /healthz OK, variable présente dans back |
+| M5 healthchecks / --wait | MET | --wait rend la main, tous healthy |
+| M6 ADR 0005 acceptée | MET | Statut Accepté, décideur Arthur.presle |
+| M7 existant intact | MET | lint/test verts ; make db déjà vérifié en T6 |
+| S1 make up/down + README | MET | Makefile, README |
+| S2 job CI | PARTIALLY MET | job écrit, non exécuté en CI |
+| S3 .dockerignore | MET | racine + web/ |
+
+### Acceptance Criteria
+Tous PASS (voir ci-dessus) ; critère « make dev » non rejoué dans cette vérification (ports non testés).
+
+### Code Quality (/simplify)
+Non exécuté dans cette vérification. Écarts documentés à la spec : cible migrate avec binaire goose précompilé, back sans depends_on priceapi.
+
+### Summary
+Les 7 tâches sont livrées, lint/tests/stack Docker passent localement. Reste à pousser la branche pour valider le job CI `compose`.
