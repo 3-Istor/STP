@@ -1,0 +1,10 @@
+# Contexte de build de l'image Go (Dockerfile racine) : seul le code Go et les migrations servent.
+.git
+.github
+.specs
+web
+docs
+bin
+*.out
+coverage.*
+.env
