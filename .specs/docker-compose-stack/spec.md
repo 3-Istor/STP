@@ -93,7 +93,7 @@ docker compose up --build --wait
 
 ## Tasks
 
-- [ ] T1: Brouillon ADR 0005 — API de prix en processus séparé, stack compose complète
+- [x] T1: Brouillon ADR 0005 — API de prix en processus séparé, stack compose complète
   - **Files**: `docs/adr/0005-api-de-prix-processus-separe.md`
   - **Approach**: Options : (1) ne rien faire, (2) simulateur dans le process du back, (3) binaire
     `cmd/priceapi` + conteneur dédié, appelé en HTTP via un adapter (futur). Conséquences : frontière
@@ -175,5 +175,5 @@ docker compose up --build --wait
   et le back DOIT avoir `PRICE_API_URL` dans son environnement (M4)
 - [ ] QUAND je lance `docker compose up --wait` ALORS la commande DOIT rendre la main seulement quand tous les
   services longs sont healthy (M5)
-- [ ] ADR 0005 au statut `Accepté` avec un décideur (M6)
+- [x] ADR 0005 au statut `Accepté` avec un décideur (M6)
 - [ ] `make db`, `make dev`, `make test`, `make lint` se comportent comme avant (M7)

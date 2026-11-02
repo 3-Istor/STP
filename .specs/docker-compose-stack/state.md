@@ -1,8 +1,8 @@
 ---
 id: docker-compose-stack
-status: blocked
+status: in-progress
 branch: docker-compose-stack
-current_task: T1
+current_task: T2
 started: 2026-11-02
 updated: 2026-11-02
 ---
@@ -11,8 +11,8 @@ updated: 2026-11-02
 
 ## Progress
 
-Bloqué sur T1 : ADR 0005 rédigée (Proposé), en attente d'acceptation humaine.
-- Tasks: 0/7 completed (T1 brouillon commité, non coché)
+En cours : T1 terminée (ADR 0005 acceptée par Arthur.presle, commit 3e85deb).
+- Tasks: 1/7 completed
 - Branch: `docker-compose-stack`
 
 ## Task Log
@@ -25,6 +25,12 @@ Bloqué sur T1 : ADR 0005 rédigée (Proposé), en attente d'acceptation humaine
   simulateur dans le back, binaire `cmd/priceapi` + conteneur). Case T1 non cochée tant qu'un humain n'a pas
   passé l'ADR à `Accepté` avec son nom.
 
+### T1: Brouillon ADR 0005 — API de prix en processus séparé, stack compose complète
+- **Status**: completed
+- **Time**: 2026-11-02
+- **Commit**: 3e85deb (acceptation humaine)
+- **Notes**: ADR 0005 passée à `Accepté` par Arthur.presle ; blocage levé, reprise à T2.
+
 ## Decisions
 
 - 2026-11-02 — `.specs/CLAUDE.md` absent du dépôt (référencé par le skill) : exécution poursuivie avec
@@ -36,11 +42,6 @@ Bloqué sur T1 : ADR 0005 rédigée (Proposé), en attente d'acceptation humaine
 
 ## Blockers
 
-### T1: Brouillon ADR 0005
-- **Error**: aucune erreur technique ; T1 exige l'acceptation humaine de l'ADR avant tout code (AGENTS §6, §8).
-- **Attempts**: 0 (blocage volontaire prévu par la spec)
-- **Analysis**: l'agent ne peut pas passer une ADR à `Accepté` ni s'inscrire comme décideur.
-- **Suggested fix**: relire l'ADR 0005, la passer à `Accepté` et remplir `Décideurs`, commiter, puis relancer
-  `/spec-execute docker-compose-stack`.
+(aucun — blocage T1 levé le 2026-11-02 par l'acceptation de l'ADR 0005)
 
 ## Verification Report(s)
