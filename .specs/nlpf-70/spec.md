@@ -45,8 +45,8 @@ décision du §7 d'AGENTS.md.
 ### Constraints
 - **§11 AGENTS** : ajouter une dépendance demande un accord explicite. Ce ticket en ajoute trois
   (`shopspring/decimal` et `pgx/v5` en direct, `sqlc` en `tool`) → validation humaine avant T3/T4.
-- **§6/§8** : l'agent rédige les ADR au statut `Proposé` ; seuls les humains (« les 3 ») les passent à
-  `Accepté`. Le ticket ne peut pas être clos par l'agent seul.
+- **§6/§8** : l'agent rédige les ADR au statut `Proposé` ; seul un humain les passe à
+  `Accepté` (un seul membre suffit, AGENTS §8). Le ticket ne peut pas être clos par l'agent seul.
 - Le schéma des snapshots de prix **dépend de l'ADR 0002** → T4 ne démarre qu'après son acceptation.
 - Montants : `NUMERIC` + `CHAR(3)` en base, `decimal.Decimal` en Go, chaîne en JSON ; jamais de float.
 - Snapshots et cotations immuables : trigger qui rejette `UPDATE`/`DELETE`.
@@ -110,13 +110,13 @@ sqlc.yaml
   - **Approach**: options comparées (ex. table `price_snapshots` + liaison vers les cotations existantes
     immuables ; copie des valeurs dans le snapshot ; snapshot porté par le domaine `snapshot` vs `pricing`),
     impact pivot multi-source de prix. Statut `Proposé`.
-  - **Done when**: fichier présent au format §8 ; l'humain l'a passé à `Accepté` avec les 3 noms (bloquant pour T4).
+  - **Done when**: fichier présent au format §8 ; un membre l'a passé à `Accepté` (bloquant pour T4).
 
 - [x] T2 : Brouillon ADR 0003 — canal temps réel
   - **Files**: `docs/adr/0003-canal-temps-reel.md`
   - **Approach**: options SSE / polling / WebSocket / ne rien faire, au regard de la cadence (~6,6 s par
     jour simulé), du proxy Vite, du pivot hors-ligne. Statut `Proposé`.
-  - **Done when**: fichier présent au format §8 ; acceptée par les 3.
+  - **Done when**: fichier présent au format §8 ; acceptée par un membre.
 
 - [x] T3 : Type `Money` et ses tests
   - **Files**: `internal/money/money.go`, `internal/money/money_test.go`, `go.mod`, `go.sum`,
@@ -169,13 +169,13 @@ sqlc.yaml
 - CI GitHub Actions verte
 
 ### Manual Checks
-- Les 3 membres relisent et acceptent ADR 0002 et 0003 (statut + `Décideurs`).
+- Un membre relit et accepte ADR 0002 et 0003 (statut + `Décideurs`).
 - `psql` : tenter un `UPDATE price_quotes ...` → refusé.
 
 ### Acceptance Criteria
-- [ ] ADR « où vit le snapshot de prix » acceptée par les 3 (R1)
-- [ ] ADR « canal temps réel (SSE ou polling) » acceptée par les 3 (R2)
-- [ ] `Money` refuse EUR + USD avec `ErrCurrencyMismatch` et n'arrondit qu'en sortie (R3)
-- [ ] `make migrate` crée les tables, et sqlc génère le code sans différence (R4, R5)
-- [ ] Interfaces `catalog` et `pricing` avec stubs ; `bom` compile en les utilisant (R6)
-- [ ] La CI tourne et passe au vert sur GitHub (R7)
+- [x] ADR « où vit le snapshot de prix » acceptée (R1)
+- [x] ADR « canal temps réel (SSE ou polling) » acceptée (R2)
+- [x] `Money` refuse EUR + USD avec `ErrCurrencyMismatch` et n'arrondit qu'en sortie (R3)
+- [x] `make migrate` crée les tables, et sqlc génère le code sans différence (R4, R5)
+- [x] Interfaces `catalog` et `pricing` avec stubs ; `bom` compile en les utilisant (R6)
+- [x] La CI tourne et passe au vert sur GitHub (R7)

@@ -11,12 +11,10 @@ updated: 2026-11-02
 
 ## Progress
 
-Verification FAIL (2026-11-02) : reste a faire cote humain, voir le rapport ci-dessous.
+Prêt pour la relecture humaine (2026-11-02). Les points FAIL du rapport sont levés (voir Decisions).
 - Tasks: 7/7 completed
-- Branch: `nlpf-70`
-- Commits: 15 sur la branche (dont suivi)
-- Reste à faire côté humain : pousser la branche et ouvrir la PR (CI GitHub jamais exécutée sur ce
-  workflow) ; confirmer l'acceptation des ADR 0002/0003 par les 3 membres (un seul nom inscrit).
+- Branch: `nlpf-70` — PR https://github.com/3-Istor/STP/pull/7, CI verte
+- Reste à faire côté humain : relecture finale et merge de la PR (AGENTS §13).
 
 ## Task Log
 
@@ -129,12 +127,17 @@ Verification FAIL (2026-11-02) : reste a faire cote humain, voir le rapport ci-d
 - 2026-11-02 — T7 : le `Makefile` exporte toujours `DATABASE_URL`, donc « skip si absente » ne suffisait
   pas pour `make test` sans base ; le test saute aussi si la base est injoignable, sauf en CI (`CI` défini)
   où il échoue, pour qu'une base absente ne passe jamais pour un succès.
+- 2026-11-02 — Règle changée : une ADR peut être acceptée par un seul membre (AGENTS §8, spec R1/R2).
+  Le rapport de vérification ci-dessous date d'avant ce changement : ses FAIL sur « acceptée par les 3 »
+  ne s'appliquent plus. Décideur : Arthur.presle.
+- 2026-11-02 — Branche poussée, PR https://github.com/3-Istor/STP/pull/7 : CI verte sur 1f8b488
+  (jobs go, security, web — run 41498148393). Le FAIL « CI verte sur GitHub » du rapport est levé.
 
 ## Blockers
 
 ### T4: Migration initiale + triggers d'immutabilité — levé le 2026-11-02
-- ADR 0002 passée à `Accepté` (Décideurs : Arthur.presle). Note : la spec demandait « les 3 noms » ;
-  un seul nom figure. Le critère d'acceptation R1/R2 « acceptée par les 3 » reste à confirmer par l'équipe.
+- ADR 0002 passée à `Accepté` (Décideurs : Arthur.presle). Un seul décideur suffit
+  désormais (AGENTS §8, règle changée le 2026-11-02) : R1/R2 sont remplis.
 
 ## Verification Report(s)
 
