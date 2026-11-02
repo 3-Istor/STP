@@ -1,7 +1,7 @@
 DATABASE_URL ?= postgres://bom:bom@localhost:5432/bomstudio?sslmode=disable
 export DATABASE_URL
 
-.PHONY: run test cover sec lint migrate db dev web sqlc
+.PHONY: run test cover sec lint migrate db dev web sqlc up down
 
 run: ## API sur :8080
 	go run ./cmd/server
@@ -37,6 +37,12 @@ web: web/node_modules
 
 dev: migrate ## Postgres + migrations, puis API et front en parallèle
 	$(MAKE) -j2 run web
+
+up: ## toute l'app en Docker (front :8000), voir ADR 0005
+	docker compose up -d --build --wait
+
+down: ## arrête la stack Docker (garde les données ; `docker compose down -v` pour repartir de zéro)
+	docker compose down
 
 web/node_modules: web/package-lock.json
 	cd web && npm ci
