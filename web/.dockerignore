@@ -1,0 +1,5 @@
+# Contexte de build de l'image front : on réinstalle les dépendances avec `npm ci` dans l'image.
+node_modules
+dist
+*.log
+.env
