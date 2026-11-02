@@ -144,7 +144,7 @@ docker compose up --build --wait
     différence avec `make dev`, `docker compose down -v` pour repartir de zéro.
   - **Done when**: `make up` puis `make down` fonctionnent ; README à jour.
 
-- [ ] T7: Job CI `compose` (smoke test de la stack)
+- [x] T7: Job CI `compose` (smoke test de la stack)
   - **Files**: `.github/workflows/ci.yml`
   - **Approach**: Nouveau job : `docker compose up -d --build --wait`, puis `curl -fsS localhost:8000/healthz`
     et `docker compose exec priceapi wget -qO- localhost:8090/healthz` ; en cas d'échec,

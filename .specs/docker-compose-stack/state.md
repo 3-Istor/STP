@@ -2,7 +2,7 @@
 id: docker-compose-stack
 status: in-progress
 branch: docker-compose-stack
-current_task: T7
+current_task: null
 started: 2026-11-02
 updated: 2026-11-02
 ---
@@ -12,7 +12,7 @@ updated: 2026-11-02
 ## Progress
 
 En cours : T1 terminée (ADR 0005 acceptée par Arthur.presle, commit 3e85deb).
-- Tasks: 6/7 completed
+- Tasks: 7/7 completed
 - Branch: `docker-compose-stack`
 
 ## Task Log
@@ -55,6 +55,11 @@ En cours : T1 terminée (ADR 0005 acceptée par Arthur.presle, commit 3e85deb).
 - **Time**: 2026-11-02
 - **Commit**: 8c100db
 - **Notes**: make up = docker compose up -d --build --wait ; make down = docker compose down (sans -v, volume pgdata conservé). README : section Docker (ports, services, down -v) et section Développer. make up puis make down vérifiés ; make db relancé ensuite (ne démarre que db).
+### T7: Job CI `compose` (smoke test de la stack)
+- **Status**: completed
+- **Time**: 2026-11-02
+- **Commit**: b6de80c
+- **Notes**: Job compose : up --build --wait, curl :8000/healthz, exec -T priceapi wget /healthz, ExitCode migrate = 0, logs si échec, down -v en always(). Étapes rejouées en local : OK. NON vérifié en CI : la branche n'est pas poussée (push = accord humain, AGENTS §11).
 
 ## Decisions
 
