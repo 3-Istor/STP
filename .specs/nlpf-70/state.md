@@ -1,6 +1,6 @@
 ---
 id: nlpf-70
-status: in-progress
+status: done
 branch: nlpf-70
 current_task: null
 started: 2026-11-02
@@ -11,7 +11,7 @@ updated: 2026-11-02
 
 ## Progress
 
-Prêt pour la relecture humaine (2026-11-02). Les points FAIL du rapport sont levés (voir Decisions).
+Vérifié PASS (2e passe, 2026-11-02). Prêt pour la relecture humaine et le merge.
 - Tasks: 7/7 completed
 - Branch: `nlpf-70` — PR https://github.com/3-Istor/STP/pull/7, CI verte
 - Reste à faire côté humain : relecture finale et merge de la PR (AGENTS §13).
@@ -188,3 +188,33 @@ Etape non executee dans cette passe (aucun changement effectue). Observation : l
 
 ### Summary
 Le code est complet et tous les controles locaux passent. La verification echoue uniquement sur des points humains : acceptation des ADR 0002/0003 par les 3 membres et CI GitHub jamais executee (push + PR requis, AGENTS §11).
+
+## Verification Report — 2026-11-02 (2e passe, règle « un décideur suffit »)
+
+### Overall: PASS
+
+### Task Completion: 7/7
+### Commit Verification
+T1 à T7 présents (3939deb, 6926ff4, 6146d5e, 28ae721, 8609d2b, 458545f, d1e45bb). Aucun manquant.
+
+### Automated Checks
+| Check | Result | Notes |
+|---|---|---|
+| `make lint` | PASS | 0 issues, oxlint OK |
+| `make test` | PASS | tous les packages OK |
+| `make migrate` | PASS | version 1, à jour |
+| `go tool sqlc generate && git diff --exit-code` | PASS | aucune différence |
+| Test d'intégration immutabilité (DATABASE_URL, -race) | PASS | UPDATE/DELETE/TRUNCATE refusés |
+| CI GitHub Actions (run 41500809264, HEAD 7f8ff43) | PASS | go, security, web verts |
+
+### Requirements Validation
+R1 à R7, S1, S2 : MET. R1/R2 : ADR 0002 et 0003 au statut Accepté, Décideurs : Arthur.presle ; un seul décideur suffit (AGENTS §8).
+
+### Acceptance Criteria
+Les 6 critères : PASS (ADR acceptées, Money, migrate + sqlc, interfaces + stubs, CI verte).
+
+### Code Quality (/simplify)
+Non exécuté dans cette passe (aucun changement de code depuis la passe précédente). Observation : modèles sqlc dupliqués par sous-package (déjà dans Decisions).
+
+### Summary
+Les FAIL précédents portaient sur l'acceptation par les 3 membres et la CI non exécutée ; les deux sont levés. Tout est vert.
