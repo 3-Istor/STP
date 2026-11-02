@@ -128,7 +128,7 @@ sqlc.yaml
   - **Done when**: tests table-driven verts, dont EUR+USD → `errors.Is(err, ErrCurrencyMismatch)`,
     `0.005 + 0.005` non arrondi avant `Round`, `0.125 EUR → 0.12`, `0.135 EUR → 0.14`, `100.5 JPY → 100`.
 
-- [ ] T4 : Migration initiale + triggers d'immutabilité
+- [x] T4 : Migration initiale + triggers d'immutabilité
   - **Files**: `migrations/00001_init.sql`
   - **Approach**: tables de Q2 avec `NUMERIC`/`CHAR(3)`, `bom_nodes.parent_id` + index unique « une racine
     par BOM », triggers `BEFORE UPDATE OR DELETE` sur `price_quotes`, `fx_quotes`, `price_snapshots`
