@@ -1,8 +1,8 @@
 ---
 id: nlpf-70
-status: in-progress
+status: review
 branch: nlpf-70
-current_task: T7
+current_task: null
 started: 2026-11-02
 updated: 2026-11-02
 ---
@@ -11,7 +11,12 @@ updated: 2026-11-02
 
 ## Progress
 
-T1–T6 faites (6/7). Reprise à T4 : ADR 0002, 0003, 0004 passées à `Accepté` (commit 2ab236d).
+All tasks completed. Ready for verification.
+- Tasks: 7/7 completed
+- Branch: `nlpf-70`
+- Commits: 18 (dont suivi)
+- Reste à faire côté humain : pousser la branche et ouvrir la PR (CI GitHub jamais exécutée sur ce
+  workflow) ; confirmer l'acceptation des ADR 0002/0003 par les 3 membres (un seul nom inscrit).
 
 ## Task Log
 
@@ -74,6 +79,20 @@ T1–T6 faites (6/7). Reprise à T4 : ADR 0002, 0003, 0004 passées à `Accepté
   le graphe de `bom`. Mutations vérifiées : import net/http dans catalog → test rouge ; stub qui renvoie une
   cotation vide au lieu d'ErrNoQuote → tests pricing et bom rouges.
 
+### T7: CI — Postgres, migrations et contrôle sqlc
+- **Status**: completed (local) — CI GitHub non vérifiée
+- **Time**: 2026-11-02
+- **Commit**: d1e45bb
+- **Notes**: job `go` : service `postgres:18-alpine`, `DATABASE_URL` au niveau du job, étape sqlc
+  (`generate` + `git diff --exit-code` + aucun fichier non suivi), étape goose `up` / `reset` / `up`.
+  `internal/pricing/immutability_integration_test.go` : 10 cas (UPDATE/DELETE/TRUNCATE sur cotations,
+  taux, snapshots et liens) attendent SQLSTATE 23001, dans une transaction annulée (aucune donnée
+  laissée). Sauté si `DATABASE_URL` absente ou base injoignable en local ; **échoue** si `CI` est défini.
+  Mutation vérifiée : trigger `price_quotes_immutable` retiré → sous-tests UPDATE/DELETE rouges.
+  Étapes CI rejouées en local (tidy, sqlc, goose up/reset/up, lint 0 issue, test -race, govulncheck,
+  npm audit) : vertes. Le Done when « CI verte sur la PR GitHub » demande un push + PR, que l'agent ne
+  fait pas sans accord (AGENTS §11). `docs/workflow.md` §7 et AGENTS §16 mis à jour.
+
 ## Decisions
 
 - 2026-11-02 — Q1 : `Money` vit dans `internal/money` (package transverse). Décideur : Arthur.presle.
@@ -107,6 +126,9 @@ T1–T6 faites (6/7). Reprise à T4 : ADR 0002, 0003, 0004 passées à `Accepté
   EUR → USD = 1 ÷ USD → EUR relève de multi-currency-costing.
 - 2026-11-02 — T6 : ajout de `bom.Service.PricedOffer` (non demandé explicitement) pour que `bom` utilise
   les interfaces et porte le test « pas de cotation = erreur nommée ». Aucun calcul de total.
+- 2026-11-02 — T7 : le `Makefile` exporte toujours `DATABASE_URL`, donc « skip si absente » ne suffisait
+  pas pour `make test` sans base ; le test saute aussi si la base est injoignable, sauf en CI (`CI` défini)
+  où il échoue, pour qu'une base absente ne passe jamais pour un succès.
 
 ## Blockers
 

@@ -151,7 +151,7 @@ sqlc.yaml
   - **Done when**: `go build ./...` passe ; test qui vérifie qu'un stub sans cotation renvoie `ErrNoQuote`
     (pas de prix à zéro) ; `bom` n'importe ni pgx ni `net/http`.
 
-- [ ] T7 : CI — Postgres, migrations et contrôle sqlc
+- [x] T7 : CI — Postgres, migrations et contrôle sqlc
   - **Files**: `.github/workflows/ci.yml`, `docs/workflow.md` si besoin
   - **Approach**: service `postgres:18-alpine` dans le job `go`, étape `goose up`, étape
     `sqlc generate` + `git diff --exit-code` ; test d'intégration du trigger (S1) derrière `DATABASE_URL`
