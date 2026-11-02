@@ -112,7 +112,7 @@ sqlc.yaml
     impact pivot multi-source de prix. Statut `Proposé`.
   - **Done when**: fichier présent au format §8 ; l'humain l'a passé à `Accepté` avec les 3 noms (bloquant pour T4).
 
-- [ ] T2 : Brouillon ADR 0003 — canal temps réel
+- [x] T2 : Brouillon ADR 0003 — canal temps réel
   - **Files**: `docs/adr/0003-canal-temps-reel.md`
   - **Approach**: options SSE / polling / WebSocket / ne rien faire, au regard de la cadence (~6,6 s par
     jour simulé), du proxy Vite, du pivot hors-ligne. Statut `Proposé`.

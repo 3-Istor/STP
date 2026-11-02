@@ -2,7 +2,7 @@
 id: nlpf-70
 status: in-progress
 branch: nlpf-70
-current_task: T2
+current_task: T3
 started: 2026-11-02
 updated: 2026-11-02
 ---
@@ -23,6 +23,13 @@ Spec created. Q1–Q3 tranchées et dépendances approuvées : prêt pour exécu
 - **Notes**: ADR au statut `Proposé` : option 1 (en-tête `price_snapshots` + liaisons vers les cotations
   immuables), portée par `pricing`. La partie « acceptée par les 3 » du Done when reste à faire par
   l'équipe ; elle bloque T4.
+
+### T2: Brouillon ADR 0003 — canal temps réel
+- **Status**: completed (brouillon) — acceptation humaine en attente
+- **Time**: 2026-11-02
+- **Commit**: 6926ff4
+- **Notes**: ADR au statut `Proposé` : SSE (stdlib) portant un simple signal de tick ; l'UI relit les
+  totaux en REST. Repli polling documenté. Acceptation par les 3 à faire.
 
 ## Decisions
 
