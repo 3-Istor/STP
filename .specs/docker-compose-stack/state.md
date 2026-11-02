@@ -2,7 +2,7 @@
 id: docker-compose-stack
 status: in-progress
 branch: docker-compose-stack
-current_task: T3
+current_task: T4
 started: 2026-11-02
 updated: 2026-11-02
 ---
@@ -12,7 +12,7 @@ updated: 2026-11-02
 ## Progress
 
 En cours : T1 terminée (ADR 0005 acceptée par Arthur.presle, commit 3e85deb).
-- Tasks: 2/7 completed
+- Tasks: 3/7 completed
 - Branch: `docker-compose-stack`
 
 ## Task Log
@@ -35,6 +35,11 @@ En cours : T1 terminée (ADR 0005 acceptée par Arthur.presle, commit 3e85deb).
 - **Time**: 2026-11-02
 - **Commit**: aad50f9
 - **Notes**: Patron de cmd/server (PORT défaut 8090, slog, arrêt propre) ; routeur net/http GET /healthz ; test table-driven 200/405/404. go run répond sur :8090/healthz, make lint vert.
+### T3: Image Go multi-stage (back, API de prix, migrate)
+- **Status**: completed
+- **Time**: 2026-11-02
+- **Commit**: f71586f
+- **Notes**: Dockerfile racine : stage build golang:1.27.2-alpine3.23 ; cibles server/priceapi/migrate sur alpine:3.23.2, utilisateur non root. Écart : migrate lance un binaire goose précompilé (même version que le tool de go.mod) au lieu de go tool goose sur l'image golang (voir Decisions). Trois docker build --target OK.
 
 ## Decisions
 
@@ -44,6 +49,10 @@ En cours : T1 terminée (ADR 0005 acceptée par Arthur.presle, commit 3e85deb).
 - 2026-11-02 — Choix de l'humain au cadrage : API de prix = binaire `cmd/priceapi` dans un conteneur
   dédié (squelette `/healthz`, simulateur reporté à live-price-feed) ; front = build statique + nginx ;
   migrations = service one-shot `migrate`. À formaliser dans l'ADR 0005 (T1).
+- 2026-11-02 — T3 : la cible `migrate` exécute un binaire `goose` compilé au build (`go build
+  github.com/pressly/goose/v3/cmd/goose`, version figée par go.mod) sur alpine, au lieu de `go tool goose`
+  sur l'image golang prévue par la spec : image 72 Mo au lieu d'environ 1 Go, pas de compilation au démarrage,
+  même version d'outil et aucune dépendance ajoutée.
 
 ## Blockers
 

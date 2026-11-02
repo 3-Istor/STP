@@ -111,7 +111,7 @@ docker compose up --build --wait
   - **Done when**: `go test ./internal/priceapi/...` passe, `go run ./cmd/priceapi` répond sur `:8090/healthz`,
     `make lint` vert.
 
-- [ ] T3: Image Go multi-stage (back, API de prix, migrate)
+- [x] T3: Image Go multi-stage (back, API de prix, migrate)
   - **Files**: `Dockerfile`, `.dockerignore`
   - **Approach**: Stage `build` (`golang:1.27.2-alpine`, cache `go mod download`, `CGO_ENABLED=0 go build`
     des deux binaires) ; cibles `server` et `priceapi` sur `alpine` épinglé (utilisateur non root, `wget`
