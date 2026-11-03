@@ -92,6 +92,19 @@ func (s *Service) GetBOM(ctx context.Context, id int64) (BOM, error) {
 	return out, nil
 }
 
+// Tree renvoie la BOM et tous ses nœuds (une requête pour l'arbre), triés par id.
+func (s *Service) Tree(ctx context.Context, id int64) (BOM, []Node, error) {
+	b, err := s.store.GetBOM(ctx, id)
+	if err != nil {
+		return BOM{}, nil, fmt.Errorf("tree of bom %d: %w", id, err)
+	}
+	nodes, err := s.store.Tree(ctx, id)
+	if err != nil {
+		return BOM{}, nil, fmt.Errorf("tree of bom %d: %w", id, err)
+	}
+	return b, nodes, nil
+}
+
 // RenameBOM renomme la BOM ; un nom vide est refusé.
 func (s *Service) RenameBOM(ctx context.Context, id int64, name string) (BOM, error) {
 	name = strings.TrimSpace(name)
@@ -390,15 +403,30 @@ func (s *Service) totalsInput(ctx context.Context, b BOM, nodes []Node) (TotalsI
 		calc[i].Part = &PartFacts{OfferID: o.ID, LeadTimeDays: o.LeadTimeDays, CO2Kg: p.CO2Kg, MassKg: p.MassKg}
 	}
 
-	prices := make(map[int64]PriceResult)
+	prices, rates, err := LoadPrices(ctx, s.pricing, b.PriceSnapshotID, offerIDs(nodes), currency)
+	if err != nil {
+		return TotalsInput{}, err
+	}
+	return TotalsInput{Nodes: calc, Currency: currency, Prices: prices, Rates: rates, PriceSnapshotID: b.PriceSnapshotID}, nil
+}
+
+// LoadPrices lit, une seule fois chacun, le prix de chaque offre de offerIDs et le taux de chaque devise
+// d'offre vers currency : en direct si priceSnapshotID est nil, sinon dans ce snapshot de prix. Un prix ou un
+// taux absent (pricing.ErrNoQuote / ErrNoRate) est rendu dans le résultat, pour devenir une erreur nommée sur
+// le nœud ; toute autre erreur (snapshot de prix introuvable, panne) est renvoyée. Partagé par les totaux d'un
+// brouillon et ceux d'un snapshot de BOM (domaine snapshot) : même lecture des prix, même calcul.
+func LoadPrices(ctx context.Context, p pricing.Pricing, priceSnapshotID *int64, offerIDs []int64, currency money.Currency) (
+	map[int64]PriceResult, map[money.Currency]RateResult, error,
+) {
+	prices := make(map[int64]PriceResult, len(offerIDs))
 	var fromCurrencies []money.Currency
-	for _, id := range offerIDs(nodes) {
-		q, err := s.offerPrice(ctx, b.PriceSnapshotID, id)
+	for _, id := range offerIDs {
+		q, err := loadOfferPrice(ctx, p, priceSnapshotID, id)
 		switch {
 		case errors.Is(err, pricing.ErrNoQuote):
 			prices[id] = PriceResult{Err: err}
 		case err != nil:
-			return TotalsInput{}, err
+			return nil, nil, err
 		default:
 			prices[id] = PriceResult{Quote: q}
 			if c := q.Price.Currency(); c != currency {
@@ -409,29 +437,29 @@ func (s *Service) totalsInput(ctx context.Context, b BOM, nodes []Node) (TotalsI
 	slices.Sort(fromCurrencies)
 	rates := make(map[money.Currency]RateResult)
 	for _, from := range slices.Compact(fromCurrencies) {
-		r, err := s.rate(ctx, b.PriceSnapshotID, from, currency)
+		r, err := loadRate(ctx, p, priceSnapshotID, from, currency)
 		switch {
 		case errors.Is(err, pricing.ErrNoRate):
 			rates[from] = RateResult{Err: err}
 		case err != nil:
-			return TotalsInput{}, err
+			return nil, nil, err
 		default:
 			rates[from] = RateResult{Rate: r}
 		}
 	}
-	return TotalsInput{Nodes: calc, Currency: currency, Prices: prices, Rates: rates, PriceSnapshotID: b.PriceSnapshotID}, nil
+	return prices, rates, nil
 }
 
-func (s *Service) offerPrice(ctx context.Context, snapID *int64, offerID int64) (pricing.Quote, error) {
+func loadOfferPrice(ctx context.Context, p pricing.Pricing, snapID *int64, offerID int64) (pricing.Quote, error) {
 	if snapID == nil {
-		return s.pricing.OfferPrice(ctx, offerID)
+		return p.OfferPrice(ctx, offerID)
 	}
-	return s.pricing.SnapshotOfferPrice(ctx, *snapID, offerID)
+	return p.SnapshotOfferPrice(ctx, *snapID, offerID)
 }
 
-func (s *Service) rate(ctx context.Context, snapID *int64, from, to money.Currency) (pricing.Rate, error) {
+func loadRate(ctx context.Context, p pricing.Pricing, snapID *int64, from, to money.Currency) (pricing.Rate, error) {
 	if snapID == nil {
-		return s.pricing.Rate(ctx, from, to)
+		return p.Rate(ctx, from, to)
 	}
-	return s.pricing.SnapshotRate(ctx, *snapID, from, to)
+	return p.SnapshotRate(ctx, *snapID, from, to)
 }
