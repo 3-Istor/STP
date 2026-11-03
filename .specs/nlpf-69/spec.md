@@ -4,7 +4,7 @@ title: BOM (C)
 source: jira
 source_ref: https://3istors.atlassian.net/browse/NLPF-69
 created: 2026-11-02
-status: in-progress
+status: review
 priority: P1
 depends_on: [nlpf-70]
 branch: nlpf-69
@@ -207,7 +207,7 @@ flowchart TD
     Mapping erreurs : `ErrCycle`/`ErrHasSnapshots` → 409, not found → 404, validation → 400, `{"error": ...}`.
   - **Done when**: tests `httptest` table-driven verts sur chaque route et chaque code d'erreur ; montants en chaîne.
 
-- [ ] T9: UI — liste des BOM, arbre virtualisé, panneau latéral
+- [x] T9: UI — liste des BOM, arbre virtualisé, panneau latéral
   - **Files**: `web/src/App.tsx`, `web/src/api.ts`, `web/src/bom/BomList.tsx`, `web/src/bom/BomTree.tsx`,
     `web/src/bom/NodePanel.tsx`, `web/src/money.ts`, `web/src/index.css`
   - **Approach**: Arbre aplati en lignes de hauteur fixe, seules les lignes visibles rendues (virtualisation maison,

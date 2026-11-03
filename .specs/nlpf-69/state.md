@@ -1,8 +1,8 @@
 ---
 id: nlpf-69
-status: in-progress
+status: review
 branch: nlpf-69
-current_task: T9
+current_task: null
 started: 2026-11-02
 updated: 2026-11-03
 ---
@@ -11,7 +11,10 @@ updated: 2026-11-03
 
 ## Progress
 
-T1-T8 terminées (8/9). Prochaine : T9 (UI), pas commencée : arrêt demandé avant T9.
+All tasks completed. Ready for verification (`/spec-verify nlpf-69` non lancé, à la demande d'Arthur.presle).
+- Tasks: 9/9 completed
+- Branch: `nlpf-69`
+- Commits: 914db9b (démo BOM_DEMO=1), 71d67a3 (T9), plus suivi ; rien de poussé.
 
 ## Task Log
 
@@ -133,6 +136,49 @@ T1-T8 terminées (8/9). Prochaine : T9 (UI), pas commencée : arrêt demandé av
   arbre, snapshot inconnu 404, suppression 204 ; **publier → 500** (FK `bom_snapshots_price_snapshot_id_fkey` :
   le snapshot de prix du stub n'existe pas en base), limite attendue tant que NLPF-68 n'est pas livré.
 
+### Démo BOM_DEMO=1 (préalable à T9, demandé par Arthur.presle)
+- **Status**: completed
+- **Time**: 2026-11-03
+- **Commit**: 914db9b
+- **Notes**: `internal/demo` = seule source des données de démo (4 fournisseurs, 10 pièces, 13 offres EUR/USD,
+  12 cotations, taux USD→EUR 0,92 et EUR→USD 1,087, ids 9 000 001+, cotations à 2026-01-05T08:00Z, source `demo`).
+  `Seed` insère en base de façon idempotente (`OVERRIDING SYSTEM VALUE … ON CONFLICT DO NOTHING`, puis vérifie
+  qu'un id déjà présent porte bien la même donnée, sinon erreur) ; `Catalog()` / `NewPricing()` construisent les
+  stubs avec les mêmes ids. `demo.Pricing` = `pricing.Stub` pour les prix en direct + `FreezePrices` /
+  `SnapshotOfferPrice` / `SnapshotRate` **en base** (`price_snapshots` + liens) : figer et publier passent la FK,
+  et un snapshot publié reste lisible après redémarrage. Domaine `pricing` non modifié. `GET /api/v1/demo/catalog`
+  (pièces + offres + cotation courante) monté dans `cmd/server` seulement en démo. Toggle : `BOM_DEMO=1` exactement,
+  jamais par défaut ; `compose.yaml` passe `BOM_DEMO: ${BOM_DEMO:-}`. Pas de `make seed`, pas de Fiat Multipla.
+  Tests : cohérence du jeu (devise, bornes, fournisseurs), handler (montant en chaîne, `price` null), `Seed` deux
+  fois, id pris par une autre donnée refusé, gel + relecture, gel refusé sans rien créer si prix ou taux manquant.
+  Smoke : 4 × 108,50 USD × 0,92 = 399,28 € ; figer → snapshot de prix #275 ; publier → snapshot #207 (201).
+
+### T9: UI — liste des BOM, arbre virtualisé, panneau latéral
+- **Status**: completed
+- **Time**: 2026-11-03
+- **Commit**: 71d67a3
+- **Notes**: Fichiers de la spec + `web/src/catalog.ts` (catalogue de démo, isolé pour être remplacé par l'API
+  NLPF-67), `web/src/bom/BomView.tsx`, `SnapshotView.tsx` (S2), `Totals.tsx`, `flatten.ts` (aplatissement itératif,
+  enfants triés par id). Virtualisation : lignes de 30 px, fenêtre visible + 8 lignes de marge. Montants :
+  `Intl.NumberFormat(..., { roundingMode: 'halfEven' })` sur la chaîne ; quantité commandée = réelle × volume en
+  BigInt (S1). Déplacer = « Déplacer… » puis clic sur le nouveau parent ; supprimer = `confirm()`. Après chaque
+  action, l'arbre est relu (pas de recalcul côté front). `npx oxlint` 0 avertissement, `npm run build` vert,
+  `make lint` 0 issue, `go test -race ./...` vert.
+  **Vérifié dans le navigateur** (Vite :5173 + serveur `BOM_DEMO=1` sur la base :5433) :
+  - BOM générée de **30 031 nœuds** (30 modules × 10 sous-modules × 99 pièces, insérés en SQL) : 42 lignes max dans
+    le DOM (337 éléments au total) sur 100 positions de scroll du haut en bas, aucune *long task* (> 50 ms) ;
+    arbre de 15,8 Mo relu en ~370 ms, PATCH d'offre ~60 ms.
+  - Changement d'offre (jante 108,50 USD → 100,00 EUR, ×2) : ligne 199,64 € → 200,00 €, racine
+    6 764 071,92 € → 6 764 072,28 € (+0,36 €), délai 27 j → 12 j.
+  - BOM manuelle : « Roues » (2 j) + jante 100 € × 4 → 400,00 € sur tous les parents, délai 12 j / 14 j ;
+    déplacer « Roues » sous sa jante → message `move would create a cycle`, arbre inchangé ; déplacement valide ;
+    suppression annulée puis confirmée (sous-arbre retiré, totaux recalculés) ; offre sans cotation → « prix
+    manquant » en rouge (`--over`) sur la ligne et ses parents, gel refusé (409, message affiché) ; figer → publier →
+    ouvrir le snapshot #208 (lecture seule, aucun `<select>`) → nouveau brouillon (« Créé depuis le snapshot #208 »,
+    mêmes totaux, prix en direct). Console : seulement les deux 409 attendus.
+  Non vérifié : le rendu visuel en direct (le panneau navigateur était masqué : vérifications faites par le DOM et
+  des mesures, les captures étaient figées), le thème clair, la largeur mobile, Firefox/Safari.
+
 ## Decisions
 
 - 2026-11-02 — D1 : snapshot de BOM en tables relationnelles (ADR 0006 à rédiger) — choix humain.
@@ -189,22 +235,39 @@ T1-T8 terminées (8/9). Prochaine : T9 (UI), pas commencée : arrêt demandé av
 - 2026-11-03 — T7 : les trois choix ci-dessus (refus de publier si le snapshot de prix ne couvre plus tout ;
   brouillon depuis snapshot en prix en direct ; `NewDraft` via `bom.Service` sans transaction, avec nettoyage)
   **validés tels quels par Arthur.presle**.
-- 2026-11-03 — T8, choix agent à valider : `PATCH /boms/{id}` prend **soit** `name`, **soit** `currency` **et**
+- 2026-11-03 — T8, choix agent **validé par Arthur.presle** : `PATCH /boms/{id}` prend **soit** `name`, **soit** `currency` **et**
   `volume` ensemble ; `PATCH /nodes/{nodeID}` prend **exactement un** champ (`offer_id`, `quantity`, `parent_id`,
   `production_days`). Chaque champ est une opération distincte du service : en accepter plusieurs appliquerait
   la requête à moitié si la deuxième échoue. Sinon 400.
-- 2026-11-03 — T8, choix agent à valider : montants renvoyés **exacts** (`money.Money`, ex. `"0.005"`), l'arrondi
+- 2026-11-03 — T8, choix agent **validé par Arthur.presle** : montants renvoyés **exacts** (`money.Money`, ex. `"0.005"`), l'arrondi
   half-even se fait à l'affichage (ADR 0004, `Intl.NumberFormat` sur la chaîne en T9). Alternative : renvoyer
   aussi un montant arrondi par le back.
-- 2026-11-03 — T8, choix agent à valider : codes HTTP non fixés par la spec : `ErrRootNode`, `ErrNoQuote` /
+- 2026-11-03 — T8, choix agent **validé par Arthur.presle** : codes HTTP non fixés par la spec : `ErrRootNode`, `ErrNoQuote` /
   `ErrNoRate` (gel ou publication impossibles) → 409 ; offre/pièce inconnue du catalogue dans un corps → 400
   (et non 404, réservé à la ressource de l'URL) ; `cost_error_code` (`no_quote` / `no_rate` / `missing_cost`)
   ajouté pour que l'UI distingue les cas sans analyser le message.
-- 2026-11-03 — T8, choix agent à valider : le serveur **exige** `DATABASE_URL` et une base joignable au démarrage
+- 2026-11-03 — T8, choix agent **validé par Arthur.presle** : le serveur **exige** `DATABASE_URL` et une base joignable au démarrage
   (il démarrait sans base jusqu'ici) ; `make run` / `compose.yaml` la fournissent déjà. Catalogue et prix câblés
   en stubs **vides** : pas de pièce ajoutable ni de gel/publication possible en vrai tant que NLPF-67/68 ne
   fournissent pas leurs implémentations Postgres. Le front (T9) ne pourra donc être vérifié de bout en bout
   qu'avec des sous-ensembles, ou avec un catalogue/prix de démonstration (à décider avant T9).
+- 2026-11-03 — T9 : catalogue et prix de démo **demandés par Arthur.presle** (BOM_DEMO=1, `internal/demo`).
+  Feature toggle — propriétaire : Arthur.presle ; raison : tester l'UI avant NLPF-67/68 ; **date de suppression :
+  livraison de NLPF-67/68** (supprimer `internal/demo`, son câblage dans `cmd/server/main.go`, la ligne
+  `BOM_DEMO` de `compose.yaml` et l'appel de `web/src/catalog.ts`).
+- 2026-11-03 — Démo, choix agent à valider : l'UI a besoin des noms de pièces et des offres d'une pièce, que
+  l'API `/api/v1` n'expose pas (catalogue = NLPF-67). Ajout de `GET /api/v1/demo/catalog`, monté **seulement**
+  avec BOM_DEMO=1, plutôt que d'anticiper `/api/v1/parts` à la place de NLPF-67. Sans démo, l'UI affiche
+  « Pièce #id » et n'ajoute que des sous-ensembles.
+- 2026-11-03 — Démo, choix agent à valider : les snapshots de prix de la démo ont `scope = 'catalog'`
+  (`scope_id` NULL) : `FreezePrices` ne reçoit pas l'id de la BOM et le CHECK impose `scope_id` pour `'bom'`.
+  Ils figent la **dernière** cotation en base (pas celle d'avant `at`), comme `pricing.Stub`.
+- 2026-11-03 — Démo : la base de dev contient maintenant des snapshots publiés (#207, #208) et donc des BOM
+  (1060 « Smoke démo », 1062 « Vérif manuelle ») **non supprimables** par construction (ADR 0006), plus la BOM
+  1061 de 30 031 nœuds et le brouillon 1063. Pour repartir de zéro : `docker compose down -v`.
+- 2026-11-03 — T9, choix agent à valider : l'arbre est relu entièrement après chaque action
+  (15,8 Mo pour 30 000 nœuds, ~0,4 s en local) ; un PATCH qui renverrait les totaux modifiés serait plus léger
+  mais change le contrat T8.
 
 ## Blockers
 
