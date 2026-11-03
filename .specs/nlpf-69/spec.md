@@ -181,7 +181,7 @@ flowchart TD
     manquant (`ErrNoRate`) remontés sur le nœud ; `go test -bench Totals30k` < 1 s/op et un test garde-fou
     échoue au-delà.
 
-- [ ] T6: Service BOM — CRUD, arbre, prix en direct ou figés, totaux
+- [x] T6: Service BOM — CRUD, arbre, prix en direct ou figés, totaux
   - **Files**: `internal/bom/service.go`, `internal/bom/service_test.go`
   - **Approach**: Le service orchestre store + catalog + pricing : valide (offre de la bonne pièce, quantité > 0,
     devise ISO), récupère une fois chaque offre/taux distinct (en direct ou via `price_snapshot_id`), appelle

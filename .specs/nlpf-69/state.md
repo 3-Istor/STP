@@ -2,7 +2,7 @@
 id: nlpf-69
 status: in-progress
 branch: nlpf-69
-current_task: T6
+current_task: T7
 started: 2026-11-02
 updated: 2026-11-03
 ---
@@ -11,7 +11,7 @@ updated: 2026-11-03
 
 ## Progress
 
-T1-T5 terminées (5/9). Prochaine : T6 (service BOM).
+T1-T6 terminées (6/9). Prochaine : T7 (domaine snapshot).
 
 ## Task Log
 
@@ -71,6 +71,28 @@ T1-T5 terminées (5/9). Prochaine : T6 (service BOM).
   Choix agent à valider : une pièce qui a des enfants rend l'arbre invalide (`ErrInvalidTree`) plutôt que
   d'inventer une règle de cumul ; T6 devra refuser d'ajouter/déplacer un nœud sous une pièce.
 
+### ADR 0008 : adaptation de `ComputeTotals` (préalable à T6)
+- **Status**: completed
+- **Time**: 2026-11-03
+- **Commit**: 68251ba (ADR acceptée : 388af69)
+- **Notes**: Rejet `ErrInvalidTree` « part node has children » retiré ; chaque nœud = contribution propre
+  (pièce) + enfants. Nouvelle erreur de coût : une pièce sans prix garde son `ErrNoQuote`/`ErrNoRate` même si
+  ses enfants en manquent aussi, et se liste en tête de `MissingCost`. `NodeTotals` gagne `OwnCost` et
+  `OwnLeadTimeDays` (panneau latéral, ADR 0008 « Conséquences »). Tests : exemple Roue/Écrou de l'ADR
+  (105 €/roue, 420 €, 20 écrous, 35 j), prix manquant sur parent, enfant, les deux, pièce racine.
+  Benchmark 30k : ~28 ms/op.
+
+### T6: Service BOM — CRUD, arbre, prix en direct ou figés, totaux
+- **Status**: completed
+- **Time**: 2026-11-03
+- **Commit**: 38fe974
+- **Notes**: `NewService(store, catalog, pricing)`. Sentinelles ajoutées : `ErrInvalidInput`, `ErrOfferNotForPart`.
+  `FreezePrices(ctx, bomID, at)` (instant fourni par l'appelant) / `UnfreezePrices`. `Totals` renvoie
+  `TreeTotals{BOM, Nodes, Totals}` pour T8. Tests sur un `Store` en mémoire (`memstore_test.go`, fichier de test
+  hors liste de la spec). Mutations vérifiées : sans contrôle offre/pièce, toujours en direct, ou production du
+  catalogue ignorée → au moins un test échoue. Tests d'intégration Postgres **sautés en local** (la base sur
+  :5432 refuse l'utilisateur `bom`, aucun conteneur du projet lancé) : T6 ne touche pas la base, à rejouer en CI.
+
 ## Decisions
 
 - 2026-11-02 — D1 : snapshot de BOM en tables relationnelles (ADR 0006 à rédiger) — choix humain.
@@ -100,6 +122,15 @@ T1-T5 terminées (5/9). Prochaine : T6 (service BOM).
   420 €, 20 écrous, 35 j. Conséquence pour T6 : retirer le rejet `ErrInvalidTree` « part node has children » de
   `ComputeTotals` (T5) et ajouter les tests de l'exemple ; le service n'a rien à refuser.
 - 2026-11-03 — ADR 0008 passée à `Accepté` par Arthur.presle.
+- 2026-11-03 — T6, choix agent à valider : les jours de production d'une **pièce** viennent du catalogue
+  (`Part.ProductionDays`, ADR 0007 règle 4) ; le service refuse (`ErrInvalidInput`) de les saisir sur un nœud
+  pièce plutôt que de stocker une valeur que le calcul ignorerait.
+- 2026-11-03 — T6, choix agent à valider : figer une BOM déjà figée la fige à nouveau sur les cotations
+  courantes (nouveau snapshot de prix) ; l'ancien snapshot de prix reste en base, immuable.
+- 2026-11-03 — T6, choix agent : `SetNodeOffer` / `SetNodeProductionDays` chargent l'arbre (une requête) pour
+  connaître le type du nœud, faute de `GetNode` dans l'interface `Store` ; à remplacer si le coût se voit.
+- 2026-11-03 — T6 : seuls `ErrNoQuote` / `ErrNoRate` deviennent une erreur sur le nœud ; un snapshot de prix
+  introuvable, une pièce ou une offre absente du catalogue, ou une panne font échouer `Totals` (rien caché).
 
 ## Blockers
 
