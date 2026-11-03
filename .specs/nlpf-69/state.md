@@ -122,12 +122,12 @@ T1-T6 terminées (6/9). Prochaine : T7 (domaine snapshot).
   420 €, 20 écrous, 35 j. Conséquence pour T6 : retirer le rejet `ErrInvalidTree` « part node has children » de
   `ComputeTotals` (T5) et ajouter les tests de l'exemple ; le service n'a rien à refuser.
 - 2026-11-03 — ADR 0008 passée à `Accepté` par Arthur.presle.
-- 2026-11-03 — T6, choix agent à valider : les jours de production d'une **pièce** viennent du catalogue
+- 2026-11-03 — T6, choix agent **validé par Arthur.presle** : les jours de production d'une **pièce** viennent du catalogue
   (`Part.ProductionDays`, ADR 0007 règle 4) ; le service refuse (`ErrInvalidInput`) de les saisir sur un nœud
   pièce plutôt que de stocker une valeur que le calcul ignorerait.
-- 2026-11-03 — T6, choix agent à valider : figer une BOM déjà figée la fige à nouveau sur les cotations
+- 2026-11-03 — T6, choix agent **validé par Arthur.presle** : figer une BOM déjà figée la fige à nouveau sur les cotations
   courantes (nouveau snapshot de prix) ; l'ancien snapshot de prix reste en base, immuable.
-- 2026-11-03 — T6, choix agent : `SetNodeOffer` / `SetNodeProductionDays` chargent l'arbre (une requête) pour
+- 2026-11-03 — T6, choix agent **validé par Arthur.presle** : `SetNodeOffer` / `SetNodeProductionDays` chargent l'arbre (une requête) pour
   connaître le type du nœud, faute de `GetNode` dans l'interface `Store` ; à remplacer si le coût se voit.
 - 2026-11-03 — T6 : seuls `ErrNoQuote` / `ErrNoRate` deviennent une erreur sur le nœud ; un snapshot de prix
   introuvable, une pièce ou une offre absente du catalogue, ou une panne font échouer `Totals` (rien caché).
