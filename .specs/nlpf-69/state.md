@@ -2,7 +2,7 @@
 id: nlpf-69
 status: in-progress
 branch: nlpf-69
-current_task: T8
+current_task: T9
 started: 2026-11-02
 updated: 2026-11-03
 ---
@@ -11,7 +11,7 @@ updated: 2026-11-03
 
 ## Progress
 
-T1-T7 terminées (7/9). Prochaine : T8 (API HTTP), pas commencée : arrêt demandé avant T8.
+T1-T8 terminées (8/9). Prochaine : T9 (UI), pas commencée : arrêt demandé avant T9.
 
 ## Task Log
 
@@ -112,6 +112,27 @@ T1-T7 terminées (7/9). Prochaine : T8 (API HTTP), pas commencée : arrêt deman
   production pièce non copiée) : chaque fois au moins un test échoue. Les tests T3/T4/T6 sautés jusqu'ici
   passent aussi sur cette base (aucun SKIP, `-race` vert, 3 runs).
 
+### T8: API HTTP `/api/v1/boms` et câblage
+- **Status**: completed
+- **Time**: 2026-11-03
+- **Commit**: edaff84
+- **Notes**: Routes de la spec, handlers fins dans `internal/httpapi/boms.go` ; représentations JSON dans
+  `internal/httpapi/boms_json.go` (fichier hors liste de la spec). `NewRouter(Deps{BOMs, Snapshots, Now})` :
+  services vus par des interfaces `BOMService` / `SnapshotService` (satisfaites par `*bom.Service` et
+  `*snapshot.Service`, vérifié à la compilation) ; l'instant d'un gel/d'une publication vient du routeur.
+  Mapping : not found → 404 ; `ErrCycle`, `ErrHasSnapshots`, `ErrRootNode`, `ErrNoQuote`, `ErrNoRate` → 409 ;
+  validation, JSON invalide, champ inconnu, id non numérique, offre/pièce inconnue du catalogue → 400 ; reste → 500
+  « internal error » (cause journalisée par slog, pas renvoyée). `cmd/server` : pool pgx sur `DATABASE_URL`
+  (ping au démarrage), stores Postgres, catalogue et prix = **stubs vides** (NLPF-67/68).
+  Tests `httptest` (fakes des services, totaux produits par le vrai `ComputeTotals`) : chaque route, chaque code,
+  erreur non avalée sur chaque route, corps de l'arbre (100 USD × 0,92 → `"92.00"` EUR, prix manquant → `cost`
+  null + `no_quote`, `missing_cost`), corps d'un snapshot. Mutations vérifiées (7 : 409→400, id 0 accepté, PATCH
+  multi-champs, 500 qui divulgue, champs inconnus, `missing_cost` null, code d'erreur) : toutes tuées.
+  `go test -race ./...` vert sur Postgres :5433, aucun SKIP ; `golangci-lint` 0 issue ; `go mod tidy -diff` vide.
+  Smoke test du vrai serveur sur la base : création, sous-ensembles, cycle 409, racine 409, offre inconnue 400,
+  arbre, snapshot inconnu 404, suppression 204 ; **publier → 500** (FK `bom_snapshots_price_snapshot_id_fkey` :
+  le snapshot de prix du stub n'existe pas en base), limite attendue tant que NLPF-68 n'est pas livré.
+
 ## Decisions
 
 - 2026-11-02 — D1 : snapshot de BOM en tables relationnelles (ADR 0006 à rédiger) — choix humain.
@@ -150,21 +171,40 @@ T1-T7 terminées (7/9). Prochaine : T8 (API HTTP), pas commencée : arrêt deman
   connaître le type du nœud, faute de `GetNode` dans l'interface `Store` ; à remplacer si le coût se voit.
 - 2026-11-03 — T6 : seuls `ErrNoQuote` / `ErrNoRate` deviennent une erreur sur le nœud ; un snapshot de prix
   introuvable, une pièce ou une offre absente du catalogue, ou une panne font échouer `Totals` (rien caché).
-- 2026-11-03 — T7, choix agent à valider : publier un brouillon **figé** réutilise son snapshot de prix, mais
+- 2026-11-03 — T7, choix agent **validé par Arthur.presle** : publier un brouillon **figé** réutilise son snapshot de prix, mais
   refuse (`ErrNoQuote` / `ErrNoRate`, rien n'est publié) s'il ne couvre plus toutes les offres ou la devise
   (offre ou devise changée après le gel) : même règle que `FreezePrices` (T2), pas de trou gravé dans un
   snapshot immuable. Alternative : re-figer automatiquement sur les cotations courantes.
-- 2026-11-03 — T7, choix agent à valider : un brouillon créé depuis un snapshot part en **prix en direct**
+- 2026-11-03 — T7, choix agent **validé par Arthur.presle** : un brouillon créé depuis un snapshot part en **prix en direct**
   (`price_snapshot_id` NULL) ; la spec (`docs/features.md` l. 182, 191) n'en dit rien. Alternative : l'attacher au snapshot de prix
   du snapshot (totaux identiques au départ), ce qui demande une méthode « attacher un snapshot de prix »
   côté `bom.Service` (aussi utile à « un snapshot de prix choisi », l. 179).
-- 2026-11-03 — T7, choix agent à valider : `NewDraft` passe par `bom.Service` (création + un `AddNode` par
+- 2026-11-03 — T7, choix agent **validé par Arthur.presle** : `NewDraft` passe par `bom.Service` (création + un `AddNode` par
   nœud, comme le demande la spec) ; ce n'est donc pas une transaction : en cas d'échec le brouillon partiel est
   supprimé (compensation). Coût : un aller-retour (et une lecture catalogue) par nœud, lent pour 30 000 nœuds.
 - 2026-11-03 — T7 : la racine du nouveau brouillon porte le nom de la BOM (pas d'opération pour renommer un
   nœud) ; sa quantité et ses jours de production sont recopiés.
 - 2026-11-03 — T7 : `published_at` = instant fourni par l'appelant (pas d'horloge dans le domaine) ; le
   `DEFAULT now()` de la colonne n'est pas utilisé.
+- 2026-11-03 — T7 : les trois choix ci-dessus (refus de publier si le snapshot de prix ne couvre plus tout ;
+  brouillon depuis snapshot en prix en direct ; `NewDraft` via `bom.Service` sans transaction, avec nettoyage)
+  **validés tels quels par Arthur.presle**.
+- 2026-11-03 — T8, choix agent à valider : `PATCH /boms/{id}` prend **soit** `name`, **soit** `currency` **et**
+  `volume` ensemble ; `PATCH /nodes/{nodeID}` prend **exactement un** champ (`offer_id`, `quantity`, `parent_id`,
+  `production_days`). Chaque champ est une opération distincte du service : en accepter plusieurs appliquerait
+  la requête à moitié si la deuxième échoue. Sinon 400.
+- 2026-11-03 — T8, choix agent à valider : montants renvoyés **exacts** (`money.Money`, ex. `"0.005"`), l'arrondi
+  half-even se fait à l'affichage (ADR 0004, `Intl.NumberFormat` sur la chaîne en T9). Alternative : renvoyer
+  aussi un montant arrondi par le back.
+- 2026-11-03 — T8, choix agent à valider : codes HTTP non fixés par la spec : `ErrRootNode`, `ErrNoQuote` /
+  `ErrNoRate` (gel ou publication impossibles) → 409 ; offre/pièce inconnue du catalogue dans un corps → 400
+  (et non 404, réservé à la ressource de l'URL) ; `cost_error_code` (`no_quote` / `no_rate` / `missing_cost`)
+  ajouté pour que l'UI distingue les cas sans analyser le message.
+- 2026-11-03 — T8, choix agent à valider : le serveur **exige** `DATABASE_URL` et une base joignable au démarrage
+  (il démarrait sans base jusqu'ici) ; `make run` / `compose.yaml` la fournissent déjà. Catalogue et prix câblés
+  en stubs **vides** : pas de pièce ajoutable ni de gel/publication possible en vrai tant que NLPF-67/68 ne
+  fournissent pas leurs implémentations Postgres. Le front (T9) ne pourra donc être vérifié de bout en bout
+  qu'avec des sous-ensembles, ou avec un catalogue/prix de démonstration (à décider avant T9).
 
 ## Blockers
 

@@ -199,7 +199,7 @@ flowchart TD
   - **Done when**: tests : CO2 de la pièce modifié après publication → totaux du snapshot inchangés ;
     brouillon depuis snapshot = mêmes pièces, offres, quantités, volume.
 
-- [ ] T8: API HTTP `/api/v1/boms` et câblage
+- [x] T8: API HTTP `/api/v1/boms` et câblage
   - **Files**: `internal/httpapi/router.go`, `internal/httpapi/boms.go`, `internal/httpapi/boms_test.go`, `cmd/server/main.go`
   - **Approach**: Handlers fins : `GET/POST /api/v1/boms`, `PATCH|DELETE /api/v1/boms/{id}`, `GET /api/v1/boms/{id}/tree`
     (nœuds + totaux), `POST /nodes`, `PATCH|DELETE /nodes/{nodeID}` (offre, quantité, parent), `POST /freeze-prices`,
