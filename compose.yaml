@@ -36,8 +36,9 @@ services:
       target: server
     environment:
       PORT: "8080"
-      # Pas encore lues par le back (Won't Do du ticket) : posées pour live-price-feed.
+      # Lue par le back depuis NLPF-69 T8 (connexion vérifiée au démarrage).
       DATABASE_URL: postgres://bom:bom@db:5432/bomstudio?sslmode=disable
+      # Pas encore lue par le back : posée pour live-price-feed (NLPF-68).
       PRICE_API_URL: http://priceapi:8090
     # Volontairement pas de dépendance à `priceapi` : le back doit démarrer même si l'API de prix
     # est en panne (fallback sur le dernier snapshot, AGENTS §2).
