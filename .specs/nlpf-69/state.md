@@ -94,10 +94,16 @@ T1-T5 terminées (5/9). Prochaine : T6 (service BOM).
   total de coût quand un prix/taux manque et la masse traitée comme le CO2).
 - 2026-11-02 — Point avant T4 tranché par Arthur.presle : option (a), store dans `internal/bom/bomstore`.
 - 2026-11-02 — `.specs/CLAUDE.md` (règles du skill spec) n'existe pas ; exécution faite avec `AGENTS.md`.
+- 2026-11-03 — Point avant T6 tranché par Arthur.presle : une pièce peut avoir des enfants (option (b), « sous tout
+  nœud »). Règle de cumul rédigée en ADR 0008 (`Proposé`) : pièce parent = sa contribution propre + celle de ses
+  enfants ; délai = max(enfants) + (livraison + production). Exemple : Roue 4 × 100 € + Écrou 5 × 1 € → 105 €/roue,
+  420 €, 20 écrous, 35 j. Conséquence pour T6 : retirer le rejet `ErrInvalidTree` « part node has children » de
+  `ComputeTotals` (T5) et ajouter les tests de l'exemple ; le service n'a rien à refuser.
 
 ## Blockers
 
-Aucun. (Blocage T3 levé le 2026-11-02 : ADR 0006 et 0007 acceptées par Arthur.presle.)
+- ADR 0008 doit passer à `Accepté` par un humain avant de modifier `internal/bom/totals.go` et de faire T6.
+  (Blocage T3 levé le 2026-11-02 : ADR 0006 et 0007 acceptées par Arthur.presle.)
 
 ## Verification Report(s)
 
