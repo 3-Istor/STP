@@ -17,6 +17,7 @@ import (
 	"bomstudio/internal/bom"
 	"bomstudio/internal/bom/bomstore"
 	"bomstudio/internal/catalog"
+	"bomstudio/internal/demo"
 	"bomstudio/internal/httpapi"
 	"bomstudio/internal/pricing"
 	"bomstudio/internal/snapshot"
@@ -51,21 +52,45 @@ func run() error {
 
 	// Catalogue et prix : stubs vides en attendant leurs implémentations Postgres (NLPF-67, NLPF-68).
 	// D'ici là, seuls les sous-ensembles s'ajoutent (une offre est inconnue du stub) et figer ou publier
-	// une BOM échoue (le snapshot de prix du stub n'existe pas en base).
-	cat, err := catalog.NewStub(nil, nil)
-	if err != nil {
-		return fmt.Errorf("catalog: %w", err)
+	// une BOM échoue (le snapshot de prix du stub n'existe pas en base). BOM_DEMO=1 les remplace par le
+	// jeu de démo (internal/demo, feature toggle à supprimer à la livraison de NLPF-67/68).
+	var cat catalog.Catalog
+	var prices pricing.Pricing
+	demoMode := os.Getenv("BOM_DEMO") == "1"
+	if demoMode {
+		if err := demo.Seed(ctx, pool); err != nil {
+			return fmt.Errorf("demo: %w", err)
+		}
+		if cat, err = demo.Catalog(); err != nil {
+			return fmt.Errorf("demo catalog: %w", err)
+		}
+		if prices, err = demo.NewPricing(pool); err != nil {
+			return fmt.Errorf("demo pricing: %w", err)
+		}
+		slog.Warn("BOM_DEMO=1: demo catalog and prices, for development only (remove with NLPF-67/68)")
+	} else {
+		if cat, err = catalog.NewStub(nil, nil); err != nil {
+			return fmt.Errorf("catalog: %w", err)
+		}
+		prices = pricing.NewStub(nil, nil)
+		slog.Warn("catalog and pricing are empty in-memory stubs until NLPF-67 and NLPF-68")
 	}
-	prices := pricing.NewStub(nil, nil)
-	slog.Warn("catalog and pricing are empty in-memory stubs until NLPF-67 and NLPF-68")
 
 	boms := bom.NewService(bomstore.New(pool), cat, prices)
 	snapshots := snapshot.NewService(snapshotstore.New(pool), boms, cat, prices)
 
+	handler := httpapi.NewRouter(httpapi.Deps{BOMs: boms, Snapshots: snapshots})
+	if demoMode {
+		mux := http.NewServeMux()
+		mux.Handle("GET /api/v1/demo/catalog", demo.CatalogHandler(cat, prices))
+		mux.Handle("/", handler)
+		handler = mux
+	}
+
 	addr := ":" + envOr("PORT", "8080")
 	srv := &http.Server{
 		Addr:              addr,
-		Handler:           httpapi.NewRouter(httpapi.Deps{BOMs: boms, Snapshots: snapshots}),
+		Handler:           handler,
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 

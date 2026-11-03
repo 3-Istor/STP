@@ -38,6 +38,9 @@ services:
       PORT: "8080"
       # Lue par le back depuis NLPF-69 T8 (connexion vérifiée au démarrage).
       DATABASE_URL: postgres://bom:bom@db:5432/bomstudio?sslmode=disable
+      # Catalogue et prix de démo (internal/demo), jamais par défaut : `BOM_DEMO=1 docker compose up`.
+      # Feature toggle à supprimer à la livraison de NLPF-67/68.
+      BOM_DEMO: ${BOM_DEMO:-}
       # Pas encore lue par le back : posée pour live-price-feed (NLPF-68).
       PRICE_API_URL: http://priceapi:8090
     # Volontairement pas de dépendance à `priceapi` : le back doit démarrer même si l'API de prix
