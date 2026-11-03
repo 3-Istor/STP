@@ -1,6 +1,6 @@
 ---
 id: nlpf-69
-status: review
+status: done
 branch: nlpf-69
 current_task: null
 started: 2026-11-02
@@ -276,4 +276,48 @@ ADR 0006 et 0007 acceptées par Arthur.presle.)
 
 ## Verification Report(s)
 
-<empty — appended by /spec-verify>
+## Verification Report — 2026-11-03
+
+### Overall: PASS (CI sur PR non évaluable : rien n'est poussé)
+
+### Task Completion: 9/9
+Toutes les tâches cochées.
+
+### Commit Verification
+T1 737be8f, T2 82548e3, T3 0e6c472, T4 52d0865, T5 b0cfcb2, T6 38fe974, T7 d82fb86, T8 edaff84, T9 71d67a3 : tous présents.
+Commits en plus : ADR 0008 (+ adaptation de `ComputeTotals`), démo `BOM_DEMO=1`, suivi.
+
+### Automated Checks
+| Check | Result | Notes |
+|---|---|---|
+| `make lint` (vet, golangci-lint+gosec, oxlint) | PASS | 0 issue |
+| `go test -race -count=1 ./...` (Postgres :5433) | PASS | 0 SKIP |
+| `go test -bench Totals30k` | PASS | ~29 ms/op ; garde-fou `TestTotals30kUnderOneSecond` vert |
+| `make sqlc` puis `git status` | PASS | code généré à jour, arbre propre |
+| `go mod tidy -diff` | PASS | vide |
+| `cd web && npm ci && npx oxlint && npm run build` | PASS | |
+| CI verte sur la PR | NON ÉVALUÉ | aucune PR ni push |
+
+### Requirements Validation
+| Requirement | Status | Evidence |
+|---|---|---|
+| R1-R2 | MET | `TestCreateBOMHasRootCurrencyAndVolume`, `TestDeleteBOM`, `TestServiceDeleteBOM` (`ErrHasSnapshots`, FK réelle) |
+| R3-R5 | MET | tests service/store (offre d'une autre pièce refusée, `ErrCycle`, `TestDeleteNode`, racine refusée) |
+| R6-R7 | MET | `totals_test.go` : 20 écrous/20 €, 192,00 €, 35 j ; `ErrNoQuote`/`ErrNoRate` sur le nœud |
+| R8 | MET | 29 ms/op pour 30 000 nœuds |
+| R9 | MET | `TestServiceFrozenPricesDoNotMove` |
+| R10 | MET | `TestBomSnapshotRejectsMutations`, `TestPublishedSnapshotDoesNotMove` ; `UPDATE` psql refusé (« forbidden ») |
+| R11 | MET | `TestNewDraftFromSnapshot` |
+| R12 | MET | fichiers `web/src/bom/*`, vérifié au navigateur (30 031 nœuds, 42 lignes DOM) selon le journal T9 |
+| R13 | MET | ADR 0006, 0007 (et 0008) acceptées par Arthur.presle |
+| S1, S2 | MET | `NodePanel` (quantité × volume), `SnapshotView` |
+
+### Acceptance Criteria
+Les 11 critères : PASS (tests ci-dessus ; virtualisation et changement d'offre selon la vérification navigateur de T9, non rejouée ici).
+
+### Code Quality (/simplify)
+Étape non exécutée (passe automatique non lancée dans cette vérification) ; lint propre.
+
+### Summary
+Les 9 tâches sont faites et les contrôles automatiques passent en local. Réserves : CI sur PR non évaluée, rendu visuel/mobile/thème clair non vérifiés (voir T9), `/simplify` non lancé.
+
