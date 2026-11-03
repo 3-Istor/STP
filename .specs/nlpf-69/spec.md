@@ -189,7 +189,7 @@ flowchart TD
   - **Done when**: tests : totaux identiques avant/après une nouvelle cotation quand les prix sont figés, et
     différents en direct ; `ErrHasSnapshots` sur suppression ; ajout d'une offre d'une autre pièce refusé.
 
-- [ ] T7: Domaine snapshot — publier, lire, nouveau brouillon
+- [x] T7: Domaine snapshot — publier, lire, nouveau brouillon
   - **Files**: `internal/snapshot/snapshot.go`, `internal/snapshot/queries.sql`, `internal/snapshot/snapshotdb/*`,
     `sqlc.yaml`, `internal/snapshot/snapshot_integration_test.go`
   - **Approach**: `Publish` : snapshot de prix réutilisé ou créé (`FreezePrices`), copie nœuds + attributs pièce

@@ -2,7 +2,7 @@
 id: nlpf-69
 status: in-progress
 branch: nlpf-69
-current_task: T7
+current_task: T8
 started: 2026-11-02
 updated: 2026-11-03
 ---
@@ -11,7 +11,7 @@ updated: 2026-11-03
 
 ## Progress
 
-T1-T6 terminées (6/9). Prochaine : T7 (domaine snapshot).
+T1-T7 terminées (7/9). Prochaine : T8 (API HTTP), pas commencée : arrêt demandé avant T8.
 
 ## Task Log
 
@@ -93,6 +93,25 @@ T1-T6 terminées (6/9). Prochaine : T7 (domaine snapshot).
   catalogue ignorée → au moins un test échoue. Tests d'intégration Postgres **sautés en local** (la base sur
   :5432 refuse l'utilisateur `bom`, aucun conteneur du projet lancé) : T6 ne touche pas la base, à rejouer en CI.
 
+### T7: Domaine snapshot — publier, lire, nouveau brouillon
+- **Status**: completed
+- **Time**: 2026-11-03
+- **Commit**: d82fb86
+- **Notes**: `snapshot.Service{Publish(ctx, bomID, at), Get, NewDraft}` ; `Store` sans méthode de modification.
+  Implémentation pgx dans `internal/snapshot/snapshotstore` (hors liste de la spec, même découpage que
+  `bom/bomstore`, option (a) de T4) ; nœuds insérés par un `COPY` (`:copyfrom`), FK parent différée vérifiée
+  au commit. Dans `bom` : `Service.Tree` (BOM + nœuds) et `LoadPrices` exportée (extraite de `totalsInput`,
+  partagée par les totaux d'un brouillon et d'un snapshot ; tests T6 inchangés et verts).
+  Tests d'intégration (Postgres, **exécutés** : stack `compose.yaml`, service `db` remappé sur :5433 par un
+  override local hors dépôt, :5432 étant pris par une autre instance) : CO2/production du catalogue,
+  nouvelle cotation, nouveau taux, quantité et suppression dans le brouillon → totaux du snapshot inchangés
+  (388,00 €, 42 kg CO2, 32,2 kg, 35 j) ; snapshot de prix créé ou réutilisé ; refus si prix/taux manquant ;
+  brouillon depuis snapshot = même arbre, pièces, offres, quantités, volume, devise, `source_snapshot_id` ;
+  brouillon partiel supprimé si la copie échoue ; `DeleteBOM` publiée → `ErrHasSnapshots` (FK réelle).
+  Mutations vérifiées (toujours re-figer, sans contrôle de couverture, sans compensation, `Get` en direct,
+  production pièce non copiée) : chaque fois au moins un test échoue. Les tests T3/T4/T6 sautés jusqu'ici
+  passent aussi sur cette base (aucun SKIP, `-race` vert, 3 runs).
+
 ## Decisions
 
 - 2026-11-02 — D1 : snapshot de BOM en tables relationnelles (ADR 0006 à rédiger) — choix humain.
@@ -131,6 +150,21 @@ T1-T6 terminées (6/9). Prochaine : T7 (domaine snapshot).
   connaître le type du nœud, faute de `GetNode` dans l'interface `Store` ; à remplacer si le coût se voit.
 - 2026-11-03 — T6 : seuls `ErrNoQuote` / `ErrNoRate` deviennent une erreur sur le nœud ; un snapshot de prix
   introuvable, une pièce ou une offre absente du catalogue, ou une panne font échouer `Totals` (rien caché).
+- 2026-11-03 — T7, choix agent à valider : publier un brouillon **figé** réutilise son snapshot de prix, mais
+  refuse (`ErrNoQuote` / `ErrNoRate`, rien n'est publié) s'il ne couvre plus toutes les offres ou la devise
+  (offre ou devise changée après le gel) : même règle que `FreezePrices` (T2), pas de trou gravé dans un
+  snapshot immuable. Alternative : re-figer automatiquement sur les cotations courantes.
+- 2026-11-03 — T7, choix agent à valider : un brouillon créé depuis un snapshot part en **prix en direct**
+  (`price_snapshot_id` NULL) ; la spec (`docs/features.md` l. 182, 191) n'en dit rien. Alternative : l'attacher au snapshot de prix
+  du snapshot (totaux identiques au départ), ce qui demande une méthode « attacher un snapshot de prix »
+  côté `bom.Service` (aussi utile à « un snapshot de prix choisi », l. 179).
+- 2026-11-03 — T7, choix agent à valider : `NewDraft` passe par `bom.Service` (création + un `AddNode` par
+  nœud, comme le demande la spec) ; ce n'est donc pas une transaction : en cas d'échec le brouillon partiel est
+  supprimé (compensation). Coût : un aller-retour (et une lecture catalogue) par nœud, lent pour 30 000 nœuds.
+- 2026-11-03 — T7 : la racine du nouveau brouillon porte le nom de la BOM (pas d'opération pour renommer un
+  nœud) ; sa quantité et ses jours de production sont recopiés.
+- 2026-11-03 — T7 : `published_at` = instant fourni par l'appelant (pas d'horloge dans le domaine) ; le
+  `DEFAULT now()` de la colonne n'est pas utilisé.
 
 ## Blockers
 
