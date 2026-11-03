@@ -255,17 +255,17 @@ All tasks completed. Ready for verification (`/spec-verify nlpf-69` non lancé, 
   Feature toggle — propriétaire : Arthur.presle ; raison : tester l'UI avant NLPF-67/68 ; **date de suppression :
   livraison de NLPF-67/68** (supprimer `internal/demo`, son câblage dans `cmd/server/main.go`, la ligne
   `BOM_DEMO` de `compose.yaml` et l'appel de `web/src/catalog.ts`).
-- 2026-11-03 — Démo, choix agent à valider : l'UI a besoin des noms de pièces et des offres d'une pièce, que
+- 2026-11-03 — Démo, choix agent **validé par Arthur.presle** : l'UI a besoin des noms de pièces et des offres d'une pièce, que
   l'API `/api/v1` n'expose pas (catalogue = NLPF-67). Ajout de `GET /api/v1/demo/catalog`, monté **seulement**
   avec BOM_DEMO=1, plutôt que d'anticiper `/api/v1/parts` à la place de NLPF-67. Sans démo, l'UI affiche
   « Pièce #id » et n'ajoute que des sous-ensembles.
-- 2026-11-03 — Démo, choix agent à valider : les snapshots de prix de la démo ont `scope = 'catalog'`
+- 2026-11-03 — Démo, choix agent **validé par Arthur.presle** : les snapshots de prix de la démo ont `scope = 'catalog'`
   (`scope_id` NULL) : `FreezePrices` ne reçoit pas l'id de la BOM et le CHECK impose `scope_id` pour `'bom'`.
   Ils figent la **dernière** cotation en base (pas celle d'avant `at`), comme `pricing.Stub`.
 - 2026-11-03 — Démo : la base de dev contient maintenant des snapshots publiés (#207, #208) et donc des BOM
   (1060 « Smoke démo », 1062 « Vérif manuelle ») **non supprimables** par construction (ADR 0006), plus la BOM
   1061 de 30 031 nœuds et le brouillon 1063. Pour repartir de zéro : `docker compose down -v`.
-- 2026-11-03 — T9, choix agent à valider : l'arbre est relu entièrement après chaque action
+- 2026-11-03 — T9, choix agent **validé par Arthur.presle** : l'arbre est relu entièrement après chaque action
   (15,8 Mo pour 30 000 nœuds, ~0,4 s en local) ; un PATCH qui renverrait les totaux modifiés serait plus léger
   mais change le contrat T8.
 
