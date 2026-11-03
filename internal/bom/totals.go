@@ -14,7 +14,7 @@ import (
 
 var (
 	// ErrInvalidTree : l'arbre fourni au calcul n'est pas un arbre (pas une seule racine, parent absent,
-	// nœud inatteignable, pièce avec des enfants). Erreur d'entrée, pas une donnée manquante.
+	// nœud inatteignable). Erreur d'entrée, pas une donnée manquante. Une pièce peut avoir des enfants (ADR 0008).
 	ErrInvalidTree = errors.New("invalid bom tree")
 	// ErrMissingCost : un descendant n'a pas de prix ou de taux ; le parent n'a pas de total de coût
 	// (ADR 0007 règle 5). NodeTotals.MissingCost liste les pièces en défaut.
@@ -72,14 +72,22 @@ type NodeTotals struct {
 	RealQuantity decimal.Decimal
 	// Cost : coût exact (non arrondi) dans la devise de la BOM ; nil si CostErr.
 	Cost *money.Money
-	// CostErr : pièce → ErrNoQuote / ErrNoRate enveloppée ; parent → ErrMissingCost.
+	// CostErr : pièce sans prix ou taux → ErrNoQuote / ErrNoRate enveloppée ; sinon, un descendant
+	// sans coût → ErrMissingCost.
 	CostErr error
 	// MissingCost : pièces sans coût dans le sous-arbre (le nœud lui-même compris), par ordre de parcours.
 	MissingCost []int64
-	CO2Kg       decimal.Decimal
-	MassKg      decimal.Decimal
-	// LeadTimeDays : pièce → livraison + production ; parent → max(enfants) + sa production.
+	// CO2Kg, MassKg : contribution propre (pièce) + somme des enfants (ADR 0007 règle 3, ADR 0008 règle 3).
+	CO2Kg  decimal.Decimal
+	MassKg decimal.Decimal
+	// LeadTimeDays : max(enfants) + délai propre (ADR 0008 règle 4). Délai propre : pièce → livraison +
+	// production ; sous-ensemble → sa production.
 	LeadTimeDays int
+	// OwnCost : pour une pièce, sa contribution propre (prix converti × quantité réelle), sans ses enfants ;
+	// nil pour un sous-ensemble ou si le prix ou le taux de la pièce manque (ADR 0008, panneau latéral).
+	OwnCost *money.Money
+	// OwnLeadTimeDays : délai propre du nœud, sans ses enfants.
+	OwnLeadTimeDays int
 	// Quote : pour une pièce, la cotation utilisée (source et date) ; nil sinon.
 	Quote *pricing.Quote
 	// Rate : pour une pièce convertie, le taux utilisé ; nil si même devise ou sans conversion.
@@ -109,7 +117,7 @@ func (t Totals) Node(id int64) (NodeTotals, bool) {
 	return t.Nodes[i], true
 }
 
-// ComputeTotals calcule les totaux de chaque nœud selon ADR 0007, en O(n) : un parcours en profondeur
+// ComputeTotals calcule les totaux de chaque nœud selon ADR 0007 et 0008, en O(n) : un parcours en profondeur
 // itératif (pas de récursion), enfants par id croissant, puis une remontée des feuilles vers la racine.
 // Aucun arrondi : les montants sont exacts, l'arrondi se fait en sortie (ADR 0004).
 func ComputeTotals(in TotalsInput) (Totals, error) {
@@ -138,9 +146,6 @@ func ComputeTotals(in TotalsInput) (Totals, error) {
 		p, ok := index[*n.ParentID]
 		if !ok {
 			return Totals{}, fmt.Errorf("node %d: parent %d not in tree: %w", n.ID, *n.ParentID, ErrInvalidTree)
-		}
-		if nodes[p].Part != nil {
-			return Totals{}, fmt.Errorf("part node %d has children: %w", nodes[p].ID, ErrInvalidTree)
 		}
 		children[p] = append(children[p], i)
 	}
@@ -180,14 +185,19 @@ func ComputeTotals(in TotalsInput) (Totals, error) {
 	}
 
 	// Remontée : ordre inverse du pré-ordre, chaque enfant est calculé avant son parent.
+	// Chaque nœud = sa contribution propre (pièce) + celle de ses enfants (ADR 0007, ADR 0008).
 	for k := len(order) - 1; k >= 0; k-- {
 		i := order[k]
 		n, t := nodes[i], &out[i]
-		if n.Part != nil {
-			leafTotals(t, n, in, usedRates)
-			continue
-		}
 		cost := zero
+		var ownErr error
+		t.OwnLeadTimeDays = n.ProductionDays
+		if n.Part != nil {
+			ownErr = partOwnTotals(t, n, in, usedRates)
+			if ownErr == nil {
+				cost = *t.OwnCost
+			}
+		}
 		maxChild := 0
 		for _, c := range children[i] {
 			ct := out[c]
@@ -201,10 +211,13 @@ func ComputeTotals(in TotalsInput) (Totals, error) {
 				}
 			}
 		}
-		t.LeadTimeDays = maxChild + n.ProductionDays
-		if len(t.MissingCost) > 0 {
+		t.LeadTimeDays = maxChild + t.OwnLeadTimeDays
+		switch {
+		case ownErr != nil:
+			t.CostErr = fmt.Errorf("node %d: %w", n.ID, ownErr)
+		case len(t.MissingCost) > 0:
 			t.CostErr = fmt.Errorf("node %d: %d part(s) without cost: %w", n.ID, len(t.MissingCost), ErrMissingCost)
-		} else {
+		default:
 			t.Cost = &cost
 		}
 	}
@@ -223,24 +236,26 @@ func ComputeTotals(in TotalsInput) (Totals, error) {
 	}, nil
 }
 
-// leafTotals calcule une pièce : coût = prix × quantité réelle, converti dans la devise de la BOM ;
-// CO2 et masse = valeur unitaire × quantité réelle ; délai = livraison + production.
-func leafTotals(t *NodeTotals, n CalcNode, in TotalsInput, usedRates map[money.Currency]pricing.Rate) {
+// partOwnTotals pose la contribution propre d'une pièce, avant celle de ses enfants : coût = prix × quantité
+// réelle, converti dans la devise de la BOM ; CO2 et masse = valeur unitaire × quantité réelle ;
+// délai propre = livraison + production. Sans prix ou taux, la pièce se liste dans MissingCost (en tête :
+// ordre de parcours) et l'erreur est renvoyée.
+func partOwnTotals(t *NodeTotals, n CalcNode, in TotalsInput, usedRates map[money.Currency]pricing.Rate) error {
 	p := n.Part
 	t.CO2Kg = p.CO2Kg.Mul(t.RealQuantity)
 	t.MassKg = p.MassKg.Mul(t.RealQuantity)
-	t.LeadTimeDays = p.LeadTimeDays + n.ProductionDays
+	t.OwnLeadTimeDays = p.LeadTimeDays + n.ProductionDays
 
-	cost, err := leafCost(t, p.OfferID, in, usedRates)
+	cost, err := partCost(t, p.OfferID, in, usedRates)
 	if err != nil {
-		t.CostErr = fmt.Errorf("node %d: %w", n.ID, err)
 		t.MissingCost = []int64{n.ID}
-		return
+		return err
 	}
-	t.Cost = &cost
+	t.OwnCost = &cost
+	return nil
 }
 
-func leafCost(t *NodeTotals, offerID int64, in TotalsInput, usedRates map[money.Currency]pricing.Rate) (money.Money, error) {
+func partCost(t *NodeTotals, offerID int64, in TotalsInput, usedRates map[money.Currency]pricing.Rate) (money.Money, error) {
 	pr, ok := in.Prices[offerID]
 	if !ok {
 		return money.Money{}, fmt.Errorf("offer %d: %w", offerID, pricing.ErrNoQuote)

@@ -274,7 +274,6 @@ func TestComputeTotalsRejectsInvalidTree(t *testing.T) {
 		{"parent absent", []CalcNode{sub(1, nil, "1", 0), sub(2, id(99), "1", 0)}},
 		{"cycle détaché de la racine", []CalcNode{sub(1, nil, "1", 0), sub(2, id(3), "1", 0), sub(3, id(2), "1", 0)}},
 		{"nœud en double", []CalcNode{sub(1, nil, "1", 0), sub(1, nil, "1", 0)}},
-		{"pièce avec un enfant", []CalcNode{sub(1, nil, "1", 0), part(2, id(1), "1", 10, 0, "0"), sub(3, id(2), "1", 0)}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -305,5 +304,126 @@ func TestComputeTotalsIsDeterministic(t *testing.T) {
 				t.Fatalf("node %d differs: %+v vs %+v", a.NodeID, a, b)
 			}
 		}
+	}
+}
+
+// ADR 0008 : une pièce peut avoir des enfants ; son total = sa contribution propre + celle de ses enfants.
+func TestComputeTotalsPartWithChildren(t *testing.T) {
+	// Roue (pièce, qté 4, 100 €, livraison 3 j, production 2 j) contient Écrou (pièce, qté 5, 1 €, délai 30 j).
+	wheel := func(parent *int64) CalcNode {
+		return CalcNode{ID: 2, ParentID: parent, Quantity: dec("4"), ProductionDays: 2,
+			Part: &PartFacts{OfferID: 10, LeadTimeDays: 3, CO2Kg: dec("10"), MassKg: dec("8")}}
+	}
+	nut := CalcNode{ID: 3, ParentID: id(2), Quantity: dec("5"),
+		Part: &PartFacts{OfferID: 11, LeadTimeDays: 30, CO2Kg: dec("0.1"), MassKg: dec("0.01")}}
+	tests := []struct {
+		name   string
+		nodes  []CalcNode
+		prices func(t *testing.T) map[int64]PriceResult
+		want   []wantNode
+		// ownCost : contribution propre attendue de la roue ("" : aucune) ; ownLead : son délai propre.
+		ownCost string
+		ownLead int
+	}{
+		{
+			name:  "QUAND Roue ×4 à 100 € contient Écrou ×5 à 1 € ALORS 105 €/roue, 420 €, 20 écrous, 35 j",
+			nodes: []CalcNode{sub(1, nil, "1", 0), wheel(id(1)), nut},
+			prices: func(t *testing.T) map[int64]PriceResult {
+				return map[int64]PriceResult{10: price(t, 10, "100", "EUR"), 11: price(t, 11, "1", "EUR")}
+			},
+			want: []wantNode{
+				{node: 3, realQty: "20", cost: "20.00 EUR", co2: "2", leadDays: 30},
+				{node: 2, realQty: "4", cost: "420.00 EUR", co2: "42", leadDays: 35},
+				{node: 1, cost: "420.00 EUR", co2: "42", leadDays: 35},
+			},
+			ownCost: "400.00 EUR", ownLead: 5,
+		},
+		{
+			name:  "SI l'écrou n'a pas de prix ALORS la roue n'a pas de coût, CO2 et délai restent calculés",
+			nodes: []CalcNode{sub(1, nil, "1", 0), wheel(id(1)), nut},
+			prices: func(t *testing.T) map[int64]PriceResult {
+				return map[int64]PriceResult{10: price(t, 10, "100", "EUR")}
+			},
+			want: []wantNode{
+				{node: 3, costErr: pricing.ErrNoQuote, missing: []int64{3}},
+				{node: 2, costErr: ErrMissingCost, missing: []int64{3}, co2: "42", leadDays: 35},
+				{node: 1, costErr: ErrMissingCost, missing: []int64{3}},
+			},
+			ownCost: "400.00 EUR", ownLead: 5,
+		},
+		{
+			name:  "SI la roue n'a pas de prix ALORS son erreur est nommée et elle est listée avant ses enfants",
+			nodes: []CalcNode{sub(1, nil, "1", 0), wheel(id(1)), nut},
+			prices: func(t *testing.T) map[int64]PriceResult {
+				return map[int64]PriceResult{11: price(t, 11, "1", "EUR")}
+			},
+			want: []wantNode{
+				{node: 3, cost: "20.00 EUR"},
+				{node: 2, costErr: pricing.ErrNoQuote, missing: []int64{2}, co2: "42", leadDays: 35},
+				{node: 1, costErr: ErrMissingCost, missing: []int64{2}},
+			},
+			ownLead: 5,
+		},
+		{
+			name:   "SI la roue et l'écrou n'ont pas de prix ALORS les deux sont listés",
+			nodes:  []CalcNode{sub(1, nil, "1", 0), wheel(id(1)), nut},
+			prices: func(t *testing.T) map[int64]PriceResult { return nil },
+			want: []wantNode{
+				{node: 2, costErr: pricing.ErrNoQuote, missing: []int64{2, 3}},
+				{node: 1, costErr: ErrMissingCost, missing: []int64{2, 3}},
+			},
+			ownLead: 5,
+		},
+		{
+			name:  "une pièce racine avec un enfant",
+			nodes: []CalcNode{wheel(nil), nut},
+			prices: func(t *testing.T) map[int64]PriceResult {
+				return map[int64]PriceResult{10: price(t, 10, "100", "EUR"), 11: price(t, 11, "1", "EUR")}
+			},
+			want:    []wantNode{{node: 2, realQty: "4", cost: "420.00 EUR", leadDays: 35}},
+			ownCost: "400.00 EUR", ownLead: 5,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := ComputeTotals(TotalsInput{Nodes: tt.nodes, Currency: "EUR", Prices: tt.prices(t)})
+			if err != nil {
+				t.Fatalf("ComputeTotals: %v", err)
+			}
+			for _, w := range tt.want {
+				n, _ := got.Node(w.node)
+				if !errors.Is(n.CostErr, w.costErr) || (w.costErr == nil && n.CostErr != nil) {
+					t.Errorf("node %d: costErr = %v, want %v", w.node, n.CostErr, w.costErr)
+				}
+				if w.costErr != nil && n.Cost != nil {
+					t.Errorf("node %d: cost = %s, want aucun coût (jamais zéro)", w.node, n.Cost)
+				}
+				if w.cost != "" && (n.Cost == nil || n.Cost.Round().String() != w.cost) {
+					t.Errorf("node %d: cost = %v, want %s", w.node, n.Cost, w.cost)
+				}
+				if w.realQty != "" && !n.RealQuantity.Equal(dec(w.realQty)) {
+					t.Errorf("node %d: real qty = %s, want %s", w.node, n.RealQuantity, w.realQty)
+				}
+				if w.co2 != "" && !n.CO2Kg.Equal(dec(w.co2)) {
+					t.Errorf("node %d: co2 = %s, want %s", w.node, n.CO2Kg, w.co2)
+				}
+				if w.leadDays != 0 && n.LeadTimeDays != w.leadDays {
+					t.Errorf("node %d: lead time = %d, want %d", w.node, n.LeadTimeDays, w.leadDays)
+				}
+				if w.missing != nil && !slices.Equal(n.MissingCost, w.missing) {
+					t.Errorf("node %d: missing = %v, want %v", w.node, n.MissingCost, w.missing)
+				}
+			}
+			roue, _ := got.Node(2)
+			switch {
+			case tt.ownCost == "" && roue.OwnCost != nil:
+				t.Errorf("roue: own cost = %s, want aucun", roue.OwnCost)
+			case tt.ownCost != "" && (roue.OwnCost == nil || roue.OwnCost.Round().String() != tt.ownCost):
+				t.Errorf("roue: own cost = %v, want %s", roue.OwnCost, tt.ownCost)
+			}
+			if roue.OwnLeadTimeDays != tt.ownLead {
+				t.Errorf("roue: own lead time = %d, want %d", roue.OwnLeadTimeDays, tt.ownLead)
+			}
+		})
 	}
 }
