@@ -4,7 +4,7 @@ status: in-progress
 branch: nlpf-69
 current_task: T6
 started: 2026-11-02
-updated: 2026-11-02
+updated: 2026-11-03
 ---
 
 # State: BOM (C)
@@ -99,11 +99,12 @@ T1-T5 terminées (5/9). Prochaine : T6 (service BOM).
   enfants ; délai = max(enfants) + (livraison + production). Exemple : Roue 4 × 100 € + Écrou 5 × 1 € → 105 €/roue,
   420 €, 20 écrous, 35 j. Conséquence pour T6 : retirer le rejet `ErrInvalidTree` « part node has children » de
   `ComputeTotals` (T5) et ajouter les tests de l'exemple ; le service n'a rien à refuser.
+- 2026-11-03 — ADR 0008 passée à `Accepté` par Arthur.presle.
 
 ## Blockers
 
-- ADR 0008 doit passer à `Accepté` par un humain avant de modifier `internal/bom/totals.go` et de faire T6.
-  (Blocage T3 levé le 2026-11-02 : ADR 0006 et 0007 acceptées par Arthur.presle.)
+Aucun. (Blocage T6 levé le 2026-11-03 : ADR 0008 acceptée par Arthur.presle. Blocage T3 levé le 2026-11-02 :
+ADR 0006 et 0007 acceptées par Arthur.presle.)
 
 ## Verification Report(s)
 

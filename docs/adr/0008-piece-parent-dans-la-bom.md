@@ -1,5 +1,5 @@
 # 0008 — Une pièce peut avoir des enfants dans la BOM
-Statut : Proposé — Date : 2026-11-03 — Décideurs : —
+Statut : Accepté — Date : 2026-11-03 — Décideurs : Arthur.presle
 
 ## Contexte
 bom-tree-editor (`docs/features.md` l. 105) : « ajouter une pièce du catalogue sous un nœud ». La spec ne dit pas
