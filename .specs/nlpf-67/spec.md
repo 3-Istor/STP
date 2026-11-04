@@ -249,7 +249,7 @@ et continue », pas d'une déduction faite à l'invocation précédente.
   - **Done when**: tests table-driven couvrent 499/500/1 000 unités, exact 9 500 EUR, avant/pendant/
     après validité et bornes de dates, plusieurs contrats sans choix et notes hors de [0,5].
 
-- [ ] T6: Exposer l'historique et les statistiques de prix (R5, R8)
+- [x] T6: Exposer l'historique et les statistiques de prix (R5, R8)
   - **Files**: `internal/pricing/pricing.go`, `internal/pricing/queries.sql`, nouveaux
     `history.go`, `statistics.go`, tests associés, code sqlc et handlers selon contrat T1.
   - **Approach**: extension coordonnée avec le propriétaire live-price-feed, requêtes filtrées par

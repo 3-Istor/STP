@@ -2,7 +2,7 @@
 id: nlpf-67
 status: in-progress
 branch: nlpf-67
-current_task: T6
+current_task: T7
 started: 2026-11-04
 updated: 2026-11-05
 ---
@@ -17,7 +17,8 @@ T2 terminée : tests de caractérisation et baseline unitaires verts avant exten
 T3 terminée : migration, génération sqlc stable et tests PostgreSQL réels verts.
 T4 terminée : services purs catalogue, stockage pgx isolé et API avec tests d'intégration verts.
 T5 terminée : fournisseurs/contrats par API et calcul de remise isolé vérifiés.
-T6 en cours : historique, statistiques annuelles et lecture composée fournisseur.
+T6 terminée : historique, statistiques et API fournisseur vérifiés.
+T7 en cours : interface fournisseur et tests navigateur sur trois moteurs.
 
 ## Task Log
 
@@ -117,6 +118,19 @@ T6 en cours : historique, statistiques annuelles et lecture composée fournisseu
   les lectures contrat sont atomiques par statement. Nouvelles associations vers archives refusées ;
   anciennes conservées et PATCH informatif possible. Expiration datée visible par API.
 - **Not done**: application aux vrais totaux BOM (T8/NLPF-69), historique/UI (T6/T7), CI distante.
+
+### T6 : Historique et statistiques — 2026-11-05
+- **Status**: completed pour lecture/calcul ; le flux entrant et son signal restent NLPF-68.
+- **Commit**: 881c14f — `nlpf-67: T6 - exposer historique et statistiques fournisseurs`.
+- **Files**: pricing history/statistics, adapter pricingstore et sqlc, projection HTTP fournisseur,
+  câblage server et tests Go/PostgreSQL/HTTP.
+- **Checks**: make lint et make test PostgreSQL18/CI=true PASS. Revue indépendante des ratios,
+  année bissextile et lectures atomiques ; génération sqlc stable.
+- **Failure case**: prix futur exclu, référence hors fenêtre exclue des extrema, division périodique
+  arrondie seulement à la sortie ; prix courant conservé quand fenêtre/référence manquent.
+- **Provenance**: chaque résultat donne prix, devise, source, dates et IDs. À défaut de paramètre,
+  as_of est la date maximale persistée, explicitement observée ; aucune horloge réelle simulée.
+- **Not done**: simulateur/ingestion/SSE NLPF-68, UI T7, intégration BOM/seed T8/T9 et CI distante.
 
 ## Decisions
 
