@@ -133,7 +133,9 @@ func TestMarshalJSON(t *testing.T) {
 	}{
 		{"pads to minor units", mustParse(t, "92", "EUR"), `{"amount":"92.00","currency":"EUR"}`},
 		{"keeps extra precision, no rounding", mustParse(t, "0.005", "EUR"), `{"amount":"0.005","currency":"EUR"}`},
+		{"keeps amount beyond floating point precision", mustParse(t, "9007199254740993.123456789", "USD"), `{"amount":"9007199254740993.123456789","currency":"USD"}`},
 		{"JPY without decimals", mustParse(t, "100", "JPY"), `{"amount":"100","currency":"JPY"}`},
+		{"JPY fractional amount is not rounded by serialization", mustParse(t, "100.5", "JPY"), `{"amount":"100.5","currency":"JPY"}`},
 		{"negative", mustParse(t, "-1.5", "USD"), `{"amount":"-1.50","currency":"USD"}`},
 	}
 	for _, tt := range tests {
@@ -159,6 +161,7 @@ func TestUnmarshalJSON(t *testing.T) {
 		wantErr    bool
 	}{
 		{"string amount", `{"amount":"92.00","currency":"EUR"}`, "92", "EUR", nil, false},
+		{"string amount beyond floating point precision", `{"amount":"9007199254740993.123456789","currency":"USD"}`, "9007199254740993.123456789", "USD", nil, false},
 		{"numeric amount refused", `{"amount":92.0,"currency":"EUR"}`, "", "", nil, true},
 		{"unknown currency", `{"amount":"1","currency":"ABC"}`, "", "", ErrUnknownCurrency, true},
 		{"missing amount", `{"currency":"EUR"}`, "", "", ErrInvalidAmount, true},
