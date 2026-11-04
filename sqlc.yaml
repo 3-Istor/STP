@@ -29,3 +29,11 @@ sql:
         <<: *go
         package: pricingdb
         out: internal/pricing/pricingdb
+  - engine: postgresql
+    schema: migrations
+    queries: internal/supplier/queries.sql
+    gen:
+      go:
+        <<: *go
+        package: supplierdb
+        out: internal/supplier/supplierdb

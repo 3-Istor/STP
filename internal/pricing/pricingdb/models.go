@@ -29,6 +29,27 @@ type BomNode struct {
 	Quantity decimal.Decimal
 }
 
+type Contract struct {
+	ID         int64
+	SupplierID int64
+	StartsOn   pgtype.Date
+	EndsOn     pgtype.Date
+	Conditions string
+	CreatedAt  time.Time
+}
+
+type ContractOffer struct {
+	ContractID int64
+	OfferID    int64
+	SupplierID int64
+}
+
+type ContractTier struct {
+	ContractID      int64
+	MinQuantity     decimal.Decimal
+	DiscountPercent decimal.Decimal
+}
+
 type FxQuote struct {
 	ID            int64
 	BaseCurrency  string
@@ -49,14 +70,32 @@ type Offer struct {
 	LeadTimeDays  int32
 	OriginCountry string
 	CreatedAt     time.Time
+	QualityScore  decimal.NullDecimal
+	ArchivedAt    pgtype.Timestamptz
 }
 
 type Part struct {
-	ID        int64
-	Name      string
-	Category  string
-	Zone      string
-	CreatedAt time.Time
+	ID                    int64
+	Name                  string
+	Category              string
+	Zone                  string
+	CreatedAt             time.Time
+	MassKg                decimal.NullDecimal
+	Co2KgPerUnit          decimal.NullDecimal
+	RecycledPercent       decimal.NullDecimal
+	RecyclabilityPercent  decimal.NullDecimal
+	ManufacturingAmount   decimal.NullDecimal
+	ManufacturingCurrency pgtype.Text
+	ProductionDays        pgtype.Int4
+	LaborHours            decimal.NullDecimal
+	HourlyAmount          decimal.NullDecimal
+	HourlyCurrency        pgtype.Text
+	ArchivedAt            pgtype.Timestamptz
+}
+
+type PartAlternative struct {
+	PartLowID  int64
+	PartHighID int64
 }
 
 type PriceQuote struct {
@@ -91,7 +130,9 @@ type PriceSnapshotQuote struct {
 }
 
 type Supplier struct {
-	ID        int64
-	Name      string
-	CreatedAt time.Time
+	ID           int64
+	Name         string
+	CreatedAt    time.Time
+	QualityScore decimal.NullDecimal
+	TrustScore   decimal.NullDecimal
 }
