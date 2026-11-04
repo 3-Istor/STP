@@ -8,11 +8,13 @@ import (
 	"net/http"
 
 	"bomstudio/internal/catalog"
+	"bomstudio/internal/supplier"
 )
 
 // Services reçoit les services déjà câblés ; aucun accès base n'est construit dans les handlers.
 type Services struct {
-	Catalog *catalog.Service
+	Catalog  *catalog.Service
+	Supplier *supplier.Service
 }
 
 // NewRouter construit le routeur de l'application.
@@ -24,6 +26,9 @@ func NewRouter(services ...Services) http.Handler {
 	})
 	if len(services) > 0 && services[0].Catalog != nil {
 		catalogHandler{service: services[0].Catalog}.register(mux)
+	}
+	if len(services) > 0 && services[0].Supplier != nil {
+		supplierHandler{service: services[0].Supplier}.register(mux)
 	}
 	return mux
 }

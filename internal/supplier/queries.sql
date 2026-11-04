@@ -60,3 +60,40 @@ SELECT * FROM contract_tiers WHERE contract_id = $1 ORDER BY min_quantity;
 
 -- name: DeleteContractTiers :exec
 DELETE FROM contract_tiers WHERE contract_id = $1;
+
+-- name: LockSupplierForUpdate :one
+SELECT * FROM suppliers WHERE id = $1 FOR UPDATE;
+
+-- name: DeleteRemovedContractOffers :exec
+DELETE FROM contract_offers
+WHERE contract_id = sqlc.arg(contract_id)
+    AND NOT (offer_id = ANY(sqlc.arg(offer_ids)::bigint[]));
+
+-- Lectures composites dans un seul snapshot de statement PostgreSQL.
+
+-- name: ReadCompleteContract :one
+SELECT c.id, c.supplier_id, c.starts_on, c.ends_on, c.conditions,
+    ARRAY(SELECT co.offer_id FROM contract_offers co WHERE co.contract_id=c.id ORDER BY co.offer_id)::bigint[] AS offer_ids,
+    COALESCE((SELECT jsonb_agg(jsonb_build_object('min_quantity', t.min_quantity::text,
+        'discount_percent', t.discount_percent::text) ORDER BY t.min_quantity)
+        FROM contract_tiers t WHERE t.contract_id=c.id), '[]'::jsonb)::jsonb AS tiers_json
+FROM contracts c
+WHERE c.id=$1;
+
+-- name: ReadSupplierContracts :many
+SELECT c.id, c.supplier_id, c.starts_on, c.ends_on, c.conditions,
+    ARRAY(SELECT co.offer_id FROM contract_offers co WHERE co.contract_id=c.id ORDER BY co.offer_id)::bigint[] AS offer_ids,
+    COALESCE((SELECT jsonb_agg(jsonb_build_object('min_quantity', t.min_quantity::text,
+        'discount_percent', t.discount_percent::text) ORDER BY t.min_quantity)
+        FROM contract_tiers t WHERE t.contract_id=c.id), '[]'::jsonb)::jsonb AS tiers_json
+FROM contracts c
+WHERE c.supplier_id=$1 ORDER BY c.id;
+
+-- name: ReadOfferContracts :many
+SELECT c.id, c.supplier_id, c.starts_on, c.ends_on, c.conditions,
+    ARRAY(SELECT co.offer_id FROM contract_offers co WHERE co.contract_id=c.id ORDER BY co.offer_id)::bigint[] AS offer_ids,
+    COALESCE((SELECT jsonb_agg(jsonb_build_object('min_quantity', t.min_quantity::text,
+        'discount_percent', t.discount_percent::text) ORDER BY t.min_quantity)
+        FROM contract_tiers t WHERE t.contract_id=c.id), '[]'::jsonb)::jsonb AS tiers_json
+FROM contracts c
+WHERE EXISTS (SELECT 1 FROM contract_offers co WHERE co.contract_id=c.id AND co.offer_id=$1) ORDER BY c.id;

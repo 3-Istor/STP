@@ -122,6 +122,22 @@ func (q *Queries) DeleteContractTiers(ctx context.Context, contractID int64) err
 	return err
 }
 
+const deleteRemovedContractOffers = `-- name: DeleteRemovedContractOffers :exec
+DELETE FROM contract_offers
+WHERE contract_id = $1
+    AND NOT (offer_id = ANY($2::bigint[]))
+`
+
+type DeleteRemovedContractOffersParams struct {
+	ContractID int64
+	OfferIds   []int64
+}
+
+func (q *Queries) DeleteRemovedContractOffers(ctx context.Context, arg DeleteRemovedContractOffersParams) error {
+	_, err := q.db.Exec(ctx, deleteRemovedContractOffers, arg.ContractID, arg.OfferIds)
+	return err
+}
+
 const getContract = `-- name: GetContract :one
 SELECT id, supplier_id, starts_on, ends_on, conditions, created_at FROM contracts WHERE id = $1
 `
@@ -315,6 +331,156 @@ func (q *Queries) LockContractForUpdate(ctx context.Context, id int64) (Contract
 		&i.CreatedAt,
 	)
 	return i, err
+}
+
+const lockSupplierForUpdate = `-- name: LockSupplierForUpdate :one
+SELECT id, name, created_at, quality_score, trust_score FROM suppliers WHERE id = $1 FOR UPDATE
+`
+
+func (q *Queries) LockSupplierForUpdate(ctx context.Context, id int64) (Supplier, error) {
+	row := q.db.QueryRow(ctx, lockSupplierForUpdate, id)
+	var i Supplier
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.CreatedAt,
+		&i.QualityScore,
+		&i.TrustScore,
+	)
+	return i, err
+}
+
+const readCompleteContract = `-- name: ReadCompleteContract :one
+
+SELECT c.id, c.supplier_id, c.starts_on, c.ends_on, c.conditions,
+    ARRAY(SELECT co.offer_id FROM contract_offers co WHERE co.contract_id=c.id ORDER BY co.offer_id)::bigint[] AS offer_ids,
+    COALESCE((SELECT jsonb_agg(jsonb_build_object('min_quantity', t.min_quantity::text,
+        'discount_percent', t.discount_percent::text) ORDER BY t.min_quantity)
+        FROM contract_tiers t WHERE t.contract_id=c.id), '[]'::jsonb)::jsonb AS tiers_json
+FROM contracts c
+WHERE c.id=$1
+`
+
+type ReadCompleteContractRow struct {
+	ID         int64
+	SupplierID int64
+	StartsOn   pgtype.Date
+	EndsOn     pgtype.Date
+	Conditions string
+	OfferIds   []int64
+	TiersJson  []byte
+}
+
+// Lectures composites dans un seul snapshot de statement PostgreSQL.
+func (q *Queries) ReadCompleteContract(ctx context.Context, id int64) (ReadCompleteContractRow, error) {
+	row := q.db.QueryRow(ctx, readCompleteContract, id)
+	var i ReadCompleteContractRow
+	err := row.Scan(
+		&i.ID,
+		&i.SupplierID,
+		&i.StartsOn,
+		&i.EndsOn,
+		&i.Conditions,
+		&i.OfferIds,
+		&i.TiersJson,
+	)
+	return i, err
+}
+
+const readOfferContracts = `-- name: ReadOfferContracts :many
+SELECT c.id, c.supplier_id, c.starts_on, c.ends_on, c.conditions,
+    ARRAY(SELECT co.offer_id FROM contract_offers co WHERE co.contract_id=c.id ORDER BY co.offer_id)::bigint[] AS offer_ids,
+    COALESCE((SELECT jsonb_agg(jsonb_build_object('min_quantity', t.min_quantity::text,
+        'discount_percent', t.discount_percent::text) ORDER BY t.min_quantity)
+        FROM contract_tiers t WHERE t.contract_id=c.id), '[]'::jsonb)::jsonb AS tiers_json
+FROM contracts c
+WHERE EXISTS (SELECT 1 FROM contract_offers co WHERE co.contract_id=c.id AND co.offer_id=$1) ORDER BY c.id
+`
+
+type ReadOfferContractsRow struct {
+	ID         int64
+	SupplierID int64
+	StartsOn   pgtype.Date
+	EndsOn     pgtype.Date
+	Conditions string
+	OfferIds   []int64
+	TiersJson  []byte
+}
+
+func (q *Queries) ReadOfferContracts(ctx context.Context, offerID int64) ([]ReadOfferContractsRow, error) {
+	rows, err := q.db.Query(ctx, readOfferContracts, offerID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ReadOfferContractsRow
+	for rows.Next() {
+		var i ReadOfferContractsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.SupplierID,
+			&i.StartsOn,
+			&i.EndsOn,
+			&i.Conditions,
+			&i.OfferIds,
+			&i.TiersJson,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const readSupplierContracts = `-- name: ReadSupplierContracts :many
+SELECT c.id, c.supplier_id, c.starts_on, c.ends_on, c.conditions,
+    ARRAY(SELECT co.offer_id FROM contract_offers co WHERE co.contract_id=c.id ORDER BY co.offer_id)::bigint[] AS offer_ids,
+    COALESCE((SELECT jsonb_agg(jsonb_build_object('min_quantity', t.min_quantity::text,
+        'discount_percent', t.discount_percent::text) ORDER BY t.min_quantity)
+        FROM contract_tiers t WHERE t.contract_id=c.id), '[]'::jsonb)::jsonb AS tiers_json
+FROM contracts c
+WHERE c.supplier_id=$1 ORDER BY c.id
+`
+
+type ReadSupplierContractsRow struct {
+	ID         int64
+	SupplierID int64
+	StartsOn   pgtype.Date
+	EndsOn     pgtype.Date
+	Conditions string
+	OfferIds   []int64
+	TiersJson  []byte
+}
+
+func (q *Queries) ReadSupplierContracts(ctx context.Context, supplierID int64) ([]ReadSupplierContractsRow, error) {
+	rows, err := q.db.Query(ctx, readSupplierContracts, supplierID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ReadSupplierContractsRow
+	for rows.Next() {
+		var i ReadSupplierContractsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.SupplierID,
+			&i.StartsOn,
+			&i.EndsOn,
+			&i.Conditions,
+			&i.OfferIds,
+			&i.TiersJson,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const updateContract = `-- name: UpdateContract :one
