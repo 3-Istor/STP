@@ -2,7 +2,7 @@
 id: nlpf-67
 status: in-progress
 branch: nlpf-67
-current_task: T4
+current_task: T5
 started: 2026-11-04
 updated: 2026-11-04
 ---
@@ -15,7 +15,8 @@ Joe a explicitement accepté les cinq ADR 0006–0010 et demandé de poursuivre.
 décisions/contrats documentés ; leurs dépendances techniques non livrées restent visibles.
 T2 terminée : tests de caractérisation et baseline unitaires verts avant extension.
 T3 terminée : migration, génération sqlc stable et tests PostgreSQL réels verts.
-T4 en cours : services purs catalogue, stockage pgx isolé et API avec tests d'intégration.
+T4 terminée : services purs catalogue, stockage pgx isolé et API avec tests d'intégration verts.
+T5 en cours : fournisseurs, contrats et calcul de remise isolé.
 
 ## Task Log
 
@@ -91,6 +92,18 @@ T4 en cours : services purs catalogue, stockage pgx isolé et API avec tests d'i
 - **Failure case**: mauvais fournisseur lié au contrat, décimal non fini, arrondi d'un NUMERIC
   >2^53, référence effacée : tests PostgreSQL bloquants, dont 39 cas NaN/±Infinity.
 - **Not done**: CI distante non lancée, aucune migration sur base utilisateur, services/API en T4.
+
+### T4 : Catalogue par API — 2026-11-04
+- **Status**: completed.
+- **Commit**: 4e98c26 — `nlpf-67: T4 - livrer le catalogue par API`.
+- **Files**: types/service/validation catalog, adapter catalogstore et requête OfferHasQuotes,
+  handlers httpapi/catalog, câblage cmd/server, tests métier/PostgreSQL/HTTP.
+- **Checks**: make lint et make test avec CI=true sur PostgreSQL18 jetable PASS ; tests -race
+  catalog/bom PASS, y compris absence de dépendance pgx/HTTP dans le domaine.
+- **Failure case**: devise/fournisseur modifié après cotation → 409 ; prix/CO2 >2^53 exacts ;
+  archivage conserve lecture BOM. Verrou d'ajout FOR SHARE testé contre UPDATE via NOWAIT.
+- **Not done**: UI fournisseur, contrats/remises, statistiques, intégration prix/BOM et CI distante.
+- **Resume**: reprise après interruption de quota ; arbre Git propre et commit T4 présents.
 
 ## Decisions
 

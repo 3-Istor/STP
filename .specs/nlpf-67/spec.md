@@ -229,7 +229,7 @@ et continue », pas d'une déduction faite à l'invocation précédente.
   - **Done when**: up/down/up sur base jetable fonctionne, migration des données minimales existantes
     couverte, contraintes et aller-retour décimal testés, génération stable ; aucune migration ancienne modifiée.
 
-- [ ] T4: Livrer le catalogue par API, alternatives et archivage (R1–R3, R8)
+- [x] T4: Livrer le catalogue par API, alternatives et archivage (R1–R3, R8)
   - **Files**: `internal/catalog/catalog.go`, nouveaux `service.go`, `repository.go`, tests associés,
     `internal/httpapi/catalog.go`, `internal/httpapi/router.go`, `cmd/server/main.go`.
   - **Approach**: modèle complet, service/repository dans catalog et pool pgx dans le câblage ;
