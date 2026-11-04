@@ -2,7 +2,7 @@
 id: nlpf-67
 status: in-progress
 branch: nlpf-67
-current_task: T2
+current_task: T3
 started: 2026-11-04
 updated: 2026-11-04
 ---
@@ -13,7 +13,8 @@ updated: 2026-11-04
 
 Joe a explicitement accepté les cinq ADR 0006–0010 et demandé de poursuivre. T1 terminée pour les
 décisions/contrats documentés ; leurs dépendances techniques non livrées restent visibles.
-T2 en cours : protéger l'existant et obtenir une baseline exécutable avant extension.
+T2 terminée : tests de caractérisation et baseline unitaires verts avant extension.
+T3 en cours : nouvelle migration, requêtes sqlc et vérifications PostgreSQL réelles.
 
 ## Task Log
 
@@ -65,6 +66,19 @@ T2 en cours : protéger l'existant et obtenir une baseline exécutable avant ext
   cinq ADR à la demande de l'humain. Les contrats d'intégration restent la cible des tâches concernées.
 - **Next**: T2, tests de caractérisation et baseline avant modification du comportement.
 
+### T2 : Protection du socle — 2026-11-04
+- **Status**: completed.
+- **Commit**: 39b63b8 — `nlpf-67: T2 - proteger precision et provenance du socle`.
+- **Files**: catalog/stub_test.go, bom/service_test.go, money/money_test.go,
+  httpapi/router_test.go : conservation devise/précision/provenance et contrat de santé.
+- **Failure case**: conversion float d'un montant >2^53, arrondi prématuré de JPY fractionnaire,
+  perte de source/date d'une cotation ou Content-Type de santé changé : tests en défaut.
+- **Checks**: `make test DATABASE_URL=` PASS avec Go 1.27.2 et gofmt ; intégration DB volontairement
+  désactivée pour cette baseline unitaire. `npm ci`, lint/build web PASS avec Node 22.23.4.
+  `make lint` Go en cours ; PostgreSQL 18 jetable démarré pour les validations de T3.
+- **Environment**: Go 1.27.2 téléchargé depuis source officielle sous /tmp et SHA256 vérifié,
+  aucun changement go.mod ; caches /tmp isolés. Aucun Go/Node global installé ou configuration modifiée.
+
 ## Decisions
 
 - 2026-11-04 — Utilisateur : conserver l'intégralité de NLPF-67, y compris seed et Multipla.
@@ -84,8 +98,9 @@ T2 en cours : protéger l'existant et obtenir une baseline exécutable avant ext
 
 - Contrats à confirmer avec NLPF-68 (Joe : prix/historique/horloge/SSE/conversion) et NLPF-69
   (Arthur Presle : BOM/éditeur/totaux) ; ces fonctions sont absentes du code inspecté.
-- Go absent de PATH et des emplacements usuels inspectés : make test échoue. Node 18.19.1 ne
-  satisfait pas engines du Vite verrouillé (^20.19.0 || >=22.12.0) ; CI configurée en Node 24.
+- Prérequis Go résolu temporairement : /tmp/stp-go/go/bin/go (1.27.2), caches /tmp/stp-go-cache et
+  /tmp/stp-go-mod ; Node compatible /tmp/cnp-node22/node-v22.23.4-linux-x64/bin/node (22.23.4).
+  Le PATH système reste inchangé. CI utilise Node 24 ; les tests locaux frontend baseline ont utilisé 22.
 - L'ajout @playwright/test est autorisé par l'acceptation de l'ADR 0010 ; aucune dépendance ajoutée
   à ce point, versions et navigateurs à vérifier lors de T7.
 - CI courante non consultée ; lint/tests/build métier non exécutés pendant cette planification.

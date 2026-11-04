@@ -207,7 +207,7 @@ et continue », pas d'une déduction faite à l'invocation précédente.
   - **Done when**: accord explicite sur les décisions, ADR acceptées par l'humain et contrats
     d'intégration disponibles ; dépendances non livrées encore visibles comme blocages de tâches.
 
-- [ ] T2: Protéger le socle avant extension (R1–R4, R8)
+- [x] T2: Protéger le socle avant extension (R1–R4, R8)
   - **Files**: `internal/catalog/stub_test.go`, `internal/bom/service_test.go`,
     `internal/httpapi/router_test.go`, nouveaux tests de compatibilité ciblés si nécessaires.
   - **Approach**: exécuter les tests actuels et compléter uniquement les garanties manquantes :
