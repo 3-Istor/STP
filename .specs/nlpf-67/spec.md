@@ -148,6 +148,8 @@ et continue », pas d'une déduction faite à l'invocation précédente.
   Refuser mini > maxi avec erreur métier explicite ; conserver les devises d'origine. Rechercher par
   nom et filtrer par catégorie, fournisseur et zone ; prix courant lu dans les cotations, jamais saisi
   dans le catalogue ni remplacé par zéro si manquant.
+  Décision utilisateur du 2026-11-04 : après une première cotation, refuser tout changement de
+  devise ou fournisseur avec conflit explicite ; créer une autre offre et archiver l'ancienne.
 - **R3 — Alternatives et archivage.** Déclarer/lire A↔B sans doublons ; suppression d'une pièce ou
   offre utilisée dans une BOM transformée en archivage. Exclusion du catalogue courant, lecture par
   identifiant conservée pour les BOM. Vérifier référence et suppression/archivage dans la même
@@ -216,7 +218,7 @@ et continue », pas d'une déduction faite à l'invocation précédente.
   - **Done when**: tests de caractérisation verts, échecs observables si une garantie est cassée ;
     état initial des contrôles consigné, sans affaiblir de tests existants.
 
-- [ ] T3: Étendre la persistance catalogue/fournisseurs approuvée (R1–R4, R7, R8)
+- [x] T3: Étendre la persistance catalogue/fournisseurs approuvée (R1–R4, R7, R8)
   - **Files**: nouvelle `migrations/00002_catalogue_fournisseurs.sql` (numéro à revalider),
     `internal/catalog/queries.sql`, nouveaux `internal/supplier/queries.sql`, `sqlc.yaml`,
     code généré `internal/{catalog,supplier}/*db/`, tests d'intégration associés.

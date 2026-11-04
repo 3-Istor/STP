@@ -2,7 +2,7 @@
 id: nlpf-67
 status: in-progress
 branch: nlpf-67
-current_task: T3
+current_task: T4
 started: 2026-11-04
 updated: 2026-11-04
 ---
@@ -14,7 +14,8 @@ updated: 2026-11-04
 Joe a explicitement accepté les cinq ADR 0006–0010 et demandé de poursuivre. T1 terminée pour les
 décisions/contrats documentés ; leurs dépendances techniques non livrées restent visibles.
 T2 terminée : tests de caractérisation et baseline unitaires verts avant extension.
-T3 en cours : nouvelle migration, requêtes sqlc et vérifications PostgreSQL réelles.
+T3 terminée : migration, génération sqlc stable et tests PostgreSQL réels verts.
+T4 en cours : services purs catalogue, stockage pgx isolé et API avec tests d'intégration.
 
 ## Task Log
 
@@ -79,6 +80,18 @@ T3 en cours : nouvelle migration, requêtes sqlc et vérifications PostgreSQL r�
 - **Environment**: Go 1.27.2 téléchargé depuis source officielle sous /tmp et SHA256 vérifié,
   aucun changement go.mod ; caches /tmp isolés. Aucun Go/Node global installé ou configuration modifiée.
 
+### T3 : Persistance du catalogue et contrats — 2026-11-04
+- **Status**: completed.
+- **Commit**: 2fb6042 — `nlpf-67: T3 - etendre catalogue et contrats en base`.
+- **Files**: nouvelle migration 00002, queries catalog/supplier, sqlc.yaml et code généré ;
+  migrations/catalogue_integration_test.go couvre les contraintes et la conservation des références.
+- **Checks**: up/down/up sur PostgreSQL 18 jetable PASS ; pièces/offres insérées avant 00002
+  gardent ID, attributs d'origine et bornes USD exactes, nouveaux attributs NULL. Génération sqlc
+  stable contrôlée par SHA256 ; make lint et make test avec CI=true et vraie DATABASE_URL PASS.
+- **Failure case**: mauvais fournisseur lié au contrat, décimal non fini, arrondi d'un NUMERIC
+  >2^53, référence effacée : tests PostgreSQL bloquants, dont 39 cas NaN/±Infinity.
+- **Not done**: CI distante non lancée, aucune migration sur base utilisateur, services/API en T4.
+
 ## Decisions
 
 - 2026-11-04 — Utilisateur : conserver l'intégralité de NLPF-67, y compris seed et Multipla.
@@ -93,6 +106,9 @@ T3 en cours : nouvelle migration, requêtes sqlc et vérifications PostgreSQL r�
 - 2026-11-04 — Joe : « accepte toutes les adere et continue stp ». Acceptation explicite des ADR
   0006–0010 et autorisation de leur application, dont @playwright/test et les trois moteurs navigateur.
   Enregistrement des en-têtes à sa demande ; les ADR 0001–0005 déjà acceptées restent inchangées.
+- 2026-11-04 — Utilisateur : pour changer devise/fournisseur d'une offre déjà cotée, créer une
+  nouvelle offre et archiver l'ancienne ; refuser le changement sur l'offre cotée. Règle enregistrée
+  dans spec/integration sans réécrire les ADR acceptées ni modifier le modèle des cotations.
 
 ## Blockers
 

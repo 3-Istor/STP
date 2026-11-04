@@ -70,6 +70,10 @@ décimal numérique au lieu de chaîne, bornes ou dates invalides : 400. Conflit
 référence empêchant une action : 409. Une opération idempotente ne crée pas de doublon.
 PATCH absent = champ inchangé, null explicite d'un champ obligatoire = refus, pas remise à zéro.
 Le DTO de liste donne une pièce et ses offres, pas une ligne pièce dupliquée par fournisseur.
+Après première cotation, PATCH de devise/fournisseur différent renvoie 409 sans altérer l'offre
+ni son historique : décision explicite de l'utilisateur du 2026-11-04. Créer une nouvelle offre et
+archiver l'ancienne. Les bornes de sortie sont des objets Money montant/devise ; les entrées gardent
+les chaînes price_min/price_max avec la devise de l'offre explicite.
 
 ## Données proposées
 
