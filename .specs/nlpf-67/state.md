@@ -41,6 +41,13 @@ et confirmation des contrats d'intégration ; T2–T10 non commencées.
 - **Not done**: acceptation des ADR, confirmation des contrats d'équipe, T2–T10, dépendances,
   migrations et code applicatif. Aucun push ni changement distant.
 
+### T1 : Préparation consignée — 2026-11-04
+- **Status**: in-progress, en attente de décision humaine sur les propositions.
+- **Commit**: 0bb6331 — `nlpf-67: T1 - proposer les decisions et contrats integration`.
+- **Notes**: commit documentaire uniquement, qui inclut le plan initial non commité au début de
+  l'exécution. T1 n'est pas terminée et sa case reste vide ; aucune acceptation d'ADR automatisée.
+- **Checks**: `git diff --cached --check` avant commit : PASS ; nouvelle paire spec/state : PASS.
+
 ## Decisions
 
 - 2026-11-04 — Utilisateur : conserver l'intégralité de NLPF-67, y compris seed et Multipla.
