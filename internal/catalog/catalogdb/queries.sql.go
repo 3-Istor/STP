@@ -677,6 +677,17 @@ func (q *Queries) LockPartOffersForUpdate(ctx context.Context, partID int64) ([]
 	return items, nil
 }
 
+const offerHasQuotes = `-- name: OfferHasQuotes :one
+SELECT EXISTS (SELECT 1 FROM price_quotes p WHERE p.offer_id = $1) AS quoted
+`
+
+func (q *Queries) OfferHasQuotes(ctx context.Context, offerID int64) (bool, error) {
+	row := q.db.QueryRow(ctx, offerHasQuotes, offerID)
+	var quoted bool
+	err := row.Scan(&quoted)
+	return quoted, err
+}
+
 const offerHasReferences = `-- name: OfferHasReferences :one
 SELECT EXISTS (
     SELECT 1 FROM price_quotes p WHERE p.offer_id = $1

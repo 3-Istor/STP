@@ -118,6 +118,9 @@ SELECT EXISTS (
     UNION ALL SELECT 1 FROM contract_offers c WHERE c.offer_id = sqlc.arg(offer_id)
 ) AS referenced;
 
+-- name: OfferHasQuotes :one
+SELECT EXISTS (SELECT 1 FROM price_quotes p WHERE p.offer_id = $1) AS quoted;
+
 -- name: ArchiveOffer :one
 UPDATE offers SET archived_at = COALESCE(archived_at, sqlc.arg(archived_at)::timestamptz)
 WHERE id = sqlc.arg(id)

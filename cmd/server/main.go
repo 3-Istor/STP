@@ -4,6 +4,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
@@ -11,6 +12,10 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgxpool"
+
+	"bomstudio/internal/catalog"
+	"bomstudio/internal/catalog/catalogstore"
 	"bomstudio/internal/httpapi"
 )
 
@@ -25,10 +30,18 @@ func run() error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
+	// Voir ADR 0006 : seule la composition importe l'adapter de stockage PostgreSQL.
+	pool, err := pgxpool.New(ctx, envOr("DATABASE_URL", "postgres://bom:bom@localhost:5432/bomstudio?sslmode=disable"))
+	if err != nil {
+		return fmt.Errorf("configure database: %w", err)
+	}
+	defer pool.Close()
+	catalogService := catalog.NewService(catalogstore.New(pool), time.Now)
+
 	addr := ":" + envOr("PORT", "8080")
 	srv := &http.Server{
 		Addr:              addr,
-		Handler:           httpapi.NewRouter(),
+		Handler:           httpapi.NewRouter(httpapi.Services{Catalog: catalogService}),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 

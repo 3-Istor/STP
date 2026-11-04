@@ -6,12 +6,25 @@ import (
 	"encoding/json"
 	"log/slog"
 	"net/http"
+
+	"bomstudio/internal/catalog"
 )
 
+// Services reçoit les services déjà câblés ; aucun accès base n'est construit dans les handlers.
+type Services struct {
+	Catalog *catalog.Service
+}
+
 // NewRouter construit le routeur de l'application.
-func NewRouter() http.Handler {
+func NewRouter(services ...Services) http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", healthz)
+	mux.HandleFunc("/api/v1/", func(w http.ResponseWriter, _ *http.Request) {
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": "route API introuvable"})
+	})
+	if len(services) > 0 && services[0].Catalog != nil {
+		catalogHandler{service: services[0].Catalog}.register(mux)
+	}
 	return mux
 }
 
