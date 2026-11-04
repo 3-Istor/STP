@@ -1,5 +1,5 @@
 # 0007 — Date de validité et sélection des remises
-Statut : Proposé — Date : 2026-11-04 — Décideurs : à renseigner par l'humain
+Statut : Accepté — Date : 2026-11-04 — Décideurs : Joe (accord explicite dans le chat)
 
 ## Contexte
 `docs/features.md:230–246` fixe la quantité par voiture × volume, le choix entre contrats actifs

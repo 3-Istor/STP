@@ -19,7 +19,8 @@ fournisseurs et présenter leurs offres avec leur historique de prix. Le ticket 
 données déterministe permettant d'ouvrir la Fiat Multipla et ses totaux dans l'éditeur de BOM.
 Le 2026-11-04, l'utilisateur a confirmé ce périmètre complet, avec des dépendances BOM/prix explicitement
 bloquantes, et les échelles : notes de qualité/confiance de 0 à 5, recyclabilité de 0 à 100 %.
-Ce document prépare l'implémentation ; il ne vaut pas approbation de ses propositions d'architecture.
+L'utilisateur a ensuite accepté explicitement les ADR 0006–0010 et demandé de poursuivre
+l'implémentation le 2026-11-04 ; leurs choix guident désormais cette exécution.
 
 ## Research Findings
 
@@ -82,7 +83,10 @@ Le catalogue peut être livré en premier et testé avec des fixtures de cotatio
 remplacent pas le flux réel ni l'éditeur pour déclarer NLPF-67 terminé. Ne pas absorber implicitement
 l'implémentation de ces autres features. Pas d'autre modèle de voiture exigé dans cette première livraison.
 
-#### Décisions humaines requises avant le code concerné
+#### Décisions d'architecture acceptées le 2026-11-04
+
+Les paragraphes D1–D5 ci-dessous décrivent le cadrage initial. Les ADR 0006–0010 sont désormais
+Accepté sur instruction explicite de Joe ; leurs textes font foi pour les choix retenus.
 
 - **D1 — Modèle partagé et interfaces (AGENTS §6–8).** Proposition : enrichir parts/offers/suppliers,
   ajouter archivage, liens d'alternatives symétriques, contrats, paliers et associations contrat–offre ;
@@ -124,11 +128,12 @@ Une ou plusieurs nouvelles ADR au prochain numéro disponible devront documenter
 retenues. L'agent les laisse Proposé ; seul un humain renseigne Décideurs et Accepté. La présente
 planification n'autorise aucune dépendance, modification de migration existante ou ADR acceptée.
 
-Depuis le début de T1 : D1→ADR 0006, D2→0007, D3→0008, D4→0009, D5→0010,
-toutes au statut Proposé. D3 précise le ratio exact pour ne pas introduire l'arrondi implicite de
+Correspondances : D1→ADR 0006, D2→0007, D3→0008, D4→0009, D5→0010,
+toutes acceptées par Joe le 2026-11-04. D3 précise le ratio exact pour ne pas introduire l'arrondi implicite de
 decimal.Div ; D4 précise les identités logiques et le périmètre initial des cotations.
-Les règles supplémentaires proposées (legacy incomplet, archivés, paliers, recherche) sont explicites
-dans ces ADR et integration.md ; elles restent soumises à l'humain, pas déduites de l'ordre d'exécuter.
+Les règles supplémentaires (legacy incomplet, archivés, paliers, recherche) sont explicites
+dans ces ADR et integration.md. L'acceptation résulte du message humain « accepte toutes les adere
+et continue », pas d'une déduction faite à l'invocation précédente.
 
 ## Requirements
 
@@ -191,7 +196,7 @@ dans ces ADR et integration.md ; elles restent soumises à l'humain, pas déduit
 
 ## Tasks
 
-- [ ] T1: Faire valider les décisions et les contrats d'intégration (R1–R8)
+- [x] T1: Faire valider les décisions et les contrats d'intégration (R1–R8)
   - **Files**: `docs/adr/0006-modele-catalogue-et-contrats.md`,
     `0007-validite-et-application-des-remises.md`, `0008-statistiques-annuelles-des-cotations.md`,
     `0009-chargement-deterministe-des-donnees-de-demo.md`, `0010-tests-navigateur-reproductibles.md`

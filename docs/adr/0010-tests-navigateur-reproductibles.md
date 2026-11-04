@@ -1,5 +1,5 @@
 # 0010 — Compatibilité entre navigateurs et tests UI reproductibles
-Statut : Proposé — Date : 2026-11-04 — Décideurs : à renseigner par l'humain
+Statut : Accepté — Date : 2026-11-04 — Décideurs : Joe (accord explicite dans le chat)
 
 ## Contexte
 NLPF-67 exige une preuve automatique pour chaque critère, dont les couleurs, courbes et

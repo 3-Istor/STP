@@ -1,7 +1,8 @@
 # NLPF-67 — Proposition de contrats d'intégration (T1)
 
-Statut : proposition pour revue humaine, 2026-11-04. Aucun contrat ci-dessous n'est implémenté.
-Références : ADR proposées 0006–0010. Les interfaces de lecture actuelles restent compatibles.
+Statut : contrats retenus pour l'implémentation de NLPF-67, selon les ADR 0006–0010 acceptées
+explicitement par Joe le 2026-11-04. Leur disponibilité technique reste à vérifier au fil des tâches.
+Les interfaces de lecture actuelles restent compatibles ; aucun travail de NLPF-68/69 n'est repris ici.
 
 ## Répartition confirmée par les descriptions Jira
 
@@ -108,5 +109,5 @@ la devise et les cotations portent date/source/id. Les coordonnées SVG ne sont 
   et contrôles Safari réel tracés séparément. Aucun navigateur utilisateur imposé par le runner.
 - T9 : ADR 0009 acceptée ; générateurs et services BOM/prix disponibles ; éditeur livré pour valider.
 
-Ces contrats restent à approuver. Leur indisponibilité ne justifie ni un remplacement silencieux
+Ces contrats sont la cible d'intégration de NLPF-67. Leur indisponibilité ne justifie ni un remplacement silencieux
 par des stubs en acceptation finale, ni l'ajout d'une feature hors périmètre de NLPF-67.

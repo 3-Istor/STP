@@ -1,5 +1,5 @@
 # 0008 — Fenêtre annuelle et précision des statistiques de prix
-Statut : Proposé — Date : 2026-11-04 — Décideurs : à renseigner par l'humain
+Statut : Accepté — Date : 2026-11-04 — Décideurs : Joe (accord explicite dans le chat)
 
 ## Contexte
 `docs/features.md:233–250` demande min/max, courbe annuelle et variation depuis la dernière

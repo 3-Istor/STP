@@ -2,7 +2,7 @@
 id: nlpf-67
 status: in-progress
 branch: nlpf-67
-current_task: T1
+current_task: T2
 started: 2026-11-04
 updated: 2026-11-04
 ---
@@ -11,10 +11,9 @@ updated: 2026-11-04
 
 ## Progress
 
-Exécution demandée par invocation explicite de spec-execute ; branche locale nlpf-67 créée depuis main
-avec les fichiers de planification conservés. T1 en cours : cinq ADR Proposé et un contrat d'intégration
-concrets sont préparés. Aucun code ni migration modifié. T1 reste décochée jusqu'à acceptation humaine
-et confirmation des contrats d'intégration ; T2–T10 non commencées.
+Joe a explicitement accepté les cinq ADR 0006–0010 et demandé de poursuivre. T1 terminée pour les
+décisions/contrats documentés ; leurs dépendances techniques non livrées restent visibles.
+T2 en cours : protéger l'existant et obtenir une baseline exécutable avant extension.
 
 ## Task Log
 
@@ -70,15 +69,18 @@ et confirmation des contrats d'intégration ; T2–T10 non commencées.
 - 2026-11-04 — Utilisateur : application utilisable quel que soit le navigateur ; Chromium seul
   ne constitue pas une couverture suffisante. La cible vérifiable proposée est celle des navigateurs
   modernes et l'ADR 0010 n'est pas automatiquement passée à Accepté.
+- 2026-11-04 — Joe : « accepte toutes les adere et continue stp ». Acceptation explicite des ADR
+  0006–0010 et autorisation de leur application, dont @playwright/test et les trois moteurs navigateur.
+  Enregistrement des en-têtes à sa demande ; les ADR 0001–0005 déjà acceptées restent inchangées.
 
 ## Blockers
 
-- Acceptation humaine des ADR proposées 0006–0010 et du contrat integration.md avant le code concerné.
 - Contrats à confirmer avec NLPF-68 (Joe : prix/historique/horloge/SSE/conversion) et NLPF-69
   (Arthur Presle : BOM/éditeur/totaux) ; ces fonctions sont absentes du code inspecté.
 - Go absent de PATH et des emplacements usuels inspectés : make test échoue. Node 18.19.1 ne
   satisfait pas engines du Vite verrouillé (^20.19.0 || >=22.12.0) ; CI configurée en Node 24.
-- Aucun package installé pour ces propositions ; ajout @playwright/test soumis à accord ADR 0010.
+- L'ajout @playwright/test est autorisé par l'acceptation de l'ADR 0010 ; aucune dépendance ajoutée
+  à ce point, versions et navigateurs à vérifier lors de T7.
 - CI courante non consultée ; lint/tests/build métier non exécutés pendant cette planification.
 
 ## Verification Report(s)

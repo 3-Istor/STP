@@ -1,5 +1,5 @@
 # 0006 — Modèle du catalogue et des contrats fournisseurs
-Statut : Proposé — Date : 2026-11-04 — Décideurs : à renseigner par l'humain
+Statut : Accepté — Date : 2026-11-04 — Décideurs : Joe (accord explicite dans le chat)
 
 ## Contexte
 NLPF-67 étend les tables partagées `parts`, `offers`, `suppliers` du socle NLPF-70
