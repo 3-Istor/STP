@@ -48,6 +48,17 @@ et confirmation des contrats d'intégration ; T2–T10 non commencées.
   l'exécution. T1 n'est pas terminée et sa case reste vide ; aucune acceptation d'ADR automatisée.
 - **Checks**: `git diff --cached --check` avant commit : PASS ; nouvelle paire spec/state : PASS.
 
+### T1 : Compatibilité entre navigateurs précisée — 2026-11-04
+- **Request**: l'utilisateur veut que l'application soit utilisable quel que soit le navigateur.
+- **Changes**: ADR 0010 révisée : Chromium/Firefox/WebKit obligatoires, profils ordinateur/mobile,
+  standards web sans dépendance Chrome, versions testées consignées, contrôle Safari réel séparé.
+  Spec et contrats d'intégration alignés ; accès aux détails sans survol obligatoire.
+- **Status**: T1 toujours en cours ; ADR toujours Proposé, dépendance non installée et code inchangé.
+- **Failure case**: formatage monétaire ou reconnexion SSE valide dans un moteur mais défaillant
+  dans un autre ; mêmes scénarios prévus sur les trois moteurs. Tests navigateur non exécutés.
+- **Checks**: diff sans erreur de whitespace ; copie isolée de spec/state validée ensemble,
+  `Spec Drum: 2 file(s) OK`. Aucun test applicatif ajouté ou exécuté pour cette révision documentaire.
+
 ## Decisions
 
 - 2026-11-04 — Utilisateur : conserver l'intégralité de NLPF-67, y compris seed et Multipla.
@@ -56,6 +67,9 @@ et confirmation des contrats d'intégration ; T2–T10 non commencées.
 - D1–D5 du plan sont des propositions, pas des décisions d'architecture acceptées.
 - 2026-11-04 — Invocation de spec-execute : autorisation de démarrer le plan et de conserver ses
   fichiers sur la branche nlpf-67 ; aucune acceptation des choix d'architecture n'en est déduite.
+- 2026-11-04 — Utilisateur : application utilisable quel que soit le navigateur ; Chromium seul
+  ne constitue pas une couverture suffisante. La cible vérifiable proposée est celle des navigateurs
+  modernes et l'ADR 0010 n'est pas automatiquement passée à Accepté.
 
 ## Blockers
 

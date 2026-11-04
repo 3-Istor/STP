@@ -113,6 +113,9 @@ l'implémentation de ces autres features. Pas d'autre modèle de voiture exigé 
   l'ajout explicite d'un runner tel que Playwright en dépendance de développement. Choix et éventuelle
   dépendance soumis à accord avant ajout ; ne pas déclarer les comportements UI vérifiés sur la seule
   base de tests de services. Les commandes exactes seront fixées avant T7.
+  Précision utilisateur du 2026-11-04 : application utilisable quel que soit le navigateur.
+  L'ADR 0010 révisée prévoit les trois moteurs Chromium/Firefox/WebKit obligatoires, ordinateur et
+  mobile, avec versions testées consignées et contrôle Safari réel distinct de l'émulation.
 - **Décision confirmée** : notes offre/fournisseur de 0 à 5 et recyclabilité de 0 à 100 %, en décimal.
   Matière recyclée également en pourcentage. Ces bornes inclusives seront testées, sans valeur par défaut
   inventée ni conversion entre les deux échelles.
@@ -158,6 +161,8 @@ dans ces ADR et integration.md ; elles restent soumises à l'humain, pas déduit
   neutre). Panneau détaillé avec courbe et date/prix au survol. Rafraîchissement REST sur signal SSE
   conformément à ADR 0003, sans rechargement ; états chargement, erreur, absence d'historique explicites.
   Couleurs sémantiques --ok/--over et libellés, sans code couleur concurrent.
+  Compatibilité avec les navigateurs modernes, sans dépendance à Chrome ; détails utilisables
+  au toucher/clic/clavier sur mobile autant qu'au survol sur ordinateur.
 - **R7 — Démonstration déterministe.** `make seed` avec graine et date de référence explicites produit
   le même contenu sans doublons à chaque répétition, en préservant les données existantes. Catalogue
   multidevise, plusieurs fournisseurs/offres, alternatives, contrats/paliers et BOM Fiat Multipla
@@ -256,7 +261,9 @@ dans ces ADR et integration.md ; elles restent soumises à l'humain, pas déduit
     signal SSE existant et relire REST ; nettoyer la connexion et éviter les réponses périmées lors
     d'un changement de fournisseur. Respecter états d'erreur et lisibilité au clavier.
   - **Done when**: tests UI automatiques du filtrage, +10,0 % rouge, baisse/stabilité, panneau/survol,
-    nouvelles cotations sans reload et prix manquant ; build/lint verts. Signal SSE réel nécessaire
+    nouvelles cotations sans reload et prix manquant sur Chromium/Firefox/WebKit ; profils mobiles,
+    formatage exact et reconnexion SSE couverts. Contrôles Safari réel tracés séparément ; build/lint
+    verts. Signal SSE réel nécessaire
     à l'acceptation finale ; un signal simulé en test n'est pas une preuve d'intégration complète.
 
 - [ ] T8: Brancher les remises au calcul BOM (R4, R8)
@@ -308,7 +315,8 @@ Commandes de livraison à exécuter après implémentation ; aucune annoncée PA
   "$DATABASE_URL" up`, `reset`, `up` ; jamais reset sur une base de travail ou de snapshots publiés.
 - `make seed` deux fois avec mêmes paramètres selon la future interface ; tests automatisés de
   comparaison des données, devises, liens et BOM. Pas d'exécution de seed pendant ce plan.
-- Tests UI du harness approuvé D5 : commande précise à consigner en T1 avant développement UI.
+- Tests UI du harness approuvé D5 : `npm --prefix web run test:e2e`, configuré pour exécuter les
+  trois moteurs Chromium/Firefox/WebKit, avec profils ordinateur/mobile (ADR 0010 révisée).
 - `node ~/.agents/spec-drum/bin/validate-specs.js --all` pour la cohérence des specs.
 - Jobs CI go/web/security/compose et futurs tests ciblés verts pour la révision livrée.
 
@@ -321,6 +329,9 @@ Commandes de livraison à exécuter après implémentation ; aucune annoncée PA
   date de référence, variation et prix aux cotations utilisées.
 - Ouvrir la Fiat Multipla seedée dans l'éditeur et vérifier totaux, devises, remises et provenance.
 - Vérifier la non-régression /healthz et le démarrage de la stack après migration.
+- Vérifier Safari réel sur macOS/iOS et consigner appareil, OS, version et résultat ; NOT RUN si
+  indisponible. L'émulation mobile/WebKit seule ne clôt pas ces vérifications. Compléter par les
+  navigateurs Chrome/Edge réels disponibles sans remplacer les trois moteurs obligatoires.
 
 ### Acceptance Criteria
 

@@ -103,7 +103,9 @@ la devise et les cotations portent date/source/id. Les coordonnées SVG ne sont 
   Si le premier historique commence exactement à la borne annuelle, la variation est indisponible
   jusqu'à une référence strictement antérieure ; une cotation initiale supplémentaire doit être
   coordonnée et approuvée dans NLPF-68 pour changer ce résultat, jamais ajoutée implicitement ici.
-- T7 : ADR 0010 acceptée, paquet de test autorisé, Node compatible et Chromium de test disponibles.
+- T7 : ADR 0010 acceptée, paquet de test autorisé, Node compatible et moteurs de test
+  Chromium/Firefox/WebKit disponibles ; mêmes scénarios obligatoires sur les trois, profils mobiles
+  et contrôles Safari réel tracés séparément. Aucun navigateur utilisateur imposé par le runner.
 - T9 : ADR 0009 acceptée ; générateurs et services BOM/prix disponibles ; éditeur livré pour valider.
 
 Ces contrats restent à approuver. Leur indisponibilité ne justifie ni un remplacement silencieux
