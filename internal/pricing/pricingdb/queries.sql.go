@@ -12,6 +12,81 @@ import (
 	"github.com/shopspring/decimal"
 )
 
+const currentPriceAsOf = `-- name: CurrentPriceAsOf :one
+SELECT quoted_at FROM price_quotes
+ORDER BY quoted_at DESC, id DESC
+LIMIT 1
+`
+
+func (q *Queries) CurrentPriceAsOf(ctx context.Context) (time.Time, error) {
+	row := q.db.QueryRow(ctx, currentPriceAsOf)
+	var quoted_at time.Time
+	err := row.Scan(&quoted_at)
+	return quoted_at, err
+}
+
+const historicalPriceQuotes = `-- name: HistoricalPriceQuotes :many
+WITH annual_quotes AS (
+    SELECT q.id, q.offer_id, q.amount, q.currency, q.source, q.quoted_at, q.recorded_at FROM price_quotes q
+    WHERE q.offer_id = $1
+        AND q.quoted_at >= $2::timestamptz
+        AND q.quoted_at <= $3::timestamptz
+), reference_quote AS (
+    SELECT q.id, q.offer_id, q.amount, q.currency, q.source, q.quoted_at, q.recorded_at FROM price_quotes q
+    WHERE q.offer_id = $1
+        AND q.quoted_at < $2::timestamptz
+    ORDER BY q.quoted_at DESC, q.id DESC
+    LIMIT 1
+)
+SELECT id, offer_id, amount, currency, source, quoted_at, recorded_at FROM annual_quotes
+UNION ALL SELECT id, offer_id, amount, currency, source, quoted_at, recorded_at FROM reference_quote
+ORDER BY quoted_at, id
+`
+
+type HistoricalPriceQuotesParams struct {
+	OfferID     int64
+	WindowStart time.Time
+	AsOf        time.Time
+}
+
+type HistoricalPriceQuotesRow struct {
+	ID         int64
+	OfferID    int64
+	Amount     decimal.Decimal
+	Currency   string
+	Source     string
+	QuotedAt   time.Time
+	RecordedAt time.Time
+}
+
+func (q *Queries) HistoricalPriceQuotes(ctx context.Context, arg HistoricalPriceQuotesParams) ([]HistoricalPriceQuotesRow, error) {
+	rows, err := q.db.Query(ctx, historicalPriceQuotes, arg.OfferID, arg.WindowStart, arg.AsOf)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []HistoricalPriceQuotesRow
+	for rows.Next() {
+		var i HistoricalPriceQuotesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.OfferID,
+			&i.Amount,
+			&i.Currency,
+			&i.Source,
+			&i.QuotedAt,
+			&i.RecordedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const insertPriceQuote = `-- name: InsertPriceQuote :one
 
 INSERT INTO price_quotes (offer_id, amount, currency, source, quoted_at)

@@ -17,6 +17,8 @@ import (
 	"bomstudio/internal/catalog"
 	"bomstudio/internal/catalog/catalogstore"
 	"bomstudio/internal/httpapi"
+	"bomstudio/internal/pricing"
+	"bomstudio/internal/pricing/pricingstore"
 	"bomstudio/internal/supplier"
 	"bomstudio/internal/supplier/supplierstore"
 )
@@ -40,11 +42,12 @@ func run() error {
 	defer pool.Close()
 	catalogService := catalog.NewService(catalogstore.New(pool), time.Now)
 	supplierService := supplier.NewService(supplierstore.New(pool))
+	historyService := pricing.NewHistoryService(pricingstore.New(pool))
 
 	addr := ":" + envOr("PORT", "8080")
 	srv := &http.Server{
 		Addr:              addr,
-		Handler:           httpapi.NewRouter(httpapi.Services{Catalog: catalogService, Supplier: supplierService}),
+		Handler:           httpapi.NewRouter(httpapi.Services{Catalog: catalogService, Supplier: supplierService, History: historyService}),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 
