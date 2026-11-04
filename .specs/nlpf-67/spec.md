@@ -240,7 +240,7 @@ et continue », pas d'une déduction faite à l'invocation précédente.
   - **Done when**: tests HTTP + PostgreSQL prouvent round-trip précis, rejet mini>maxi, devise USD
     conservée, une pièce/deux offres, tous les filtres, symétrie et BOM lisible après archivage.
 
-- [ ] T5: Livrer fournisseurs, contrats et calcul de remise isolé (R4, R8)
+- [x] T5: Livrer fournisseurs, contrats et calcul de remise isolé (R4, R8)
   - **Files**: nouveaux `internal/supplier/{supplier,service,contract,repository}.go`, tests associés,
     `internal/httpapi/supplier.go`, `internal/httpapi/router.go`, `cmd/server/main.go`.
   - **Approach**: API fournisseurs/contrats, sélection du contrat applicable, paliers en décimal et

@@ -2,9 +2,9 @@
 id: nlpf-67
 status: in-progress
 branch: nlpf-67
-current_task: T5
+current_task: T6
 started: 2026-11-04
-updated: 2026-11-04
+updated: 2026-11-05
 ---
 
 # State: Catalogue et fournisseurs (NLPF-67)
@@ -16,7 +16,8 @@ décisions/contrats documentés ; leurs dépendances techniques non livrées res
 T2 terminée : tests de caractérisation et baseline unitaires verts avant extension.
 T3 terminée : migration, génération sqlc stable et tests PostgreSQL réels verts.
 T4 terminée : services purs catalogue, stockage pgx isolé et API avec tests d'intégration verts.
-T5 en cours : fournisseurs, contrats et calcul de remise isolé.
+T5 terminée : fournisseurs/contrats par API et calcul de remise isolé vérifiés.
+T6 en cours : historique, statistiques annuelles et lecture composée fournisseur.
 
 ## Task Log
 
@@ -104,6 +105,18 @@ T5 en cours : fournisseurs, contrats et calcul de remise isolé.
   archivage conserve lecture BOM. Verrou d'ajout FOR SHARE testé contre UPDATE via NOWAIT.
 - **Not done**: UI fournisseur, contrats/remises, statistiques, intégration prix/BOM et CI distante.
 - **Resume**: reprise après interruption de quota ; arbre Git propre et commit T4 présents.
+
+### T5 : Fournisseurs, contrats et remises — 2026-11-05
+- **Status**: completed.
+- **Commit**: a1811fc — `nlpf-67: T5 - livrer fournisseurs contrats et remises`.
+- **Files**: domaine supplier et adapter supplierstore, requêtes sqlc/lectures composites atomiques,
+  handlers fournisseurs/contrats et câblage ; tests métier, PostgreSQL et HTTP.
+- **Checks**: make lint et make test avec CI=true/PostgreSQL18 PASS ; -race supplier/store PASS.
+  L'évaluateur a 49 cas, dont 1 000 × 10 EUR à 5 % = 9 500 EUR, seuils, dates, sélection et précision.
+- **Failure case**: une modification concurrente ne doit pas mélanger anciennes dates/nouveaux paliers ;
+  les lectures contrat sont atomiques par statement. Nouvelles associations vers archives refusées ;
+  anciennes conservées et PATCH informatif possible. Expiration datée visible par API.
+- **Not done**: application aux vrais totaux BOM (T8/NLPF-69), historique/UI (T6/T7), CI distante.
 
 ## Decisions
 
