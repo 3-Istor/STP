@@ -58,6 +58,13 @@ T2 en cours : protéger l'existant et obtenir une baseline exécutable avant ext
 - **Checks**: diff sans erreur de whitespace ; copie isolée de spec/state validée ensemble,
   `Spec Drum: 2 file(s) OK`. Aucun test applicatif ajouté ou exécuté pour cette révision documentaire.
 
+### T1 : Décisions acceptées — 2026-11-04
+- **Status**: completed pour le cadrage ; les dépendances prix/BOM ne sont pas déclarées livrées.
+- **Commit**: 2822c9a — `nlpf-67: T1 - consigner les decisions acceptees par Joe`.
+- **Decision**: accord explicite « accepte toutes les adere et continue stp » enregistré dans les
+  cinq ADR à la demande de l'humain. Les contrats d'intégration restent la cible des tâches concernées.
+- **Next**: T2, tests de caractérisation et baseline avant modification du comportement.
+
 ## Decisions
 
 - 2026-11-04 — Utilisateur : conserver l'intégralité de NLPF-67, y compris seed et Multipla.
