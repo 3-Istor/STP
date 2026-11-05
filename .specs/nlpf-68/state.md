@@ -55,6 +55,15 @@ Les trois arbitrages métier répondus par Joe sont intégrés et ne sont pas à
 - **Not done**: code métier, dépendances, migrations, données, reprise de NLPF-69, CI distante,
   tests applicatifs nouveaux. Les trois réponses de Joe restent acquises, pas soumises à nouveau.
 
+### T1 : Préparation enregistrée pour revue — 2026-11-05
+
+- **Status**: in-progress ; attente de validation des propositions, T1 non cochée.
+- **Time**: 2026-11-05T13:21:47+01:00
+- **Commit**: 725ed4d — nlpf-68: T1 - proposer architecture et contrats de prix.
+- **Checks**: six ADR Proposé et paire de suivi validées ; aucun code/migration/dépendance modifié.
+- **Next**: acceptation humaine des choix recommandés dans ADR 0011–0016 et du contrat associé,
+  ou amendements demandés. Les trois choix métier déjà confirmés ne sont pas à redemander.
+
 ## Decisions
 
 - 2026-11-05 — Joe : budgets cibles global/sous-systèmes par voiture ; budget de production total distinct.
