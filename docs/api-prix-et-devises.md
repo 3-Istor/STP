@@ -255,3 +255,17 @@ comparaison, multiplication et division entière ; aucune conversion n’arrondi
 La sélection direct/inverse est partagée avec la couverture de snapshot. Une entrée monétaire
 d’exposant ou de coefficient excessif est refusée avant toute construction rationnelle.
 Le vrai moteur de totaux BOM reste à adapter en T10, sans convertir ses lignes déjà arrondies.
+
+### État de livraison : évaluateurs purs (T8)
+
+`EvaluateBudget` reçoit le coût exact fourni par le moteur, la cible dans sa devise d’origine,
+le seuil et le contexte FX. Les états sont `no_target`, `unavailable`, `ok`, `warn`, `over`.
+`EvaluateAllocations` vérifie la projection des parents et compare chaque budget seulement à son
+ancêtre budgété le plus proche ; l’inverse FX est additionné sans arrondi intermédiaire.
+
+`EstimateProduction` reçoit le coût unitaire exact déjà évalué au volume de référence explicite
+et ses faits (BOM/version, contexte, prix/taux, remises). Il conserve ces faits, sans recalculer
+les remises au volume déduit. Zéro voiture finançable est un résultat valide distinct d’un volume
+publiable ; coût nul/manquant et dépassement de l’entier BOM sont des erreurs nommées.
+Ces fonctions sont testées sans stockage ni nouvel endpoint BOM : paramètres persistés,
+publication immuable et écrans de budgets restent obligatoires en T10 sur la base coordonnée.
