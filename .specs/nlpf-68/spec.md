@@ -241,7 +241,7 @@ définir en T1 car le flux transporte un signal, pas les prix.
   - **Done when**: baseline et nouveaux tests de caractérisation verts avec PostgreSQL réel ;
     contrôles sautés/faits antérieurs distingués. Un changement de devise, date ou précision les met en défaut.
 
-- [ ] T3: Livrer le simulateur pur derrière l'API externe (R1–R2, R10, S2)
+- [x] T3: Livrer le simulateur pur derrière l'API externe (R1–R2, R10, S2)
   - **Files**: nouveaux `internal/pricing/source.go`,
     `internal/priceapi/{quotes,simulation}.go`, `internal/pricesim/` (adapter pur partagé),
     `internal/pricing/priceclient/`, tests associés, `cmd/priceapi/main.go`.

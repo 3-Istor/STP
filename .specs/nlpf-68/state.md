@@ -2,7 +2,7 @@
 id: nlpf-68
 status: in-progress
 branch: nlpf-68
-current_task: T3
+current_task: T4
 started: 2026-11-05
 updated: 2026-11-05
 ---
@@ -11,7 +11,7 @@ updated: 2026-11-05
 
 ## Progress
 
-T1–T2 terminées sur les capacités décrites dans le journal. T3 en cours.
+T1–T3 terminées sur les capacités décrites dans le journal. T4 en cours.
 ADR 0011–0016 acceptées explicitement par Joe ; dépendances BOM toujours visibles.
 
 ## Task Log
@@ -75,6 +75,13 @@ ADR 0011–0016 acceptées explicitement par Joe ; dépendances BOM toujours vis
 - **Time**: 2026-11-05T13:39:18+01:00
 - **Commit**: c57c31c.
 - **Notes**: Baseline make lint, make test avec CI=true/PostgreSQL18 et build frontend verts. Tests de protection du taux exact, de sa paire/source/date et du Content-Type priceapi ajoutés avant extension.
+
+### T3 : Livrer le simulateur pur derrière l'API externe (R1–R2, R10, S2) — 2026-11-05
+
+- **Status**: completed.
+- **Time**: 2026-11-05T13:51:38+01:00
+- **Commit**: 2200c98.
+- **Notes**: Simulateur pur, cinq routes externes et client HTTP livrés (ADR 0011). make lint/test PostgreSQL et -race sources verts. Tests graines/ordre/batches/365 jours, >2^53, JSON/devise/date/bornes et timeout ; aucune dépendance ajoutée.
 
 ## Decisions
 
