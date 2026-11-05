@@ -240,3 +240,15 @@ func TestPricingStreamBoundsBlockedWrite(t *testing.T) {
 		t.Fatal("blocked client leaked")
 	}
 }
+
+func TestPricingStreamUnsupportedWriterPreservesJSONErrors(t *testing.T) {
+	hub := NewPricingHub()
+	defer hub.Close()
+	stream := pricingStream{status: &streamStatus{state: streamState(0)}, hub: hub, writeTimeout: time.Second, heartbeat: time.Second}
+	rec := httptest.NewRecorder()
+	stream.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", nil))
+	var body map[string]string
+	if rec.Code != http.StatusServiceUnavailable || rec.Header().Get("Content-Type") != "application/json" || json.Unmarshal(rec.Body.Bytes(), &body) != nil || body["error"] == "" {
+		t.Fatalf("API error must remain JSON: %d %s", rec.Code, rec.Body.String())
+	}
+}

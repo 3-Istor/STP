@@ -118,7 +118,7 @@ func (s pricingStream) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	controller := http.NewResponseController(w)
 	if err := controller.SetWriteDeadline(time.Now().Add(s.writeTimeout)); err != nil {
-		http.Error(w, "stream unavailable", http.StatusServiceUnavailable)
+		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "flux de prix indisponible"})
 		return
 	}
 	defer func() { _ = controller.SetWriteDeadline(time.Time{}) }()
