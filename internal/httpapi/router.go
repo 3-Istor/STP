@@ -6,12 +6,30 @@ import (
 	"encoding/json"
 	"log/slog"
 	"net/http"
+	"time"
 )
 
-// NewRouter construit le routeur de l'application.
-func NewRouter() http.Handler {
+// Deps sont les services métier dont l'API a besoin.
+type Deps struct {
+	BOMs      BOMService
+	Snapshots SnapshotService
+	// Now donne l'instant d'un gel de prix ou d'une publication (le domaine n'a pas d'horloge) ;
+	// time.Now si nil.
+	Now func() time.Time
+}
+
+// NewRouter construit le routeur de l'application. Les routes /api/v1 ne sont montées que si leurs
+// services sont fournis.
+func NewRouter(d Deps) http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", healthz)
+	if d.BOMs != nil && d.Snapshots != nil {
+		now := d.Now
+		if now == nil {
+			now = func() time.Time { return time.Now().UTC() }
+		}
+		(&api{boms: d.BOMs, snapshots: d.Snapshots, now: now}).routes(mux)
+	}
 	return mux
 }
 

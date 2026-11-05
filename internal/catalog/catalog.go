@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 
+	"github.com/shopspring/decimal"
+
 	"bomstudio/internal/money"
 )
 
@@ -15,12 +17,20 @@ var (
 )
 
 // Part est une pièce du catalogue, décrite indépendamment de qui la vend.
-// Les attributs détaillés (masse, CO2, coûts…) arrivent avec la feature part-catalog.
+// CO2Kg, MassKg et ProductionDays servent aux totaux de la BOM (ADR 0007) et sont copiés dans
+// les snapshots de BOM (ADR 0006). Leur stockage en base arrive avec part-catalog (NLPF-67).
 type Part struct {
 	ID       int64
 	Name     string
 	Category string
 	Zone     string
+	// CO2Kg : émissions d'une unité de la pièce, en kg équivalent CO2 (décimal, jamais float).
+	CO2Kg decimal.Decimal
+	// MassKg : masse d'une unité, en kg.
+	MassKg decimal.Decimal
+	// ProductionDays : jours de production / préparation de la pièce, ajoutés au délai de livraison
+	// de l'offre pour obtenir le délai d'une feuille de BOM (ADR 0007).
+	ProductionDays int
 }
 
 // Offer est une pièce vendue par un fournisseur. PriceMin et PriceMax sont les bornes de référence

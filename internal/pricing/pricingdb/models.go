@@ -12,21 +12,48 @@ import (
 )
 
 type Bom struct {
-	ID        int64
-	Name      string
-	Currency  string
-	Volume    int32
-	CreatedAt time.Time
+	ID               int64
+	Name             string
+	Currency         string
+	Volume           int32
+	CreatedAt        time.Time
+	PriceSnapshotID  pgtype.Int8
+	SourceSnapshotID pgtype.Int8
 }
 
 type BomNode struct {
-	ID       int64
-	BomID    int64
-	ParentID pgtype.Int8
-	Name     pgtype.Text
-	PartID   pgtype.Int8
-	OfferID  pgtype.Int8
-	Quantity decimal.Decimal
+	ID             int64
+	BomID          int64
+	ParentID       pgtype.Int8
+	Name           pgtype.Text
+	PartID         pgtype.Int8
+	OfferID        pgtype.Int8
+	Quantity       decimal.Decimal
+	ProductionDays int32
+}
+
+type BomSnapshot struct {
+	ID              int64
+	BomID           int64
+	PriceSnapshotID int64
+	Name            string
+	Currency        string
+	Volume          int32
+	PublishedAt     time.Time
+}
+
+type BomSnapshotNode struct {
+	SnapshotID     int64
+	NodeKey        int64
+	ParentKey      pgtype.Int8
+	Name           pgtype.Text
+	PartID         pgtype.Int8
+	OfferID        pgtype.Int8
+	Quantity       decimal.Decimal
+	Co2Kg          decimal.NullDecimal
+	MassKg         decimal.NullDecimal
+	ProductionDays int32
+	LeadTimeDays   pgtype.Int4
 }
 
 type FxQuote struct {
