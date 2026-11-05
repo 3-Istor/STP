@@ -2,7 +2,7 @@
 id: nlpf-68
 status: in-progress
 branch: nlpf-68
-current_task: T9
+current_task: T10
 started: 2026-11-05
 updated: 2026-11-05
 ---
@@ -11,7 +11,7 @@ updated: 2026-11-05
 
 ## Progress
 
-T1–T8 terminées sur les capacités décrites dans le journal. T9 en cours.
+T1–T9 terminées sur les capacités décrites dans le journal. T10 en cours.
 ADR 0011–0016 acceptées explicitement par Joe ; dépendances BOM toujours visibles.
 
 ## Task Log
@@ -124,6 +124,13 @@ ADR 0011–0016 acceptées explicitement par Joe ; dépendances BOM toujours vis
 - **Time**: 2026-11-05T15:07:07+01:00
 - **Commit**: 46d3d30.
 - **Notes**: Évaluateurs purs budgets/allocation/production livrés (ADR 0015), sans second moteur ni route BOM factice. make test PostgreSQL18, make lint et race ciblé verts. Tests seuils exacts, devise manquante, allocation imbriquée/inverse avant somme, 66 voitures, référence/remise conservées, zéro et overflow. Persistance, publications et écrans BOM restent obligatoires en T10.
+
+### T9 : Raccorder SSE et les écrans au flux réel (R5–R9, R10) — 2026-11-05
+
+- **Status**: completed.
+- **Time**: 2026-11-05T15:20:46+01:00
+- **Commit**: 448d4b3.
+- **Notes**: Flux réel SSE borné après commit et signal de panne livrés ; contexte serveur annulable. make test/lint, go test -race ./..., build et 60 parcours contrôlés verts ; 12 parcours réels trois moteurs/desktop/mobile verts sous -race (43,5 s navigateur), reconnexion et panne/reprise incluses. Job CI web-live ajouté sans affaiblir les jobs existants. Isolation des baux de tests corrigée après collision entre deux suites simultanées. Budgets/éditeur BOM restent obligatoires en T10.
 
 ## Decisions
 

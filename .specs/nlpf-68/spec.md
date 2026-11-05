@@ -340,7 +340,7 @@ ne signifie donc pas que J4/J8/J9 ni le ticket complet sont acceptés.
     inférieur au coût, coût indisponible, zéro, grand entier explicitement couverts. Modification d'un
     brouillon n'altère aucun budget/résultat publié ; intégration bloquée si BOM/snapshots indisponibles.
 
-- [ ] T9: Raccorder SSE et les écrans au flux réel (R5–R9, R10)
+- [x] T9: Raccorder SSE et les écrans au flux réel (R5–R9, R10)
   - **Files**: nouveau adapter signal/flux `internal/httpapi/pricing_stream.go`,
     interface de notification dans pricing et câblage `cmd/server/main.go`, `web/src/App.tsx`,
     composants budgets/BOM existants ou ciblés après intégration, nouveaux tests `web/e2e/`.
