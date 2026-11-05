@@ -2,7 +2,7 @@
 id: nlpf-68
 status: in-progress
 branch: nlpf-68
-current_task: T1
+current_task: T2
 started: 2026-11-05
 updated: 2026-11-05
 ---
@@ -11,10 +11,8 @@ updated: 2026-11-05
 
 ## Progress
 
-Exécution du plan autorisée par les invocations de spec-execute. Branche nlpf-68 créée depuis
-4dcdb48, avec les documents de planification conservés. T1 en cours : propositions d'ADR et contrats
-préparés avant code ; acceptation des nouvelles décisions techniques encore nécessaire.
-Les trois arbitrages métier répondus par Joe sont intégrés et ne sont pas à redemander.
+T1–T1 terminées sur les capacités décrites dans le journal. T2 en cours.
+ADR 0011–0016 acceptées explicitement par Joe ; dépendances BOM toujours visibles.
 
 ## Task Log
 
@@ -64,6 +62,13 @@ Les trois arbitrages métier répondus par Joe sont intégrés et ne sont pas à
 - **Next**: acceptation humaine des choix recommandés dans ADR 0011–0016 et du contrat associé,
   ou amendements demandés. Les trois choix métier déjà confirmés ne sont pas à redemander.
 
+### T1 : Faire valider les contrats et décisions restant ouverts (R1–R10) — 2026-11-05
+
+- **Status**: completed.
+- **Time**: 2026-11-05T13:35:46+01:00
+- **Commit**: 603421c.
+- **Notes**: Joe a explicitement accepté les ADR 0011–0016 et le contrat associé. Cadrage terminé, raccordements BOM différés selon ADR 0016. Les trois choix métier antérieurs restent acquis.
+
 ## Decisions
 
 - 2026-11-05 — Joe : budgets cibles global/sous-systèmes par voiture ; budget de production total distinct.
@@ -74,10 +79,13 @@ Les trois arbitrages métier répondus par Joe sont intégrés et ne sont pas à
 - ADR 0002–0005 restent les décisions existantes ; D1–D6 sont des propositions techniques à faire
   valider en T1. Les accords antérieurs des ADR NLPF-67 ne constituent pas un accord sur ces nouveautés.
 
+- 2026-11-05 — Joe : « accepte toutes les adere et continue stp ». Acceptation explicite des
+  ADR 0011–0016 et du contrat API présenté ; enregistrement des en-têtes à sa demande.
+
 ## Blockers
 
-- Plan et base autorisés par l'invocation de spec-execute ; ADR 0011–0016 et contrat associé
-  proposés, acceptation humaine requise avant code (AGENTS §6–8). T1 reste ouverte.
+- ADR 0011–0016 acceptées : aucun blocage sur ces décisions. Raccordements BOM toujours
+  soumis à la base et au partage de fichiers convenus avec Arthur, selon ADR 0016.
 - Raccordements BOM/budgets/snapshots : vraie livraison NLPF-69 et accord de son propriétaire,
   compatibilité des migrations/ADR/interfaces à résoudre sans changer les historiques existants.
 - Le catalogue présent dans la base proposée suffit pour démarrer le flux ; attendre la clôture

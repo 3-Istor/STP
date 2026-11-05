@@ -212,7 +212,7 @@ définir en T1 car le flux transporte un signal, pas les prix.
 
 ## Tasks
 
-- [ ] T1: Faire valider les contrats et décisions restant ouverts (R1–R10)
+- [x] T1: Faire valider les contrats et décisions restant ouverts (R1–R10)
   - **Files**: cette spec, state.md et architecture-review.md ;
     `docs/adr/0011-protocole-du-simulateur-deterministe.md`,
     `0012-horloge-ingestion-et-repli-des-prix.md`,
