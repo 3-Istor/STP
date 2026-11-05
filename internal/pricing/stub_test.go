@@ -89,6 +89,28 @@ func TestStubRate(t *testing.T) {
 	}
 }
 
+// Les futures lectures réseau/DB ne doivent ni inverser ce port, ni perdre la précision/source.
+func TestStubRatePreservesExactPairAndProvenance(t *testing.T) {
+	tests := []struct{ name, from, to, value string }{
+		{"small exact rate", "USD", "EUR", "0.000000000000000000123456789"},
+		{"large exact rate", "JPY", "KWD", "9007199254740993.1256789"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			at := time.Date(2026, 2, 28, 23, 59, 59, 123456789, time.UTC)
+			rate := Rate{From: money.Currency(tt.from), To: money.Currency(tt.to), Rate: decimal.RequireFromString(tt.value), Source: "baseline/source", QuotedAt: at}
+			stub := NewStub(nil, []Rate{rate})
+			got, err := stub.Rate(t.Context(), rate.From, rate.To)
+			if err != nil || !got.Rate.Equal(rate.Rate) || got.From != rate.From || got.To != rate.To || got.Source != rate.Source || !got.QuotedAt.Equal(at) {
+				t.Fatalf("rate/provenance changed: %+v, %v", got, err)
+			}
+			if _, err := stub.Rate(t.Context(), rate.To, rate.From); !errors.Is(err, ErrNoRate) {
+				t.Fatalf("implicit inversion: %v", err)
+			}
+		})
+	}
+}
+
 func TestStubFreezePrices(t *testing.T) {
 	day1 := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 	day2 := day1.AddDate(0, 0, 1)
@@ -119,7 +141,7 @@ func TestStubFreezePrices(t *testing.T) {
 				{OfferID: 1, Price: usd(t, "100.00"), Source: "sim", QuotedAt: day1},
 				{OfferID: 2, Price: eur("50.00"), Source: "sim", QuotedAt: day1},
 			}, []Rate{{From: "USD", To: "EUR", Rate: decimal.RequireFromString("0.92"), Source: "sim", QuotedAt: day1}})
-			id, err := stub.FreezePrices(t.Context(), tt.offerIDs, tt.currencies, day1)
+			id, err := stub.FreezePrices(t.Context(), 0, tt.offerIDs, tt.currencies, day1)
 			for _, want := range tt.wantErrs {
 				if !errors.Is(err, want) {
 					t.Fatalf("err = %v, want %v", err, want)
@@ -144,7 +166,7 @@ func TestStubFreezePrices(t *testing.T) {
 			[]Quote{{OfferID: 1, Price: usd(t, "100.00"), Source: "sim", QuotedAt: day1}},
 			[]Rate{{From: "USD", To: "EUR", Rate: decimal.RequireFromString("0.92"), Source: "sim", QuotedAt: day1}},
 		)
-		id, err := stub.FreezePrices(t.Context(), []int64{1}, []money.Currency{"EUR"}, day1)
+		id, err := stub.FreezePrices(t.Context(), 0, []int64{1}, []money.Currency{"EUR"}, day1)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -167,7 +189,7 @@ func TestStubFreezePrices(t *testing.T) {
 
 	t.Run("lectures hors du snapshot", func(t *testing.T) {
 		stub := NewStub([]Quote{{OfferID: 1, Price: usd(t, "100.00"), Source: "sim", QuotedAt: day1}}, nil)
-		id, err := stub.FreezePrices(t.Context(), []int64{1}, []money.Currency{"USD"}, day1)
+		id, err := stub.FreezePrices(t.Context(), 0, []int64{1}, []money.Currency{"USD"}, day1)
 		if err != nil {
 			t.Fatal(err)
 		}

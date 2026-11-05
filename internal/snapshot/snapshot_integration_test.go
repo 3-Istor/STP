@@ -95,8 +95,8 @@ type dbPricing struct {
 	stubs map[int64]int64 // id en base → id du stub
 }
 
-func (p *dbPricing) FreezePrices(ctx context.Context, offerIDs []int64, currencies []money.Currency, at time.Time) (int64, error) {
-	stubID, err := p.Stub.FreezePrices(ctx, offerIDs, currencies, at)
+func (p *dbPricing) FreezePrices(ctx context.Context, bomID int64, offerIDs []int64, currencies []money.Currency, at time.Time) (int64, error) {
+	stubID, err := p.Stub.FreezePrices(ctx, bomID, offerIDs, currencies, at)
 	if err != nil {
 		return 0, err
 	}
@@ -160,9 +160,9 @@ func newFixture(t *testing.T) fixture {
 
 	f.cat = &fakeCatalog{
 		parts: map[int64]catalog.Part{
-			f.roue:   {ID: f.roue, Name: "Roue", CO2Kg: dec("10"), MassKg: dec("8"), ProductionDays: 2},
-			f.ecrou:  {ID: f.ecrou, Name: "Écrou", CO2Kg: dec("0.1"), MassKg: dec("0.01")},
-			f.volant: {ID: f.volant, Name: "Volant", CO2Kg: dec("3"), MassKg: dec("1")},
+			f.roue:   {ID: f.roue, Name: "Roue", CO2KGPerUnit: ref(dec("10")), MassKG: ref(dec("8")), ProductionDays: ref(2)},
+			f.ecrou:  {ID: f.ecrou, Name: "Écrou", CO2KGPerUnit: ref(dec("0.1")), MassKG: ref(dec("0.01")), ProductionDays: ref(0)},
+			f.volant: {ID: f.volant, Name: "Volant", CO2KGPerUnit: ref(dec("3")), MassKG: ref(dec("1")), ProductionDays: ref(0)},
 		},
 		offers: map[int64]catalog.Offer{
 			f.roueUSD: {ID: f.roueUSD, PartID: f.roue, Currency: "USD", LeadTimeDays: 1},
@@ -297,7 +297,7 @@ func TestPublishedSnapshotDoesNotMove(t *testing.T) {
 		change func(t *testing.T)
 	}{
 		{"le CO2 et la production de la Roue changent au catalogue", func(t *testing.T) {
-			f.cat.setPart(catalog.Part{ID: f.roue, Name: "Roue", CO2Kg: dec("99"), MassKg: dec("50"), ProductionDays: 40})
+			f.cat.setPart(catalog.Part{ID: f.roue, Name: "Roue", CO2KGPerUnit: ref(dec("99")), MassKG: ref(dec("50")), ProductionDays: ref(40)})
 		}},
 		{"une nouvelle cotation et un nouveau taux arrivent", func(t *testing.T) {
 			f.prices.AddQuote(pricing.Quote{OfferID: f.roueUSD, Price: m(t, "500", "USD"), Source: "sim", QuotedAt: t2})
@@ -530,3 +530,23 @@ func TestUnknownSnapshot(t *testing.T) {
 		t.Fatalf("publish : err = %v, want ErrBOMNotFound", err)
 	}
 }
+
+// SI une pièce n'a pas de CO2 au catalogue (ancienne ligne, NULL) ALORS ni totaux ni publication :
+// rien n'est figé à zéro (AGENTS §3).
+func TestPublishRefusesPartWithMissingAttribute(t *testing.T) {
+	f := newFixture(t)
+	b, _ := f.newDraft(t)
+	f.cat.setPart(catalog.Part{ID: f.ecrou, Name: "Écrou", MassKG: ref(dec("0.01")), ProductionDays: ref(0)})
+	if _, err := f.boms.Totals(t.Context(), b.ID); !errors.Is(err, catalog.ErrMissingAttribute) {
+		t.Fatalf("totals : err = %v, want ErrMissingAttribute", err)
+	}
+	if _, err := f.snaps.Publish(t.Context(), b.ID, t1); !errors.Is(err, catalog.ErrMissingAttribute) {
+		t.Fatalf("publish : err = %v, want ErrMissingAttribute", err)
+	}
+	if n := f.snapshotCount(t, b.ID); n != 0 {
+		t.Fatalf("%d snapshot(s) publié(s) malgré l'attribut manquant", n)
+	}
+}
+
+// ref renvoie un pointeur vers v (attributs optionnels de catalog.Part).
+func ref[T any](v T) *T { return &v }

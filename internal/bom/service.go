@@ -308,7 +308,7 @@ func (s *Service) FreezePrices(ctx context.Context, bomID int64, at time.Time) (
 	if err != nil {
 		return BOM{}, fmt.Errorf("freeze prices of bom %d: %w", bomID, err)
 	}
-	snapID, err := s.pricing.FreezePrices(ctx, offerIDs(nodes), []money.Currency{money.Currency(b.Currency)}, at)
+	snapID, err := s.pricing.FreezePrices(ctx, bomID, offerIDs(nodes), []money.Currency{money.Currency(b.Currency)}, at)
 	if err != nil {
 		return BOM{}, fmt.Errorf("freeze prices of bom %d: %w", bomID, err)
 	}
@@ -399,8 +399,12 @@ func (s *Service) totalsInput(ctx context.Context, b BOM, nodes []Node) (TotalsI
 			}
 			offers[o.ID] = o
 		}
-		calc[i].ProductionDays = p.ProductionDays // ADR 0007 règle 4 : production de la pièce (catalogue)
-		calc[i].Part = &PartFacts{OfferID: o.ID, LeadTimeDays: o.LeadTimeDays, CO2Kg: p.CO2Kg, MassKg: p.MassKg}
+		attrs, err := p.BOMAttributes() // attribut NULL : erreur nommée, jamais zéro (AGENTS §3)
+		if err != nil {
+			return TotalsInput{}, fmt.Errorf("node %d: %w", n.ID, err)
+		}
+		calc[i].ProductionDays = attrs.ProductionDays // ADR 0007 règle 4 : production de la pièce (catalogue)
+		calc[i].Part = &PartFacts{OfferID: o.ID, LeadTimeDays: o.LeadTimeDays, CO2Kg: attrs.CO2KGPerUnit, MassKg: attrs.MassKG}
 	}
 
 	prices, rates, err := LoadPrices(ctx, s.pricing, b.PriceSnapshotID, offerIDs(nodes), currency)

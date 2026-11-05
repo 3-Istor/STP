@@ -110,7 +110,7 @@ func (s *Service) Publish(ctx context.Context, bomID int64, at time.Time) (Snaps
 		if err := s.checkCovered(ctx, priceSnapID, offers, currency); err != nil {
 			return Snapshot{}, fmt.Errorf("publish bom %d with price snapshot %d: %w", bomID, priceSnapID, err)
 		}
-	} else if priceSnapID, err = s.pricing.FreezePrices(ctx, offers, []money.Currency{currency}, at); err != nil {
+	} else if priceSnapID, err = s.pricing.FreezePrices(ctx, bomID, offers, []money.Currency{currency}, at); err != nil {
 		return Snapshot{}, fmt.Errorf("publish bom %d: %w", bomID, err)
 	}
 
@@ -150,7 +150,11 @@ func (s *Service) freezeNodes(ctx context.Context, draft []bom.Node) ([]Node, er
 			}
 			offers[o.ID] = o
 		}
-		prod, err := days(p.ProductionDays)
+		attrs, err := p.BOMAttributes() // attribut NULL : la publication est refusée, rien n'est figé à zéro
+		if err != nil {
+			return nil, fmt.Errorf("node %d: %w", n.ID, err)
+		}
+		prod, err := days(attrs.ProductionDays)
 		if err != nil {
 			return nil, fmt.Errorf("node %d: production days of part %d: %w", n.ID, p.ID, err)
 		}
@@ -160,7 +164,7 @@ func (s *Service) freezeNodes(ctx context.Context, draft []bom.Node) ([]Node, er
 		}
 		out[i].Name = ""
 		out[i].ProductionDays = prod
-		out[i].Part = &Part{PartID: p.ID, OfferID: o.ID, CO2Kg: p.CO2Kg, MassKg: p.MassKg, LeadTimeDays: lead}
+		out[i].Part = &Part{PartID: p.ID, OfferID: o.ID, CO2Kg: attrs.CO2KGPerUnit, MassKg: attrs.MassKG, LeadTimeDays: lead}
 	}
 	return out, nil
 }

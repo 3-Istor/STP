@@ -43,7 +43,7 @@ func Catalog() (*catalog.Stub, error) {
 		}
 		ps[i] = catalog.Part{
 			ID: p.ID, Name: p.Name, Category: p.Category, Zone: p.Zone,
-			CO2Kg: co2, MassKg: mass, ProductionDays: p.ProductionDays,
+			CO2KGPerUnit: &co2, MassKG: &mass, ProductionDays: &p.ProductionDays,
 		}
 	}
 	os := make([]catalog.Offer, len(offers))
@@ -208,7 +208,7 @@ func NewPricing(db DB) (*Pricing, error) {
 // FreezePrices implémente pricing.Pricing : fige en base la dernière cotation (price_quotes) de chaque offre
 // et le dernier taux de chaque paire nécessaire, ou rien s'il en manque (même règle que pricing.Stub).
 // Le périmètre est « catalog » : l'interface ne transmet pas l'id de la BOM.
-func (p *Pricing) FreezePrices(ctx context.Context, offerIDs []int64, currencies []money.Currency, at time.Time) (int64, error) {
+func (p *Pricing) FreezePrices(ctx context.Context, _ int64, offerIDs []int64, currencies []money.Currency, at time.Time) (int64, error) {
 	tx, err := p.db.Begin(ctx)
 	if err != nil {
 		return 0, fmt.Errorf("freeze prices: %w", err)
@@ -422,9 +422,13 @@ func catalogJSON(ctx context.Context, cat catalog.Catalog, prices pricing.Pricin
 		if err != nil {
 			return nil, err
 		}
+		attrs, err := p.BOMAttributes()
+		if err != nil {
+			return nil, err
+		}
 		pj := partJSON{
 			ID: p.ID, Name: p.Name, Category: p.Category, Zone: p.Zone,
-			CO2Kg: p.CO2Kg.String(), MassKg: p.MassKg.String(), ProductionDays: p.ProductionDays,
+			CO2Kg: attrs.CO2KGPerUnit.String(), MassKg: attrs.MassKG.String(), ProductionDays: attrs.ProductionDays,
 			Offers: []offerJSON{},
 		}
 		for _, or := range offers {

@@ -101,7 +101,7 @@ func (s *Stub) Rate(_ context.Context, from, to money.Currency) (Rate, error) {
 // FreezePrices implémente Pricing : copie les cotations courantes (le stub ne garde pas d'historique,
 // l'instant du snapshot n'est donc pas utilisé). Les offres et paires manquantes sont listées dans
 // l'ordre croissant (message déterministe).
-func (s *Stub) FreezePrices(_ context.Context, offerIDs []int64, currencies []money.Currency, _ time.Time) (int64, error) {
+func (s *Stub) FreezePrices(_ context.Context, _ int64, offerIDs []int64, currencies []money.Currency, _ time.Time) (int64, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 

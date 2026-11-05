@@ -1,0 +1,359 @@
+/* Styles de l'espace BOM (NLPF-69), limités à .bom-space pour ne pas toucher l'espace fournisseurs.
+   Les couleurs d'objectif --ok, --warn, --over viennent de index.css (une seule palette, AGENTS §5). */
+.bom-space {
+  font-family: system-ui, sans-serif;
+  font-size: 14px;
+  color-scheme: light dark;
+  --bg: light-dark(#ffffff, #18181b);
+  --fg: light-dark(#18181b, #e4e4e7);
+  --muted: light-dark(#71717a, #a1a1aa);
+  --line: light-dark(#e4e4e7, #3f3f46);
+  --hover: light-dark(#f4f4f5, #27272a);
+  --accent: light-dark(#2563eb, #60a5fa);
+  --accent-bg: light-dark(#dbeafe, #1e3a8a);
+}
+
+.bom-space * {
+  box-sizing: border-box;
+}
+
+.bom-space {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+}
+
+.bom-space button,
+.bom-space input,
+.bom-space select {
+  font: inherit;
+}
+
+.bom-space h1 {
+  font-size: 1.4rem;
+  margin: 0 0 0.25rem;
+}
+
+.bom-space h2 {
+  font-size: 1.1rem;
+  margin: 0 0 0.5rem;
+}
+
+.bom-space h3 {
+  font-size: 1rem;
+  margin: 0.5rem 0 0;
+}
+
+.bom-space .muted {
+  color: var(--muted);
+}
+
+.bom-space .small {
+  font-size: 0.85rem;
+}
+
+.bom-space .over {
+  color: var(--over);
+}
+
+.bom-space .row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.bom-space .stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.bom-space button.link {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--accent);
+  cursor: pointer;
+  text-align: left;
+}
+
+.bom-space button.icon {
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.bom-space button.primary {
+  background: var(--accent);
+  color: #fff;
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  padding: 0.3rem 0.8rem;
+}
+
+.bom-space button.danger {
+  color: var(--over);
+}
+
+.bom-space .error {
+  color: var(--over);
+  border-left: 3px solid var(--over);
+  padding: 0.3rem 0.6rem;
+  margin: 0.5rem 0;
+}
+
+.bom-space .notice {
+  border-left: 3px solid var(--accent);
+  padding: 0.3rem 0.6rem;
+  margin: 0.5rem 0;
+}
+
+.bom-space .badge {
+  font-size: 0.8rem;
+  font-weight: normal;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 0.1rem 0.5rem;
+}
+
+/* Mise en page : liste des BOM | vue */
+.bom-space .app {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  height: calc(100vh - 44px); /* sous .space-nav */
+}
+
+.bom-space .app > main {
+  min-width: 0;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.bom-space .bom-list {
+  border-right: 1px solid var(--line);
+  padding: 1rem;
+  overflow-y: auto;
+}
+
+.bom-space .bom-list ul {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1rem;
+}
+
+.bom-space .bom-list li {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  padding: 0.3rem 0.4rem;
+  border-radius: 4px;
+}
+
+.bom-space .bom-list li .muted {
+  grid-column: 1;
+  font-size: 0.8rem;
+}
+
+.bom-space .bom-list li .icon {
+  grid-row: 1 / span 2;
+  grid-column: 2;
+}
+
+.bom-space .bom-list li.selected {
+  background: var(--accent-bg);
+}
+
+.bom-space .bom-list input {
+  min-width: 0;
+  flex: 1;
+}
+
+.bom-space .view {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
+}
+
+.bom-space .view-head {
+  display: flex;
+  gap: 1.5rem;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  margin-bottom: 0.5rem;
+}
+
+.bom-space .view-head input[type='number'] {
+  width: 6rem;
+}
+
+.bom-space .totals {
+  display: flex;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.bom-space .totals > div {
+  display: flex;
+  flex-direction: column;
+}
+
+.bom-space .totals strong {
+  font-size: 1.2rem;
+}
+
+.bom-space .totals p {
+  flex-basis: 100%;
+  margin: 0;
+}
+
+.bom-space .actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+/* Arbre virtualisé + panneau latéral */
+.bom-space .workspace {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: 1rem;
+  flex: 1;
+  min-height: 0;
+}
+
+.bom-space .tree {
+  overflow-y: auto;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  min-height: 0;
+}
+
+.bom-space .tree.moving .tree-row {
+  cursor: copy;
+}
+
+.bom-space .tree-row {
+  position: absolute;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding-right: 0.5rem;
+  white-space: nowrap;
+  cursor: pointer;
+  border-bottom: 1px solid var(--line);
+}
+
+.bom-space .tree-row:hover {
+  background: var(--hover);
+}
+
+.bom-space .tree-row.selected {
+  background: var(--accent-bg);
+}
+
+.bom-space .tree-row .toggle {
+  border: none;
+  background: none;
+  width: 1.2rem;
+  padding: 0;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.bom-space .tree-row .name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bom-space .tree-row .qty {
+  color: var(--muted);
+  width: 4rem;
+  text-align: right;
+}
+
+.bom-space .tree-row .offer {
+  width: 16rem;
+  max-width: 16rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bom-space .tree-row .cost {
+  width: 8rem;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.bom-space .tree-row .lead {
+  width: 3rem;
+  text-align: right;
+  color: var(--muted);
+}
+
+.bom-space .tree-row.has-error .cost {
+  color: var(--over);
+}
+
+.bom-space .panel {
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 0.8rem;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.bom-space .panel .facts {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.25rem 0.8rem;
+  margin: 0.5rem 0;
+}
+
+.bom-space .panel dt {
+  color: var(--muted);
+}
+
+.bom-space .panel dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.bom-space .panel details {
+  margin: 0.5rem 0;
+}
+
+.bom-space .panel .explain {
+  padding-left: 1.1rem;
+  margin: 0.3rem 0;
+}
+
+.bom-space .panel input[type='number'] {
+  width: 5rem;
+}
+
+.bom-space .panel .add {
+  border-top: 1px solid var(--line);
+  margin-top: 0.8rem;
+  padding-top: 0.4rem;
+}
+
+@media (max-width: 900px) {
+  .bom-space .app {
+    grid-template-columns: 1fr;
+    height: auto;
+  }
+  .bom-space .workspace {
+    grid-template-columns: 1fr;
+  }
+  .bom-space .tree {
+    height: 60vh;
+  }
+}

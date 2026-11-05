@@ -6,8 +6,8 @@ export default defineConfig({
   plugins: [react()],
   server: {
     proxy: {
-      '/api': 'http://localhost:8080',
-      '/healthz': 'http://localhost:8080',
+      '/api': process.env.STP_API_PROXY ?? 'http://localhost:8080',
+      '/healthz': process.env.STP_API_PROXY ?? 'http://localhost:8080',
     },
   },
 })

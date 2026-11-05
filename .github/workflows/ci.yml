@@ -86,8 +86,65 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npm run build
+      - name: Navigateurs de test (ADR 0013)
+        run: npx --no-install playwright install --with-deps chromium firefox webkit
+      - name: Parcours UI sur les trois moteurs, ordinateur et mobile
+        run: npm run test:e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-failures
+          path: |
+            web/test-results
+            web/playwright-report
+          if-no-files-found: ignore
+          retention-days: 7
       - name: Failles connues (dépendances de prod)
         run: npm audit --omit=dev --audit-level=high
+
+  web-live:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: bom
+          POSTGRES_PASSWORD: bom
+          POSTGRES_DB: bomstudio
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U bom -d bomstudio"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 15
+    env:
+      DATABASE_URL: postgres://bom:bom@localhost:5432/bomstudio?sslmode=disable
+      NLPF68_BROWSER_MODE: native
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm --prefix web ci
+      - name: Navigateurs de test
+        working-directory: web
+        run: npx --no-install playwright install --with-deps chromium firefox webkit
+      - name: Vraie source HTTP, ingestion, PostgreSQL, SSE et UI
+        run: go test -race -count=1 -timeout=4m -run '^TestPricingLiveBrowsers$' ./internal/pricing/pricingstore
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-live-failures
+          path: web/test-results
+          if-no-files-found: ignore
+          retention-days: 7
 
   security:
     runs-on: ubuntu-latest

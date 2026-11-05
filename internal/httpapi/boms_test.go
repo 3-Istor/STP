@@ -121,7 +121,7 @@ func (f *fakeSnapshots) NewDraft(_ context.Context, id int64) (bom.BOM, error) {
 
 func serve(t *testing.T, boms *fakeBOMs, snaps *fakeSnapshots, method, path, body string) *httptest.ResponseRecorder {
 	t.Helper()
-	h := NewRouter(Deps{BOMs: boms, Snapshots: snaps, Now: func() time.Time { return testNow }})
+	h := NewRouter(Services{BOMs: boms, Snapshots: snaps, Now: func() time.Time { return testNow }})
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, httptest.NewRequest(method, path, strings.NewReader(body)))
 	return rec

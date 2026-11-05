@@ -5,7 +5,7 @@ Spec : [docs/features.md](docs/features.md) · Règles du projet (humains et age
 
 ## Prérequis (dans WSL / Linux)
 
-- Go (dernière version stable), make, Docker, Node ≥ 20.19
+- Go ≥ 1.27.3 (voir `go.mod`), make, Docker ; Node 20 ≥ 20.19 ou Node ≥ 22.12 (CI : 24).
 
 ## Lancer toute l'app en Docker (démo, sans Go ni Node)
 
@@ -47,3 +47,53 @@ make lint     # go vet + golangci-lint + oxlint
 ```
 
 `DATABASE_URL` et `PORT` se surchargent par variable d'environnement.
+
+## Catalogue et fournisseurs
+
+L'API gère les pièces, offres, alternatives, fournisseurs et contrats. L'onglet **Fournisseurs**
+présente les offres, les prix enregistrés, les courbes et les contrats. Montants et pourcentages
+transitent en chaînes décimales ; un prix manquant reste explicitement indisponible.
+Voir [les routes et exemples](docs/api-catalogue-fournisseurs.md).
+
+Le simulateur et l'ingestion de NLPF-68 sont disponibles. `make dev` démarre aussi priceapi sur
+8090 ; `make priceapi` le lance seul. L'éditeur, les totaux de BOM et l'ouverture de la Multipla
+dépendent encore de NLPF-69 ; le seed complet n'est pas disponible. L'écran consulte les cotations
+persistées et s’actualise par SSE après chaque tick validé, avec repli daté en cas de panne.
+
+Le Makefile et Compose fixent des entrées **synthétiques** reproductibles : dataset `demo-v1`,
+graine `42`, date initiale `2026-01-01T00:00:00Z`, USD→EUR de référence `0.92` dans ±5 %, 40 minutes
+par année de 365 jours. Ces valeurs ne sont pas des cours réels. Surcharger `SIM_DATASET_VERSION`,
+`SIM_SEED`, `SIM_AS_OF`, `SIM_FX_PAIRS`, `SIM_YEAR_DURATION` pour une autre simulation ;
+les bandes/références FX sont des chaînes JSON, voir [le contrat](docs/api-prix-et-devises.md).
+Une reprise avec graine/date/version/références incompatibles refuse de réécrire l'historique.
+La cadence et le timeout peuvent changer au redémarrage, sans régénération ni rattrapage de l'arrêt.
+Le worker initialise 365 cotations quotidiennes par série, puis valide chaque nouveau jour par
+transaction. Un prix aberrant ou une panne ne valide pas le tick ; les anciennes données restent intactes.
+
+Tests de l'interface (Node compatible avec Vite ; CI : Node 24) :
+
+```bash
+cd web
+npm ci
+npx --no-install playwright install --with-deps chromium firefox webkit
+npm run test:e2e
+```
+
+La suite couvre les trois moteurs sur ordinateur et petit écran (60 parcours contrôlés).
+La source HTTP, l’ingestion, PostgreSQL, SSE et l’UI réels sont aussi vérifiés sur les six profils :
+
+```bash
+# Depuis la racine, avec une base jetable dédiée et les navigateurs installés ci-dessus.
+NLPF68_BROWSER_MODE=native DATABASE_URL='<base_de_test>' \
+  go test -race -count=1 -timeout=4m -run '^TestPricingLiveBrowsers$' ./internal/pricing/pricingstore
+```
+
+Ce test crée et supprime son schéma privé ; ses routes de pilotage n’existent pas dans le serveur
+livré. Il conserve les contrôles UI existants et ajoute panne/reprise, reconnexion, snapshot stable
+et actualisation sans navigation. La CI contient un job `web-live` dédié. Les contrôles Safari
+macOS/iOS réels restent distincts de WebKit (ADR 0013).
+
+Le gel des prix (offre/fournisseur/BOM/catalogue) et la conversion exacte sont disponibles par
+l’API ; voir [le contrat et les exemples](docs/api-prix-et-devises.md). Les évaluateurs de budgets
+et de volume sont prêts pour le vrai moteur BOM ; leur persistance/publication et leurs écrans
+attendent la base coordonnée NLPF-69. [État détaillé de NLPF-68](.specs/nlpf-68/delivery-report.md).

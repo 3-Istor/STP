@@ -29,6 +29,14 @@ sql:
         <<: *go
         package: pricingdb
         out: internal/pricing/pricingdb
+  - engine: postgresql
+    schema: migrations
+    queries: internal/supplier/queries.sql
+    gen:
+      go:
+        <<: *go
+        package: supplierdb
+        out: internal/supplier/supplierdb
   # bom : bomdb n'est importé que par bom/bomstore, pour que le package bom reste sans pgx (AGENTS §2).
   - engine: postgresql
     schema: migrations

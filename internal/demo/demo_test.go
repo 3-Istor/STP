@@ -158,7 +158,7 @@ func TestPricingFreezeAndReadBack(t *testing.T) {
 	at := time.Date(2026, 2, 1, 0, 0, 0, 0, time.UTC)
 
 	// Offre USD dans une BOM en EUR : le prix et le taux USD->EUR sont figés.
-	id, err := p.FreezePrices(ctx, []int64{9_000_202, 9_000_201, 9_000_202}, []money.Currency{"EUR"}, at)
+	id, err := p.FreezePrices(ctx, 0, []int64{9_000_202, 9_000_201, 9_000_202}, []money.Currency{"EUR"}, at)
 	if err != nil {
 		t.Fatalf("FreezePrices: %v", err)
 	}
@@ -211,7 +211,7 @@ func TestPricingFreezeRefusesMissingQuote(t *testing.T) {
 		t.Fatal(err)
 	}
 	// 9_000_213 n'a pas de cotation ; GBP n'a aucun taux.
-	_, err = p.FreezePrices(ctx, []int64{9_000_201, 9_000_213}, []money.Currency{"GBP"}, time.Now())
+	_, err = p.FreezePrices(ctx, 0, []int64{9_000_201, 9_000_213}, []money.Currency{"GBP"}, time.Now())
 	if !errors.Is(err, pricing.ErrNoQuote) || !errors.Is(err, pricing.ErrNoRate) {
 		t.Fatalf("err = %v, want ErrNoQuote and ErrNoRate", err)
 	}

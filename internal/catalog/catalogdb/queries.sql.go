@@ -7,13 +7,198 @@ package catalogdb
 
 import (
 	"context"
+	"time"
+
+	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/shopspring/decimal"
 )
+
+const archiveOffer = `-- name: ArchiveOffer :one
+UPDATE offers SET archived_at = COALESCE(archived_at, $1::timestamptz)
+WHERE id = $2
+RETURNING id, part_id, supplier_id, currency, price_min, price_max, lead_time_days, origin_country, created_at, quality_score, archived_at
+`
+
+type ArchiveOfferParams struct {
+	ArchivedAt time.Time
+	ID         int64
+}
+
+func (q *Queries) ArchiveOffer(ctx context.Context, arg ArchiveOfferParams) (Offer, error) {
+	row := q.db.QueryRow(ctx, archiveOffer, arg.ArchivedAt, arg.ID)
+	var i Offer
+	err := row.Scan(
+		&i.ID,
+		&i.PartID,
+		&i.SupplierID,
+		&i.Currency,
+		&i.PriceMin,
+		&i.PriceMax,
+		&i.LeadTimeDays,
+		&i.OriginCountry,
+		&i.CreatedAt,
+		&i.QualityScore,
+		&i.ArchivedAt,
+	)
+	return i, err
+}
+
+const archivePart = `-- name: ArchivePart :one
+UPDATE parts SET archived_at = COALESCE(archived_at, $1::timestamptz)
+WHERE id = $2
+RETURNING id, name, category, zone, created_at, mass_kg, co2_kg_per_unit, recycled_percent, recyclability_percent, manufacturing_amount, manufacturing_currency, production_days, labor_hours, hourly_amount, hourly_currency, archived_at
+`
+
+type ArchivePartParams struct {
+	ArchivedAt time.Time
+	ID         int64
+}
+
+func (q *Queries) ArchivePart(ctx context.Context, arg ArchivePartParams) (Part, error) {
+	row := q.db.QueryRow(ctx, archivePart, arg.ArchivedAt, arg.ID)
+	var i Part
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Category,
+		&i.Zone,
+		&i.CreatedAt,
+		&i.MassKg,
+		&i.Co2KgPerUnit,
+		&i.RecycledPercent,
+		&i.RecyclabilityPercent,
+		&i.ManufacturingAmount,
+		&i.ManufacturingCurrency,
+		&i.ProductionDays,
+		&i.LaborHours,
+		&i.HourlyAmount,
+		&i.HourlyCurrency,
+		&i.ArchivedAt,
+	)
+	return i, err
+}
+
+const createDetailedPart = `-- name: CreateDetailedPart :one
+INSERT INTO parts (
+    name, category, zone, mass_kg, co2_kg_per_unit, recycled_percent, recyclability_percent,
+    manufacturing_amount, manufacturing_currency, production_days, labor_hours, hourly_amount, hourly_currency
+) VALUES (
+    $1, $2, $3, $4, $5,
+    $6, $7, $8,
+    $9, $10, $11,
+    $12, $13
+)
+RETURNING id, name, category, zone, created_at, mass_kg, co2_kg_per_unit, recycled_percent, recyclability_percent, manufacturing_amount, manufacturing_currency, production_days, labor_hours, hourly_amount, hourly_currency, archived_at
+`
+
+type CreateDetailedPartParams struct {
+	Name                  string
+	Category              string
+	Zone                  string
+	MassKg                decimal.NullDecimal
+	Co2KgPerUnit          decimal.NullDecimal
+	RecycledPercent       decimal.NullDecimal
+	RecyclabilityPercent  decimal.NullDecimal
+	ManufacturingAmount   decimal.NullDecimal
+	ManufacturingCurrency pgtype.Text
+	ProductionDays        pgtype.Int4
+	LaborHours            decimal.NullDecimal
+	HourlyAmount          decimal.NullDecimal
+	HourlyCurrency        pgtype.Text
+}
+
+func (q *Queries) CreateDetailedPart(ctx context.Context, arg CreateDetailedPartParams) (Part, error) {
+	row := q.db.QueryRow(ctx, createDetailedPart,
+		arg.Name,
+		arg.Category,
+		arg.Zone,
+		arg.MassKg,
+		arg.Co2KgPerUnit,
+		arg.RecycledPercent,
+		arg.RecyclabilityPercent,
+		arg.ManufacturingAmount,
+		arg.ManufacturingCurrency,
+		arg.ProductionDays,
+		arg.LaborHours,
+		arg.HourlyAmount,
+		arg.HourlyCurrency,
+	)
+	var i Part
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Category,
+		&i.Zone,
+		&i.CreatedAt,
+		&i.MassKg,
+		&i.Co2KgPerUnit,
+		&i.RecycledPercent,
+		&i.RecyclabilityPercent,
+		&i.ManufacturingAmount,
+		&i.ManufacturingCurrency,
+		&i.ProductionDays,
+		&i.LaborHours,
+		&i.HourlyAmount,
+		&i.HourlyCurrency,
+		&i.ArchivedAt,
+	)
+	return i, err
+}
+
+const createOffer = `-- name: CreateOffer :one
+INSERT INTO offers (
+    part_id, supplier_id, currency, price_min, price_max, lead_time_days, origin_country, quality_score
+) VALUES (
+    $1, $2, $3, $4, $5,
+    $6, $7, $8
+)
+RETURNING id, part_id, supplier_id, currency, price_min, price_max, lead_time_days, origin_country, created_at, quality_score, archived_at
+`
+
+type CreateOfferParams struct {
+	PartID        int64
+	SupplierID    int64
+	Currency      string
+	PriceMin      decimal.Decimal
+	PriceMax      decimal.Decimal
+	LeadTimeDays  int32
+	OriginCountry string
+	QualityScore  decimal.NullDecimal
+}
+
+func (q *Queries) CreateOffer(ctx context.Context, arg CreateOfferParams) (Offer, error) {
+	row := q.db.QueryRow(ctx, createOffer,
+		arg.PartID,
+		arg.SupplierID,
+		arg.Currency,
+		arg.PriceMin,
+		arg.PriceMax,
+		arg.LeadTimeDays,
+		arg.OriginCountry,
+		arg.QualityScore,
+	)
+	var i Offer
+	err := row.Scan(
+		&i.ID,
+		&i.PartID,
+		&i.SupplierID,
+		&i.Currency,
+		&i.PriceMin,
+		&i.PriceMax,
+		&i.LeadTimeDays,
+		&i.OriginCountry,
+		&i.CreatedAt,
+		&i.QualityScore,
+		&i.ArchivedAt,
+	)
+	return i, err
+}
 
 const createPart = `-- name: CreatePart :one
 
 INSERT INTO parts (name, category, zone)
 VALUES ($1, $2, $3)
-RETURNING id, name, category, zone, created_at
+RETURNING id, name, category, zone, created_at, mass_kg, co2_kg_per_unit, recycled_percent, recyclability_percent, manufacturing_amount, manufacturing_currency, production_days, labor_hours, hourly_amount, hourly_currency, archived_at
 `
 
 type CreatePartParams struct {
@@ -32,12 +217,64 @@ func (q *Queries) CreatePart(ctx context.Context, arg CreatePartParams) (Part, e
 		&i.Category,
 		&i.Zone,
 		&i.CreatedAt,
+		&i.MassKg,
+		&i.Co2KgPerUnit,
+		&i.RecycledPercent,
+		&i.RecyclabilityPercent,
+		&i.ManufacturingAmount,
+		&i.ManufacturingCurrency,
+		&i.ProductionDays,
+		&i.LaborHours,
+		&i.HourlyAmount,
+		&i.HourlyCurrency,
+		&i.ArchivedAt,
+	)
+	return i, err
+}
+
+const deleteOffer = `-- name: DeleteOffer :exec
+DELETE FROM offers WHERE id = $1
+`
+
+func (q *Queries) DeleteOffer(ctx context.Context, id int64) error {
+	_, err := q.db.Exec(ctx, deleteOffer, id)
+	return err
+}
+
+const deletePart = `-- name: DeletePart :exec
+DELETE FROM parts WHERE id = $1
+`
+
+func (q *Queries) DeletePart(ctx context.Context, id int64) error {
+	_, err := q.db.Exec(ctx, deletePart, id)
+	return err
+}
+
+const getOffer = `-- name: GetOffer :one
+SELECT id, part_id, supplier_id, currency, price_min, price_max, lead_time_days, origin_country, created_at, quality_score, archived_at FROM offers WHERE id = $1
+`
+
+func (q *Queries) GetOffer(ctx context.Context, id int64) (Offer, error) {
+	row := q.db.QueryRow(ctx, getOffer, id)
+	var i Offer
+	err := row.Scan(
+		&i.ID,
+		&i.PartID,
+		&i.SupplierID,
+		&i.Currency,
+		&i.PriceMin,
+		&i.PriceMax,
+		&i.LeadTimeDays,
+		&i.OriginCountry,
+		&i.CreatedAt,
+		&i.QualityScore,
+		&i.ArchivedAt,
 	)
 	return i, err
 }
 
 const getPart = `-- name: GetPart :one
-SELECT id, name, category, zone, created_at FROM parts
+SELECT id, name, category, zone, created_at, mass_kg, co2_kg_per_unit, recycled_percent, recyclability_percent, manufacturing_amount, manufacturing_currency, production_days, labor_hours, hourly_amount, hourly_currency, archived_at FROM parts
 WHERE id = $1
 `
 
@@ -50,6 +287,553 @@ func (q *Queries) GetPart(ctx context.Context, id int64) (Part, error) {
 		&i.Category,
 		&i.Zone,
 		&i.CreatedAt,
+		&i.MassKg,
+		&i.Co2KgPerUnit,
+		&i.RecycledPercent,
+		&i.RecyclabilityPercent,
+		&i.ManufacturingAmount,
+		&i.ManufacturingCurrency,
+		&i.ProductionDays,
+		&i.LaborHours,
+		&i.HourlyAmount,
+		&i.HourlyCurrency,
+		&i.ArchivedAt,
+	)
+	return i, err
+}
+
+const insertAlternative = `-- name: InsertAlternative :exec
+INSERT INTO part_alternatives (part_low_id, part_high_id)
+VALUES ($1, $2)
+ON CONFLICT (part_low_id, part_high_id) DO NOTHING
+`
+
+type InsertAlternativeParams struct {
+	PartLowID  int64
+	PartHighID int64
+}
+
+func (q *Queries) InsertAlternative(ctx context.Context, arg InsertAlternativeParams) error {
+	_, err := q.db.Exec(ctx, insertAlternative, arg.PartLowID, arg.PartHighID)
+	return err
+}
+
+const listActiveOffersForParts = `-- name: ListActiveOffersForParts :many
+SELECT o.id, o.part_id, o.supplier_id, o.currency, o.price_min, o.price_max, o.lead_time_days, o.origin_country, o.created_at, o.quality_score, o.archived_at FROM offers o JOIN parts p ON p.id = o.part_id
+WHERE o.part_id = ANY($1::bigint[]) AND o.archived_at IS NULL AND p.archived_at IS NULL
+ORDER BY o.part_id, o.id
+`
+
+func (q *Queries) ListActiveOffersForParts(ctx context.Context, partIds []int64) ([]Offer, error) {
+	rows, err := q.db.Query(ctx, listActiveOffersForParts, partIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Offer
+	for rows.Next() {
+		var i Offer
+		if err := rows.Scan(
+			&i.ID,
+			&i.PartID,
+			&i.SupplierID,
+			&i.Currency,
+			&i.PriceMin,
+			&i.PriceMax,
+			&i.LeadTimeDays,
+			&i.OriginCountry,
+			&i.CreatedAt,
+			&i.QualityScore,
+			&i.ArchivedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listAlternatives = `-- name: ListAlternatives :many
+SELECT p.id, p.name, p.category, p.zone, p.created_at, p.mass_kg, p.co2_kg_per_unit, p.recycled_percent, p.recyclability_percent, p.manufacturing_amount, p.manufacturing_currency, p.production_days, p.labor_hours, p.hourly_amount, p.hourly_currency, p.archived_at FROM parts p JOIN part_alternatives a
+    ON (a.part_low_id = $1 AND p.id = a.part_high_id)
+    OR (a.part_high_id = $1 AND p.id = a.part_low_id)
+WHERE p.archived_at IS NULL
+ORDER BY p.id
+`
+
+func (q *Queries) ListAlternatives(ctx context.Context, partID int64) ([]Part, error) {
+	rows, err := q.db.Query(ctx, listAlternatives, partID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Part
+	for rows.Next() {
+		var i Part
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Category,
+			&i.Zone,
+			&i.CreatedAt,
+			&i.MassKg,
+			&i.Co2KgPerUnit,
+			&i.RecycledPercent,
+			&i.RecyclabilityPercent,
+			&i.ManufacturingAmount,
+			&i.ManufacturingCurrency,
+			&i.ProductionDays,
+			&i.LaborHours,
+			&i.HourlyAmount,
+			&i.HourlyCurrency,
+			&i.ArchivedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPartOffers = `-- name: ListPartOffers :many
+SELECT o.id, o.part_id, o.supplier_id, o.currency, o.price_min, o.price_max, o.lead_time_days, o.origin_country, o.created_at, o.quality_score, o.archived_at FROM offers o JOIN parts p ON p.id = o.part_id
+WHERE o.part_id = $1 AND o.archived_at IS NULL AND p.archived_at IS NULL
+ORDER BY o.id
+`
+
+func (q *Queries) ListPartOffers(ctx context.Context, partID int64) ([]Offer, error) {
+	rows, err := q.db.Query(ctx, listPartOffers, partID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Offer
+	for rows.Next() {
+		var i Offer
+		if err := rows.Scan(
+			&i.ID,
+			&i.PartID,
+			&i.SupplierID,
+			&i.Currency,
+			&i.PriceMin,
+			&i.PriceMax,
+			&i.LeadTimeDays,
+			&i.OriginCountry,
+			&i.CreatedAt,
+			&i.QualityScore,
+			&i.ArchivedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listParts = `-- name: ListParts :many
+SELECT p.id, p.name, p.category, p.zone, p.created_at, p.mass_kg, p.co2_kg_per_unit, p.recycled_percent, p.recyclability_percent, p.manufacturing_amount, p.manufacturing_currency, p.production_days, p.labor_hours, p.hourly_amount, p.hourly_currency, p.archived_at FROM parts p
+WHERE p.archived_at IS NULL
+    AND ($1::text = '' OR strpos(lower(p.name), lower($1::text)) > 0)
+    AND ($2::text = '' OR p.category = $2::text)
+    AND ($3::text = '' OR p.zone = $3::text)
+    AND ($4::bigint IS NULL OR EXISTS (
+        SELECT 1 FROM offers o
+        WHERE o.part_id = p.id AND o.supplier_id = $4::bigint AND o.archived_at IS NULL
+    ))
+ORDER BY p.id
+`
+
+type ListPartsParams struct {
+	NameQuery      string
+	CategoryFilter string
+	ZoneFilter     string
+	SupplierID     pgtype.Int8
+}
+
+func (q *Queries) ListParts(ctx context.Context, arg ListPartsParams) ([]Part, error) {
+	rows, err := q.db.Query(ctx, listParts,
+		arg.NameQuery,
+		arg.CategoryFilter,
+		arg.ZoneFilter,
+		arg.SupplierID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Part
+	for rows.Next() {
+		var i Part
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Category,
+			&i.Zone,
+			&i.CreatedAt,
+			&i.MassKg,
+			&i.Co2KgPerUnit,
+			&i.RecycledPercent,
+			&i.RecyclabilityPercent,
+			&i.ManufacturingAmount,
+			&i.ManufacturingCurrency,
+			&i.ProductionDays,
+			&i.LaborHours,
+			&i.HourlyAmount,
+			&i.HourlyCurrency,
+			&i.ArchivedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listSupplierOffers = `-- name: ListSupplierOffers :many
+SELECT o.id, o.part_id, o.supplier_id, o.currency, o.price_min, o.price_max, o.lead_time_days, o.origin_country, o.created_at, o.quality_score, o.archived_at FROM offers o JOIN parts p ON p.id = o.part_id
+WHERE o.supplier_id = $1 AND o.archived_at IS NULL AND p.archived_at IS NULL
+ORDER BY o.id
+`
+
+func (q *Queries) ListSupplierOffers(ctx context.Context, supplierID int64) ([]Offer, error) {
+	rows, err := q.db.Query(ctx, listSupplierOffers, supplierID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Offer
+	for rows.Next() {
+		var i Offer
+		if err := rows.Scan(
+			&i.ID,
+			&i.PartID,
+			&i.SupplierID,
+			&i.Currency,
+			&i.PriceMin,
+			&i.PriceMax,
+			&i.LeadTimeDays,
+			&i.OriginCountry,
+			&i.CreatedAt,
+			&i.QualityScore,
+			&i.ArchivedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const lockOfferForShare = `-- name: LockOfferForShare :one
+SELECT id, part_id, supplier_id, currency, price_min, price_max, lead_time_days, origin_country, created_at, quality_score, archived_at FROM offers WHERE id = $1 FOR SHARE
+`
+
+func (q *Queries) LockOfferForShare(ctx context.Context, id int64) (Offer, error) {
+	row := q.db.QueryRow(ctx, lockOfferForShare, id)
+	var i Offer
+	err := row.Scan(
+		&i.ID,
+		&i.PartID,
+		&i.SupplierID,
+		&i.Currency,
+		&i.PriceMin,
+		&i.PriceMax,
+		&i.LeadTimeDays,
+		&i.OriginCountry,
+		&i.CreatedAt,
+		&i.QualityScore,
+		&i.ArchivedAt,
+	)
+	return i, err
+}
+
+const lockOfferForUpdate = `-- name: LockOfferForUpdate :one
+SELECT id, part_id, supplier_id, currency, price_min, price_max, lead_time_days, origin_country, created_at, quality_score, archived_at FROM offers WHERE id = $1 FOR UPDATE
+`
+
+func (q *Queries) LockOfferForUpdate(ctx context.Context, id int64) (Offer, error) {
+	row := q.db.QueryRow(ctx, lockOfferForUpdate, id)
+	var i Offer
+	err := row.Scan(
+		&i.ID,
+		&i.PartID,
+		&i.SupplierID,
+		&i.Currency,
+		&i.PriceMin,
+		&i.PriceMax,
+		&i.LeadTimeDays,
+		&i.OriginCountry,
+		&i.CreatedAt,
+		&i.QualityScore,
+		&i.ArchivedAt,
+	)
+	return i, err
+}
+
+const lockPartForShare = `-- name: LockPartForShare :one
+SELECT id, name, category, zone, created_at, mass_kg, co2_kg_per_unit, recycled_percent, recyclability_percent, manufacturing_amount, manufacturing_currency, production_days, labor_hours, hourly_amount, hourly_currency, archived_at FROM parts WHERE id = $1 FOR SHARE
+`
+
+func (q *Queries) LockPartForShare(ctx context.Context, id int64) (Part, error) {
+	row := q.db.QueryRow(ctx, lockPartForShare, id)
+	var i Part
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Category,
+		&i.Zone,
+		&i.CreatedAt,
+		&i.MassKg,
+		&i.Co2KgPerUnit,
+		&i.RecycledPercent,
+		&i.RecyclabilityPercent,
+		&i.ManufacturingAmount,
+		&i.ManufacturingCurrency,
+		&i.ProductionDays,
+		&i.LaborHours,
+		&i.HourlyAmount,
+		&i.HourlyCurrency,
+		&i.ArchivedAt,
+	)
+	return i, err
+}
+
+const lockPartForUpdate = `-- name: LockPartForUpdate :one
+SELECT id, name, category, zone, created_at, mass_kg, co2_kg_per_unit, recycled_percent, recyclability_percent, manufacturing_amount, manufacturing_currency, production_days, labor_hours, hourly_amount, hourly_currency, archived_at FROM parts WHERE id = $1 FOR UPDATE
+`
+
+func (q *Queries) LockPartForUpdate(ctx context.Context, id int64) (Part, error) {
+	row := q.db.QueryRow(ctx, lockPartForUpdate, id)
+	var i Part
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Category,
+		&i.Zone,
+		&i.CreatedAt,
+		&i.MassKg,
+		&i.Co2KgPerUnit,
+		&i.RecycledPercent,
+		&i.RecyclabilityPercent,
+		&i.ManufacturingAmount,
+		&i.ManufacturingCurrency,
+		&i.ProductionDays,
+		&i.LaborHours,
+		&i.HourlyAmount,
+		&i.HourlyCurrency,
+		&i.ArchivedAt,
+	)
+	return i, err
+}
+
+const lockPartOffersForUpdate = `-- name: LockPartOffersForUpdate :many
+SELECT id, part_id, supplier_id, currency, price_min, price_max, lead_time_days, origin_country, created_at, quality_score, archived_at FROM offers WHERE part_id = $1 ORDER BY id FOR UPDATE
+`
+
+func (q *Queries) LockPartOffersForUpdate(ctx context.Context, partID int64) ([]Offer, error) {
+	rows, err := q.db.Query(ctx, lockPartOffersForUpdate, partID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Offer
+	for rows.Next() {
+		var i Offer
+		if err := rows.Scan(
+			&i.ID,
+			&i.PartID,
+			&i.SupplierID,
+			&i.Currency,
+			&i.PriceMin,
+			&i.PriceMax,
+			&i.LeadTimeDays,
+			&i.OriginCountry,
+			&i.CreatedAt,
+			&i.QualityScore,
+			&i.ArchivedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const offerHasQuotes = `-- name: OfferHasQuotes :one
+SELECT EXISTS (SELECT 1 FROM price_quotes p WHERE p.offer_id = $1) AS quoted
+`
+
+func (q *Queries) OfferHasQuotes(ctx context.Context, offerID int64) (bool, error) {
+	row := q.db.QueryRow(ctx, offerHasQuotes, offerID)
+	var quoted bool
+	err := row.Scan(&quoted)
+	return quoted, err
+}
+
+const offerHasReferences = `-- name: OfferHasReferences :one
+SELECT EXISTS (
+    SELECT 1 FROM price_quotes p WHERE p.offer_id = $1
+    UNION ALL SELECT 1 FROM bom_nodes b WHERE b.offer_id = $1
+    UNION ALL SELECT 1 FROM bom_snapshot_nodes sn WHERE sn.offer_id = $1
+    UNION ALL SELECT 1 FROM contract_offers c WHERE c.offer_id = $1
+) AS referenced
+`
+
+func (q *Queries) OfferHasReferences(ctx context.Context, offerID int64) (bool, error) {
+	row := q.db.QueryRow(ctx, offerHasReferences, offerID)
+	var referenced bool
+	err := row.Scan(&referenced)
+	return referenced, err
+}
+
+const partHasReferences = `-- name: PartHasReferences :one
+SELECT EXISTS (
+    SELECT 1 FROM offers o WHERE o.part_id = $1
+    UNION ALL SELECT 1 FROM bom_nodes b WHERE b.part_id = $1
+    UNION ALL SELECT 1 FROM bom_snapshot_nodes sn WHERE sn.part_id = $1
+    UNION ALL SELECT 1 FROM part_alternatives a
+        WHERE a.part_low_id = $1 OR a.part_high_id = $1
+) AS referenced
+`
+
+func (q *Queries) PartHasReferences(ctx context.Context, partID int64) (bool, error) {
+	row := q.db.QueryRow(ctx, partHasReferences, partID)
+	var referenced bool
+	err := row.Scan(&referenced)
+	return referenced, err
+}
+
+const updateDetailedPart = `-- name: UpdateDetailedPart :one
+UPDATE parts SET
+    name = $1, category = $2, zone = $3,
+    mass_kg = $4, co2_kg_per_unit = $5,
+    recycled_percent = $6, recyclability_percent = $7,
+    manufacturing_amount = $8, manufacturing_currency = $9,
+    production_days = $10, labor_hours = $11,
+    hourly_amount = $12, hourly_currency = $13
+WHERE id = $14
+RETURNING id, name, category, zone, created_at, mass_kg, co2_kg_per_unit, recycled_percent, recyclability_percent, manufacturing_amount, manufacturing_currency, production_days, labor_hours, hourly_amount, hourly_currency, archived_at
+`
+
+type UpdateDetailedPartParams struct {
+	Name                  string
+	Category              string
+	Zone                  string
+	MassKg                decimal.NullDecimal
+	Co2KgPerUnit          decimal.NullDecimal
+	RecycledPercent       decimal.NullDecimal
+	RecyclabilityPercent  decimal.NullDecimal
+	ManufacturingAmount   decimal.NullDecimal
+	ManufacturingCurrency pgtype.Text
+	ProductionDays        pgtype.Int4
+	LaborHours            decimal.NullDecimal
+	HourlyAmount          decimal.NullDecimal
+	HourlyCurrency        pgtype.Text
+	ID                    int64
+}
+
+func (q *Queries) UpdateDetailedPart(ctx context.Context, arg UpdateDetailedPartParams) (Part, error) {
+	row := q.db.QueryRow(ctx, updateDetailedPart,
+		arg.Name,
+		arg.Category,
+		arg.Zone,
+		arg.MassKg,
+		arg.Co2KgPerUnit,
+		arg.RecycledPercent,
+		arg.RecyclabilityPercent,
+		arg.ManufacturingAmount,
+		arg.ManufacturingCurrency,
+		arg.ProductionDays,
+		arg.LaborHours,
+		arg.HourlyAmount,
+		arg.HourlyCurrency,
+		arg.ID,
+	)
+	var i Part
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Category,
+		&i.Zone,
+		&i.CreatedAt,
+		&i.MassKg,
+		&i.Co2KgPerUnit,
+		&i.RecycledPercent,
+		&i.RecyclabilityPercent,
+		&i.ManufacturingAmount,
+		&i.ManufacturingCurrency,
+		&i.ProductionDays,
+		&i.LaborHours,
+		&i.HourlyAmount,
+		&i.HourlyCurrency,
+		&i.ArchivedAt,
+	)
+	return i, err
+}
+
+const updateOffer = `-- name: UpdateOffer :one
+UPDATE offers SET
+    supplier_id = $1, currency = $2,
+    price_min = $3, price_max = $4,
+    lead_time_days = $5, origin_country = $6,
+    quality_score = $7
+WHERE id = $8
+RETURNING id, part_id, supplier_id, currency, price_min, price_max, lead_time_days, origin_country, created_at, quality_score, archived_at
+`
+
+type UpdateOfferParams struct {
+	SupplierID    int64
+	Currency      string
+	PriceMin      decimal.Decimal
+	PriceMax      decimal.Decimal
+	LeadTimeDays  int32
+	OriginCountry string
+	QualityScore  decimal.NullDecimal
+	ID            int64
+}
+
+func (q *Queries) UpdateOffer(ctx context.Context, arg UpdateOfferParams) (Offer, error) {
+	row := q.db.QueryRow(ctx, updateOffer,
+		arg.SupplierID,
+		arg.Currency,
+		arg.PriceMin,
+		arg.PriceMax,
+		arg.LeadTimeDays,
+		arg.OriginCountry,
+		arg.QualityScore,
+		arg.ID,
+	)
+	var i Offer
+	err := row.Scan(
+		&i.ID,
+		&i.PartID,
+		&i.SupplierID,
+		&i.Currency,
+		&i.PriceMin,
+		&i.PriceMax,
+		&i.LeadTimeDays,
+		&i.OriginCountry,
+		&i.CreatedAt,
+		&i.QualityScore,
+		&i.ArchivedAt,
 	)
 	return i, err
 }

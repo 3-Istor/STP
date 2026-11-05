@@ -121,7 +121,7 @@ type patchBOMRequest struct {
 }
 
 func (a *api) patchBOM(w http.ResponseWriter, r *http.Request) {
-	id, err := pathID(r, "id")
+	id, err := bomPathID(r, "id")
 	if err != nil {
 		writeError(w, r, err)
 		return
@@ -149,7 +149,7 @@ func (a *api) patchBOM(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *api) deleteBOM(w http.ResponseWriter, r *http.Request) {
-	id, err := pathID(r, "id")
+	id, err := bomPathID(r, "id")
 	if err == nil {
 		err = a.boms.DeleteBOM(r.Context(), id)
 	}
@@ -161,7 +161,7 @@ func (a *api) deleteBOM(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *api) tree(w http.ResponseWriter, r *http.Request) {
-	id, err := pathID(r, "id")
+	id, err := bomPathID(r, "id")
 	if err != nil {
 		writeError(w, r, err)
 		return
@@ -192,7 +192,7 @@ type addNodeRequest struct {
 }
 
 func (a *api) addNode(w http.ResponseWriter, r *http.Request) {
-	bomID, err := pathID(r, "id")
+	bomID, err := bomPathID(r, "id")
 	if err != nil {
 		writeError(w, r, err)
 		return
@@ -227,12 +227,12 @@ type patchNodeRequest struct {
 }
 
 func (a *api) patchNode(w http.ResponseWriter, r *http.Request) {
-	bomID, err := pathID(r, "id")
+	bomID, err := bomPathID(r, "id")
 	if err != nil {
 		writeError(w, r, err)
 		return
 	}
-	nodeID, err := pathID(r, "nodeID")
+	nodeID, err := bomPathID(r, "nodeID")
 	if err != nil {
 		writeError(w, r, err)
 		return
@@ -272,12 +272,12 @@ func (a *api) patchNode(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *api) deleteNode(w http.ResponseWriter, r *http.Request) {
-	bomID, err := pathID(r, "id")
+	bomID, err := bomPathID(r, "id")
 	if err != nil {
 		writeError(w, r, err)
 		return
 	}
-	nodeID, err := pathID(r, "nodeID")
+	nodeID, err := bomPathID(r, "nodeID")
 	if err == nil {
 		err = a.boms.DeleteNode(r.Context(), bomID, nodeID)
 	}
@@ -291,7 +291,7 @@ func (a *api) deleteNode(w http.ResponseWriter, r *http.Request) {
 // --- Prix figés, publication, snapshots --------------------------------------------------------------
 
 func (a *api) freezePrices(w http.ResponseWriter, r *http.Request) {
-	id, err := pathID(r, "id")
+	id, err := bomPathID(r, "id")
 	if err != nil {
 		writeError(w, r, err)
 		return
@@ -305,7 +305,7 @@ func (a *api) freezePrices(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *api) unfreezePrices(w http.ResponseWriter, r *http.Request) {
-	id, err := pathID(r, "id")
+	id, err := bomPathID(r, "id")
 	if err != nil {
 		writeError(w, r, err)
 		return
@@ -319,7 +319,7 @@ func (a *api) unfreezePrices(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *api) publish(w http.ResponseWriter, r *http.Request) {
-	id, err := pathID(r, "id")
+	id, err := bomPathID(r, "id")
 	if err != nil {
 		writeError(w, r, err)
 		return
@@ -333,7 +333,7 @@ func (a *api) publish(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *api) getSnapshot(w http.ResponseWriter, r *http.Request) {
-	id, err := pathID(r, "id")
+	id, err := bomPathID(r, "id")
 	if err != nil {
 		writeError(w, r, err)
 		return
@@ -360,7 +360,7 @@ func (a *api) getSnapshot(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *api) newDraft(w http.ResponseWriter, r *http.Request) {
-	id, err := pathID(r, "id")
+	id, err := bomPathID(r, "id")
 	if err != nil {
 		writeError(w, r, err)
 		return
@@ -375,7 +375,8 @@ func (a *api) newDraft(w http.ResponseWriter, r *http.Request) {
 
 // --- Décodage et erreurs -----------------------------------------------------------------------------
 
-func pathID(r *http.Request, name string) (int64, error) {
+// bomPathID lit un identifiant de chemin ; l'erreur enveloppe errBadRequest (statusOf → 400).
+func bomPathID(r *http.Request, name string) (int64, error) {
 	raw := r.PathValue(name)
 	id, err := strconv.ParseInt(raw, 10, 64)
 	if err != nil || id <= 0 {
@@ -411,7 +412,8 @@ func statusOf(err error) int {
 	switch {
 	case is(bom.ErrBOMNotFound, bom.ErrNodeNotFound, snapshot.ErrSnapshotNotFound):
 		return http.StatusNotFound
-	case is(bom.ErrCycle, bom.ErrHasSnapshots, bom.ErrRootNode, pricing.ErrNoQuote, pricing.ErrNoRate):
+	case is(bom.ErrCycle, bom.ErrHasSnapshots, bom.ErrRootNode, pricing.ErrNoQuote, pricing.ErrNoRate,
+		catalog.ErrMissingAttribute):
 		return http.StatusConflict
 	case is(errBadRequest, bom.ErrInvalidInput, bom.ErrOfferNotForPart, bom.ErrNotAPart,
 		catalog.ErrPartNotFound, catalog.ErrOfferNotFound, money.ErrUnknownCurrency):

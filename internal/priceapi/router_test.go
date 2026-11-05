@@ -32,3 +32,11 @@ func TestRouter(t *testing.T) {
 		})
 	}
 }
+
+func TestHealthzJSONContentType(t *testing.T) {
+	rec := httptest.NewRecorder()
+	NewRouter().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/healthz", nil))
+	if rec.Code != http.StatusOK || rec.Header().Get("Content-Type") != "application/json" {
+		t.Fatalf("health contract: status=%d content-type=%q", rec.Code, rec.Header().Get("Content-Type"))
+	}
+}

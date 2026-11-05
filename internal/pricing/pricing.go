@@ -15,12 +15,12 @@ var (
 	ErrNoQuote = errors.New("no price quote")
 	// ErrNoRate : aucune cotation de taux pour cette paire. Jamais remplacée par un taux implicite.
 	ErrNoRate = errors.New("no exchange rate")
-	// ErrPriceSnapshotNotFound : aucun snapshot de prix avec cet identifiant.
-	ErrPriceSnapshotNotFound = errors.New("price snapshot not found")
 )
 
 // Quote est une cotation de prix : le prix d'une offre, dans la devise de l'offre, avec sa provenance.
 type Quote struct {
+	ID       int64         `json:"-"`
+	Context  *PriceContext `json:"-"`
 	OfferID  int64
 	Price    money.Money
 	Source   string
@@ -29,6 +29,8 @@ type Quote struct {
 
 // Rate est une cotation de taux : 1 From = Rate To.
 type Rate struct {
+	ID       int64         `json:"-"`
+	Context  *PriceContext `json:"-"`
 	From     money.Currency
 	To       money.Currency
 	Rate     decimal.Decimal
@@ -45,12 +47,14 @@ type Pricing interface {
 	// L'inversion d'un taux relève de multi-currency-costing, pas de cette interface.
 	Rate(ctx context.Context, from, to money.Currency) (Rate, error)
 
-	// FreezePrices crée un snapshot de prix immuable (ADR 0002) et renvoie son identifiant. Il fige la
-	// dernière cotation de chaque offre de offerIDs et, pour chaque devise de currencies, le dernier taux
-	// de chaque devise d'offre vers cette devise (paire exacte). at est l'instant du snapshot, fourni par
-	// l'appelant (pas d'horloge dans le domaine). S'il manque un prix ou un taux, rien n'est créé : l'erreur
-	// liste tout ce qui manque et enveloppe ErrNoQuote et/ou ErrNoRate.
-	FreezePrices(ctx context.Context, offerIDs []int64, currencies []money.Currency, at time.Time) (int64, error)
+	// FreezePrices crée un snapshot de prix immuable (ADR 0002) des offres de la BOM bomID et renvoie son
+	// identifiant. Il fige la dernière cotation de chaque offre de offerIDs (les offres de la BOM) et, pour
+	// chaque devise de currencies, le dernier taux de chaque devise d'offre vers cette devise. bomID est la
+	// portée du snapshot (scope « bom » de live-price-feed, ADR 0020). at est l'instant demandé par
+	// l'appelant (pas d'horloge dans le domaine) ; une source en temps simulé fige à son propre instant
+	// courant. S'il manque un prix ou un taux, l'erreur liste tout ce qui manque et enveloppe ErrNoQuote
+	// et/ou ErrNoRate.
+	FreezePrices(ctx context.Context, bomID int64, offerIDs []int64, currencies []money.Currency, at time.Time) (int64, error)
 	// SnapshotOfferPrice renvoie la cotation figée de l'offre dans le snapshot, ErrNoQuote si le snapshot
 	// ne la couvre pas, ou ErrPriceSnapshotNotFound.
 	SnapshotOfferPrice(ctx context.Context, snapshotID, offerID int64) (Quote, error)

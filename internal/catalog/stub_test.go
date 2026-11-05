@@ -4,6 +4,7 @@ import (
 	"errors"
 	"testing"
 
+	"bomstudio/internal/money"
 	"github.com/shopspring/decimal"
 )
 
@@ -19,10 +20,10 @@ func TestNewStub(t *testing.T) {
 		{"duplicate part", []Part{{ID: 1}, {ID: 1}}, nil, true, nil},
 		{"duplicate offer", []Part{{ID: 1}}, []Offer{{ID: 10, PartID: 1}, {ID: 10, PartID: 1}}, true, nil},
 		{"offer of unknown part", []Part{{ID: 1}}, []Offer{{ID: 10, PartID: 2}}, true, ErrPartNotFound},
-		{"valid attributes", []Part{{ID: 1, CO2Kg: decimal.RequireFromString("2.5"), MassKg: decimal.RequireFromString("0.8"), ProductionDays: 2}}, nil, false, nil},
-		{"negative CO2", []Part{{ID: 1, CO2Kg: decimal.RequireFromString("-0.1")}}, nil, true, nil},
-		{"negative mass", []Part{{ID: 1, MassKg: decimal.RequireFromString("-1")}}, nil, true, nil},
-		{"negative production days", []Part{{ID: 1, ProductionDays: -1}}, nil, true, nil},
+		{"valid attributes", []Part{{ID: 1, CO2KGPerUnit: ref(decimal.RequireFromString("2.5")), MassKG: ref(decimal.RequireFromString("0.8")), ProductionDays: ref(2)}}, nil, false, nil},
+		{"negative CO2", []Part{{ID: 1, CO2KGPerUnit: ref(decimal.RequireFromString("-0.1"))}}, nil, true, nil},
+		{"negative mass", []Part{{ID: 1, MassKG: ref(decimal.RequireFromString("-1"))}}, nil, true, nil},
+		{"negative production days", []Part{{ID: 1, ProductionDays: ref(-1)}}, nil, true, nil},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -39,7 +40,7 @@ func TestNewStub(t *testing.T) {
 
 func TestStubLookups(t *testing.T) {
 	stub, err := NewStub(
-		[]Part{{ID: 1, Name: "Écrou", CO2Kg: decimal.RequireFromString("0.05"), ProductionDays: 3}},
+		[]Part{{ID: 1, Name: "Écrou", CO2KGPerUnit: ref(decimal.RequireFromString("0.05")), ProductionDays: ref(3)}},
 		[]Offer{{ID: 10, PartID: 1, SupplierID: 7}},
 	)
 	if err != nil {
@@ -50,7 +51,7 @@ func TestStubLookups(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if !p.CO2Kg.Equal(decimal.RequireFromString("0.05")) || p.ProductionDays != 3 {
+		if p.CO2KGPerUnit == nil || !p.CO2KGPerUnit.Equal(decimal.RequireFromString("0.05")) || p.ProductionDays == nil || *p.ProductionDays != 3 {
 			t.Fatalf("part = %+v, want CO2 0.05 kg and 3 production days", p)
 		}
 	})
@@ -77,3 +78,67 @@ func TestStubLookups(t *testing.T) {
 		})
 	}
 }
+
+func TestStubPreservesPartAndOfferAttributes(t *testing.T) {
+	part := Part{ID: 1, Name: "Écrou moteur", Category: "Fixation", Zone: "moteur"}
+	tests := []struct {
+		name     string
+		offerID  int64
+		supplier int64
+		currency string
+		min, max string
+		days     int
+		origin   string
+	}{
+		{"premier fournisseur en USD", 10, 7, "USD", "0.005", "9007199254740993.123456789", 3, "US"},
+		{"même pièce chez un autre fournisseur en JPY", 11, 8, "JPY", "100.5", "200.75", 12, "JP"},
+	}
+	offers := make([]Offer, 0, len(tests))
+	for _, tt := range tests {
+		minPrice, err := money.Parse(tt.min, tt.currency)
+		if err != nil {
+			t.Fatal(err)
+		}
+		maxPrice, err := money.Parse(tt.max, tt.currency)
+		if err != nil {
+			t.Fatal(err)
+		}
+		offers = append(offers, Offer{
+			ID: tt.offerID, PartID: part.ID, SupplierID: tt.supplier,
+			Currency: money.Currency(tt.currency), PriceMin: minPrice, PriceMax: maxPrice,
+			LeadTimeDays: tt.days, OriginCountry: tt.origin,
+		})
+	}
+	stub, err := NewStub([]Part{part}, offers)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for i, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotPart, err := stub.Part(t.Context(), part.ID)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if gotPart.ID != part.ID || gotPart.Name != part.Name || gotPart.Category != part.Category || gotPart.Zone != part.Zone {
+				t.Errorf("pièce = %+v, want %+v", gotPart, part)
+			}
+			got, err := stub.Offer(t.Context(), tt.offerID)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got.ID != tt.offerID || got.PartID != part.ID || got.SupplierID != tt.supplier || got.Currency != money.Currency(tt.currency) {
+				t.Errorf("identité/devise d'offre = %+v, want offre %d, pièce %d, fournisseur %d, devise %s", got, tt.offerID, part.ID, tt.supplier, tt.currency)
+			}
+			if !got.PriceMin.Amount().Equal(offers[i].PriceMin.Amount()) || !got.PriceMax.Amount().Equal(offers[i].PriceMax.Amount()) ||
+				got.PriceMin.Currency() != money.Currency(tt.currency) || got.PriceMax.Currency() != money.Currency(tt.currency) {
+				t.Errorf("bornes = %s / %s, want %s / %s %s sans arrondi", got.PriceMin, got.PriceMax, tt.min, tt.max, tt.currency)
+			}
+			if got.LeadTimeDays != tt.days || got.OriginCountry != tt.origin {
+				t.Errorf("délai/origine = %d/%s, want %d/%s", got.LeadTimeDays, got.OriginCountry, tt.days, tt.origin)
+			}
+		})
+	}
+}
+
+// ref renvoie un pointeur vers v (attributs optionnels de catalog.Part).
+func ref[T any](v T) *T { return &v }
