@@ -2,7 +2,7 @@
 id: nlpf-68
 status: in-progress
 branch: nlpf-68
-current_task: T7
+current_task: T8
 started: 2026-11-05
 updated: 2026-11-05
 ---
@@ -11,7 +11,7 @@ updated: 2026-11-05
 
 ## Progress
 
-T1–T6 terminées sur les capacités décrites dans le journal. T7 en cours.
+T1–T7 terminées sur les capacités décrites dans le journal. T8 en cours.
 ADR 0011–0016 acceptées explicitement par Joe ; dépendances BOM toujours visibles.
 
 ## Task Log
@@ -110,6 +110,13 @@ ADR 0011–0016 acceptées explicitement par Joe ; dépendances BOM toujours vis
 - **Time**: 2026-11-05T14:58:48+01:00
 - **Commit**: 4bafdb5.
 - **Notes**: Snapshots autonomes quatre périmètres, couverture complète et fermeture transactionnelle livrés (ADR 0013). make test PostgreSQL18, make lint, race ciblé et up/reset/up verts ; migration conserve les faits et IDs legacy, refuse ajouts tardifs et XID forgé. Raccordements de publication/attachement et devises budgets obligatoires en T10, non validés.
+
+### T7 : Intégrer la conversion directe et inverse exacte (R7, R10) — 2026-11-05
+
+- **Status**: completed.
+- **Time**: 2026-11-05T15:02:42+01:00
+- **Commit**: a135b19.
+- **Notes**: Conversion autonome exacte et API livrées (ADR 0014), direct prioritaire/inverse sans pivot ; port rationnel pour agrégation et floor. make test PostgreSQL18, make lint et race ciblé verts. Tests 92 EUR, inverse périodique total 10 USD, JPY/KWD, >2^53, taux figés inchangés et entrée exposant excessive. Vrai moteur BOM obligatoire en T10.
 
 ## Decisions
 

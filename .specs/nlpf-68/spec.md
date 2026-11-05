@@ -308,7 +308,7 @@ ne signifie donc pas que J4/J8/J9 ni le ticket complet sont acceptés.
     Mutations et ajout tardif refusés, ancien snapshot publié conservé. Test du vrai brouillon
     figé insuffisamment couvert ; cette preuve est bloquée si NLPF-69 n'est pas disponible.
 
-- [ ] T7: Intégrer la conversion directe et inverse exacte (R7, R10)
+- [x] T7: Intégrer la conversion directe et inverse exacte (R7, R10)
   - **Files**: nouveau `internal/pricing/conversion.go`, extension ciblée `internal/money/`
     selon D4, tests métier, points de conversion dans `internal/bom/{service,totals}.go`
     après intégration autorisée, sérialisation HTTP de provenance.
