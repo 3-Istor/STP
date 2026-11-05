@@ -1,5 +1,5 @@
 # 0011 — Protocole du simulateur déterministe
-Statut : Proposé — Date : 2026-11-05 — Décideurs : en attente
+Statut : Accepté — Date : 2026-11-05 — Décideurs : Joe (accord explicite dans le chat)
 
 ## Contexte
 NLPF-68, `docs/features.md:135–146,161–163` : cinq requêtes, 365 jours initiaux et des valeurs

@@ -1,5 +1,5 @@
 # 0014 — Conversion exacte par taux direct ou inverse
-Statut : Proposé — Date : 2026-11-05 — Décideurs : en attente
+Statut : Accepté — Date : 2026-11-05 — Décideurs : Joe (accord explicite dans le chat)
 
 ## Contexte
 `docs/features.md:203–214` autorise le taux inverse, interdit le pivot et demande sa provenance.

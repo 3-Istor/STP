@@ -1,5 +1,5 @@
 # 0016 — Intégration progressive des prix et de la BOM
-Statut : Proposé — Date : 2026-11-05 — Décideurs : en attente
+Statut : Accepté — Date : 2026-11-05 — Décideurs : Joe (accord explicite dans le chat)
 
 ## Contexte
 NLPF-68 démarre depuis le catalogue/historique de NLPF-67. NLPF-69 est sur la branche d'Arthur ;

@@ -1,7 +1,7 @@
 # NLPF-68 — Contrats proposés pour prix, devises et budgets
 
-**Statut : Proposé, T1 en attente d'acceptation humaine.** Ce document ne décrit pas des routes
-déjà disponibles. ADR 0011–0016 proposées ; ADR 0002–0005 et 0008/0010 existantes inchangées.
+**Statut : contrat retenu, ADR 0011–0016 acceptées par Joe le 2026-11-05.** Ce document ne décrit
+pas encore des routes toutes disponibles. Acceptation explicite « accepte toutes les adere et continue stp » ; ADR 0011–0016 acceptées ; ADR 0002–0005 et 0008/0010 existantes inchangées.
 Les trois choix métier du 2026-11-05 sont acquis : budgets cibles par voiture, coût au volume de
 référence conservé, reprise au dernier jour validé sans rattrapage.
 

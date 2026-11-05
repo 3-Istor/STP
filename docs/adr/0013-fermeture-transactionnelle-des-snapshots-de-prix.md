@@ -1,5 +1,5 @@
 # 0013 — Fermeture transactionnelle des snapshots de prix
-Statut : Proposé — Date : 2026-11-05 — Décideurs : en attente
+Statut : Accepté — Date : 2026-11-05 — Décideurs : Joe (accord explicite dans le chat)
 
 ## Contexte
 ADR 0002 et `docs/features.md:140,156–158` exigent un snapshot immuable. Les triggers existants

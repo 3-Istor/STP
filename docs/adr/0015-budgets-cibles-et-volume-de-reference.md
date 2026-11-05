@@ -1,5 +1,5 @@
 # 0015 — Budgets cibles et volume de référence
-Statut : Proposé — Date : 2026-11-05 — Décideurs : en attente
+Statut : Accepté — Date : 2026-11-05 — Décideurs : Joe (accord explicite dans le chat)
 
 ## Contexte
 `docs/features.md:22,265–275` : budgets, couleurs et volume finançable. Joe a confirmé les

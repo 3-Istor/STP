@@ -1,5 +1,5 @@
 # 0012 — Horloge, ingestion atomique et repli des prix
-Statut : Proposé — Date : 2026-11-05 — Décideurs : en attente
+Statut : Accepté — Date : 2026-11-05 — Décideurs : Joe (accord explicite dans le chat)
 
 ## Contexte
 `docs/features.md:139,145–148,159,163`, AGENTS §2–3 et ADR 0003 : continuité, pas de doublons,

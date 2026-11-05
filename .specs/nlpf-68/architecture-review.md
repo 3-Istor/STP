@@ -1,7 +1,7 @@
 # NLPF-68 — Décisions T1 à examiner
 
 Branche créée : `nlpf-68` depuis `4dcdb48`. Plan approuvé par invocation de spec-execute ;
-T1 reste en cours. Les six ADR ci-dessous sont **Proposé**, pas Accepté. Ce lot ne contient aucun
+Joe a accepté les six ADR ci-dessous le 2026-11-05, par le message « accepte toutes les adere et continue stp ». Ce lot ne contient aucun
 code, migration, nouvelle dépendance ou reprise de branche d'Arthur.
 
 ## Choix déjà confirmés par Joe
