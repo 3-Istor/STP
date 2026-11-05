@@ -86,6 +86,19 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npm run build
+      - name: Navigateurs de test (ADR 0010)
+        run: npx --no-install playwright install --with-deps chromium firefox webkit
+      - name: Parcours UI sur les trois moteurs, ordinateur et mobile
+        run: npm run test:e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-failures
+          path: |
+            web/test-results
+            web/playwright-report
+          if-no-files-found: ignore
+          retention-days: 7
       - name: Failles connues (dépendances de prod)
         run: npm audit --omit=dev --audit-level=high
 

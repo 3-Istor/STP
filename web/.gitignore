@@ -22,3 +22,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Rapports et captures Playwright, reproductibles localement et en CI.
+/test-results/
+/playwright-report/

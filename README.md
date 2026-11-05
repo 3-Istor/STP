@@ -5,7 +5,7 @@ Spec : [docs/features.md](docs/features.md) · Règles du projet (humains et age
 
 ## Prérequis (dans WSL / Linux)
 
-- Go (dernière version stable), make, Docker, Node ≥ 20.19
+- Go ≥ 1.27.3 (voir `go.mod`), make, Docker ; Node 20 ≥ 20.19 ou Node ≥ 22.12 (CI : 24).
 
 ## Lancer toute l'app en Docker (démo, sans Go ni Node)
 
@@ -47,3 +47,27 @@ make lint     # go vet + golangci-lint + oxlint
 ```
 
 `DATABASE_URL` et `PORT` se surchargent par variable d'environnement.
+
+## Catalogue et fournisseurs
+
+L'API gère les pièces, offres, alternatives, fournisseurs et contrats. L'onglet **Fournisseurs**
+présente les offres, les prix enregistrés, les courbes et les contrats. Montants et pourcentages
+transitent en chaînes décimales ; un prix manquant reste explicitement indisponible.
+Voir [les routes et exemples](docs/api-catalogue-fournisseurs.md).
+
+Le simulateur/ingestion et son signal SSE dépendent de NLPF-68 ; l'éditeur, les totaux de BOM et
+l'ouverture de la Multipla dépendent de NLPF-69. Tant que ces composants ne sont pas livrés,
+l'écran consulte les cotations déjà en base et permet une actualisation manuelle ; il signale
+l'indisponibilité de l'actualisation automatique. Le seed complet n'est pas encore disponible.
+
+Tests de l'interface (Node compatible avec Vite ; CI : Node 24) :
+
+```bash
+cd web
+npm ci
+npx --no-install playwright install --with-deps chromium firefox webkit
+npm run test:e2e
+```
+
+La suite couvre les trois moteurs sur ordinateur et petit écran. Les contrôles Safari/macOS/iOS
+réels et du vrai flux SSE restent distincts des tests contrôlés ; voir ADR 0010 et le suivi NLPF-67.

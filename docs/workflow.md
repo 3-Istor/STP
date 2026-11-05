@@ -133,10 +133,16 @@ Fichier `.github/workflows/ci.yml`, déclenché sur push vers `main` et sur chaq
 ```
           ┌── go ──────────── tidy · sqlc à jour · goose up/reset/up · vet · golangci-lint (+gosec)
           │                   · test -race + couverture (service Postgres 18)
-push/PR ──┼── web ─────────── npm ci · oxlint · tsc+build · npm audit
+push/PR ──┼── web ─────────── npm ci · oxlint · tsc+build · Playwright (3 moteurs) · npm audit
           └── security ────── govulncheck
 ```
 
 Rejouer en local : `make migrate lint test cover sec`, puis `make sqlc && git status` (aucun changement attendu).
 Les tests d'intégration lisent `DATABASE_URL` (exportée par le `Makefile`) : sans base joignable, ils sont
 sautés en local mais **échouent en CI** (`CI=true`).
+
+Tests UI (voir ADR 0010) : dans `web`, `npm ci`, installation des navigateurs Playwright,
+puis `npm run test:e2e`. Les parcours sont rejoués sur Chromium, Firefox et WebKit, en formats
+ordinateur et mobile. Ils contrôlent couleurs calculées, précision/arrondi monétaire, navigation,
+graphiques et relecture REST sur signal contrôlé. Un test mocké ne constitue pas une vérification
+du simulateur/SSE réel ; les contrôles Safari réel restent tracés séparément dans la spec.
