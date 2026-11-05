@@ -271,7 +271,7 @@ définir en T1 car le flux transporte un signal, pas les prix.
     et après la borne, autre vitesse ; panne avant commit = aucune progression annoncée. up/down/up
     sur base jetable et génération sqlc stable, aucune migration historique modifiée.
 
-- [ ] T5: Exposer les cotations, historiques et le repli expliqué (R1, R4–R5, R10)
+- [x] T5: Exposer les cotations, historiques et le repli expliqué (R1, R4–R5, R10)
   - **Files**: nouveaux `internal/pricing/{service,history_fx}.go`,
     extension `pricingstore/`, `queries.sql`, nouveau `internal/httpapi/pricing.go`,
     `internal/httpapi/{router,supplier_offers}.go`, `cmd/server/main.go`, tests associés.

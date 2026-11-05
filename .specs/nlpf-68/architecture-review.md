@@ -1,4 +1,4 @@
-# NLPF-68 — Décisions T1 à examiner
+# NLPF-68 — Décisions T1 acceptées
 
 Branche créée : `nlpf-68` depuis `4dcdb48`. Plan approuvé par invocation de spec-execute ;
 Joe a accepté les six ADR ci-dessous le 2026-11-05, par le message « accepte toutes les adere et continue stp ». Ce lot ne contient aucun
@@ -11,7 +11,7 @@ code, migration, nouvelle dépendance ou reprise de branche d'Arthur.
 - Reprise au dernier jour simulé validé, sans rattrapage de l'arrêt.
 
 Ces trois choix ne sont pas soumis une seconde fois. Les détails techniques/cas limites
-complémentaires ci-dessous restent à accepter avant code, conformément à AGENTS.md §6–8.
+complémentaires ci-dessous ont été acceptés avec les six ADR, conformément à AGENTS.md §6–8.
 
 | Proposition | Choix recommandé | Conséquence à accepter |
 |---|---|---|
@@ -38,5 +38,5 @@ n'enregistre ni lot ni tick ; le calcul utilise un snapshot fermé complet avec 
 ou produit une erreur sans zéro. Tests Source, PostgreSQL et navigateur prévus T3–T10, **NOT RUN**.
 
 Les validations de ce lot portent sur documents, statuts et Git ; elles ne prouvent pas le nouveau
-comportement applicatif. La clôture T1 attend l'acceptation humaine des propositions ; les raccordements
+comportement applicatif. T1 est clôturée par l’accord explicite consigné dans state.md ; les raccordements
 et vérifications NLPF-69 restent des conditions de livraison, même si ces ADR sont acceptées.

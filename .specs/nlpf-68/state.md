@@ -2,7 +2,7 @@
 id: nlpf-68
 status: in-progress
 branch: nlpf-68
-current_task: T5
+current_task: T6
 started: 2026-11-05
 updated: 2026-11-05
 ---
@@ -11,7 +11,7 @@ updated: 2026-11-05
 
 ## Progress
 
-T1–T4 terminées sur les capacités décrites dans le journal. T5 en cours.
+T1–T5 terminées sur les capacités décrites dans le journal. T6 en cours.
 ADR 0011–0016 acceptées explicitement par Joe ; dépendances BOM toujours visibles.
 
 ## Task Log
@@ -89,6 +89,13 @@ ADR 0011–0016 acceptées explicitement par Joe ; dépendances BOM toujours vis
 - **Time**: 2026-11-05T14:25:08+01:00
 - **Commit**: 994f68a.
 - **Notes**: Historique et curseur atomiques, bail de worker et port seed transactionnel livrés (ADR 0011–0012/0016). make lint/test PostgreSQL et -race verts ; horloge virtuelle 365 jours/40 min, deux schémas/IDs différents, concurrence et rollback vérifiés. up/reset/up, sqlc stable et vrais binaires HTTP/reprise verts. Cadence ajustable sans régénération ; correctif de précision 48f9063 consigné.
+
+### T5 : Exposer les cotations, historiques et le repli expliqué (R1, R4–R5, R10) — 2026-11-05
+
+- **Status**: completed.
+- **Time**: 2026-11-05T14:51:48+01:00
+- **Commit**: f8b59a4.
+- **Notes**: Lectures réelles prix/FX/historiques et repli complet expliqué livrés. make lint/test PostgreSQL, build, race, sqlc stable et make sec verts ; 60 scénarios navigateur contrôlés sur trois moteurs verts (33,5 s), aucune preuve de SSE réel encore. Statistiques épinglées à la cotation retenue et horloge validée.
 
 ## Decisions
 
