@@ -293,7 +293,7 @@ ne signifie donc pas que J4/J8/J9 ni le ticket complet sont acceptés.
     valeur zéro fabriquée. Test d'API indisponible avec/sans snapshot valide, nouvel état jamais
     étiqueté live à tort ; non-régression des statistiques et de /healthz.
 
-- [ ] T6: Construire et consommer des snapshots de prix complets (R4, R6, R10)
+- [x] T6: Construire et consommer des snapshots de prix complets (R4, R6, R10)
   - **Files**: nouveaux `internal/pricing/{snapshot,coverage}.go`, extension `queries.sql` et
     `pricingstore/`, nouvelle migration de fermeture si nécessaire et approuvée,
     `internal/httpapi/pricing_snapshots.go`, tests PostgreSQL et tests avec services BOM/snapshot.

@@ -2,7 +2,7 @@
 id: nlpf-68
 status: in-progress
 branch: nlpf-68
-current_task: T6
+current_task: T7
 started: 2026-11-05
 updated: 2026-11-05
 ---
@@ -11,7 +11,7 @@ updated: 2026-11-05
 
 ## Progress
 
-T1–T5 terminées sur les capacités décrites dans le journal. T6 en cours.
+T1–T6 terminées sur les capacités décrites dans le journal. T7 en cours.
 ADR 0011–0016 acceptées explicitement par Joe ; dépendances BOM toujours visibles.
 
 ## Task Log
@@ -103,6 +103,13 @@ ADR 0011–0016 acceptées explicitement par Joe ; dépendances BOM toujours vis
 - **Authorization**: ADR 0016 acceptée : capacités pricing indépendantes autorisées sans reprise de NLPF-69.
 - **Notes**: spec amendée avant code : capacités autonomes T6–T9 puis raccordements réels BOM obligatoires en T10. Tous les critères d’acceptation sont conservés ; le ticket ne sera pas déclaré terminé sur des stubs.
 - **Migration**: lecture distante main=532b627 et NLPF-69=ff5cc69 inchangés ; 00004 est le prochain numéro de cette base locale, sans réservation globale.
+
+### T6 : Construire et consommer des snapshots de prix complets (R4, R6, R10) — 2026-11-05
+
+- **Status**: completed.
+- **Time**: 2026-11-05T14:58:48+01:00
+- **Commit**: 4bafdb5.
+- **Notes**: Snapshots autonomes quatre périmètres, couverture complète et fermeture transactionnelle livrés (ADR 0013). make test PostgreSQL18, make lint, race ciblé et up/reset/up verts ; migration conserve les faits et IDs legacy, refuse ajouts tardifs et XID forgé. Raccordements de publication/attachement et devises budgets obligatoires en T10, non validés.
 
 ## Decisions
 
