@@ -255,7 +255,7 @@ définir en T1 car le flux transporte un signal, pas les prix.
     prouve les cinq requêtes et rejette timeout, JSON invalide, mauvais ID/devise, NaN/Infinity,
     date et prix/taux aberrants ; les deux /healthz restent compatibles.
 
-- [ ] T4: Persister l'initialisation et les ticks avec reprise (R2–R4, R10, S1–S2)
+- [x] T4: Persister l'initialisation et les ticks avec reprise (R2–R4, R10, S1–S2)
   - **Files**: nouvelle `migrations/NNNNN_pricing_runtime.sql` au numéro validé,
     `internal/pricing/{runtime,ingestion}.go`, `internal/pricing/queries.sql`,
     `internal/pricing/pricingstore/`, sqlc généré, tests d'intégration, `cmd/server/main.go`.
