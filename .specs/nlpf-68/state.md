@@ -14,7 +14,7 @@ updated: 2026-11-05
 T1–T9 terminées pour les capacités autonomes selon ADR 0016. T10 : validations locales et rapport
 livrés, raccordements réels BOM et CI distante non terminés. Statut blocked, current_task T10.
 ADR 0011–0016 acceptées explicitement par Joe ; aucun nouvel accord sur celles-ci requis.
-Question ouverte dans le chat : accord d’Arthur et révision/base coordonnée.
+Joe confirme que l’accord d’Arthur et la base commune ne sont pas encore disponibles.
 
 ## Task Log
 
@@ -145,6 +145,13 @@ Question ouverte dans le chat : accord d’Arthur et révision/base coordonnée.
 - **Measure**: 30 000 nœuds pièce + racine, 300 offres uniques, 109 500 prix/365 FX initiaux : bootstrap 21,374 s, tick 67,756 ms, lecture 100,309 ms, snapshot BOM 155,783 ms, prix+FX tables/index 37 920 768 octets. Recalcul BOM et 30 000 offres uniques non mesurés.
 - **Artifacts**: delivery-report.md (responsabilités, panne/test/limites et matrice J1–J10/C1–C4) ; integration-nlpf-69.md (adaptations et conflits de migrations/ADR concrets).
 - **Pending**: accord du propriétaire NLPF-69 et base coordonnée demandés dans le chat ; AGENTS §13 et ADR 0016 maintiennent cette condition. Pas de reprise/fusion ni migration de base d’équipe. Publication/remises/budgets/éditeur BOM, seed Multipla et CI distante non validés.
+
+### Confirmation du blocage par Joe — 2026-11-05
+
+- **Time**: 2026-11-05T15:52:15+01:00
+- **Answer**: « Pas encore » à la question sur l’accord d’Arthur et une révision/base commune validée.
+- **Status**: blocked, T10 non cochée. Les capacités autonomes T1–T9 restent livrées et vérifiées.
+- **Next**: reprendre les raccordements selon integration-nlpf-69.md lorsque ces éléments seront disponibles ; aucun accord nouveau déduit de cette réponse, aucune reprise de NLPF-69.
 
 ## Decisions
 
