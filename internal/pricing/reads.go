@@ -91,8 +91,6 @@ type ReadService struct {
 	config RunConfig
 }
 
-var _ Pricing = (*ReadService)(nil)
-
 func NewReadService(store ReadRepository, cfg RunConfig) *ReadService {
 	return &ReadService{store: store, config: cfg.Normalize()}
 }

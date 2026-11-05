@@ -37,3 +37,21 @@ sql:
         <<: *go
         package: supplierdb
         out: internal/supplier/supplierdb
+  # bom : bomdb n'est importé que par bom/bomstore, pour que le package bom reste sans pgx (AGENTS §2).
+  - engine: postgresql
+    schema: migrations
+    queries: internal/bom/queries.sql
+    gen:
+      go:
+        <<: *go
+        package: bomdb
+        out: internal/bom/bomdb
+  # snapshot : snapshotdb n'est importé que par snapshot/snapshotstore (même découpage que bom).
+  - engine: postgresql
+    schema: migrations
+    queries: internal/snapshot/queries.sql
+    gen:
+      go:
+        <<: *go
+        package: snapshotdb
+        out: internal/snapshot/snapshotdb

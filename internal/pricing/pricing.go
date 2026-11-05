@@ -46,4 +46,19 @@ type Pricing interface {
 	// Rate renvoie la dernière cotation de la paire exacte from → to, ou ErrNoRate.
 	// L'inversion d'un taux relève de multi-currency-costing, pas de cette interface.
 	Rate(ctx context.Context, from, to money.Currency) (Rate, error)
+
+	// FreezePrices crée un snapshot de prix immuable (ADR 0002) des offres de la BOM bomID et renvoie son
+	// identifiant. Il fige la dernière cotation de chaque offre de offerIDs (les offres de la BOM) et, pour
+	// chaque devise de currencies, le dernier taux de chaque devise d'offre vers cette devise. bomID est la
+	// portée du snapshot (scope « bom » de live-price-feed, ADR 0020). at est l'instant demandé par
+	// l'appelant (pas d'horloge dans le domaine) ; une source en temps simulé fige à son propre instant
+	// courant. S'il manque un prix ou un taux, l'erreur liste tout ce qui manque et enveloppe ErrNoQuote
+	// et/ou ErrNoRate.
+	FreezePrices(ctx context.Context, bomID int64, offerIDs []int64, currencies []money.Currency, at time.Time) (int64, error)
+	// SnapshotOfferPrice renvoie la cotation figée de l'offre dans le snapshot, ErrNoQuote si le snapshot
+	// ne la couvre pas, ou ErrPriceSnapshotNotFound.
+	SnapshotOfferPrice(ctx context.Context, snapshotID, offerID int64) (Quote, error)
+	// SnapshotRate renvoie le taux figé de la paire exacte dans le snapshot, ErrNoRate s'il ne la couvre
+	// pas, ou ErrPriceSnapshotNotFound.
+	SnapshotRate(ctx context.Context, snapshotID int64, from, to money.Currency) (Rate, error)
 }

@@ -31,7 +31,7 @@ test.beforeEach(async ({ page }) => {
 
 test('offres isolées, variations explicites et prix manquant visible', async ({ page }) => {
   await mockSupplierAPI(page)
-  await page.goto('/')
+  await page.goto('/#fournisseurs')
   await chooseSupplier(page, 'Atlas')
   await expect(page.getByRole('article', { name: 'Offre 101 — Injecteur Atlas' })).toBeVisible()
   await expect(page.getByText('Moteur Boréal', { exact: true })).toHaveCount(0)
@@ -73,7 +73,7 @@ test('montants textuels exacts et arrondi half-even dans le moteur réel', async
     id, name: `Précision ${id}`, amount, reference: amount, currency, variation: '0.0', trend: 'stable',
   }))
   await mockSupplierAPI(page, pages)
-  await page.goto('/')
+  await page.goto('/#fournisseurs')
   await chooseSupplier(page, 'Atlas')
   for (const value of cases) {
     const price = page.getByTestId(`price-${value.id}`)
@@ -84,7 +84,7 @@ test('montants textuels exacts et arrondi half-even dans le moteur réel', async
 
 test('historique utilisable au clic, au clavier et au toucher', async ({ page }, testInfo) => {
   await mockSupplierAPI(page)
-  await page.goto('/')
+  await page.goto('/#fournisseurs')
   await chooseSupplier(page, 'Atlas')
   const open = page.getByRole('button', { name: 'Historique de Injecteur Atlas', exact: true })
   if (testInfo.project.use.hasTouch) await open.tap()
@@ -112,7 +112,7 @@ test('historique utilisable au clic, au clavier et au toucher', async ({ page },
 
 test('petit écran sans débordement et commandes toujours accessibles', async ({ page }, testInfo) => {
   await mockSupplierAPI(page)
-  await page.goto('/')
+  await page.goto('/#fournisseurs')
   await chooseSupplier(page, 'Atlas')
   await expect(page.getByTestId('price-101')).toBeVisible()
   const layout = await page.evaluate(() => ({
@@ -130,7 +130,7 @@ test('petit écran sans débordement et commandes toujours accessibles', async (
 
 test('signal de prix relu sans navigation ni fuite de connexion', async ({ page }) => {
   const api = await mockSupplierAPI(page)
-  await page.goto('/')
+  await page.goto('/#fournisseurs')
   await chooseSupplier(page, 'Atlas')
   await expect(page.getByTestId('price-101')).toHaveText(/110,00\s*€/)
   await expect.poll(() => page.evaluate(() => window.__specDrumSse.active)).toBe(1)
@@ -165,7 +165,7 @@ test('une réponse Atlas retardée ne remplace pas les offres Boréal', async ({
   const api = await mockSupplierAPI(page)
   const held = api.hold('1')
   try {
-    await page.goto('/')
+    await page.goto('/#fournisseurs')
     await chooseSupplier(page, 'Atlas')
     await held.requested
     await chooseSupplier(page, 'Boréal')
@@ -187,7 +187,7 @@ test('erreur REST explicitement visible sans prix fabriqué', async ({ page }) =
   await page.route('**/api/v1/suppliers/1/offers', (route) => route.fulfill({
     status: 503, json: { error: 'Lecture des offres temporairement indisponible' },
   }))
-  await page.goto('/')
+  await page.goto('/#fournisseurs')
   await chooseSupplier(page, 'Atlas')
   await expect(page.getByText('Lecture des offres temporairement indisponible', { exact: false })).toBeVisible()
   await expect(page.getByTestId('price-101')).toHaveCount(0)
@@ -197,7 +197,7 @@ test('repli snapshot daté explicitement visible', async ({ page }) => {
   const pages = defaultPages()
   pages['1'].context = { mode: 'snapshot_fallback', snapshot_id: 7, as_of: '2026-11-04T12:00:00Z', reason: 'timeout' }
   await mockSupplierAPI(page, pages)
-  await page.goto('/')
+  await page.goto('/#fournisseurs')
   await chooseSupplier(page, 'Atlas')
   const notice = page.getByRole('status').filter({ hasText: 'Source de prix indisponible.' })
   await expect(notice).toContainText('snapshot #7')
@@ -218,7 +218,7 @@ test('création fournisseur : validation serveur visible et notes transmises en 
       await route.fulfill({ status: 201, json: { id: 3, ...body } })
     }
   })
-  await page.goto('/')
+  await page.goto('/#fournisseurs')
   await page.getByRole('button', { name: '+ Nouveau fournisseur', exact: true }).click()
   const dialog = page.getByRole('dialog', { name: 'Nouveau fournisseur', exact: true })
   await dialog.getByLabel('Nom du fournisseur').fill('Cèdre')
@@ -251,7 +251,7 @@ test('contrat expiré lu du serveur et édition sans conversion des paliers', as
     contract = { ...contract, ...route.request().postDataJSON() }
     await route.fulfill({ json: contract })
   })
-  await page.goto('/')
+  await page.goto('/#fournisseurs')
   await chooseSupplier(page, 'Atlas')
   await page.getByRole('tab', { name: /^Contrats/ }).click()
   await expect(page.getByText('Expiré', { exact: true })).toBeVisible()

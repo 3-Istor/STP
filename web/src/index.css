@@ -214,3 +214,9 @@ legend { color: #415e7c; font-size: .79rem; padding: 0 6px; font-weight: 650; }
   .welcome-panel h1 { font-size: 1.4rem; }
 }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; scroll-behavior: auto !important; } }
+
+/* Navigation entre les espaces BOM et fournisseurs (App.tsx). */
+.space-nav { display: flex; align-items: center; gap: 4px; height: 44px; padding: 0 clamp(16px, 4vw, 56px); background: #1d477c; }
+.space-nav a { color: #dbe6f7; text-decoration: none; padding: 6px 12px; border-radius: 6px; font-size: .85rem; font-weight: 600; }
+.space-nav a:hover { background: #2a5a96; }
+.space-nav a[aria-current='page'] { background: #fff; color: #1d477c; }

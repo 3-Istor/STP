@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"log/slog"
 	"net/http"
+	"strings"
 	"time"
 
 	"bomstudio/internal/catalog"
@@ -14,6 +15,7 @@ import (
 )
 
 // Services reçoit les services déjà câblés ; aucun accès base n'est construit dans les handlers.
+// Chaque groupe de routes /api/v1 n'est monté que si ses services sont fournis.
 type Services struct {
 	Catalog        *catalog.Service
 	Supplier       *supplier.Service
@@ -21,34 +23,86 @@ type Services struct {
 	Pricing        *pricing.ReadService
 	PriceSnapshots *pricing.SnapshotService
 	PricingSignals *PricingHub
+	// BOMs et Snapshots (snapshots de BOM) : routes /api/v1/boms et /api/v1/snapshots.
+	BOMs      BOMService
+	Snapshots SnapshotService
+	// Now donne l'instant d'un gel de prix ou d'une publication (le domaine n'a pas d'horloge) ;
+	// time.Now si nil.
+	Now func() time.Time
 }
 
 // NewRouter construit le routeur de l'application.
 func NewRouter(services ...Services) http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", healthz)
-	mux.HandleFunc("/api/v1/", func(w http.ResponseWriter, _ *http.Request) {
-		writeJSON(w, http.StatusNotFound, map[string]string{"error": "route API introuvable"})
-	})
-	if len(services) > 0 && services[0].Catalog != nil {
-		catalogHandler{service: services[0].Catalog}.register(mux)
+	if len(services) == 0 {
+		return jsonNotFound(mux)
 	}
-	if len(services) > 0 && services[0].Supplier != nil {
-		supplierHandler{service: services[0].Supplier}.register(mux)
+	s := services[0]
+	if s.Catalog != nil {
+		catalogHandler{service: s.Catalog}.register(mux)
 	}
-	if len(services) > 0 && services[0].Pricing != nil {
-		pricingHandler{service: services[0].Pricing}.register(mux)
-		if services[0].PricingSignals != nil {
-			mux.Handle("GET /api/v1/quotes/stream", pricingStream{status: services[0].Pricing, hub: services[0].PricingSignals, writeTimeout: 5 * time.Second, heartbeat: 15 * time.Second})
+	if s.Supplier != nil {
+		supplierHandler{service: s.Supplier}.register(mux)
+	}
+	if s.Pricing != nil {
+		pricingHandler{service: s.Pricing}.register(mux)
+		if s.PricingSignals != nil {
+			mux.Handle("GET /api/v1/quotes/stream", pricingStream{status: s.Pricing, hub: s.PricingSignals, writeTimeout: 5 * time.Second, heartbeat: 15 * time.Second})
 		}
 	}
-	if len(services) > 0 && services[0].PriceSnapshots != nil {
-		pricingSnapshotsHandler{service: services[0].PriceSnapshots}.register(mux)
+	if s.PriceSnapshots != nil {
+		pricingSnapshotsHandler{service: s.PriceSnapshots}.register(mux)
 	}
-	if len(services) > 0 && services[0].Catalog != nil && services[0].Supplier != nil && services[0].History != nil {
-		supplierOffersReader{catalog: services[0].Catalog, suppliers: services[0].Supplier, history: services[0].History, prices: services[0].Pricing}.register(mux)
+	if s.Catalog != nil && s.Supplier != nil && s.History != nil {
+		supplierOffersReader{catalog: s.Catalog, suppliers: s.Supplier, history: s.History, prices: s.Pricing}.register(mux)
 	}
-	return mux
+	if s.BOMs != nil && s.Snapshots != nil {
+		now := s.Now
+		if now == nil {
+			now = func() time.Time { return time.Now().UTC() }
+		}
+		(&api{boms: s.BOMs, snapshots: s.Snapshots, now: now}).routes(mux)
+	}
+	return jsonNotFound(mux)
+}
+
+// jsonNotFound répond {"error": ...} pour une route /api/v1 inconnue. Un motif fourre-tout "/api/v1/"
+// ne convient pas : il prendrait aussi les mauvaises méthodes, qui doivent rester en 405 (avec Allow).
+func jsonNotFound(mux *http.ServeMux) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		h, pattern := mux.Handler(r)
+		if pattern != "" || !strings.HasPrefix(r.URL.Path, "/api/v1/") {
+			mux.ServeHTTP(w, r)
+			return
+		}
+		// Aucun motif : h est la page 404 ou 405 du mux. On garde la 405, on remplace la 404.
+		c := &notFoundCatcher{ResponseWriter: w}
+		h.ServeHTTP(c, r)
+		if c.notFound {
+			writeJSON(w, http.StatusNotFound, map[string]string{"error": "route API introuvable"})
+		}
+	})
+}
+
+type notFoundCatcher struct {
+	http.ResponseWriter
+	notFound bool
+}
+
+func (c *notFoundCatcher) WriteHeader(code int) {
+	if code == http.StatusNotFound {
+		c.notFound = true
+		return
+	}
+	c.ResponseWriter.WriteHeader(code)
+}
+
+func (c *notFoundCatcher) Write(b []byte) (int, error) {
+	if c.notFound {
+		return len(b), nil
+	}
+	return c.ResponseWriter.Write(b)
 }
 
 func healthz(w http.ResponseWriter, _ *http.Request) {

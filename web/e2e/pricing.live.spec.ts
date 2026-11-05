@@ -10,7 +10,7 @@ test('tick réel, contexte figé et reconnexion sans navigation', async ({ page,
   expect(frozen.status()).toBe(201)
   const location = frozen.headers().location
   const frozenBefore = await (await request.get(location)).json()
-  await page.goto('/')
+  await page.goto('/#fournisseurs')
   await page.getByRole('button', { name: 'Fournisseur Flux Boréal', exact: true }).click()
   const supplier = page.getByRole('button', { name: 'Fournisseur Flux Boréal', exact: true })
   const price = page.getByTestId(`price-${info.second}`)
@@ -46,7 +46,7 @@ test('tick réel, contexte figé et reconnexion sans navigation', async ({ page,
 
 test('panne réelle, repli visible puis reprise sur tick validé', async ({ page, request }) => {
   expect((await request.post('/api/v1/price-snapshots', { data: { scope: 'catalog', target_currencies: ['EUR'] } })).status()).toBe(201)
-  await page.goto('/')
+  await page.goto('/#fournisseurs')
   await expect(page.getByRole('heading', { name: 'Flux Atlas', exact: true })).toBeVisible()
   const before = await (await request.get('/api/v1/pricing/status')).json() as { tick: number }
   expect((await request.post('/api/v1/__test/source?available=false')).status()).toBe(204)

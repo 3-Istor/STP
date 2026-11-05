@@ -90,7 +90,7 @@ type CreateSupplierParams struct {
 	TrustScore   decimal.NullDecimal
 }
 
-// Fournisseurs et contrats, voir ADR 0006 et 0007.
+// Fournisseurs et contrats, voir ADR 0009 et 0010.
 func (q *Queries) CreateSupplier(ctx context.Context, arg CreateSupplierParams) (Supplier, error) {
 	row := q.db.QueryRow(ctx, createSupplier, arg.Name, arg.QualityScore, arg.TrustScore)
 	var i Supplier
