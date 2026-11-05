@@ -26,4 +26,3 @@ Les historiques de migration 00002 et les ADR 0006–0008 divergent entre les br
 - [Rapport détaillé NLPF-68](https://github.com/3-Istor/STP/blob/nlpf-68/.specs/nlpf-68/delivery-report.md)
 - [Raccordements NLPF-69 et conflits à traiter](https://github.com/3-Istor/STP/blob/nlpf-68/.specs/nlpf-68/integration-nlpf-69.md)
 - [Livraison NLPF-67](https://github.com/3-Istor/STP/blob/nlpf-68/.specs/nlpf-67/delivery.md)
-
