@@ -129,6 +129,38 @@ type PriceSnapshotQuote struct {
 	OfferID      int64
 }
 
+type PricingManifest struct {
+	Hash   string
+	Offers []byte
+	Pairs  []byte
+}
+
+type PricingRun struct {
+	DatasetVersion string
+	ConfigHash     string
+	Config         []byte
+	Tick           int64
+	AsOf           time.Time
+	Status         string
+	ErrorText      string
+}
+
+type PricingSeries struct {
+	DatasetVersion string
+	Kind           string
+	EntityKey      string
+	SeriesKey      string
+	InitialAsOf    time.Time
+	ManifestHash   string
+}
+
+type PricingTick struct {
+	DatasetVersion string
+	Tick           int64
+	AsOf           time.Time
+	ManifestHash   string
+}
+
 type Supplier struct {
 	ID           int64
 	Name         string

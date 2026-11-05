@@ -40,6 +40,17 @@ func run() error {
 		return fmt.Errorf("configure database: %w", err)
 	}
 	defer pool.Close()
+	worker, err := configurePricing(pool)
+	if err != nil {
+		return fmt.Errorf("configure pricing source: %w", err)
+	}
+	if worker != nil {
+		workerCtx, cancelWorker := context.WithCancel(ctx)
+		workerDone := make(chan struct{})
+		go func() { defer close(workerDone); worker.run(workerCtx) }()
+		// Arrêter et attendre le worker avant pool.Close, même si ListenAndServe échoue.
+		defer func() { cancelWorker(); <-workerDone }()
+	}
 	catalogService := catalog.NewService(catalogstore.New(pool), time.Now)
 	supplierService := supplier.NewService(supplierstore.New(pool))
 	historyService := pricing.NewHistoryService(pricingstore.New(pool))

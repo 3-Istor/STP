@@ -55,10 +55,20 @@ présente les offres, les prix enregistrés, les courbes et les contrats. Montan
 transitent en chaînes décimales ; un prix manquant reste explicitement indisponible.
 Voir [les routes et exemples](docs/api-catalogue-fournisseurs.md).
 
-Le simulateur/ingestion et son signal SSE dépendent de NLPF-68 ; l'éditeur, les totaux de BOM et
-l'ouverture de la Multipla dépendent de NLPF-69. Tant que ces composants ne sont pas livrés,
-l'écran consulte les cotations déjà en base et permet une actualisation manuelle ; il signale
-l'indisponibilité de l'actualisation automatique. Le seed complet n'est pas encore disponible.
+Le simulateur et l'ingestion de NLPF-68 sont disponibles. `make dev` démarre aussi priceapi sur
+8090 ; `make priceapi` le lance seul. L'éditeur, les totaux de BOM et l'ouverture de la Multipla
+dépendent encore de NLPF-69 ; le seed complet n'est pas disponible. L'écran consulte les cotations
+persistées et permet une actualisation manuelle ; le signal SSE reste à raccorder dans NLPF-68.
+
+Le Makefile et Compose fixent des entrées **synthétiques** reproductibles : dataset `demo-v1`,
+graine `42`, date initiale `2026-01-01T00:00:00Z`, USD→EUR de référence `0.92` dans ±5 %, 40 minutes
+par année de 365 jours. Ces valeurs ne sont pas des cours réels. Surcharger `SIM_DATASET_VERSION`,
+`SIM_SEED`, `SIM_AS_OF`, `SIM_FX_PAIRS`, `SIM_YEAR_DURATION` pour une autre simulation ;
+les bandes/références FX sont des chaînes JSON, voir [le contrat](docs/api-prix-et-devises.md).
+Une reprise avec graine/date/version/références incompatibles refuse de réécrire l'historique.
+La cadence et le timeout peuvent changer au redémarrage, sans régénération ni rattrapage de l'arrêt.
+Le worker initialise 365 cotations quotidiennes par série, puis valide chaque nouveau jour par
+transaction. Un prix aberrant ou une panne ne valide pas le tick ; les anciennes données restent intactes.
 
 Tests de l'interface (Node compatible avec Vite ; CI : Node 24) :
 

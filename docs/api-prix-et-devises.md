@@ -213,7 +213,9 @@ exige un volume effectif positif représentable ; les paramètres restent modifi
 
 Graine et identifiant de dataset, as_of initial, paires/références/bandes, vitesse et timeout sont
 explicites au câblage ; vitesse par défaut 40m/365 jours. Le processus externe existe déjà : pas de
-nouveau conteneur/service. Chaque run conserve ses paramètres et refuse une reprise divergente.
+nouveau conteneur/service. Chaque run conserve ses paramètres initiaux et refuse une reprise dont
+la graine, version, date initiale ou les références FX divergent. La cadence réelle et le timeout
+peuvent être ajustés au redémarrage sans régénérer de cotations ni rattraper le temps d'arrêt.
 
 Tests prévus : Source en httptest avec erreurs et timeout ; génération identique à travers ordre,
 batches et reprise ; 365 lignes exactes deux fois/concurremment ; faux temps aux bornes ; repli

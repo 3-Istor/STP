@@ -36,9 +36,14 @@ services:
       target: server
     environment:
       PORT: "8080"
-      # Pas encore lues par le back (Won't Do du ticket) : posées pour live-price-feed.
       DATABASE_URL: postgres://bom:bom@db:5432/bomstudio?sslmode=disable
       PRICE_API_URL: http://priceapi:8090
+      # Démonstration synthétique explicite ; mêmes paramètres requis à la reprise (ADR 0012).
+      SIM_DATASET_VERSION: "${SIM_DATASET_VERSION:-demo-v1}"
+      SIM_SEED: "${SIM_SEED:-42}"
+      SIM_AS_OF: "${SIM_AS_OF:-2026-01-01T00:00:00Z}"
+      SIM_YEAR_DURATION: "${SIM_YEAR_DURATION:-40m}"
+      SIM_FX_PAIRS: '${SIM_FX_PAIRS:-[{"series_key":"fx:USD:EUR","base_currency":"USD","quote_currency":"EUR","reference":"0.92","band_percent":"5"}]}'
     # Volontairement pas de dépendance à `priceapi` : le back doit démarrer même si l'API de prix
     # est en panne (fallback sur le dernier snapshot, AGENTS §2).
     depends_on:

@@ -125,6 +125,143 @@ func (q *Queries) InsertPriceQuote(ctx context.Context, arg InsertPriceQuotePara
 	return i, err
 }
 
+const insertRuntimeFX = `-- name: InsertRuntimeFX :one
+INSERT INTO fx_quotes (base_currency, quote_currency, rate, source, quoted_at) VALUES ($1, $2, $3, $4, $5)
+ON CONFLICT (base_currency, quote_currency, source, quoted_at) DO NOTHING RETURNING id
+`
+
+type InsertRuntimeFXParams struct {
+	BaseCurrency  string
+	QuoteCurrency string
+	Rate          decimal.Decimal
+	Source        string
+	QuotedAt      time.Time
+}
+
+func (q *Queries) InsertRuntimeFX(ctx context.Context, arg InsertRuntimeFXParams) (int64, error) {
+	row := q.db.QueryRow(ctx, insertRuntimeFX,
+		arg.BaseCurrency,
+		arg.QuoteCurrency,
+		arg.Rate,
+		arg.Source,
+		arg.QuotedAt,
+	)
+	var id int64
+	err := row.Scan(&id)
+	return id, err
+}
+
+const insertRuntimeManifest = `-- name: InsertRuntimeManifest :exec
+INSERT INTO pricing_manifests (hash, offers, pairs) VALUES ($1, $2, $3)
+ON CONFLICT (hash) DO NOTHING
+`
+
+type InsertRuntimeManifestParams struct {
+	Hash   string
+	Offers []byte
+	Pairs  []byte
+}
+
+func (q *Queries) InsertRuntimeManifest(ctx context.Context, arg InsertRuntimeManifestParams) error {
+	_, err := q.db.Exec(ctx, insertRuntimeManifest, arg.Hash, arg.Offers, arg.Pairs)
+	return err
+}
+
+const insertRuntimePrice = `-- name: InsertRuntimePrice :one
+INSERT INTO price_quotes (offer_id, amount, currency, source, quoted_at) VALUES ($1, $2, $3, $4, $5)
+ON CONFLICT (offer_id, source, quoted_at) DO NOTHING RETURNING id
+`
+
+type InsertRuntimePriceParams struct {
+	OfferID  int64
+	Amount   decimal.Decimal
+	Currency string
+	Source   string
+	QuotedAt time.Time
+}
+
+func (q *Queries) InsertRuntimePrice(ctx context.Context, arg InsertRuntimePriceParams) (int64, error) {
+	row := q.db.QueryRow(ctx, insertRuntimePrice,
+		arg.OfferID,
+		arg.Amount,
+		arg.Currency,
+		arg.Source,
+		arg.QuotedAt,
+	)
+	var id int64
+	err := row.Scan(&id)
+	return id, err
+}
+
+const insertRuntimeRun = `-- name: InsertRuntimeRun :exec
+INSERT INTO pricing_runs (dataset_version, config_hash, config, tick, as_of, status)
+VALUES ($1, $2, $3, 0, $4, 'ready')
+`
+
+type InsertRuntimeRunParams struct {
+	DatasetVersion string
+	ConfigHash     string
+	Config         []byte
+	AsOf           time.Time
+}
+
+func (q *Queries) InsertRuntimeRun(ctx context.Context, arg InsertRuntimeRunParams) error {
+	_, err := q.db.Exec(ctx, insertRuntimeRun,
+		arg.DatasetVersion,
+		arg.ConfigHash,
+		arg.Config,
+		arg.AsOf,
+	)
+	return err
+}
+
+const insertRuntimeSeries = `-- name: InsertRuntimeSeries :exec
+INSERT INTO pricing_series (dataset_version, kind, entity_key, series_key, initial_as_of, manifest_hash)
+VALUES ($1, $2, $3, $4, $5, $6)
+`
+
+type InsertRuntimeSeriesParams struct {
+	DatasetVersion string
+	Kind           string
+	EntityKey      string
+	SeriesKey      string
+	InitialAsOf    time.Time
+	ManifestHash   string
+}
+
+func (q *Queries) InsertRuntimeSeries(ctx context.Context, arg InsertRuntimeSeriesParams) error {
+	_, err := q.db.Exec(ctx, insertRuntimeSeries,
+		arg.DatasetVersion,
+		arg.Kind,
+		arg.EntityKey,
+		arg.SeriesKey,
+		arg.InitialAsOf,
+		arg.ManifestHash,
+	)
+	return err
+}
+
+const insertRuntimeTick = `-- name: InsertRuntimeTick :exec
+INSERT INTO pricing_ticks (dataset_version, tick, as_of, manifest_hash) VALUES ($1, $2, $3, $4)
+`
+
+type InsertRuntimeTickParams struct {
+	DatasetVersion string
+	Tick           int64
+	AsOf           time.Time
+	ManifestHash   string
+}
+
+func (q *Queries) InsertRuntimeTick(ctx context.Context, arg InsertRuntimeTickParams) error {
+	_, err := q.db.Exec(ctx, insertRuntimeTick,
+		arg.DatasetVersion,
+		arg.Tick,
+		arg.AsOf,
+		arg.ManifestHash,
+	)
+	return err
+}
+
 const latestPriceQuote = `-- name: LatestPriceQuote :one
 SELECT id, offer_id, amount, currency, source, quoted_at, recorded_at FROM price_quotes
 WHERE offer_id = $1
@@ -145,4 +282,288 @@ func (q *Queries) LatestPriceQuote(ctx context.Context, offerID int64) (PriceQuo
 		&i.RecordedAt,
 	)
 	return i, err
+}
+
+const listPricingOffers = `-- name: ListPricingOffers :many
+SELECT o.id, o.supplier_id, o.currency, o.price_min, o.price_max FROM offers o
+JOIN parts p ON p.id = o.part_id
+WHERE ((o.archived_at IS NULL AND p.archived_at IS NULL)
+    OR EXISTS (SELECT 1 FROM bom_nodes n WHERE n.offer_id = o.id))
+    AND (NOT $1::boolean OR o.id = ANY($2::bigint[]))
+ORDER BY o.id
+`
+
+type ListPricingOffersParams struct {
+	Scoped   bool
+	OfferIds []int64
+}
+
+type ListPricingOffersRow struct {
+	ID         int64
+	SupplierID int64
+	Currency   string
+	PriceMin   decimal.Decimal
+	PriceMax   decimal.Decimal
+}
+
+func (q *Queries) ListPricingOffers(ctx context.Context, arg ListPricingOffersParams) ([]ListPricingOffersRow, error) {
+	rows, err := q.db.Query(ctx, listPricingOffers, arg.Scoped, arg.OfferIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListPricingOffersRow
+	for rows.Next() {
+		var i ListPricingOffersRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.SupplierID,
+			&i.Currency,
+			&i.PriceMin,
+			&i.PriceMax,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const lockPricingOffers = `-- name: LockPricingOffers :many
+SELECT id FROM offers WHERE id = ANY($1::bigint[]) ORDER BY id FOR SHARE
+`
+
+func (q *Queries) LockPricingOffers(ctx context.Context, offerIds []int64) ([]int64, error) {
+	rows, err := q.db.Query(ctx, lockPricingOffers, offerIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []int64
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const lockPricingParts = `-- name: LockPricingParts :many
+SELECT p.id FROM parts p
+WHERE EXISTS (SELECT 1 FROM offers o WHERE o.part_id = p.id AND o.id = ANY($1::bigint[]))
+ORDER BY p.id FOR SHARE
+`
+
+func (q *Queries) LockPricingParts(ctx context.Context, offerIds []int64) ([]int64, error) {
+	rows, err := q.db.Query(ctx, lockPricingParts, offerIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []int64
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const markRuntimeUnavailable = `-- name: MarkRuntimeUnavailable :exec
+UPDATE pricing_runs SET status = 'unavailable', error_text = $2
+WHERE dataset_version = $1 AND tick = $3 AND config_hash = $4
+`
+
+type MarkRuntimeUnavailableParams struct {
+	DatasetVersion string
+	ErrorText      string
+	Tick           int64
+	ConfigHash     string
+}
+
+func (q *Queries) MarkRuntimeUnavailable(ctx context.Context, arg MarkRuntimeUnavailableParams) error {
+	_, err := q.db.Exec(ctx, markRuntimeUnavailable,
+		arg.DatasetVersion,
+		arg.ErrorText,
+		arg.Tick,
+		arg.ConfigHash,
+	)
+	return err
+}
+
+const releaseRuntimeLease = `-- name: ReleaseRuntimeLease :one
+SELECT pg_advisory_unlock(hashtextextended($1::text, 0))::boolean
+`
+
+func (q *Queries) ReleaseRuntimeLease(ctx context.Context, lockKey string) (bool, error) {
+	row := q.db.QueryRow(ctx, releaseRuntimeLease, lockKey)
+	var column_1 bool
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
+const runtimeFX = `-- name: RuntimeFX :one
+SELECT id, base_currency, quote_currency, rate, source, quoted_at, recorded_at FROM fx_quotes WHERE base_currency = $1 AND quote_currency = $2 AND source = $3 AND quoted_at = $4
+`
+
+type RuntimeFXParams struct {
+	BaseCurrency  string
+	QuoteCurrency string
+	Source        string
+	QuotedAt      time.Time
+}
+
+func (q *Queries) RuntimeFX(ctx context.Context, arg RuntimeFXParams) (FxQuote, error) {
+	row := q.db.QueryRow(ctx, runtimeFX,
+		arg.BaseCurrency,
+		arg.QuoteCurrency,
+		arg.Source,
+		arg.QuotedAt,
+	)
+	var i FxQuote
+	err := row.Scan(
+		&i.ID,
+		&i.BaseCurrency,
+		&i.QuoteCurrency,
+		&i.Rate,
+		&i.Source,
+		&i.QuotedAt,
+		&i.RecordedAt,
+	)
+	return i, err
+}
+
+const runtimeLock = `-- name: RuntimeLock :exec
+SELECT pg_advisory_xact_lock(hashtextextended($1::text, 0))
+`
+
+func (q *Queries) RuntimeLock(ctx context.Context, lockKey string) error {
+	_, err := q.db.Exec(ctx, runtimeLock, lockKey)
+	return err
+}
+
+const runtimeManifest = `-- name: RuntimeManifest :one
+SELECT hash, offers, pairs FROM pricing_manifests WHERE hash = $1
+`
+
+func (q *Queries) RuntimeManifest(ctx context.Context, hash string) (PricingManifest, error) {
+	row := q.db.QueryRow(ctx, runtimeManifest, hash)
+	var i PricingManifest
+	err := row.Scan(&i.Hash, &i.Offers, &i.Pairs)
+	return i, err
+}
+
+const runtimePrice = `-- name: RuntimePrice :one
+SELECT id, offer_id, amount, currency, source, quoted_at, recorded_at FROM price_quotes WHERE offer_id = $1 AND source = $2 AND quoted_at = $3
+`
+
+type RuntimePriceParams struct {
+	OfferID  int64
+	Source   string
+	QuotedAt time.Time
+}
+
+func (q *Queries) RuntimePrice(ctx context.Context, arg RuntimePriceParams) (PriceQuote, error) {
+	row := q.db.QueryRow(ctx, runtimePrice, arg.OfferID, arg.Source, arg.QuotedAt)
+	var i PriceQuote
+	err := row.Scan(
+		&i.ID,
+		&i.OfferID,
+		&i.Amount,
+		&i.Currency,
+		&i.Source,
+		&i.QuotedAt,
+		&i.RecordedAt,
+	)
+	return i, err
+}
+
+const runtimeRun = `-- name: RuntimeRun :one
+SELECT dataset_version, config_hash, config, tick, as_of, status, error_text FROM pricing_runs WHERE dataset_version = $1
+`
+
+func (q *Queries) RuntimeRun(ctx context.Context, datasetVersion string) (PricingRun, error) {
+	row := q.db.QueryRow(ctx, runtimeRun, datasetVersion)
+	var i PricingRun
+	err := row.Scan(
+		&i.DatasetVersion,
+		&i.ConfigHash,
+		&i.Config,
+		&i.Tick,
+		&i.AsOf,
+		&i.Status,
+		&i.ErrorText,
+	)
+	return i, err
+}
+
+const runtimeSeries = `-- name: RuntimeSeries :many
+SELECT dataset_version, kind, entity_key, series_key, initial_as_of, manifest_hash FROM pricing_series WHERE dataset_version = $1 ORDER BY kind, entity_key
+`
+
+func (q *Queries) RuntimeSeries(ctx context.Context, datasetVersion string) ([]PricingSeries, error) {
+	rows, err := q.db.Query(ctx, runtimeSeries, datasetVersion)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []PricingSeries
+	for rows.Next() {
+		var i PricingSeries
+		if err := rows.Scan(
+			&i.DatasetVersion,
+			&i.Kind,
+			&i.EntityKey,
+			&i.SeriesKey,
+			&i.InitialAsOf,
+			&i.ManifestHash,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const tryRuntimeLease = `-- name: TryRuntimeLease :one
+SELECT pg_try_advisory_lock(hashtextextended($1::text, 0))::boolean
+`
+
+func (q *Queries) TryRuntimeLease(ctx context.Context, lockKey string) (bool, error) {
+	row := q.db.QueryRow(ctx, tryRuntimeLease, lockKey)
+	var column_1 bool
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
+const updateRuntimeRun = `-- name: UpdateRuntimeRun :exec
+UPDATE pricing_runs SET tick = $2, as_of = $3, status = 'ready', error_text = ''
+WHERE dataset_version = $1
+`
+
+type UpdateRuntimeRunParams struct {
+	DatasetVersion string
+	Tick           int64
+	AsOf           time.Time
+}
+
+func (q *Queries) UpdateRuntimeRun(ctx context.Context, arg UpdateRuntimeRunParams) error {
+	_, err := q.db.Exec(ctx, updateRuntimeRun, arg.DatasetVersion, arg.Tick, arg.AsOf)
+	return err
 }
