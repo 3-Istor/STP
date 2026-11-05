@@ -269,3 +269,27 @@ les remises au volume déduit. Zéro voiture finançable est un résultat valide
 publiable ; coût nul/manquant et dépassement de l’entier BOM sont des erreurs nommées.
 Ces fonctions sont testées sans stockage ni nouvel endpoint BOM : paramètres persistés,
 publication immuable et écrans de budgets restent obligatoires en T10 sur la base coordonnée.
+
+### État de livraison : flux réel (T9)
+
+`GET /api/v1/quotes/stream` est câblé au worker. Le signal `tick` suit exclusivement un commit ;
+`status` indique une indisponibilité sans avancer le tick. L’UI relit REST dans les deux cas,
+conserve le fournisseur et le détail ouverts, et affiche le snapshot de repli daté.
+Last-Event-ID invalide/futur est refusé avant ouverture ; une reprise reçoit l’état courant.
+La file est bornée à un état par client, les écritures à cinq secondes, le heartbeat à quinze
+secondes ; annulation, arrêt et nettoyage sont testés. La fermeture du serveur annule aussi
+le contexte des flux, pour éviter qu’un Shutdown attende indéfiniment.
+
+Parcours réel reproductible (PostgreSQL jetable joignable, Node et navigateurs Playwright installés) :
+
+```sh
+NLPF68_BROWSER_MODE=native DATABASE_URL='<base_de_test>' \
+  go test -race -count=1 -timeout=4m -run '^TestPricingLiveBrowsers$' ./internal/pricing/pricingstore
+```
+
+Le test crée un schéma privé, une vraie source HTTP, l’ingestion à horloge pilotée, les handlers
+réels et le proxy Vite. Ses routes de pilotage sont compilées uniquement dans le test, jamais
+dans l’application. Les douze parcours couvrent les trois moteurs/ordinateur/mobile, prix et
+variation sans navigation, conservation du détail, snapshot stable, reconnexion et panne/reprise.
+Le job CI `web-live` les rejoue en complément des soixante parcours UI contrôlés conservés.
+La validation des budgets/éditeur BOM reste à effectuer en T10 ; WebKit ne remplace pas Safari réel.

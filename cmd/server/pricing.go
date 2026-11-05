@@ -13,6 +13,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"bomstudio/internal/httpapi"
 	"bomstudio/internal/pricing"
 	"bomstudio/internal/pricing/priceclient"
 	"bomstudio/internal/pricing/pricingstore"
@@ -22,6 +23,7 @@ type pricingWorker struct {
 	runtime   *pricing.Runtime
 	reads     *pricing.ReadService
 	snapshots *pricing.SnapshotService
+	signals   *httpapi.PricingHub
 	config    pricing.RunConfig
 	retry     time.Duration
 }
@@ -88,7 +90,8 @@ func configurePricing(pool *pgxpool.Pool) (*pricingWorker, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &pricingWorker{snapshots: pricing.NewSnapshotService(pricingstore.NewSnapshotStore(pool), cfg), runtime: pricing.NewRuntime(source, pricingstore.NewRuntime(pool), nil), reads: pricing.NewReadService(pricingstore.NewReadStore(pool), cfg), config: cfg, retry: retry}, nil
+	signals := httpapi.NewPricingHub()
+	return &pricingWorker{signals: signals, snapshots: pricing.NewSnapshotService(pricingstore.NewSnapshotStore(pool), cfg), runtime: pricing.NewRuntime(source, pricingstore.NewRuntime(pool), signals.Publish), reads: pricing.NewReadService(pricingstore.NewReadStore(pool), cfg), config: cfg, retry: retry}, nil
 }
 
 func (w *pricingWorker) run(ctx context.Context) {
@@ -101,6 +104,9 @@ func (w *pricingWorker) run(ctx context.Context) {
 		if errors.Is(err, pricing.ErrRuntimeConfigConflict) || errors.Is(err, pricing.ErrInvalidSourceRequest) {
 			slog.ErrorContext(ctx, "pricing worker blocked by configuration", "err", err)
 			return
+		}
+		if state, readErr := w.reads.Status(ctx); readErr == nil && state.Status != "ready" {
+			w.signals.Publish(state)
 		}
 		if !errors.Is(err, pricing.ErrRuntimeWorkerBusy) {
 			slog.WarnContext(ctx, "pricing worker paused; retry without catch-up", "err", err)

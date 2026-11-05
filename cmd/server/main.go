@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -45,6 +46,7 @@ func run() error {
 		return fmt.Errorf("configure pricing source: %w", err)
 	}
 	if worker != nil {
+		defer worker.signals.Close()
 		workerCtx, cancelWorker := context.WithCancel(ctx)
 		workerDone := make(chan struct{})
 		go func() { defer close(workerDone); worker.run(workerCtx) }()
@@ -56,15 +58,18 @@ func run() error {
 	historyService := pricing.NewHistoryService(pricingstore.New(pool))
 	var reads *pricing.ReadService
 	var snapshots *pricing.SnapshotService
+	var signals *httpapi.PricingHub
 	if worker != nil {
 		reads = worker.reads
 		snapshots = worker.snapshots
+		signals = worker.signals
 	}
 
 	addr := ":" + envOr("PORT", "8080")
 	srv := &http.Server{
 		Addr:              addr,
-		Handler:           httpapi.NewRouter(httpapi.Services{Catalog: catalogService, Supplier: supplierService, History: historyService, Pricing: reads, PriceSnapshots: snapshots}),
+		BaseContext:       func(net.Listener) context.Context { return ctx },
+		Handler:           httpapi.NewRouter(httpapi.Services{Catalog: catalogService, Supplier: supplierService, History: historyService, Pricing: reads, PriceSnapshots: snapshots, PricingSignals: signals}),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 

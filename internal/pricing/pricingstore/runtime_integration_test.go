@@ -203,6 +203,7 @@ func TestRuntimeConcurrentInitializationAndLease(t *testing.T) {
 	id, _ := runtimeOffer(t, pool)
 	repo := &RuntimeStore{pool: pool, scoped: true, offerIDs: []int64{id}}
 	cfg := runtimeConfig()
+	cfg.DatasetVersion = "lease-" + pool.Config().ConnConfig.RuntimeParams["search_path"]
 	cfg.Pairs = nil
 	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 	defer cancel()
@@ -221,9 +222,23 @@ func TestRuntimeConcurrentInitializationAndLease(t *testing.T) {
 	}
 	entered, release, done := make(chan struct{}), make(chan struct{}), make(chan error, 1)
 	go func() {
-		done <- repo.WithLease(ctx, cfg.DatasetVersion, func() error { close(entered); <-release; return nil })
+		done <- repo.WithLease(ctx, cfg.DatasetVersion, func() error {
+			close(entered)
+			select {
+			case <-release:
+				return nil
+			case <-ctx.Done():
+				return ctx.Err()
+			}
+		})
 	}()
-	<-entered
+	select {
+	case <-entered:
+	case err := <-done:
+		t.Fatal("first worker did not acquire its isolated lease:", err)
+	case <-ctx.Done():
+		t.Fatal(ctx.Err())
+	}
 	err := repo.WithLease(ctx, cfg.DatasetVersion, func() error { t.Error("two workers acquired same lease"); return nil })
 	close(release)
 	if e := <-done; e != nil {

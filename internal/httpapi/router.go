@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"log/slog"
 	"net/http"
+	"time"
 
 	"bomstudio/internal/catalog"
 	"bomstudio/internal/pricing"
@@ -19,6 +20,7 @@ type Services struct {
 	History        *pricing.HistoryService
 	Pricing        *pricing.ReadService
 	PriceSnapshots *pricing.SnapshotService
+	PricingSignals *PricingHub
 }
 
 // NewRouter construit le routeur de l'application.
@@ -36,6 +38,9 @@ func NewRouter(services ...Services) http.Handler {
 	}
 	if len(services) > 0 && services[0].Pricing != nil {
 		pricingHandler{service: services[0].Pricing}.register(mux)
+		if services[0].PricingSignals != nil {
+			mux.Handle("GET /api/v1/quotes/stream", pricingStream{status: services[0].Pricing, hub: services[0].PricingSignals, writeTimeout: 5 * time.Second, heartbeat: 15 * time.Second})
+		}
 	}
 	if len(services) > 0 && services[0].PriceSnapshots != nil {
 		pricingSnapshotsHandler{service: services[0].PriceSnapshots}.register(mux)

@@ -68,7 +68,8 @@ export default function App() {
     source.onerror = () => setStream('unavailable')
     source.onmessage = refreshPrices
     source.addEventListener('tick', refreshPrices)
-    return () => { source.removeEventListener('tick', refreshPrices); source.onopen = null; source.onerror = null; source.onmessage = null; source.close() }
+    source.addEventListener('status', refreshPrices)
+    return () => { source.removeEventListener('tick', refreshPrices); source.removeEventListener('status', refreshPrices); source.onopen = null; source.onerror = null; source.onmessage = null; source.close() }
   }, [])
 
   const loading = selectedID !== null && (finishedRequest?.supplierID !== selectedID || finishedRequest.version !== refresh)

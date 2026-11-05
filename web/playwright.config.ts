@@ -5,6 +5,7 @@ const engines = ['chromium', 'firefox', 'webkit'] as const
 
 export default defineConfig({
   testDir: './e2e',
+  testIgnore: '**/*.live.spec.ts',
   outputDir: './test-results',
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
