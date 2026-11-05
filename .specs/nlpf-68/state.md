@@ -2,7 +2,7 @@
 id: nlpf-68
 status: in-progress
 branch: nlpf-68
-current_task: T2
+current_task: T3
 started: 2026-11-05
 updated: 2026-11-05
 ---
@@ -11,7 +11,7 @@ updated: 2026-11-05
 
 ## Progress
 
-T1–T1 terminées sur les capacités décrites dans le journal. T2 en cours.
+T1–T2 terminées sur les capacités décrites dans le journal. T3 en cours.
 ADR 0011–0016 acceptées explicitement par Joe ; dépendances BOM toujours visibles.
 
 ## Task Log
@@ -68,6 +68,13 @@ ADR 0011–0016 acceptées explicitement par Joe ; dépendances BOM toujours vis
 - **Time**: 2026-11-05T13:35:46+01:00
 - **Commit**: 603421c.
 - **Notes**: Joe a explicitement accepté les ADR 0011–0016 et le contrat associé. Cadrage terminé, raccordements BOM différés selon ADR 0016. Les trois choix métier antérieurs restent acquis.
+
+### T2 : Protéger les interfaces et comportements existants (R1, R5–R7, R10) — 2026-11-05
+
+- **Status**: completed.
+- **Time**: 2026-11-05T13:39:18+01:00
+- **Commit**: c57c31c.
+- **Notes**: Baseline make lint, make test avec CI=true/PostgreSQL18 et build frontend verts. Tests de protection du taux exact, de sa paire/source/date et du Content-Type priceapi ajoutés avant extension.
 
 ## Decisions
 

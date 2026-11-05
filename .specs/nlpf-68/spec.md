@@ -231,7 +231,7 @@ définir en T1 car le flux transporte un signal, pas les prix.
     capacités et fichiers partagés convenus. Un raccordement indisponible reste bloqué, pas remplacé
     par une seconde implémentation. Aucun choix technique nouveau déduit de l'accord des ADR NLPF-67.
 
-- [ ] T2: Protéger les interfaces et comportements existants (R1, R5–R7, R10)
+- [x] T2: Protéger les interfaces et comportements existants (R1, R5–R7, R10)
   - **Files**: `internal/pricing/{stub,statistics}_test.go`,
     `internal/pricing/immutability_integration_test.go`, `internal/money/money_test.go`,
     `internal/bom/service_test.go`, tests `internal/{priceapi,httpapi}/`, `web/e2e/suppliers.spec.ts`.
