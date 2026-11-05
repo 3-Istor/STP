@@ -1,4 +1,4 @@
-# 0007 — Date de validité et sélection des remises
+# 0010 — Date de validité et sélection des remises
 Statut : Accepté — Date : 2026-11-04 — Décideurs : Joe (accord explicite dans le chat)
 
 ## Contexte
@@ -23,7 +23,7 @@ en UTC de l'horloge simulée en mode direct et fournie au domaine. Aucun `time.N
   Aucun contrat actif signifie prix sans remise avec motif, pas une erreur de prix manquant.
   Un contrat sélectionné devenu expiré/futur est exclu avec motif ; il n'est pas remplacé silencieusement.
 - `conditions` est un texte à consulter, sans interprétation automatique. Conditions calculables
-  supplémentaires exigeraient une spec. Les paliers et leur taux sont validés selon ADR 0006.
+  supplémentaires exigeraient une spec. Les paliers et leur taux sont validés selon ADR 0009.
 - Quantité commandée décimale = quantité effective par voiture × volume, y compris les quantités
   des parents de l'arbre. Appliquer le palier de seuil maximal atteint à toute la quantité :
   `prix × quantité × (1 − remise/100)`. Sous le premier seuil : remise nulle explicitement expliquée.

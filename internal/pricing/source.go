@@ -40,7 +40,7 @@ const (
 )
 
 // Source est un port fournisseur, distinct des lectures persistées Pricing et History.
-// Le domaine ne connaît ni son implémentation HTTP ni la base (voir ADR 0011).
+// Le domaine ne connaît ni son implémentation HTTP ni la base (voir ADR 0014).
 type Source interface {
 	Fetch(context.Context, SourceOperation, SourceInput) (SourceOutput, error)
 }

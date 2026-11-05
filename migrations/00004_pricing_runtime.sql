@@ -1,5 +1,5 @@
--- Progression et manifestes du simulateur (ADR 0011–0012).
--- Nouveau numéro local vérifié sur la base NLPF-67 ; intégration BOM différée (ADR 0016).
+-- Progression et manifestes du simulateur (ADR 0014–0015).
+-- Nouveau numéro local vérifié sur la base NLPF-67 ; intégration BOM différée (ADR 0019).
 -- +goose Up
 ALTER TABLE price_quotes ADD CONSTRAINT price_quotes_finite
     CHECK (amount NOT IN ('NaN'::numeric, 'Infinity'::numeric, '-Infinity'::numeric)) NOT VALID;

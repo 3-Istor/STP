@@ -1,4 +1,4 @@
--- Fournisseurs et contrats, voir ADR 0006 et 0007.
+-- Fournisseurs et contrats, voir ADR 0009 et 0010.
 
 -- name: CreateSupplier :one
 INSERT INTO suppliers (name, quality_score, trust_score)

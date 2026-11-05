@@ -3,5 +3,5 @@
 //
 // Le back ne l'importe jamais : il l'appellera en HTTP via un adapter qui valide
 // et normalise les cotations (AGENTS §2). Les cinq opérations de simulation reçoivent
-// leurs définitions et contexte explicites (ADR 0011), sans catalogue répliqué.
+// leurs définitions et contexte explicites (ADR 0014), sans catalogue répliqué.
 package priceapi

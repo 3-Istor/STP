@@ -16,7 +16,7 @@ export PRICE_API_URL SIM_DATASET_VERSION SIM_SEED SIM_AS_OF SIM_YEAR_DURATION SI
 run: ## API sur :8080
 	go run ./cmd/server
 
-priceapi: ## source de prix externe sur :8090 (ADR 0005/0011)
+priceapi: ## source de prix externe sur :8090 (ADR 0005/0014)
 	PORT=$(PRICE_API_PORT) go run ./cmd/priceapi
 
 test:

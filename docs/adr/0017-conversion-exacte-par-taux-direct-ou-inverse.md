@@ -1,4 +1,4 @@
-# 0014 — Conversion exacte par taux direct ou inverse
+# 0017 — Conversion exacte par taux direct ou inverse
 Statut : Accepté — Date : 2026-11-05 — Décideurs : Joe (accord explicite dans le chat)
 
 ## Contexte

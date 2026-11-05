@@ -1,4 +1,4 @@
-# 0016 — Intégration progressive des prix et de la BOM
+# 0019 — Intégration progressive des prix et de la BOM
 Statut : Accepté — Date : 2026-11-05 — Décideurs : Joe (accord explicite dans le chat)
 
 ## Contexte

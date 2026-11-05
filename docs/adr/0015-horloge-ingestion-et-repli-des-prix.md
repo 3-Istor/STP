@@ -1,4 +1,4 @@
-# 0012 — Horloge, ingestion atomique et repli des prix
+# 0015 — Horloge, ingestion atomique et repli des prix
 Statut : Accepté — Date : 2026-11-05 — Décideurs : Joe (accord explicite dans le chat)
 
 ## Contexte

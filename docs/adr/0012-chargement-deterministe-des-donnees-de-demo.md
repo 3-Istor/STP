@@ -1,4 +1,4 @@
-# 0009 — Chargement déterministe et non destructif du jeu de démonstration
+# 0012 — Chargement déterministe et non destructif du jeu de démonstration
 Statut : Accepté — Date : 2026-11-04 — Décideurs : Joe (accord explicite dans le chat)
 
 ## Contexte

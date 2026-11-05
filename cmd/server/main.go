@@ -35,7 +35,7 @@ func run() error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	// Voir ADR 0006 : seule la composition importe l'adapter de stockage PostgreSQL.
+	// Voir ADR 0009 : seule la composition importe l'adapter de stockage PostgreSQL.
 	pool, err := pgxpool.New(ctx, envOr("DATABASE_URL", "postgres://bom:bom@localhost:5432/bomstudio?sslmode=disable"))
 	if err != nil {
 		return fmt.Errorf("configure database: %w", err)

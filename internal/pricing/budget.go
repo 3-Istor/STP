@@ -98,7 +98,7 @@ type AllocationEvaluation struct {
 }
 
 // EvaluateAllocations consumes the existing tree's parent references. Each budget
-// contributes only to its nearest budgeted ancestor (ADR 0015), without counting
+// contributes only to its nearest budgeted ancestor (ADR 0018), without counting
 // grandchildren again against the global budget.
 func EvaluateAllocations(global *money.Money, nodes []BudgetNode, rates []FXQuote, ctx PriceContext) ([]AllocationEvaluation, error) {
 	byID := map[int64]BudgetNode{}

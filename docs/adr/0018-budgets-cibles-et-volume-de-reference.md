@@ -1,4 +1,4 @@
-# 0015 — Budgets cibles et volume de référence
+# 0018 — Budgets cibles et volume de référence
 Statut : Accepté — Date : 2026-11-05 — Décideurs : Joe (accord explicite dans le chat)
 
 ## Contexte

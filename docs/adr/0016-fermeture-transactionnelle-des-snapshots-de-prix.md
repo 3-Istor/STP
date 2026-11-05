@@ -1,4 +1,4 @@
-# 0013 — Fermeture transactionnelle des snapshots de prix
+# 0016 — Fermeture transactionnelle des snapshots de prix
 Statut : Accepté — Date : 2026-11-05 — Décideurs : Joe (accord explicite dans le chat)
 
 ## Contexte

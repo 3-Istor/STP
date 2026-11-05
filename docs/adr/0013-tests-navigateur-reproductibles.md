@@ -1,4 +1,4 @@
-# 0010 — Compatibilité entre navigateurs et tests UI reproductibles
+# 0013 — Compatibilité entre navigateurs et tests UI reproductibles
 Statut : Accepté — Date : 2026-11-04 — Décideurs : Joe (accord explicite dans le chat)
 
 ## Contexte

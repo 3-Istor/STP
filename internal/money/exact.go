@@ -7,7 +7,7 @@ import (
 	"github.com/shopspring/decimal"
 )
 
-// Exact carries a rational amount until output (ADR 0014). Every operation allocates
+// Exact carries a rational amount until output (ADR 0017). Every operation allocates
 // its result: copying a value or aggregating it never mutates another calculation.
 type Exact struct {
 	value    *big.Rat

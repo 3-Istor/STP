@@ -1,4 +1,4 @@
-# 0006 — Modèle du catalogue et des contrats fournisseurs
+# 0009 — Modèle du catalogue et des contrats fournisseurs
 Statut : Accepté — Date : 2026-11-04 — Décideurs : Joe (accord explicite dans le chat)
 
 ## Contexte

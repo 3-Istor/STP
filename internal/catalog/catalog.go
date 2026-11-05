@@ -28,7 +28,7 @@ var (
 )
 
 // Part est une pièce du catalogue, décrite indépendamment de qui la vend.
-// Les pointeurs NULL conservent explicitement les attributs absents des anciennes lignes (ADR 0006).
+// Les pointeurs NULL conservent explicitement les attributs absents des anciennes lignes (ADR 0009).
 type Part struct {
 	ID                   int64            `json:"id"`
 	Name                 string           `json:"name"`

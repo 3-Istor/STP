@@ -224,7 +224,7 @@ func (s *Service) DeletePart(ctx context.Context, id int64) (DeleteResult, error
 	}
 	var result DeleteResult
 	// Une FK concurrente ne laisse aucune commande exploitable dans la transaction avortée.
-	// Le second passage ouvre une nouvelle transaction et privilégie l'archivage (ADR 0006).
+	// Le second passage ouvre une nouvelle transaction et privilégie l'archivage (ADR 0009).
 	for attempt := 0; attempt < 2; attempt++ {
 		err := s.repo.WithinTx(ctx, func(tx TxRepository) error {
 			p, err := tx.PartForUpdate(ctx, id)

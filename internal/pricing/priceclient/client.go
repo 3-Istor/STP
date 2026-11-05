@@ -1,4 +1,4 @@
-// Package priceclient adapte le fournisseur HTTP au port Source (voir ADR 0011).
+// Package priceclient adapte le fournisseur HTTP au port Source (voir ADR 0014).
 package priceclient
 
 import (

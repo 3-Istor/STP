@@ -11,7 +11,7 @@ import (
 )
 
 // EvaluateOffer applique les contrats liés à l'offre ; le prix et la quantité viennent de l'appelant.
-// Il ne calcule ni l'arbre, ni le volume, ni la conversion de devises (voir ADR 0007).
+// Il ne calcule ni l'arbre, ni le volume, ni la conversion de devises (voir ADR 0010).
 func (s *Service) EvaluateOffer(ctx context.Context, in EvaluationInput) (Evaluation, error) {
 	if in.OfferID <= 0 {
 		return Evaluation{}, invalid("offer id must be positive")

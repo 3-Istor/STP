@@ -86,7 +86,7 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npm run build
-      - name: Navigateurs de test (ADR 0010)
+      - name: Navigateurs de test (ADR 0013)
         run: npx --no-install playwright install --with-deps chromium firefox webkit
       - name: Parcours UI sur les trois moteurs, ordinateur et mobile
         run: npm run test:e2e

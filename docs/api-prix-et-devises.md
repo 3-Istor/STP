@@ -1,7 +1,7 @@
 # NLPF-68 — Contrats proposés pour prix, devises et budgets
 
-**Statut : contrat retenu, ADR 0011–0016 acceptées par Joe le 2026-11-05.** Ce document ne décrit
-pas encore des routes toutes disponibles. Acceptation explicite « accepte toutes les adere et continue stp » ; ADR 0011–0016 acceptées ; ADR 0002–0005 et 0008/0010 existantes inchangées.
+**Statut : contrat retenu, ADR 0014–0019 acceptées par Joe le 2026-11-05.** Ce document ne décrit
+pas encore des routes toutes disponibles. Acceptation explicite « accepte toutes les adere et continue stp » ; ADR 0014–0019 acceptées ; ADR 0002–0005 et 0011/0013 existantes inchangées.
 Les trois choix métier du 2026-11-05 sont acquis : budgets cibles par voiture, coût au volume de
 référence conservé, reprise au dernier jour validé sans rattrapage.
 
@@ -144,7 +144,7 @@ la frontière BOM fournit les offres choisies et devises nécessaires, y compris
 Pour les autres périmètres, `target_currencies` est explicite (tableau vide = prix d'origine seulement).
 Dédupliquer IDs/devises, résoudre direct puis inverse dans le contexte unique, vérifier tous les
 manques avant création atomique. Pas de snapshot partiel. Les taux liés conservent leur paire réelle.
-La garde transactionnelle proposée en ADR 0013 bloque tout ajout après commit, sans rouvrir le legacy.
+La garde transactionnelle proposée en ADR 0016 bloque tout ajout après commit, sans rouvrir le legacy.
 
 Conversion : entrée `{money,target_currency,as_of?}` ou `{money,target_currency,snapshot_id}`,
 sans mélanger deux contextes. Sortie : montant d'origine exact, Money converti arrondi seulement en
@@ -240,9 +240,9 @@ lors de la création ; le snapshot créé reste daté des faits réellement gel�
 Le périmètre BOM lit les offres choisies, dédupliquées, et la devise du socle de BOM présent.
 Le port pur `SelectSnapshotCoverage` est fourni pour contrôler une couverture avant publication.
 L’attachement au vrai brouillon, les devises de ses budgets et sa publication restent à raccorder
-à NLPF-69 selon ADR 0016 ; ce point n’est pas validé par les tests autonomes.
+à NLPF-69 selon ADR 0019 ; ce point n’est pas validé par les tests autonomes.
 
-La migration 00004 de cette branche ferme les snapshots au commit (ADR 0013), y compris les
+La migration 00005 de cette branche ferme les snapshots au commit (ADR 0016), y compris les
 anciens en-têtes sans métadonnée. Les tests vérifient l’absence de modification des faits legacy,
 les transactions/savepoints, les IDs forgés et les ajouts concurrents ou après commit.
 

@@ -143,7 +143,7 @@ Rejouer en local : `make migrate lint test cover sec`, puis `make sqlc && git st
 Les tests d'intégration lisent `DATABASE_URL` (exportée par le `Makefile`) : sans base joignable, ils sont
 sautés en local mais **échouent en CI** (`CI=true`).
 
-Tests UI (voir ADR 0010) : dans `web`, `npm ci`, installation des navigateurs Playwright,
+Tests UI (voir ADR 0013) : dans `web`, `npm ci`, installation des navigateurs Playwright,
 puis `npm run test:e2e`. Les parcours sont rejoués sur Chromium, Firefox et WebKit, en formats
 ordinateur et mobile. Ils contrôlent couleurs calculées, précision/arrondi monétaire, navigation,
 graphiques et relecture REST sur signal contrôlé. Un test mocké ne constitue pas une vérification

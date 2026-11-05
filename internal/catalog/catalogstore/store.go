@@ -1,4 +1,4 @@
-// Package catalogstore adapte PostgreSQL au contrat du catalogue (voir ADR 0006).
+// Package catalogstore adapte PostgreSQL au contrat du catalogue (voir ADR 0009).
 // Le domaine catalog ne dépend pas de cet adapter ni de pgx.
 package catalogstore
 

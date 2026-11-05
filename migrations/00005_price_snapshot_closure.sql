@@ -1,4 +1,4 @@
--- ADR 0013 : un snapshot se ferme au commit de sa transaction de création.
+-- ADR 0016 : un snapshot se ferme au commit de sa transaction de création.
 -- Anciennes lignes : NULL signifie fermé ; aucun fait existant n'est mis à jour.
 -- +goose Up
 ALTER TABLE price_snapshots ADD COLUMN creation_xid xid8;

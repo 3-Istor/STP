@@ -24,7 +24,7 @@ type Conversion struct {
 	Context   PriceContext `json:"context"`
 }
 
-// ResolveFX is the single conversion selection strategy (ADR 0014): direct,
+// ResolveFX is the single conversion selection strategy (ADR 0017): direct,
 // then inverse of the original pair. No graph search or synthetic reciprocal.
 func ResolveFX(rates []FXQuote, from, to money.Currency) (string, *FXQuote, error) {
 	for _, c := range []money.Currency{from, to} {

@@ -242,7 +242,7 @@ func assertClosed(t *testing.T, err error) {
 }
 
 func TestLegacySnapshotsRemainClosedAndUnchanged(t *testing.T) {
-	pool := runtimeDBThrough(t, "00003_pricing_runtime.sql")
+	pool := runtimeDBThrough(t, "00004_pricing_runtime.sql")
 	offer, _ := runtimeOffer(t, pool)
 	cfg := runtimeConfig()
 	if _, _, err := pricing.NewRuntime(pricesim.Simulator{}, &RuntimeStore{pool: pool}, nil).Initialize(t.Context(), cfg); err != nil {
@@ -259,7 +259,7 @@ func TestLegacySnapshotsRemainClosedAndUnchanged(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() { _ = root.Close() }()
-	migration, err := root.ReadFile("00004_price_snapshot_closure.sql")
+	migration, err := root.ReadFile("00005_price_snapshot_closure.sql")
 	if err != nil {
 		t.Fatal(err)
 	}

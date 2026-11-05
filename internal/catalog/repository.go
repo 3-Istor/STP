@@ -22,7 +22,7 @@ type Repository interface {
 	WithinTx(context.Context, func(TxRepository) error) error
 }
 
-// TxRepository garantit l'atomicité et les verrous de la transaction (voir ADR 0006).
+// TxRepository garantit l'atomicité et les verrous de la transaction (voir ADR 0009).
 // Acquisition des verrous : pièce d'abord, puis offres par identifiant croissant.
 type TxRepository interface {
 	Catalog

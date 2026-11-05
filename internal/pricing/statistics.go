@@ -13,7 +13,7 @@ import (
 )
 
 // AnnualWindowStart retire douze mois calendaires en UTC et rabat le 29 février
-// au 28 février. AddDate seul normaliserait ce cas vers mars (voir ADR 0008).
+// au 28 février. AddDate seul normaliserait ce cas vers mars (voir ADR 0011).
 func AnnualWindowStart(asOf time.Time) time.Time {
 	at := asOf.UTC()
 	year, month, day := at.Date()

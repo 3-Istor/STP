@@ -91,7 +91,7 @@ NLPF68_BROWSER_MODE=native DATABASE_URL='<base_de_test>' \
 Ce test crée et supprime son schéma privé ; ses routes de pilotage n’existent pas dans le serveur
 livré. Il conserve les contrôles UI existants et ajoute panne/reprise, reconnexion, snapshot stable
 et actualisation sans navigation. La CI contient un job `web-live` dédié. Les contrôles Safari
-macOS/iOS réels restent distincts de WebKit (ADR 0010).
+macOS/iOS réels restent distincts de WebKit (ADR 0013).
 
 Le gel des prix (offre/fournisseur/BOM/catalogue) et la conversion exacte sont disponibles par
 l’API ; voir [le contrat et les exemples](docs/api-prix-et-devises.md). Les évaluateurs de budgets

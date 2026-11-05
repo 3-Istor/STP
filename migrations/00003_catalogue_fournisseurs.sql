@@ -1,4 +1,4 @@
--- NLPF-67 T3 : catalogue complet et contrats (voir ADR 0006 et 0007).
+-- NLPF-67 T3 : catalogue complet et contrats (voir ADR 0009 et 0010).
 -- Les attributs nouveaux restent NULL sur les anciennes lignes : aucune donnée métier inventée.
 -- La création complète et le refus des données incomplètes relèvent également des services.
 

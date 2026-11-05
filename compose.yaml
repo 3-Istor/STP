@@ -38,7 +38,7 @@ services:
       PORT: "8080"
       DATABASE_URL: postgres://bom:bom@db:5432/bomstudio?sslmode=disable
       PRICE_API_URL: http://priceapi:8090
-      # Démonstration synthétique explicite ; mêmes paramètres requis à la reprise (ADR 0012).
+      # Démonstration synthétique explicite ; mêmes paramètres requis à la reprise (ADR 0015).
       SIM_DATASET_VERSION: "${SIM_DATASET_VERSION:-demo-v1}"
       SIM_SEED: "${SIM_SEED:-42}"
       SIM_AS_OF: "${SIM_AS_OF:-2026-01-01T00:00:00Z}"

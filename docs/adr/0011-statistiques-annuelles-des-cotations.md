@@ -1,4 +1,4 @@
-# 0008 — Fenêtre annuelle et précision des statistiques de prix
+# 0011 — Fenêtre annuelle et précision des statistiques de prix
 Statut : Accepté — Date : 2026-11-04 — Décideurs : Joe (accord explicite dans le chat)
 
 ## Contexte

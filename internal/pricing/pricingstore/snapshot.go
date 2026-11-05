@@ -25,7 +25,7 @@ var _ pricing.SnapshotRepository = (*SnapshotStore)(nil)
 type snapshotUnit struct{ q *pricingdb.Queries }
 
 func (s *SnapshotStore) WithSnapshotTransaction(ctx context.Context, fn func(pricing.SnapshotUnit) error) error {
-	// ADR 0013 : cohérence de sélection et fermeture au même commit, sans réseau.
+	// ADR 0016 : cohérence de sélection et fermeture au même commit, sans réseau.
 	tx, err := s.pool.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.RepeatableRead})
 	if err != nil {
 		return err

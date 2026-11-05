@@ -1,4 +1,4 @@
-// Package pricesim implémente la source pure partagée, sans réseau, horloge ni base (ADR 0011).
+// Package pricesim implémente la source pure partagée, sans réseau, horloge ni base (ADR 0014).
 package pricesim
 
 import (

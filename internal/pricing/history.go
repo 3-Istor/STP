@@ -16,7 +16,7 @@ var (
 	ErrInvalidHistoryData    = errors.New("invalid price history data")
 )
 
-// HistoricalQuote identifie exactement la cotation immuable utilisée (ADR 0008).
+// HistoricalQuote identifie exactement la cotation immuable utilisée (ADR 0011).
 type HistoricalQuote struct {
 	ID       int64       `json:"id"`
 	OfferID  int64       `json:"offer_id"`

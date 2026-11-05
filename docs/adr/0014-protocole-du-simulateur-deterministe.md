@@ -1,4 +1,4 @@
-# 0011 — Protocole du simulateur déterministe
+# 0014 — Protocole du simulateur déterministe
 Statut : Accepté — Date : 2026-11-05 — Décideurs : Joe (accord explicite dans le chat)
 
 ## Contexte

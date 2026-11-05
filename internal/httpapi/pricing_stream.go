@@ -13,7 +13,7 @@ import (
 )
 
 // PricingHub carries a bounded latest-state signal, never the quote ledger.
-// ADR 0012: slow clients may skip signals; REST always reads committed facts.
+// ADR 0015: slow clients may skip signals; REST always reads committed facts.
 type PricingHub struct {
 	mu      sync.Mutex
 	clients map[chan pricing.RunState]struct{}
