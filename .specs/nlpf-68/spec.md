@@ -4,7 +4,7 @@ title: Prix et devises — simulateur, cotations, snapshots, conversion et budge
 source: jira
 source_ref: https://3istors.atlassian.net/browse/NLPF-68
 created: 2026-11-05
-status: in-progress
+status: blocked
 priority: P2
 depends_on: [nlpf-70, nlpf-69]
 branch: nlpf-68

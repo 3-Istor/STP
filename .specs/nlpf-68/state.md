@@ -1,6 +1,6 @@
 ---
 id: nlpf-68
-status: in-progress
+status: blocked
 branch: nlpf-68
 current_task: T10
 started: 2026-11-05
@@ -11,8 +11,10 @@ updated: 2026-11-05
 
 ## Progress
 
-T1–T9 terminées sur les capacités décrites dans le journal. T10 en cours.
-ADR 0011–0016 acceptées explicitement par Joe ; dépendances BOM toujours visibles.
+T1–T9 terminées pour les capacités autonomes selon ADR 0016. T10 : validations locales et rapport
+livrés, raccordements réels BOM et CI distante non terminés. Statut blocked, current_task T10.
+ADR 0011–0016 acceptées explicitement par Joe ; aucun nouvel accord sur celles-ci requis.
+Question ouverte dans le chat : accord d’Arthur et révision/base coordonnée.
 
 ## Task Log
 
@@ -132,6 +134,18 @@ ADR 0011–0016 acceptées explicitement par Joe ; dépendances BOM toujours vis
 - **Commit**: 448d4b3.
 - **Notes**: Flux réel SSE borné après commit et signal de panne livrés ; contexte serveur annulable. make test/lint, go test -race ./..., build et 60 parcours contrôlés verts ; 12 parcours réels trois moteurs/desktop/mobile verts sous -race (43,5 s navigateur), reconnexion et panne/reprise incluses. Job CI web-live ajouté sans affaiblir les jobs existants. Isolation des baux de tests corrigée après collision entre deux suites simultanées. Budgets/éditeur BOM restent obligatoires en T10.
 
+### T10 : Vérifications autonomes et condition de reprise — 2026-11-05
+
+- **Status**: partial ; tâche non cochée, statut global blocked.
+- **Time**: 2026-11-05T15:32:06+01:00
+- **Commit**: 26e1b6d (mesure/observabilité/documentation), 1ed7f6d (erreurs JSON SSE).
+- **Checks**: make lint/test PostgreSQL18, race complet, make sec (aucune vulnérabilité), build, tidy-diff et sqlc stable verts. Dernier correctif HTTP protégé par test rouge/vert puis lint/test/sec et race HTTP rejoués verts.
+- **Browsers**: 60 parcours contrôlés (31,2 s) et 12 réels (43,5 s navigateur) verts ; vrai test Go des navigateurs sous -race, aucune course. Aucun retry/skip/flaky navigateur. WebKit ne prouve pas Safari macOS/iOS.
+- **Stack**: Compose dédié construit/sain ; migration sortie 0 ; nginx/SSE/REST réels, panne/repli/reprise, arrêt avec SSE ouvert sorti 0 et reprise à cadence modifiée avec digest de persistance identique. Stack dédiée et volume jetable nettoyés ; aucune base de l’équipe touchée.
+- **Measure**: 30 000 nœuds pièce + racine, 300 offres uniques, 109 500 prix/365 FX initiaux : bootstrap 21,374 s, tick 67,756 ms, lecture 100,309 ms, snapshot BOM 155,783 ms, prix+FX tables/index 37 920 768 octets. Recalcul BOM et 30 000 offres uniques non mesurés.
+- **Artifacts**: delivery-report.md (responsabilités, panne/test/limites et matrice J1–J10/C1–C4) ; integration-nlpf-69.md (adaptations et conflits de migrations/ADR concrets).
+- **Pending**: accord du propriétaire NLPF-69 et base coordonnée demandés dans le chat ; AGENTS §13 et ADR 0016 maintiennent cette condition. Pas de reprise/fusion ni migration de base d’équipe. Publication/remises/budgets/éditeur BOM, seed Multipla et CI distante non validés.
+
 ## Decisions
 
 - 2026-11-05 — Joe : budgets cibles global/sous-systèmes par voiture ; budget de production total distinct.
@@ -146,6 +160,13 @@ ADR 0011–0016 acceptées explicitement par Joe ; dépendances BOM toujours vis
   ADR 0011–0016 et du contrat API présenté ; enregistrement des en-têtes à sa demande.
 
 ## Blockers
+
+### T10 — Raccordement et acceptation finale
+
+- **Error**: base BOM coordonnée et accord du propriétaire non reçus ; historiques de migration 00002 et ADR 0006–0008 divergents. La CI de cette révision locale n’a pas été exécutée à distance.
+- **Analysis**: toutes les capacités autonomes autorisées sont livrées ; l’ADR 0016 conserve les raccordements obligatoires sans second moteur. Les tests contrôlés ou le socle SQL BOM ne prouvent ni attachement/publication ni budgets dans l’éditeur réel.
+- **Suggested fix**: suivre integration-nlpf-69.md : accord/révision partagés, procédure d’évolution validée sur bases jetables, raccordements et tests réels, puis CI/revue sur révision autorisée. Aucun accord redemandé pour ADR 0011–0016.
+
 
 - ADR 0011–0016 acceptées : aucun blocage sur ces décisions. Raccordements BOM toujours
   soumis à la base et au partage de fichiers convenus avec Arthur, selon ADR 0016.
@@ -188,3 +209,10 @@ ADR 0011–0016 acceptées explicitement par Joe ; dépendances BOM toujours vis
   nlpf-70 et docker-compose-stack. Aucune correction hors périmètre.
 - NOT RUN : tests/lint/build applicatifs et CI distante ; lot documentaire, aucune
   implémentation nouvelle à valider avant décision humaine. T1 non terminée, T2–T10 non commencées.
+
+### Vérification finale locale et blocage d’intégration — 2026-11-05
+
+- PASS : paire spec/state blocked/T10 validée ensemble dans `/tmp/nlpf68-final-validation-to2nwcm3` ; Spec Drum: 2 file(s) OK.
+- FAIL préexistant : validateur global code 2, uniquement status mismatch nlpf-70 et docker-compose-stack. Aucune correction de ces dossiers hors périmètre.
+- PASS : vérifications produit et mesures décrites dans delivery-report.md ; aucune intégration BOM/CI distante annoncée verte.
+- T10 et critères de clôture restent non cochés. Reprise sur accord/base coordonnée ; question utilisateur en attente, sans interpréter le silence comme accord.

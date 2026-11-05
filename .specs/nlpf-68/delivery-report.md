@@ -45,6 +45,8 @@ La vraie BOM, ses budgets persistés, ses publications et le seed Multipla ne so
   montants, recorded_at et snapshots, aucun rattrapage ni régénération.
 - PASS : isolation des baux de tests corrigée après une collision entre suites simultanées ;
   attente bornée et dataset distinct. Tous les contrôles complets ont été rejoués verts ensuite.
+- PASS : paire spec/state NLPF-68 validée ensemble ; FAIL global préexistant limité aux statuts
+  incohérents de nlpf-70 et docker-compose-stack, laissés intacts.
 - NOT RUN : Safari macOS/iOS réel, CI distante de cette révision, raccordements BOM du tableau
   suivant. Le test navigateur/mesure est opt-in dans `make test` et a été exécuté séparément.
 
@@ -104,4 +106,5 @@ protections. Sans snapshot complet, le calcul reste indisponible, jamais valoris
 
 Voir `integration-nlpf-69.md` : accord du propriétaire de NLPF-69, base/révision commune et
 procédure validée pour les historiques de migration/ADR divergents. L’accord de Joe sur les
-ADR 0011–0016 est acquis et ne doit pas être redemandé. Aucun ancien snapshot de l’équipe touché.
+ADR 0011–0016 est acquis et ne doit pas être redemandé. Aucun ancien snapshot de l’équipe touché. Correctif final `1ed7f6d` : erreurs JSON conservées
+avant ouverture SSE, test rouge puis vert et lint/test/sec/race HTTP rejoués avec succès.
