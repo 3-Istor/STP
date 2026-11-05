@@ -153,6 +153,15 @@ Joe confirme que l’accord d’Arthur et la base commune ne sont pas encore dis
 - **Status**: blocked, T10 non cochée. Les capacités autonomes T1–T9 restent livrées et vérifiées.
 - **Next**: reprendre les raccordements selon integration-nlpf-69.md lorsque ces éléments seront disponibles ; aucun accord nouveau déduit de cette réponse, aucune reprise de NLPF-69.
 
+### Publication demandée par Joe — 2026-11-05
+
+- **Time**: 2026-11-05T15:57:15+01:00
+- **Authorization**: demande explicite de pousser tout le travail et créer une PR, avec lien pour assigner Arthur.
+- **Result**: branches nlpf-67 (4dcdb48) et nlpf-68 (594370a avant ce suivi) poussées via SSH et révisions distantes vérifiées. Aucun force-push ni merge.
+- **PR**: création en brouillon vers main tentée ; GitHub API renvoie 404, le connecteur ne peut pas accéder au dépôt 3-Istor/STP. Aucun jeton GitHub local configuré trouvé par les mécanismes standards ; aucune PR annoncée créée.
+- **Prepared**: pull-request.md contient le titre et la description ; lien de comparaison prérempli fourni dans le chat. L’utilisateur assignera Arthur ; aucune notification ou demande de review envoyée.
+- **Status**: T10 reste blocked sur les raccordements BOM/base commune ; la publication n’accorde pas la reprise de la branche d’Arthur.
+
 ## Decisions
 
 - 2026-11-05 — Joe : budgets cibles global/sous-systèmes par voiture ; budget de production total distinct.

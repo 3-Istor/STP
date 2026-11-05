@@ -2,7 +2,8 @@
 
 2026-11-05, branche `nlpf-68`. ADR 0011–0016 acceptées explicitement par Joe.
 T1–T9 terminées pour les tranches autonomes convenues (ADR 0016). T10 reste ouvert :
-intégration BOM coordonnée et CI distante non réalisées. Aucun push, merge ni PR.
+intégration BOM coordonnée et CI distante non réalisées. Branches nlpf-67/nlpf-68 publiées à la demande de Joe ; création de PR bloquée par
+l’accès API GitHub (404). Aucune fusion. Titre/description disponibles dans pull-request.md.
 
 ## Comportement livré
 
