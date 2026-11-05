@@ -2,7 +2,7 @@
 id: nlpf-68
 status: in-progress
 branch: nlpf-68
-current_task: T8
+current_task: T9
 started: 2026-11-05
 updated: 2026-11-05
 ---
@@ -11,7 +11,7 @@ updated: 2026-11-05
 
 ## Progress
 
-T1–T7 terminées sur les capacités décrites dans le journal. T8 en cours.
+T1–T8 terminées sur les capacités décrites dans le journal. T9 en cours.
 ADR 0011–0016 acceptées explicitement par Joe ; dépendances BOM toujours visibles.
 
 ## Task Log
@@ -117,6 +117,13 @@ ADR 0011–0016 acceptées explicitement par Joe ; dépendances BOM toujours vis
 - **Time**: 2026-11-05T15:02:42+01:00
 - **Commit**: a135b19.
 - **Notes**: Conversion autonome exacte et API livrées (ADR 0014), direct prioritaire/inverse sans pivot ; port rationnel pour agrégation et floor. make test PostgreSQL18, make lint et race ciblé verts. Tests 92 EUR, inverse périodique total 10 USD, JPY/KWD, >2^53, taux figés inchangés et entrée exposant excessive. Vrai moteur BOM obligatoire en T10.
+
+### T8 : Livrer les évaluateurs de budgets et de volume pour la vraie BOM (R7–R8, R10) — 2026-11-05
+
+- **Status**: completed.
+- **Time**: 2026-11-05T15:07:07+01:00
+- **Commit**: 46d3d30.
+- **Notes**: Évaluateurs purs budgets/allocation/production livrés (ADR 0015), sans second moteur ni route BOM factice. make test PostgreSQL18, make lint et race ciblé verts. Tests seuils exacts, devise manquante, allocation imbriquée/inverse avant somme, 66 voitures, référence/remise conservées, zéro et overflow. Persistance, publications et écrans BOM restent obligatoires en T10.
 
 ## Decisions
 

@@ -323,7 +323,7 @@ ne signifie donc pas que J4/J8/J9 ni le ticket complet sont acceptés.
     half-even et bornes >2^53 testés ; résultats figés ne changent pas avec le live. Intégration BOM
     bloquée tant que son vrai moteur et le contrat exact ne sont pas livrés.
 
-- [ ] T8: Livrer les évaluateurs de budgets et de volume pour la vraie BOM (R7–R8, R10)
+- [x] T8: Livrer les évaluateurs de budgets et de volume pour la vraie BOM (R7–R8, R10)
   - **Files**: nouveaux `internal/pricing/{budget,production_volume}.go`, tests associés ;
     extensions `internal/bom/`, `internal/snapshot/`, leurs stores/requêtes/API après accord,
     nouvelle migration budgets au numéro validé et code sqlc correspondant.
