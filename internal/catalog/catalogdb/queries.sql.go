@@ -692,6 +692,7 @@ const offerHasReferences = `-- name: OfferHasReferences :one
 SELECT EXISTS (
     SELECT 1 FROM price_quotes p WHERE p.offer_id = $1
     UNION ALL SELECT 1 FROM bom_nodes b WHERE b.offer_id = $1
+    UNION ALL SELECT 1 FROM bom_snapshot_nodes sn WHERE sn.offer_id = $1
     UNION ALL SELECT 1 FROM contract_offers c WHERE c.offer_id = $1
 ) AS referenced
 `
@@ -707,6 +708,7 @@ const partHasReferences = `-- name: PartHasReferences :one
 SELECT EXISTS (
     SELECT 1 FROM offers o WHERE o.part_id = $1
     UNION ALL SELECT 1 FROM bom_nodes b WHERE b.part_id = $1
+    UNION ALL SELECT 1 FROM bom_snapshot_nodes sn WHERE sn.part_id = $1
     UNION ALL SELECT 1 FROM part_alternatives a
         WHERE a.part_low_id = $1 OR a.part_high_id = $1
 ) AS referenced

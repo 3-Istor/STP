@@ -54,6 +54,7 @@ SELECT * FROM parts WHERE id = $1 FOR SHARE;
 SELECT EXISTS (
     SELECT 1 FROM offers o WHERE o.part_id = sqlc.arg(part_id)
     UNION ALL SELECT 1 FROM bom_nodes b WHERE b.part_id = sqlc.arg(part_id)
+    UNION ALL SELECT 1 FROM bom_snapshot_nodes sn WHERE sn.part_id = sqlc.arg(part_id)
     UNION ALL SELECT 1 FROM part_alternatives a
         WHERE a.part_low_id = sqlc.arg(part_id) OR a.part_high_id = sqlc.arg(part_id)
 ) AS referenced;
@@ -115,6 +116,7 @@ SELECT * FROM offers WHERE part_id = $1 ORDER BY id FOR UPDATE;
 SELECT EXISTS (
     SELECT 1 FROM price_quotes p WHERE p.offer_id = sqlc.arg(offer_id)
     UNION ALL SELECT 1 FROM bom_nodes b WHERE b.offer_id = sqlc.arg(offer_id)
+    UNION ALL SELECT 1 FROM bom_snapshot_nodes sn WHERE sn.offer_id = sqlc.arg(offer_id)
     UNION ALL SELECT 1 FROM contract_offers c WHERE c.offer_id = sqlc.arg(offer_id)
 ) AS referenced;
 
