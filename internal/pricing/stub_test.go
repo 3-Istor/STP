@@ -87,3 +87,25 @@ func TestStubRate(t *testing.T) {
 		})
 	}
 }
+
+// Les futures lectures réseau/DB ne doivent ni inverser ce port, ni perdre la précision/source.
+func TestStubRatePreservesExactPairAndProvenance(t *testing.T) {
+	tests := []struct{ name, from, to, value string }{
+		{"small exact rate", "USD", "EUR", "0.000000000000000000123456789"},
+		{"large exact rate", "JPY", "KWD", "9007199254740993.1256789"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			at := time.Date(2026, 2, 28, 23, 59, 59, 123456789, time.UTC)
+			rate := Rate{From: money.Currency(tt.from), To: money.Currency(tt.to), Rate: decimal.RequireFromString(tt.value), Source: "baseline/source", QuotedAt: at}
+			stub := NewStub(nil, []Rate{rate})
+			got, err := stub.Rate(t.Context(), rate.From, rate.To)
+			if err != nil || !got.Rate.Equal(rate.Rate) || got.From != rate.From || got.To != rate.To || got.Source != rate.Source || !got.QuotedAt.Equal(at) {
+				t.Fatalf("rate/provenance changed: %+v, %v", got, err)
+			}
+			if _, err := stub.Rate(t.Context(), rate.To, rate.From); !errors.Is(err, ErrNoRate) {
+				t.Fatalf("implicit inversion: %v", err)
+			}
+		})
+	}
+}
