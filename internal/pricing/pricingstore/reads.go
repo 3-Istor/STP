@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/shopspring/decimal"
 
@@ -127,10 +128,10 @@ func (s *ReadStore) Market(ctx context.Context, dataset string, scope pricing.Pr
 	return f, nil
 }
 
-func snapshotRef(v pricingdb.PriceSnapshot) pricing.PriceSnapshotRef {
-	r := pricing.PriceSnapshotRef{ID: v.ID, Scope: v.Scope, TakenAt: v.TakenAt.UTC()}
-	if v.ScopeID.Valid {
-		id := v.ScopeID.Int64
+func snapshotRef(id int64, scope string, scopeID pgtype.Int8, at time.Time) pricing.PriceSnapshotRef {
+	r := pricing.PriceSnapshotRef{ID: id, Scope: scope, TakenAt: at.UTC()}
+	if scopeID.Valid {
+		id := scopeID.Int64
 		r.ScopeID = &id
 	}
 	return r
@@ -142,7 +143,7 @@ func (s *ReadStore) SnapshotCandidates(ctx context.Context, at time.Time) ([]pri
 	}
 	out := make([]pricing.PriceSnapshotRef, 0, len(rows))
 	for _, v := range rows {
-		out = append(out, snapshotRef(v))
+		out = append(out, snapshotRef(v.ID, v.Scope, v.ScopeID, v.TakenAt))
 	}
 	return out, nil
 }
@@ -152,7 +153,16 @@ func (s *ReadStore) ReadSnapshot(ctx context.Context, id int64) (pricing.PriceSn
 		return pricing.PriceSnapshotData{}, err
 	}
 	defer func() { _ = tx.Rollback(context.Background()) }()
-	q := pricingdb.New(tx)
+	out, err := readSnapshot(ctx, pricingdb.New(tx), id)
+	if err != nil {
+		return out, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return out, err
+	}
+	return out, nil
+}
+func readSnapshot(ctx context.Context, q *pricingdb.Queries, id int64) (pricing.PriceSnapshotData, error) {
 	v, err := q.ReadPriceSnapshot(ctx, id)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return pricing.PriceSnapshotData{}, pricing.ErrPriceSnapshotNotFound
@@ -160,7 +170,7 @@ func (s *ReadStore) ReadSnapshot(ctx context.Context, id int64) (pricing.PriceSn
 	if err != nil {
 		return pricing.PriceSnapshotData{}, err
 	}
-	out := pricing.PriceSnapshotData{PriceSnapshotRef: snapshotRef(v), Quotes: []pricing.HistoricalQuote{}, Rates: []pricing.FXQuote{}}
+	out := pricing.PriceSnapshotData{PriceSnapshotRef: snapshotRef(v.ID, v.Scope, v.ScopeID, v.TakenAt), Quotes: []pricing.HistoricalQuote{}, Rates: []pricing.FXQuote{}}
 	prices, err := q.ReadSnapshotPrices(ctx, id)
 	if err != nil {
 		return out, err
@@ -182,9 +192,6 @@ func (s *ReadStore) ReadSnapshot(ctx context.Context, id int64) (pricing.PriceSn
 			return out, err
 		}
 		out.Rates = append(out.Rates, rate)
-	}
-	if err := tx.Commit(ctx); err != nil {
-		return out, err
 	}
 	return out, nil
 }

@@ -109,11 +109,12 @@ type PriceQuote struct {
 }
 
 type PriceSnapshot struct {
-	ID        int64
-	Scope     string
-	ScopeID   pgtype.Int8
-	TakenAt   time.Time
-	CreatedAt time.Time
+	ID          int64
+	Scope       string
+	ScopeID     pgtype.Int8
+	TakenAt     time.Time
+	CreatedAt   time.Time
+	CreationXid pgtype.Uint64
 }
 
 type PriceSnapshotFx struct {

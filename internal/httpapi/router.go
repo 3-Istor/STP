@@ -14,10 +14,11 @@ import (
 
 // Services reçoit les services déjà câblés ; aucun accès base n'est construit dans les handlers.
 type Services struct {
-	Catalog  *catalog.Service
-	Supplier *supplier.Service
-	History  *pricing.HistoryService
-	Pricing  *pricing.ReadService
+	Catalog        *catalog.Service
+	Supplier       *supplier.Service
+	History        *pricing.HistoryService
+	Pricing        *pricing.ReadService
+	PriceSnapshots *pricing.SnapshotService
 }
 
 // NewRouter construit le routeur de l'application.
@@ -35,6 +36,9 @@ func NewRouter(services ...Services) http.Handler {
 	}
 	if len(services) > 0 && services[0].Pricing != nil {
 		pricingHandler{service: services[0].Pricing}.register(mux)
+	}
+	if len(services) > 0 && services[0].PriceSnapshots != nil {
+		pricingSnapshotsHandler{service: services[0].PriceSnapshots}.register(mux)
 	}
 	if len(services) > 0 && services[0].Catalog != nil && services[0].Supplier != nil && services[0].History != nil {
 		supplierOffersReader{catalog: services[0].Catalog, suppliers: services[0].Supplier, history: services[0].History, prices: services[0].Pricing}.register(mux)

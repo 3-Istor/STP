@@ -19,10 +19,11 @@ import (
 )
 
 type pricingWorker struct {
-	runtime *pricing.Runtime
-	reads   *pricing.ReadService
-	config  pricing.RunConfig
-	retry   time.Duration
+	runtime   *pricing.Runtime
+	reads     *pricing.ReadService
+	snapshots *pricing.SnapshotService
+	config    pricing.RunConfig
+	retry     time.Duration
 }
 
 type realPricingClock struct{}
@@ -87,7 +88,7 @@ func configurePricing(pool *pgxpool.Pool) (*pricingWorker, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &pricingWorker{runtime: pricing.NewRuntime(source, pricingstore.NewRuntime(pool), nil), reads: pricing.NewReadService(pricingstore.NewReadStore(pool), cfg), config: cfg, retry: retry}, nil
+	return &pricingWorker{snapshots: pricing.NewSnapshotService(pricingstore.NewSnapshotStore(pool), cfg), runtime: pricing.NewRuntime(source, pricingstore.NewRuntime(pool), nil), reads: pricing.NewReadService(pricingstore.NewReadStore(pool), cfg), config: cfg, retry: retry}, nil
 }
 
 func (w *pricingWorker) run(ctx context.Context) {

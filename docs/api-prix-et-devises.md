@@ -227,3 +227,21 @@ Tests prévus : Source en httptest avec erreurs et timeout ; génération identi
 batches et reprise ; 365 lignes exactes deux fois/concurremment ; faux temps aux bornes ; repli
 snapshot ou erreur ; refus SQL de mutation/ajout ; inverse périodique avant somme ; budgets/volume
 et vrai SSE navigateur. Aucun de ces nouveaux comportements n'est présenté comme implémenté ici.
+
+### État de livraison : gel autonome (T6)
+
+`POST /api/v1/price-snapshots` et `GET /api/v1/price-snapshots/{id}` sont câblés quand
+le runtime de prix est configuré. `target_currencies` est requis (tableau vide autorisé).
+Une couverture incomplète renvoie 422 et `missing` avec tous les prix/paires manquants,
+sans créer d’en-tête. La sélection conserve les IDs, choisit le direct avant l’inverse
+et n’utilise aucun pivot. `source_context` précise le live ou le snapshot de repli utilisé
+lors de la création ; le snapshot créé reste daté des faits réellement gelés.
+
+Le périmètre BOM lit les offres choisies, dédupliquées, et la devise du socle de BOM présent.
+Le port pur `SelectSnapshotCoverage` est fourni pour contrôler une couverture avant publication.
+L’attachement au vrai brouillon, les devises de ses budgets et sa publication restent à raccorder
+à NLPF-69 selon ADR 0016 ; ce point n’est pas validé par les tests autonomes.
+
+La migration 00004 de cette branche ferme les snapshots au commit (ADR 0013), y compris les
+anciens en-têtes sans métadonnée. Les tests vérifient l’absence de modification des faits legacy,
+les transactions/savepoints, les IDs forgés et les ajouts concurrents ou après commit.

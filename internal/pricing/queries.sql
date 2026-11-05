@@ -136,10 +136,10 @@ SELECT id,base_currency,quote_currency,rate::text AS rate_text,source,quoted_at 
 WHERE base_currency=$1 AND quote_currency=$2 AND quoted_at>=$3 AND quoted_at<=$4 ORDER BY quoted_at,id;
 
 -- name: ReadFallbackSnapshots :many
-SELECT * FROM price_snapshots WHERE taken_at<=$1 ORDER BY taken_at DESC,id DESC;
+SELECT id,scope,scope_id,taken_at,created_at FROM price_snapshots WHERE taken_at<=$1 ORDER BY taken_at DESC,id DESC;
 
 -- name: ReadPriceSnapshot :one
-SELECT * FROM price_snapshots WHERE id=$1;
+SELECT id,scope,scope_id,taken_at,created_at FROM price_snapshots WHERE id=$1;
 
 -- name: ReadSnapshotPrices :many
 SELECT q.id,q.offer_id,q.amount::text AS amount_text,q.currency,q.source,q.quoted_at
@@ -150,3 +150,19 @@ WHERE l.snapshot_id=$1 ORDER BY q.offer_id;
 SELECT q.id,q.base_currency,q.quote_currency,q.rate::text AS rate_text,q.source,q.quoted_at
 FROM price_snapshot_fx l JOIN fx_quotes q ON q.id=l.fx_quote_id
 WHERE l.snapshot_id=$1 ORDER BY q.base_currency,q.quote_currency;
+
+-- name: ReadBOMPriceScope :many
+SELECT DISTINCT o.id,o.currency FROM bom_nodes n JOIN offers o ON o.id=n.offer_id
+WHERE n.bom_id=$1 ORDER BY o.id;
+
+-- name: ReadBOMPriceCurrency :one
+SELECT currency FROM boms WHERE id=$1;
+
+-- name: CreatePriceSnapshot :one
+INSERT INTO price_snapshots(scope,scope_id,taken_at) VALUES ($1,$2,$3) RETURNING *;
+
+-- name: LinkSnapshotPrice :exec
+INSERT INTO price_snapshot_quotes(snapshot_id,price_quote_id,offer_id) VALUES ($1,$2,$3);
+
+-- name: LinkSnapshotFX :exec
+INSERT INTO price_snapshot_fx(snapshot_id,fx_quote_id,base_currency,quote_currency) VALUES ($1,$2,$3,$4);

@@ -23,6 +23,10 @@ var schemaNumber atomic.Int64
 
 // Chaque test de concurrence possède son schéma migré ; aucun DROP/TRUNCATE dans le schéma utilisateur.
 func runtimeDB(t *testing.T) *pgxpool.Pool {
+	return runtimeDBThrough(t, "")
+}
+
+func runtimeDBThrough(t *testing.T, last string) *pgxpool.Pool {
 	t.Helper()
 	url := os.Getenv("DATABASE_URL")
 	if url == "" {
@@ -71,6 +75,9 @@ func runtimeDB(t *testing.T) *pgxpool.Pool {
 		t.Fatal(err)
 	}
 	for _, file := range files {
+		if last != "" && file > last {
+			break
+		}
 		b, err := root.ReadFile(file)
 		if err != nil {
 			t.Fatal(err)

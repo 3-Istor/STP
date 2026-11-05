@@ -9,8 +9,33 @@ import (
 	"context"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/shopspring/decimal"
 )
+
+const createPriceSnapshot = `-- name: CreatePriceSnapshot :one
+INSERT INTO price_snapshots(scope,scope_id,taken_at) VALUES ($1,$2,$3) RETURNING id, scope, scope_id, taken_at, created_at, creation_xid
+`
+
+type CreatePriceSnapshotParams struct {
+	Scope   string
+	ScopeID pgtype.Int8
+	TakenAt time.Time
+}
+
+func (q *Queries) CreatePriceSnapshot(ctx context.Context, arg CreatePriceSnapshotParams) (PriceSnapshot, error) {
+	row := q.db.QueryRow(ctx, createPriceSnapshot, arg.Scope, arg.ScopeID, arg.TakenAt)
+	var i PriceSnapshot
+	err := row.Scan(
+		&i.ID,
+		&i.Scope,
+		&i.ScopeID,
+		&i.TakenAt,
+		&i.CreatedAt,
+		&i.CreationXid,
+	)
+	return i, err
+}
 
 const currentPriceAsOf = `-- name: CurrentPriceAsOf :one
 SELECT quoted_at FROM price_quotes
@@ -284,6 +309,42 @@ func (q *Queries) LatestPriceQuote(ctx context.Context, offerID int64) (PriceQuo
 	return i, err
 }
 
+const linkSnapshotFX = `-- name: LinkSnapshotFX :exec
+INSERT INTO price_snapshot_fx(snapshot_id,fx_quote_id,base_currency,quote_currency) VALUES ($1,$2,$3,$4)
+`
+
+type LinkSnapshotFXParams struct {
+	SnapshotID    int64
+	FxQuoteID     int64
+	BaseCurrency  string
+	QuoteCurrency string
+}
+
+func (q *Queries) LinkSnapshotFX(ctx context.Context, arg LinkSnapshotFXParams) error {
+	_, err := q.db.Exec(ctx, linkSnapshotFX,
+		arg.SnapshotID,
+		arg.FxQuoteID,
+		arg.BaseCurrency,
+		arg.QuoteCurrency,
+	)
+	return err
+}
+
+const linkSnapshotPrice = `-- name: LinkSnapshotPrice :exec
+INSERT INTO price_snapshot_quotes(snapshot_id,price_quote_id,offer_id) VALUES ($1,$2,$3)
+`
+
+type LinkSnapshotPriceParams struct {
+	SnapshotID   int64
+	PriceQuoteID int64
+	OfferID      int64
+}
+
+func (q *Queries) LinkSnapshotPrice(ctx context.Context, arg LinkSnapshotPriceParams) error {
+	_, err := q.db.Exec(ctx, linkSnapshotPrice, arg.SnapshotID, arg.PriceQuoteID, arg.OfferID)
+	return err
+}
+
 const listPricingOffers = `-- name: ListPricingOffers :many
 SELECT o.id, o.supplier_id, o.currency, o.price_min, o.price_max FROM offers o
 JOIN parts p ON p.id = o.part_id
@@ -413,6 +474,47 @@ func (q *Queries) PricingSupplierExists(ctx context.Context, id int64) (bool, er
 	var column_1 bool
 	err := row.Scan(&column_1)
 	return column_1, err
+}
+
+const readBOMPriceCurrency = `-- name: ReadBOMPriceCurrency :one
+SELECT currency FROM boms WHERE id=$1
+`
+
+func (q *Queries) ReadBOMPriceCurrency(ctx context.Context, id int64) (string, error) {
+	row := q.db.QueryRow(ctx, readBOMPriceCurrency, id)
+	var currency string
+	err := row.Scan(&currency)
+	return currency, err
+}
+
+const readBOMPriceScope = `-- name: ReadBOMPriceScope :many
+SELECT DISTINCT o.id,o.currency FROM bom_nodes n JOIN offers o ON o.id=n.offer_id
+WHERE n.bom_id=$1 ORDER BY o.id
+`
+
+type ReadBOMPriceScopeRow struct {
+	ID       int64
+	Currency string
+}
+
+func (q *Queries) ReadBOMPriceScope(ctx context.Context, bomID int64) ([]ReadBOMPriceScopeRow, error) {
+	rows, err := q.db.Query(ctx, readBOMPriceScope, bomID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ReadBOMPriceScopeRow
+	for rows.Next() {
+		var i ReadBOMPriceScopeRow
+		if err := rows.Scan(&i.ID, &i.Currency); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const readCurrentFX = `-- name: ReadCurrentFX :many
@@ -558,18 +660,26 @@ func (q *Queries) ReadFXHistory(ctx context.Context, arg ReadFXHistoryParams) ([
 }
 
 const readFallbackSnapshots = `-- name: ReadFallbackSnapshots :many
-SELECT id, scope, scope_id, taken_at, created_at FROM price_snapshots WHERE taken_at<=$1 ORDER BY taken_at DESC,id DESC
+SELECT id,scope,scope_id,taken_at,created_at FROM price_snapshots WHERE taken_at<=$1 ORDER BY taken_at DESC,id DESC
 `
 
-func (q *Queries) ReadFallbackSnapshots(ctx context.Context, takenAt time.Time) ([]PriceSnapshot, error) {
+type ReadFallbackSnapshotsRow struct {
+	ID        int64
+	Scope     string
+	ScopeID   pgtype.Int8
+	TakenAt   time.Time
+	CreatedAt time.Time
+}
+
+func (q *Queries) ReadFallbackSnapshots(ctx context.Context, takenAt time.Time) ([]ReadFallbackSnapshotsRow, error) {
 	rows, err := q.db.Query(ctx, readFallbackSnapshots, takenAt)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []PriceSnapshot
+	var items []ReadFallbackSnapshotsRow
 	for rows.Next() {
-		var i PriceSnapshot
+		var i ReadFallbackSnapshotsRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.Scope,
@@ -635,12 +745,20 @@ func (q *Queries) ReadPriceHistory(ctx context.Context, arg ReadPriceHistoryPara
 }
 
 const readPriceSnapshot = `-- name: ReadPriceSnapshot :one
-SELECT id, scope, scope_id, taken_at, created_at FROM price_snapshots WHERE id=$1
+SELECT id,scope,scope_id,taken_at,created_at FROM price_snapshots WHERE id=$1
 `
 
-func (q *Queries) ReadPriceSnapshot(ctx context.Context, id int64) (PriceSnapshot, error) {
+type ReadPriceSnapshotRow struct {
+	ID        int64
+	Scope     string
+	ScopeID   pgtype.Int8
+	TakenAt   time.Time
+	CreatedAt time.Time
+}
+
+func (q *Queries) ReadPriceSnapshot(ctx context.Context, id int64) (ReadPriceSnapshotRow, error) {
 	row := q.db.QueryRow(ctx, readPriceSnapshot, id)
-	var i PriceSnapshot
+	var i ReadPriceSnapshotRow
 	err := row.Scan(
 		&i.ID,
 		&i.Scope,
