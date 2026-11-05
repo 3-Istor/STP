@@ -15,7 +15,7 @@ export type Offer = {
 }
 export type Part = { id: number; name: string; category: string; zone: string }
 export type OfferView = { offer: Offer; part: Part; statistics: Statistics | null; error?: string }
-export type OffersPage = { as_of: string | null; offers: OfferView[] }
+export type OffersPage = { as_of: string | null; offers: OfferView[]; context?: { mode: 'live' | 'snapshot' | 'snapshot_fallback'; as_of: string; snapshot_id?: number; reason?: string } }
 export type Tier = { min_quantity: string; discount_percent: string }
 export type Contract = {
   id: number; supplier_id: number; starts_on: string; ends_on: string; conditions: string

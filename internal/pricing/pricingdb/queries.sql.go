@@ -404,6 +404,377 @@ func (q *Queries) MarkRuntimeUnavailable(ctx context.Context, arg MarkRuntimeUna
 	return err
 }
 
+const pricingSupplierExists = `-- name: PricingSupplierExists :one
+SELECT EXISTS(SELECT 1 FROM suppliers WHERE id=$1)::boolean
+`
+
+func (q *Queries) PricingSupplierExists(ctx context.Context, id int64) (bool, error) {
+	row := q.db.QueryRow(ctx, pricingSupplierExists, id)
+	var column_1 bool
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
+const readCurrentFX = `-- name: ReadCurrentFX :many
+SELECT DISTINCT ON (base_currency,quote_currency) id,base_currency,quote_currency,rate::text AS rate_text,source,quoted_at
+FROM fx_quotes WHERE quoted_at<=$1::timestamptz
+ORDER BY base_currency,quote_currency,quoted_at DESC,id DESC
+`
+
+type ReadCurrentFXRow struct {
+	ID            int64
+	BaseCurrency  string
+	QuoteCurrency string
+	RateText      string
+	Source        string
+	QuotedAt      time.Time
+}
+
+func (q *Queries) ReadCurrentFX(ctx context.Context, asOf time.Time) ([]ReadCurrentFXRow, error) {
+	rows, err := q.db.Query(ctx, readCurrentFX, asOf)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ReadCurrentFXRow
+	for rows.Next() {
+		var i ReadCurrentFXRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.BaseCurrency,
+			&i.QuoteCurrency,
+			&i.RateText,
+			&i.Source,
+			&i.QuotedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const readCurrentPrices = `-- name: ReadCurrentPrices :many
+SELECT DISTINCT ON (offer_id) id,offer_id,amount::text AS amount_text,currency,source,quoted_at
+FROM price_quotes WHERE offer_id=ANY($1::bigint[]) AND quoted_at<=$2::timestamptz
+ORDER BY offer_id,quoted_at DESC,id DESC
+`
+
+type ReadCurrentPricesParams struct {
+	OfferIds []int64
+	AsOf     time.Time
+}
+
+type ReadCurrentPricesRow struct {
+	ID         int64
+	OfferID    int64
+	AmountText string
+	Currency   string
+	Source     string
+	QuotedAt   time.Time
+}
+
+func (q *Queries) ReadCurrentPrices(ctx context.Context, arg ReadCurrentPricesParams) ([]ReadCurrentPricesRow, error) {
+	rows, err := q.db.Query(ctx, readCurrentPrices, arg.OfferIds, arg.AsOf)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ReadCurrentPricesRow
+	for rows.Next() {
+		var i ReadCurrentPricesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.OfferID,
+			&i.AmountText,
+			&i.Currency,
+			&i.Source,
+			&i.QuotedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const readFXHistory = `-- name: ReadFXHistory :many
+SELECT id,base_currency,quote_currency,rate::text AS rate_text,source,quoted_at FROM fx_quotes
+WHERE base_currency=$1 AND quote_currency=$2 AND quoted_at>=$3 AND quoted_at<=$4 ORDER BY quoted_at,id
+`
+
+type ReadFXHistoryParams struct {
+	BaseCurrency  string
+	QuoteCurrency string
+	QuotedAt      time.Time
+	QuotedAt_2    time.Time
+}
+
+type ReadFXHistoryRow struct {
+	ID            int64
+	BaseCurrency  string
+	QuoteCurrency string
+	RateText      string
+	Source        string
+	QuotedAt      time.Time
+}
+
+func (q *Queries) ReadFXHistory(ctx context.Context, arg ReadFXHistoryParams) ([]ReadFXHistoryRow, error) {
+	rows, err := q.db.Query(ctx, readFXHistory,
+		arg.BaseCurrency,
+		arg.QuoteCurrency,
+		arg.QuotedAt,
+		arg.QuotedAt_2,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ReadFXHistoryRow
+	for rows.Next() {
+		var i ReadFXHistoryRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.BaseCurrency,
+			&i.QuoteCurrency,
+			&i.RateText,
+			&i.Source,
+			&i.QuotedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const readFallbackSnapshots = `-- name: ReadFallbackSnapshots :many
+SELECT id, scope, scope_id, taken_at, created_at FROM price_snapshots WHERE taken_at<=$1 ORDER BY taken_at DESC,id DESC
+`
+
+func (q *Queries) ReadFallbackSnapshots(ctx context.Context, takenAt time.Time) ([]PriceSnapshot, error) {
+	rows, err := q.db.Query(ctx, readFallbackSnapshots, takenAt)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []PriceSnapshot
+	for rows.Next() {
+		var i PriceSnapshot
+		if err := rows.Scan(
+			&i.ID,
+			&i.Scope,
+			&i.ScopeID,
+			&i.TakenAt,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const readPriceHistory = `-- name: ReadPriceHistory :many
+SELECT id,offer_id,amount::text AS amount_text,currency,source,quoted_at FROM price_quotes
+WHERE offer_id=$1 AND quoted_at>=$2 AND quoted_at<=$3 ORDER BY quoted_at,id
+`
+
+type ReadPriceHistoryParams struct {
+	OfferID    int64
+	QuotedAt   time.Time
+	QuotedAt_2 time.Time
+}
+
+type ReadPriceHistoryRow struct {
+	ID         int64
+	OfferID    int64
+	AmountText string
+	Currency   string
+	Source     string
+	QuotedAt   time.Time
+}
+
+func (q *Queries) ReadPriceHistory(ctx context.Context, arg ReadPriceHistoryParams) ([]ReadPriceHistoryRow, error) {
+	rows, err := q.db.Query(ctx, readPriceHistory, arg.OfferID, arg.QuotedAt, arg.QuotedAt_2)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ReadPriceHistoryRow
+	for rows.Next() {
+		var i ReadPriceHistoryRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.OfferID,
+			&i.AmountText,
+			&i.Currency,
+			&i.Source,
+			&i.QuotedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const readPriceSnapshot = `-- name: ReadPriceSnapshot :one
+SELECT id, scope, scope_id, taken_at, created_at FROM price_snapshots WHERE id=$1
+`
+
+func (q *Queries) ReadPriceSnapshot(ctx context.Context, id int64) (PriceSnapshot, error) {
+	row := q.db.QueryRow(ctx, readPriceSnapshot, id)
+	var i PriceSnapshot
+	err := row.Scan(
+		&i.ID,
+		&i.Scope,
+		&i.ScopeID,
+		&i.TakenAt,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const readScopeOffers = `-- name: ReadScopeOffers :many
+SELECT o.id, o.currency FROM offers o JOIN parts p ON p.id=o.part_id
+WHERE ($1::bigint > 0 AND o.id=$1::bigint)
+   OR ($1::bigint = 0
+       AND ($2::bigint = 0 OR o.supplier_id=$2::bigint)
+       AND ((o.archived_at IS NULL AND p.archived_at IS NULL)
+            OR ($2::bigint = 0 AND EXISTS(SELECT 1 FROM bom_nodes n WHERE n.offer_id=o.id))))
+ORDER BY o.id
+`
+
+type ReadScopeOffersParams struct {
+	OfferID    int64
+	SupplierID int64
+}
+
+type ReadScopeOffersRow struct {
+	ID       int64
+	Currency string
+}
+
+func (q *Queries) ReadScopeOffers(ctx context.Context, arg ReadScopeOffersParams) ([]ReadScopeOffersRow, error) {
+	rows, err := q.db.Query(ctx, readScopeOffers, arg.OfferID, arg.SupplierID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ReadScopeOffersRow
+	for rows.Next() {
+		var i ReadScopeOffersRow
+		if err := rows.Scan(&i.ID, &i.Currency); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const readSnapshotFX = `-- name: ReadSnapshotFX :many
+SELECT q.id,q.base_currency,q.quote_currency,q.rate::text AS rate_text,q.source,q.quoted_at
+FROM price_snapshot_fx l JOIN fx_quotes q ON q.id=l.fx_quote_id
+WHERE l.snapshot_id=$1 ORDER BY q.base_currency,q.quote_currency
+`
+
+type ReadSnapshotFXRow struct {
+	ID            int64
+	BaseCurrency  string
+	QuoteCurrency string
+	RateText      string
+	Source        string
+	QuotedAt      time.Time
+}
+
+func (q *Queries) ReadSnapshotFX(ctx context.Context, snapshotID int64) ([]ReadSnapshotFXRow, error) {
+	rows, err := q.db.Query(ctx, readSnapshotFX, snapshotID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ReadSnapshotFXRow
+	for rows.Next() {
+		var i ReadSnapshotFXRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.BaseCurrency,
+			&i.QuoteCurrency,
+			&i.RateText,
+			&i.Source,
+			&i.QuotedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const readSnapshotPrices = `-- name: ReadSnapshotPrices :many
+SELECT q.id,q.offer_id,q.amount::text AS amount_text,q.currency,q.source,q.quoted_at
+FROM price_snapshot_quotes l JOIN price_quotes q ON q.id=l.price_quote_id
+WHERE l.snapshot_id=$1 ORDER BY q.offer_id
+`
+
+type ReadSnapshotPricesRow struct {
+	ID         int64
+	OfferID    int64
+	AmountText string
+	Currency   string
+	Source     string
+	QuotedAt   time.Time
+}
+
+func (q *Queries) ReadSnapshotPrices(ctx context.Context, snapshotID int64) ([]ReadSnapshotPricesRow, error) {
+	rows, err := q.db.Query(ctx, readSnapshotPrices, snapshotID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ReadSnapshotPricesRow
+	for rows.Next() {
+		var i ReadSnapshotPricesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.OfferID,
+			&i.AmountText,
+			&i.Currency,
+			&i.Source,
+			&i.QuotedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const releaseRuntimeLease = `-- name: ReleaseRuntimeLease :one
 SELECT pg_advisory_unlock(hashtextextended($1::text, 0))::boolean
 `

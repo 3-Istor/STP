@@ -193,6 +193,18 @@ test('erreur REST explicitement visible sans prix fabriqué', async ({ page }) =
   await expect(page.getByTestId('price-101')).toHaveCount(0)
 })
 
+test('repli snapshot daté explicitement visible', async ({ page }) => {
+  const pages = defaultPages()
+  pages['1'].context = { mode: 'snapshot_fallback', snapshot_id: 7, as_of: '2026-11-04T12:00:00Z', reason: 'timeout' }
+  await mockSupplierAPI(page, pages)
+  await page.goto('/')
+  await chooseSupplier(page, 'Atlas')
+  const notice = page.getByRole('status').filter({ hasText: 'Source de prix indisponible.' })
+  await expect(notice).toContainText('snapshot #7')
+  await expect(notice).toContainText('2026')
+  await expect(page.getByTestId('price-101')).toHaveText(/110,00\s*€/)
+})
+
 test('création fournisseur : validation serveur visible et notes transmises en chaînes', async ({ page }) => {
   await mockSupplierAPI(page)
   const submissions: unknown[] = []

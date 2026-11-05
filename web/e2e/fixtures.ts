@@ -51,7 +51,7 @@ export function offerView({
 }
 
 export type OfferView = ReturnType<typeof offerView>
-export type OfferPage = { as_of: string | null; offers: Array<OfferView | {
+export type OfferPage = { as_of: string | null; context?: {mode:'snapshot_fallback';snapshot_id:number;as_of:string;reason:string}; offers: Array<OfferView | {
   offer: OfferView['offer']; part: OfferView['part']; statistics: null; error: string
 }> }
 

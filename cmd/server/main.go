@@ -54,11 +54,15 @@ func run() error {
 	catalogService := catalog.NewService(catalogstore.New(pool), time.Now)
 	supplierService := supplier.NewService(supplierstore.New(pool))
 	historyService := pricing.NewHistoryService(pricingstore.New(pool))
+	var reads *pricing.ReadService
+	if worker != nil {
+		reads = worker.reads
+	}
 
 	addr := ":" + envOr("PORT", "8080")
 	srv := &http.Server{
 		Addr:              addr,
-		Handler:           httpapi.NewRouter(httpapi.Services{Catalog: catalogService, Supplier: supplierService, History: historyService}),
+		Handler:           httpapi.NewRouter(httpapi.Services{Catalog: catalogService, Supplier: supplierService, History: historyService, Pricing: reads}),
 		ReadHeaderTimeout: 5 * time.Second,
 	}
 

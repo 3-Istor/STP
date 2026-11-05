@@ -20,6 +20,7 @@ import (
 
 type pricingWorker struct {
 	runtime *pricing.Runtime
+	reads   *pricing.ReadService
 	config  pricing.RunConfig
 	retry   time.Duration
 }
@@ -86,7 +87,7 @@ func configurePricing(pool *pgxpool.Pool) (*pricingWorker, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &pricingWorker{runtime: pricing.NewRuntime(source, pricingstore.NewRuntime(pool), nil), config: cfg, retry: retry}, nil
+	return &pricingWorker{runtime: pricing.NewRuntime(source, pricingstore.NewRuntime(pool), nil), reads: pricing.NewReadService(pricingstore.NewReadStore(pool), cfg), config: cfg, retry: retry}, nil
 }
 
 func (w *pricingWorker) run(ctx context.Context) {

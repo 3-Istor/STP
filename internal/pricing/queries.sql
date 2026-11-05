@@ -104,3 +104,49 @@ ON CONFLICT (base_currency, quote_currency, source, quoted_at) DO NOTHING RETURN
 
 -- name: RuntimeFX :one
 SELECT * FROM fx_quotes WHERE base_currency = $1 AND quote_currency = $2 AND source = $3 AND quoted_at = $4;
+
+-- name: PricingSupplierExists :one
+SELECT EXISTS(SELECT 1 FROM suppliers WHERE id=$1)::boolean;
+
+-- name: ReadScopeOffers :many
+SELECT o.id, o.currency FROM offers o JOIN parts p ON p.id=o.part_id
+WHERE (sqlc.arg(offer_id)::bigint > 0 AND o.id=sqlc.arg(offer_id)::bigint)
+   OR (sqlc.arg(offer_id)::bigint = 0
+       AND (sqlc.arg(supplier_id)::bigint = 0 OR o.supplier_id=sqlc.arg(supplier_id)::bigint)
+       AND ((o.archived_at IS NULL AND p.archived_at IS NULL)
+            OR (sqlc.arg(supplier_id)::bigint = 0 AND EXISTS(SELECT 1 FROM bom_nodes n WHERE n.offer_id=o.id))))
+ORDER BY o.id;
+
+-- name: ReadCurrentPrices :many
+SELECT DISTINCT ON (offer_id) id,offer_id,amount::text AS amount_text,currency,source,quoted_at
+FROM price_quotes WHERE offer_id=ANY(sqlc.arg(offer_ids)::bigint[]) AND quoted_at<=sqlc.arg(as_of)::timestamptz
+ORDER BY offer_id,quoted_at DESC,id DESC;
+
+-- name: ReadCurrentFX :many
+SELECT DISTINCT ON (base_currency,quote_currency) id,base_currency,quote_currency,rate::text AS rate_text,source,quoted_at
+FROM fx_quotes WHERE quoted_at<=sqlc.arg(as_of)::timestamptz
+ORDER BY base_currency,quote_currency,quoted_at DESC,id DESC;
+
+-- name: ReadPriceHistory :many
+SELECT id,offer_id,amount::text AS amount_text,currency,source,quoted_at FROM price_quotes
+WHERE offer_id=$1 AND quoted_at>=$2 AND quoted_at<=$3 ORDER BY quoted_at,id;
+
+-- name: ReadFXHistory :many
+SELECT id,base_currency,quote_currency,rate::text AS rate_text,source,quoted_at FROM fx_quotes
+WHERE base_currency=$1 AND quote_currency=$2 AND quoted_at>=$3 AND quoted_at<=$4 ORDER BY quoted_at,id;
+
+-- name: ReadFallbackSnapshots :many
+SELECT * FROM price_snapshots WHERE taken_at<=$1 ORDER BY taken_at DESC,id DESC;
+
+-- name: ReadPriceSnapshot :one
+SELECT * FROM price_snapshots WHERE id=$1;
+
+-- name: ReadSnapshotPrices :many
+SELECT q.id,q.offer_id,q.amount::text AS amount_text,q.currency,q.source,q.quoted_at
+FROM price_snapshot_quotes l JOIN price_quotes q ON q.id=l.price_quote_id
+WHERE l.snapshot_id=$1 ORDER BY q.offer_id;
+
+-- name: ReadSnapshotFX :many
+SELECT q.id,q.base_currency,q.quote_currency,q.rate::text AS rate_text,q.source,q.quoted_at
+FROM price_snapshot_fx l JOIN fx_quotes q ON q.id=l.fx_quote_id
+WHERE l.snapshot_id=$1 ORDER BY q.base_currency,q.quote_currency;

@@ -19,6 +19,8 @@ var (
 
 // Quote est une cotation de prix : le prix d'une offre, dans la devise de l'offre, avec sa provenance.
 type Quote struct {
+	ID       int64         `json:"-"`
+	Context  *PriceContext `json:"-"`
 	OfferID  int64
 	Price    money.Money
 	Source   string
@@ -27,6 +29,8 @@ type Quote struct {
 
 // Rate est une cotation de taux : 1 From = Rate To.
 type Rate struct {
+	ID       int64         `json:"-"`
+	Context  *PriceContext `json:"-"`
 	From     money.Currency
 	To       money.Currency
 	Rate     decimal.Decimal

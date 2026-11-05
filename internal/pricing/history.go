@@ -84,3 +84,23 @@ func (s *HistoryService) Statistics(ctx context.Context, offerID int64, asOf tim
 	}
 	return result, nil
 }
+
+// StatisticsForQuote conserve la cotation choisie par un snapshot, même si un autre prix
+// a été inséré plus tard avec la même date. Le snapshot ne se reconstruit jamais par Latest.
+func (s *HistoryService) StatisticsForQuote(ctx context.Context, offerID int64, asOf time.Time, current HistoricalQuote) (Statistics, error) {
+	if offerID <= 0 || current.OfferID != offerID || asOf.IsZero() || current.QuotedAt.After(asOf) {
+		return Statistics{}, ErrInvalidHistoryRequest
+	}
+	quotes, err := s.history.ReadHistory(ctx, offerID, AnnualWindowStart(asOf), asOf.UTC())
+	if err != nil {
+		return Statistics{}, err
+	}
+	eligible := make([]HistoricalQuote, 0, len(quotes)+1)
+	for _, q := range quotes {
+		if q.QuotedAt.Before(current.QuotedAt) {
+			eligible = append(eligible, q)
+		}
+	}
+	eligible = append(eligible, current)
+	return CalculateStatistics(offerID, asOf, eligible)
+}

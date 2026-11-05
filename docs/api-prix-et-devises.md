@@ -114,6 +114,12 @@ de couverture ; elle n'en fabrique pas un à zéro. Un calcul ou un snapshot qui
 complète échoue en listant les manques. Une paire exacte absente ne devient pas automatiquement
 une paire inverse dans une lecture FX brute.
 
+Les trois routes de prix renvoient `{context, quotes:[{offer_id,quote,error?}], coverage_complete}`,
+avec `quote:null` quand la cotation manque. Les routes FX renvoient `{context,rates:[…]}` ; les
+historiques sont des tableaux datés. La page fournisseur conserve ses champs existants et ajoute
+`context` quand elle est raccordée au flux. En repli, sa cotation courante garde l'ID figé, même
+si une autre cotation a été enregistrée plus tard avec le même horodatage.
+
 ## Contexte, panne et snapshot
 
 Les nouvelles réponses enveloppées portent `context` : mode `live`, `snapshot` ou

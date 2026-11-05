@@ -114,6 +114,7 @@ export default function App() {
             <button type="button" role="tab" id="contracts-tab" aria-controls="contracts-panel" aria-selected={tab === 'contracts'} tabIndex={tab === 'contracts' ? 0 : -1} onClick={() => setTab('contracts')}>Contrats {currentContracts && <span className="count">{currentContracts.length}</span>}</button>
           </div>
           {tab === 'offers' ? <section role="tabpanel" id="offers-panel" aria-labelledby="offers-tab">
+            {currentPage?.context?.mode === 'snapshot_fallback' && <p className="notice" role="status">Source de prix indisponible. Prix du snapshot #{currentPage.context.snapshot_id}, figé au {formatUTC(currentPage.context.as_of)}.</p>}
             <div className="section-heading"><div><h2>Offres du fournisseur</h2><p className="muted">{currentPage?.as_of ? `Prix observés au ${formatUTC(currentPage.as_of)}` : 'Les prix et leur historique apparaîtront à la réception de cotations.'}</p></div><span className="subtle-label">Devise d’origine</span></div>
             {pageError && <p className="form-error" role="alert">Impossible d’actualiser les offres : {pageError}{currentPage ? ' Les dernières données reçues restent affichées.' : ''}</p>}
             {!currentPage && loading && <div className="loading-state" role="status">Chargement des offres…</div>}
