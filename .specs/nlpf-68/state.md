@@ -97,6 +97,13 @@ ADR 0011–0016 acceptées explicitement par Joe ; dépendances BOM toujours vis
 - **Commit**: f8b59a4.
 - **Notes**: Lectures réelles prix/FX/historiques et repli complet expliqué livrés. make lint/test PostgreSQL, build, race, sqlc stable et make sec verts ; 60 scénarios navigateur contrôlés sur trois moteurs verts (33,5 s), aucune preuve de SSE réel encore. Statistiques épinglées à la cotation retenue et horloge validée.
 
+### Précision du séquençage T6–T10 — 2026-11-05
+
+- **Status**: in-progress, T6.
+- **Authorization**: ADR 0016 acceptée : capacités pricing indépendantes autorisées sans reprise de NLPF-69.
+- **Notes**: spec amendée avant code : capacités autonomes T6–T9 puis raccordements réels BOM obligatoires en T10. Tous les critères d’acceptation sont conservés ; le ticket ne sera pas déclaré terminé sur des stubs.
+- **Migration**: lecture distante main=532b627 et NLPF-69=ff5cc69 inchangés ; 00004 est le prochain numéro de cette base locale, sans réservation globale.
+
 ## Decisions
 
 - 2026-11-05 — Joe : budgets cibles global/sous-systèmes par voiture ; budget de production total distinct.

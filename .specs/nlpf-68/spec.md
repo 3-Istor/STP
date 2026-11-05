@@ -212,6 +212,14 @@ définir en T1 car le flux transporte un signal, pas les prix.
 
 ## Tasks
 
+**Séquençage précisé après acceptation de l’ADR 0016 (2026-11-05).** T6–T9 livrent et
+vérifient les capacités pricing autonomes. Les raccordements au vrai moteur/éditeur BOM et aux
+publications décrits dans ces tâches restent obligatoires ; leur exécution et leur preuve sont
+regroupées en T10 après disponibilité d’une base coordonnée. Aucun critère R/J/C n’est supprimé,
+aucun test à interface contrôlée ne vaut preuve de ces raccordements. T8 ne crée pas de second
+moteur BOM ; seuls ses évaluateurs purs peuvent précéder l’intégration. Un achèvement de T6–T9
+ne signifie donc pas que J4/J8/J9 ni le ticket complet sont acceptés.
+
 - [x] T1: Faire valider les contrats et décisions restant ouverts (R1–R10)
   - **Files**: cette spec, state.md et architecture-review.md ;
     `docs/adr/0011-protocole-du-simulateur-deterministe.md`,
@@ -315,7 +323,7 @@ définir en T1 car le flux transporte un signal, pas les prix.
     half-even et bornes >2^53 testés ; résultats figés ne changent pas avec le live. Intégration BOM
     bloquée tant que son vrai moteur et le contrat exact ne sont pas livrés.
 
-- [ ] T8: Livrer les budgets et le volume déduit dans la vraie BOM (R7–R8, R10)
+- [ ] T8: Livrer les évaluateurs de budgets et de volume pour la vraie BOM (R7–R8, R10)
   - **Files**: nouveaux `internal/pricing/{budget,production_volume}.go`, tests associés ;
     extensions `internal/bom/`, `internal/snapshot/`, leurs stores/requêtes/API après accord,
     nouvelle migration budgets au numéro validé et code sqlc correspondant.
@@ -354,6 +362,8 @@ définir en T1 car le flux transporte un signal, pas les prix.
     volumineux. Configurer les valeurs de référence FX, graine/as_of/version, vitesse et timeout
     explicitement ; aucun taux réel implicitement téléchargé. Vérifier stack séparée et transfert
     des cotations au back, préserver les jobs existants. Livrer responsabilités/panne/test/limites.
+    Réaliser tous les raccordements BOM différés de T6–T9 (couverture/gel, conversion agrégée,
+    persistance et publication des budgets, API/éditeur et SSE), avec leurs tests réels conservés.
     La CI distante n'est déclarée verte que sur la révision effectivement contrôlée ; aucun push/PR
     sans accord. Ne pas clore si une dépendance/validation obligatoire manque.
   - **Done when**: chaque point Jira a une preuve réellement exécutée, checks et CI verts,
