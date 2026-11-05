@@ -1,12 +1,14 @@
 package pricingstore
 
 import (
+	"bomstudio/internal/money"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -180,5 +182,59 @@ func TestFallbackAbsentAndMissingPriceRemainExplicit(t *testing.T) {
 	// La panne ne retire pas l'accès aux cotations déjà enregistrées.
 	if rows, err := read.OfferHistory(t.Context(), id, cfg.InitialAsOf.AddDate(0, 0, -1), cfg.InitialAsOf); err != nil || len(rows) != 2 {
 		t.Fatal(rows, err)
+	}
+}
+
+func TestConversionRESTUsesPinnedRatesAndExactInverse(t *testing.T) {
+	pool := runtimeDB(t)
+	_, _ = runtimeOffer(t, pool)
+	cfg := runtimeConfig()
+	if _, _, err := pricing.NewRuntime(pricesim.Simulator{}, &RuntimeStore{pool: pool}, nil).Initialize(t.Context(), cfg); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(t.Context(), "INSERT INTO fx_quotes(base_currency,quote_currency,rate,source,quoted_at) VALUES ('USD','EUR',0.3,'conversion-old',$1)", cfg.InitialAsOf); err != nil {
+		t.Fatal(err)
+	}
+	snap, err := pricing.NewSnapshotService(NewSnapshotStore(pool), cfg).Create(t.Context(), pricing.SnapshotRequest{Scope: "catalog", TargetCurrencies: []money.Currency{"EUR"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(t.Context(), "INSERT INTO fx_quotes(base_currency,quote_currency,rate,source,quoted_at) VALUES ('USD','EUR',0.6,'conversion-new',$1)", cfg.InitialAsOf); err != nil {
+		t.Fatal(err)
+	}
+	router := httpapi.NewRouter(httpapi.Services{Pricing: pricing.NewReadService(NewReadStore(pool), cfg)})
+	tests := []struct {
+		name, body, want, mode string
+		status                 int
+	}{
+		{"direct", `{"money":{"amount":"100","currency":"USD"},"target_currency":"EUR"}`, "60.00", "live", 200},
+		{"inverse pinned", fmt.Sprintf(`{"money":{"amount":"3","currency":"EUR"},"target_currency":"USD","snapshot_id":%d}`, snap.ID), "10.00", "snapshot", 200},
+		{"no pivot", `{"money":{"amount":"1","currency":"USD"},"target_currency":"JPY"}`, "", "", 503},
+		{"numeric forbidden", `{"money":{"amount":1,"currency":"USD"},"target_currency":"EUR"}`, "", "", 400},
+		{"exponent bounded", `{"money":{"amount":"1e1000000000","currency":"USD"},"target_currency":"EUR"}`, "", "", 400},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			rec := httptest.NewRecorder()
+			router.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/api/v1/convert", strings.NewReader(tt.body)))
+			if rec.Code != tt.status {
+				t.Fatal(rec.Code, rec.Body.String())
+			}
+			if tt.status != 200 {
+				return
+			}
+			var out struct {
+				Converted struct {
+					Amount string `json:"amount"`
+				} `json:"converted"`
+				Context pricing.PriceContext `json:"context"`
+			}
+			if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil {
+				t.Fatal(err)
+			}
+			if out.Converted.Amount != tt.want || out.Context.Mode != tt.mode {
+				t.Fatal(rec.Body.String())
+			}
+		})
 	}
 }

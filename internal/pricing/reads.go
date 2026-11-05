@@ -223,12 +223,7 @@ func (s *ReadService) fallback(ctx context.Context, f MarketFrame, offers []Offe
 		return PriceSnapshotData{}, err
 	}
 	refs = append([]PriceSnapshotRef{}, refs...)
-	sort.Slice(refs, func(i, j int) bool {
-		if refs[i].TakenAt.Equal(refs[j].TakenAt) {
-			return refs[i].ID > refs[j].ID
-		}
-		return refs[i].TakenAt.After(refs[j].TakenAt)
-	})
+	sortSnapshotRefs(refs)
 	for _, ref := range refs {
 		snap, err := s.store.ReadSnapshot(ctx, ref.ID)
 		if errors.Is(err, ErrInvalidHistoryData) {
@@ -340,4 +335,13 @@ func (s *ReadService) PairHistory(ctx context.Context, pair FXPair, from, to tim
 		return nil, err
 	}
 	return s.store.FXHistory(ctx, pair, from.UTC(), to.UTC())
+}
+
+func sortSnapshotRefs(refs []PriceSnapshotRef) {
+	sort.Slice(refs, func(i, j int) bool {
+		if refs[i].TakenAt.Equal(refs[j].TakenAt) {
+			return refs[i].ID > refs[j].ID
+		}
+		return refs[i].TakenAt.After(refs[j].TakenAt)
+	})
 }

@@ -114,12 +114,7 @@ func (s *SnapshotService) Create(ctx context.Context, req SnapshotRequest) (Snap
 			if err != nil {
 				return err
 			}
-			sort.Slice(refs, func(i, j int) bool {
-				if refs[i].TakenAt.Equal(refs[j].TakenAt) {
-					return refs[i].ID > refs[j].ID
-				}
-				return refs[i].TakenAt.After(refs[j].TakenAt)
-			})
+			sortSnapshotRefs(refs)
 			found := false
 			for _, ref := range refs {
 				candidate, err := tx.ReadSnapshot(ctx, ref.ID)
@@ -223,18 +218,12 @@ func SelectSnapshotCoverage(data PriceSnapshotData, offers []OfferRef, targets [
 			if _, err := money.ParseCurrency(string(target)); err != nil {
 				return selected, ErrInvalidReadRequest
 			}
-			r, ok := rates[p]
-			if !ok {
-				r, ok = rates[FXPair{target, o.Currency}]
-			}
-			if ok {
-				d, err := SourceValueDecimal(r.Rate)
-				ok = err == nil && d.IsPositive() && r.ID > 0 && r.Source != "" && !r.QuotedAt.IsZero() && !r.QuotedAt.After(data.TakenAt)
-			}
-			if !ok {
+			_, r, err := ResolveFX(data.Rates, o.Currency, target)
+			if err != nil || r.QuotedAt.After(data.TakenAt) {
 				gaps = append(gaps, CoverageGap{Kind: "fx", Base: o.Currency, Quote: target})
 				continue
 			}
+
 			already := false
 			for _, linked := range selected.Rates {
 				if linked.ID == r.ID {
@@ -243,7 +232,7 @@ func SelectSnapshotCoverage(data PriceSnapshotData, offers []OfferRef, targets [
 				}
 			}
 			if !already {
-				selected.Rates = append(selected.Rates, r)
+				selected.Rates = append(selected.Rates, *r)
 			}
 		}
 	}

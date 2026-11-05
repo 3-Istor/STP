@@ -62,6 +62,7 @@ func pricingPair(r *http.Request) pricing.FXPair {
 }
 
 func (h pricingHandler) register(mux *http.ServeMux) {
+	h.registerConversion(mux)
 	for path, kind := range map[string]string{"/quotes": "all", "/quotes/offers/{id}": "offer", "/quotes/suppliers/{id}": "supplier"} {
 		mux.HandleFunc("GET /api/v1"+path, func(w http.ResponseWriter, r *http.Request) {
 			scope := pricing.PriceScope{}

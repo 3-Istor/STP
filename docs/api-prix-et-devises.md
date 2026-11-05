@@ -245,3 +245,13 @@ L’attachement au vrai brouillon, les devises de ses budgets et sa publication 
 La migration 00004 de cette branche ferme les snapshots au commit (ADR 0013), y compris les
 anciens en-têtes sans métadonnée. Les tests vérifient l’absence de modification des faits legacy,
 les transactions/savepoints, les IDs forgés et les ajouts concurrents ou après commit.
+
+### État de livraison : conversion autonome (T7)
+
+`POST /api/v1/convert` accepte les corps du contrat ci-dessus. Il restitue `original`,
+`converted` (Money texte arrondi à cette frontière HTTP), `direction`, `fx_quote` originale
+et `context`. Le type interne `money.Exact` conserve les inverses périodiques pour addition,
+comparaison, multiplication et division entière ; aucune conversion n’arrondit avant l’agrégation.
+La sélection direct/inverse est partagée avec la couverture de snapshot. Une entrée monétaire
+d’exposant ou de coefficient excessif est refusée avant toute construction rationnelle.
+Le vrai moteur de totaux BOM reste à adapter en T10, sans convertir ses lignes déjà arrondies.
