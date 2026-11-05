@@ -58,7 +58,7 @@ Voir [les routes et exemples](docs/api-catalogue-fournisseurs.md).
 Le simulateur et l'ingestion de NLPF-68 sont disponibles. `make dev` démarre aussi priceapi sur
 8090 ; `make priceapi` le lance seul. L'éditeur, les totaux de BOM et l'ouverture de la Multipla
 dépendent encore de NLPF-69 ; le seed complet n'est pas disponible. L'écran consulte les cotations
-persistées et permet une actualisation manuelle ; le signal SSE reste à raccorder dans NLPF-68.
+persistées et s’actualise par SSE après chaque tick validé, avec repli daté en cas de panne.
 
 Le Makefile et Compose fixent des entrées **synthétiques** reproductibles : dataset `demo-v1`,
 graine `42`, date initiale `2026-01-01T00:00:00Z`, USD→EUR de référence `0.92` dans ±5 %, 40 minutes
@@ -79,5 +79,21 @@ npx --no-install playwright install --with-deps chromium firefox webkit
 npm run test:e2e
 ```
 
-La suite couvre les trois moteurs sur ordinateur et petit écran. Les contrôles Safari/macOS/iOS
-réels et du vrai flux SSE restent distincts des tests contrôlés ; voir ADR 0010 et le suivi NLPF-67.
+La suite couvre les trois moteurs sur ordinateur et petit écran (60 parcours contrôlés).
+La source HTTP, l’ingestion, PostgreSQL, SSE et l’UI réels sont aussi vérifiés sur les six profils :
+
+```bash
+# Depuis la racine, avec une base jetable dédiée et les navigateurs installés ci-dessus.
+NLPF68_BROWSER_MODE=native DATABASE_URL='<base_de_test>' \
+  go test -race -count=1 -timeout=4m -run '^TestPricingLiveBrowsers$' ./internal/pricing/pricingstore
+```
+
+Ce test crée et supprime son schéma privé ; ses routes de pilotage n’existent pas dans le serveur
+livré. Il conserve les contrôles UI existants et ajoute panne/reprise, reconnexion, snapshot stable
+et actualisation sans navigation. La CI contient un job `web-live` dédié. Les contrôles Safari
+macOS/iOS réels restent distincts de WebKit (ADR 0010).
+
+Le gel des prix (offre/fournisseur/BOM/catalogue) et la conversion exacte sont disponibles par
+l’API ; voir [le contrat et les exemples](docs/api-prix-et-devises.md). Les évaluateurs de budgets
+et de volume sont prêts pour le vrai moteur BOM ; leur persistance/publication et leurs écrans
+attendent la base coordonnée NLPF-69. [État détaillé de NLPF-68](.specs/nlpf-68/delivery-report.md).

@@ -90,6 +90,7 @@ func configurePricing(pool *pgxpool.Pool) (*pricingWorker, error) {
 	if err != nil {
 		return nil, err
 	}
+	slog.Info("pricing source configured", "generator_version", cfg.GeneratorVersion, "dataset_version", cfg.DatasetVersion, "seed", cfg.Seed, "initial_as_of", cfg.InitialAsOf, "year_duration", cfg.YearDuration, "fx_pairs", len(cfg.Pairs))
 	signals := httpapi.NewPricingHub()
 	return &pricingWorker{signals: signals, snapshots: pricing.NewSnapshotService(pricingstore.NewSnapshotStore(pool), cfg), runtime: pricing.NewRuntime(source, pricingstore.NewRuntime(pool), signals.Publish), reads: pricing.NewReadService(pricingstore.NewReadStore(pool), cfg), config: cfg, retry: retry}, nil
 }

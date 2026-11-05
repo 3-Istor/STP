@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"sort"
 	"time"
 )
@@ -160,6 +161,7 @@ func (r *Runtime) step(ctx context.Context, cfg RunConfig, advance bool) (RunSta
 	if err != nil {
 		return RunState{}, false, fmt.Errorf("apply pricing tick: %w", err)
 	}
+	slog.InfoContext(ctx, "pricing batch committed", "dataset_version", cfg.DatasetVersion, "tick", state.Tick, "as_of", state.AsOf, "price_observations", len(out.Quotes), "fx_observations", len(out.Rates))
 	return state, true, nil
 }
 

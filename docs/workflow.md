@@ -134,6 +134,8 @@ Fichier `.github/workflows/ci.yml`, déclenché sur push vers `main` et sur chaq
           ┌── go ──────────── tidy · sqlc à jour · goose up/reset/up · vet · golangci-lint (+gosec)
           │                   · test -race + couverture (service Postgres 18)
 push/PR ──┼── web ─────────── npm ci · oxlint · tsc+build · Playwright (3 moteurs) · npm audit
+          ├── web-live ────── source HTTP · ingestion · Postgres 18 · SSE · Playwright réel (3 moteurs)
+          ├── compose ─────── images · services sains · migrations · santé via nginx
           └── security ────── govulncheck
 ```
 
@@ -146,3 +148,14 @@ puis `npm run test:e2e`. Les parcours sont rejoués sur Chromium, Firefox et Web
 ordinateur et mobile. Ils contrôlent couleurs calculées, précision/arrondi monétaire, navigation,
 graphiques et relecture REST sur signal contrôlé. Un test mocké ne constitue pas une vérification
 du simulateur/SSE réel ; les contrôles Safari réel restent tracés séparément dans la spec.
+
+Le job `web-live` ajoute les douze parcours réels de NLPF-68 sans remplacer les parcours contrôlés.
+Il lance `NLPF68_BROWSER_MODE=native go test -race -count=1 -timeout=4m -run
+'^TestPricingLiveBrowsers$' ./internal/pricing/pricingstore`, avec une base jetable et les navigateurs
+installés. Le test crée un schéma privé, une vraie source HTTP et un worker à horloge pilotée ;
+le navigateur utilise EventSource et le proxy Vite réels. Échec, capture et trace sont conservés
+comme artefacts. Safari macOS/iOS et les raccordements de la vraie BOM restent des preuves séparées.
+
+Mesure de prix bornée, opt-in : `NLPF68_PRICING_MEASURE=true go test -v -count=1 -timeout=120s
+-run '^TestPricingCatalogueMeasurement$' ./internal/pricing/pricingstore`. Elle distingue 30 000
+nœuds de 300 offres uniques et ne mesure pas le recalcul du moteur BOM absent.
