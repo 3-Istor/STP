@@ -1,6 +1,6 @@
 ---
 id: nlpf-67
-status: in-progress
+status: blocked
 branch: nlpf-67
 current_task: T7
 started: 2026-11-04
@@ -18,7 +18,9 @@ T3 terminée : migration, génération sqlc stable et tests PostgreSQL réels ve
 T4 terminée : services purs catalogue, stockage pgx isolé et API avec tests d'intégration verts.
 T5 terminée : fournisseurs/contrats par API et calcul de remise isolé vérifiés.
 T6 terminée : historique, statistiques et API fournisseur vérifiés.
-T7 en cours : interface fournisseur et tests navigateur sur trois moteurs.
+T7 partiellement livrée : interface, formulaires et 54 tests navigateur verts sur trois moteurs ;
+acceptation bloquée par le signal SSE réel. T8–T10 restent ouvertes. Rapport : delivery.md ;
+conflits interbranches et conditions de reprise : integration-nlpf-69.md.
 
 ## Task Log
 
@@ -132,6 +134,37 @@ T7 en cours : interface fournisseur et tests navigateur sur trois moteurs.
   as_of est la date maximale persistée, explicitement observée ; aucune horloge réelle simulée.
 - **Not done**: simulateur/ingestion/SSE NLPF-68, UI T7, intégration BOM/seed T8/T9 et CI distante.
 
+### Reprise après interruption de quota — 2026-11-05
+- **Status**: tests terminés sur le périmètre disponible ; dépendances métier toujours bloquantes.
+- **Time**: 2026-11-05T12:24:18+01:00
+- **Commit**: 659fe73 — correctif GO-2026-6809, Go 1.27.3 dans go.mod/Dockerfile.
+- **Checks**: le scan initial Go 1.27.2 échoue (code 3, crypto/x509 atteint via pgx) ; make sec
+  passe après correctif, sans nouvelle dépendance. Go/Node restaurés sous /tmp, SHA256 vérifiés.
+
+### T7 : Interface et tests livrés, acceptation d'intégration encore ouverte — 2026-11-05
+- **Status**: partial ; case T7 laissée vide, aucune preuve de SSE réel.
+- **Time**: 2026-11-05T12:24:18+01:00
+- **Commit**: 848025e — interface fournisseurs, formulaires, courbes, historique, Playwright et CI.
+- **Checks**: 54/54 tests, aucun skip/retry, Chromium 156.0.8078.80 / Firefox 157.0 / WebKit 27.2,
+  ordinateur et petit écran ; lint/build PASS. Signal EventSource contrôlé dans ces tests uniquement.
+  make lint, make test PostgreSQL/CI=true, go test -race -count=1 ./..., make sec PASS.
+  goose up/reset/up et génération sqlc stable PASS ; go mod tidy -diff PASS.
+- **Failure case**: un clic sur le fournisseur courant masquait une erreur 503 ; corrigé sans
+  affaiblir le scénario. Fermeture/réouverture clavier du dialogue sur Chromium mobile corrigée.
+  Contrats/paliers en chaînes et erreurs des formulaires vérifiés sur six profils.
+- **Not done**: ingestion/SSE/horloge réels, remises dans le vrai moteur BOM, seed Multipla,
+  Safari réel et CI distante ; aucun push/merge/PR. Responsabilités détaillées dans delivery.md.
+
+### Dépendances confirmées et état bloqué — 2026-11-05
+- **Status**: blocked sur T7, T8, T9 et acceptation globale T10.
+- **Evidence**: main distant toujours 532b627 ; nlpf-69 disponible à ff5cc69 (Arthur), aucune
+  branche nlpf-68 observée par ls-remote au contrôle final. La disponibilité ailleurs n'est pas présumée.
+- **Analysis**: inspection en lecture seule de NLPF-69 : collisions de migration 00002 et ADR
+  acceptées 0006–0008, attributs catalogue divergents, sélection/gel des contrats absents.
+  Aucun travail d'Arthur repris et aucune base de l'équipe touchée. Voir integration-nlpf-69.md.
+- **Next**: accord du propriétaire et décisions de compatibilité avant intégration ; livrer
+  NLPF-68 et ses contrats réels avant de valider SSE, remises BOM et seed complet.
+
 ## Decisions
 
 - 2026-11-04 — Utilisateur : conserver l'intégralité de NLPF-67, y compris seed et Multipla.
@@ -152,14 +185,15 @@ T7 en cours : interface fournisseur et tests navigateur sur trois moteurs.
 
 ## Blockers
 
-- Contrats à confirmer avec NLPF-68 (Joe : prix/historique/horloge/SSE/conversion) et NLPF-69
-  (Arthur Presle : BOM/éditeur/totaux) ; ces fonctions sont absentes du code inspecté.
-- Prérequis Go résolu temporairement : /tmp/stp-go/go/bin/go (1.27.2), caches /tmp/stp-go-cache et
-  /tmp/stp-go-mod ; Node compatible /tmp/cnp-node22/node-v22.23.4-linux-x64/bin/node (22.23.4).
-  Le PATH système reste inchangé. CI utilise Node 24 ; les tests locaux frontend baseline ont utilisé 22.
-- L'ajout @playwright/test est autorisé par l'acceptation de l'ADR 0010 ; aucune dépendance ajoutée
-  à ce point, versions et navigateurs à vérifier lors de T7.
-- CI courante non consultée ; lint/tests/build métier non exécutés pendant cette planification.
+- T7 : signal SSE, horloge et ingestion de NLPF-68 indisponibles dans cette branche ; les tests
+  contrôlés ne remplacent pas cette intégration. Les cotations déjà persistées sont consultables.
+- T8/T9 : moteur/éditeur NLPF-69 sur branche d'Arthur, non intégré. Accord du propriétaire et
+  décisions sur les migrations/ADR et le gel des remises nécessaires ; impact dans integration-nlpf-69.md.
+- T9 : générateur transactionnel d'historique NLPF-68 et éditeur raccordé manquants. Ni seed
+  concurrent ni réinitialisation des données pour contourner ces dépendances.
+- T10 : CI distante et Safari réel non vérifiés ; paire NLPF-67 validée séparément, deux anciennes
+  paires spec/state incohérentes laissées intactes (docker-compose-stack, nlpf-70).
+
 
 ## Verification Report(s)
 
@@ -187,3 +221,24 @@ T7 en cours : interface fournisseur et tests navigateur sur trois moteurs.
   `make: *** [Makefile:10: test] Error 127` (commande make : code 2).
 - NOT RUN : make lint (Go absent et node_modules absent), build web (Node 18.19.1 incompatible avec
   engines du lockfile Vite ^20.19.0 || >=22.12.0), tests DB/navigateur/CI. Aucun outil installé.
+
+### Vérification locale de la reprise — 2026-11-05
+
+- PASS : make lint ; make test (CI=true et PostgreSQL 18 dédié) ; go test -race -count=1 ./... ;
+  make sec ; build frontend ; go mod tidy -diff ; génération sqlc stable (9 empreintes identiques).
+- PASS : migrations up/reset/up dans la base jetable stp-nlpf67-resume-test uniquement.
+- PASS : 54 scénarios Playwright (9 × 3 moteurs × 2 formats), zéro skip/flaky/échec, 31,0 s.
+  Captures ordinateur/mobile inspectées ; dates, valeurs exactes, couleurs et absence de débordement.
+- PASS : binaire serveur et stack Docker Compose construite depuis le code de cette reprise,
+  projet distinct stp-nlpf67-check, base neuve ; back/web/priceapi/db healthy, migrate Exited (0).
+  Via nginx : /, /healthz et /api/v1/suppliers répondent 200 ; healthz priceapi répond également.
+- FAIL préexistant : validateur global, mêmes incohérences nlpf-70 et docker-compose-stack.
+  La validation isolée de la paire NLPF-67 est consignée après le contrôle final.
+- NOT RUN : CI distante, Safari réel et intégration réelle SSE/prix/BOM/seed. T7–T10 restent
+  décochées et statuts spec/state blocked. Aucun test obligatoire manquant présenté comme réussi.
+- Rapport : delivery.md (fichiers/responsabilités, pannes/tests/limites) ; integration-nlpf-69.md
+  (conflits vérifiables et conditions de reprise). Aucun snapshot publié ni donnée utilisateur modifié.
+
+- Contrôle final : PASS, `Spec Drum: 2 file(s) OK`, paire NLPF-67 validée ensemble dans
+  /tmp/nlpf-67-final-validation-xeeywsfw. Global : code 2, uniquement les deux incohérences
+  préexistantes ci-dessus. Les statuts blocked de NLPF-67 sont cohérents.

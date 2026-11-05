@@ -4,9 +4,9 @@ title: Catalogue et fournisseurs — pièces, offres, contrats, historique et do
 source: jira
 source_ref: https://3istors.atlassian.net/browse/NLPF-67
 created: 2026-11-04
-status: in-progress
+status: blocked
 priority: P2
-depends_on: [nlpf-70]
+depends_on: [nlpf-70, nlpf-68, nlpf-69]
 branch: nlpf-67
 ---
 
