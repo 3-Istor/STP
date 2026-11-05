@@ -63,6 +63,28 @@ func TestFiveOperationsAgainstRealRouter(t *testing.T) {
 	}
 }
 
+func TestExactOutputsMayBeLongerThanInputDecimals(t *testing.T) {
+	server := httptest.NewServer(priceapi.NewRouter())
+	defer server.Close()
+	client, err := priceclient.New(server.URL, time.Second)
+	if err != nil {
+		t.Fatal(err)
+	}
+	in, _, p := input()
+	in.Offers[0].PriceMin = strings.Repeat("9", 250) + ".1"
+	in.Offers[0].PriceMax = strings.Repeat("9", 250) + ".5"
+	if _, err := client.Fetch(t.Context(), pricing.SourceCatalog, in); err != nil {
+		t.Fatalf("exact price grew beyond input precision: %v", err)
+	}
+	p.Reference = "0." + strings.Repeat("1", 240)
+	p.BandPercent = "5." + strings.Repeat("1", 240)
+	in.Offers = nil
+	in.Pairs = []pricing.PairDefinition{p}
+	if _, err := client.Fetch(t.Context(), pricing.SourceFX, in); err != nil {
+		t.Fatalf("exact FX product grew beyond input precision: %v", err)
+	}
+}
+
 func TestRejectProviderFailures(t *testing.T) {
 	in, _, _ := input()
 	good, err := (pricesim.Simulator{}).Fetch(t.Context(), pricing.SourceCatalog, in)

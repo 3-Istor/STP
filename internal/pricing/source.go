@@ -101,7 +101,7 @@ func (q *SourceQuote) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(data, &raw); err != nil {
 		return err
 	}
-	d, err := SourceDecimal(raw.Price.Amount, true)
+	d, err := SourceValueDecimal(raw.Price.Amount)
 	if err != nil {
 		return err
 	}
@@ -132,7 +132,14 @@ func SourceName(c SimulationContext) string { return c.GeneratorVersion + "/" + 
 
 // SourceDecimal impose un texte fini borné en taille, sans exposant amplifiant la mémoire.
 func SourceDecimal(s string, positive bool) (decimal.Decimal, error) {
-	if len(s) > 256 || !decimalText.MatchString(s) {
+	return finiteDecimal(s, positive, 256)
+}
+
+// Un produit exact peut avoir plus de chiffres que ses entrées, sans arrondi intermédiaire.
+func SourceValueDecimal(s string) (decimal.Decimal, error) { return finiteDecimal(s, true, 1024) }
+
+func finiteDecimal(s string, positive bool, limit int) (decimal.Decimal, error) {
+	if len(s) > limit || !decimalText.MatchString(s) {
 		return decimal.Decimal{}, fmt.Errorf("invalid finite decimal text: %w", ErrInvalidSourceRequest)
 	}
 	d, err := decimal.NewFromString(s)
@@ -328,7 +335,7 @@ func ValidateSourceOutput(op SourceOperation, in SourceInput, out SourceOutput) 
 		pair := string(r.BaseCurrency) + "/" + string(r.QuoteCurrency)
 		d, ok := ps[pair]
 		key := pair + "/" + r.QuotedAt.UTC().Format(time.DateOnly)
-		v, err := SourceDecimal(r.Rate, true)
+		v, err := SourceValueDecimal(r.Rate)
 		if !ok || seen[key] || err != nil || r.Source != SourceName(in.SimulationContext) || !validDate(r.QuotedAt) {
 			return fmt.Errorf("invalid source FX identity/date/value: %w", ErrInvalidSourceData)
 		}
