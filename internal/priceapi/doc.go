@@ -2,6 +2,6 @@
 // binaire cmd/priceapi dans un conteneur dédié (voir ADR 0005).
 //
 // Le back ne l'importe jamais : il l'appellera en HTTP via un adapter qui valide
-// et normalise les cotations (AGENTS §2). Pour l'instant seul GET /healthz existe ;
-// le simulateur et ses routes de cotations arrivent avec live-price-feed.
+// et normalise les cotations (AGENTS §2). Les cinq opérations de simulation reçoivent
+// leurs définitions et contexte explicites (ADR 0011), sans catalogue répliqué.
 package priceapi
