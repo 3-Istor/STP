@@ -81,7 +81,7 @@ D'où vient le prix affiché dans le sélecteur :
     entrent dans la map (une entrée en erreur reste absente → « sans prix »).
   - **Done when**: fonction exportée, typée sans `number` pour les montants ; `npm run build` passe.
 
-- [ ] T2: Brancher les prix dans les sélecteurs de l'arbre et du panneau
+- [x] T2: Brancher les prix dans les sélecteurs de l'arbre et du panneau
   - **Files**: `web/src/bom/BomView.tsx`, `web/src/bom/BomTree.tsx`, `web/src/bom/NodePanel.tsx`
   - **Approach**: `BomView` charge la map avec le `price_snapshot_id` de la BOM (rechargée après
     figer/défiger) et la passe aux deux sélecteurs ; `o.price` vient de la map. Échec de lecture → la map

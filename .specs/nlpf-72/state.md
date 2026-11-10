@@ -2,7 +2,7 @@
 id: nlpf-72
 status: in-progress
 branch: nlpf-71
-current_task: T2
+current_task: T3
 started: 2026-11-10
 updated: 2026-11-10
 ---
@@ -20,6 +20,12 @@ Execution in progress on branch `nlpf-71` (choix utilisateur : même branche que
 - **Time**: 2026-11-10
 - **Commit**: faaa927
 - **Notes**: Nouveau `web/src/offerPrices.ts` : `loadOfferPrices(priceSnapshotID)` lit `GET /api/v1/quotes` ou `GET /api/v1/price-snapshots/{id}` ; seules les entrées cotées entrent dans la map. Renvoie `{ byOffer, source }` (et non une simple `Map`) pour porter la provenance (S1). `withOfferPrices` fusionne prix et provenance dans le catalogue ; `Offer` gagne `price_source`.
+
+### T2: Brancher les prix dans les sélecteurs de l'arbre et du panneau
+- **Status**: completed
+- **Time**: 2026-11-10
+- **Commit**: 40498a1
+- **Notes**: `BomView` charge les prix pour `bom.price_snapshot_id` (relu après figer/défiger), les garde associés à ce `price_snapshot_id` (jamais affichés pour une autre source) et passe un catalogue enrichi (`withOfferPrices`) à `BomTree` et `NodePanel`. Les `<option>` ont `title` = provenance (S1). Échec de lecture → « sans prix ». Vérification manuelle sur Multipla seedée non faite (stack non lancée) ; couverte par l'e2e T3 sur données simulées.
 
 ## Decisions
 
