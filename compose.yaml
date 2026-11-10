@@ -39,11 +39,11 @@ services:
       DATABASE_URL: postgres://bom:bom@db:5432/bomstudio?sslmode=disable
       PRICE_API_URL: http://priceapi:8090
       # Démonstration synthétique explicite ; mêmes paramètres requis à la reprise (ADR 0015).
-      SIM_DATASET_VERSION: "${SIM_DATASET_VERSION:-demo-v1}"
+      SIM_DATASET_VERSION: "${SIM_DATASET_VERSION:-demo-v3}"
       SIM_SEED: "${SIM_SEED:-42}"
       SIM_AS_OF: "${SIM_AS_OF:-2026-01-01T00:00:00Z}"
       SIM_YEAR_DURATION: "${SIM_YEAR_DURATION:-40m}"
-      SIM_FX_PAIRS: '${SIM_FX_PAIRS:-[{"series_key":"fx:USD:EUR","base_currency":"USD","quote_currency":"EUR","reference":"0.92","band_percent":"5"}]}'
+      SIM_FX_PAIRS: '${SIM_FX_PAIRS:-[{"series_key":"fx:EUR:GBP","base_currency":"EUR","quote_currency":"GBP","reference":"0.855","band_percent":"5"},{"series_key":"fx:EUR:JPY","base_currency":"EUR","quote_currency":"JPY","reference":"161","band_percent":"5"},{"series_key":"fx:EUR:USD","base_currency":"EUR","quote_currency":"USD","reference":"1.087","band_percent":"5"},{"series_key":"fx:GBP:EUR","base_currency":"GBP","quote_currency":"EUR","reference":"1.17","band_percent":"5"},{"series_key":"fx:GBP:JPY","base_currency":"GBP","quote_currency":"JPY","reference":"190","band_percent":"5"},{"series_key":"fx:GBP:USD","base_currency":"GBP","quote_currency":"USD","reference":"1.27","band_percent":"5"},{"series_key":"fx:JPY:EUR","base_currency":"JPY","quote_currency":"EUR","reference":"0.0062","band_percent":"5"},{"series_key":"fx:JPY:GBP","base_currency":"JPY","quote_currency":"GBP","reference":"0.0053","band_percent":"5"},{"series_key":"fx:JPY:USD","base_currency":"JPY","quote_currency":"USD","reference":"0.0067","band_percent":"5"},{"series_key":"fx:USD:EUR","base_currency":"USD","quote_currency":"EUR","reference":"0.92","band_percent":"5"},{"series_key":"fx:USD:GBP","base_currency":"USD","quote_currency":"GBP","reference":"0.787","band_percent":"5"},{"series_key":"fx:USD:JPY","base_currency":"USD","quote_currency":"JPY","reference":"150","band_percent":"5"}]}'
     # Volontairement pas de dépendance à `priceapi` : le back doit démarrer même si l'API de prix
     # est en panne (fallback sur le dernier snapshot, AGENTS §2).
     depends_on:

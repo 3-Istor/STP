@@ -1,4 +1,5 @@
-// Command server démarre l'API BOM Studio.
+// Command server démarre l'API BOM Studio. `server seed` charge le jeu sample-dataset puis s'arrête
+// (voir seed.go, ADR 0012 et 0021).
 package main
 
 import (
@@ -45,6 +46,9 @@ func run() error {
 		return fmt.Errorf("configure database: %w", err)
 	}
 	defer pool.Close()
+	if len(os.Args) > 1 && os.Args[1] == "seed" {
+		return runSeed(ctx, pool)
+	}
 	worker, err := configurePricing(pool)
 	if err != nil {
 		return fmt.Errorf("configure pricing source: %w", err)
