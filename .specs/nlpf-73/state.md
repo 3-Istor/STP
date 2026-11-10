@@ -1,6 +1,6 @@
 ---
 id: nlpf-73
-status: review
+status: done
 branch: nlpf-71
 current_task: null
 started: 2026-11-10
@@ -79,3 +79,42 @@ None.
 
 - 2026-11-10 — `make lint` : 0 issues (go vet, golangci-lint, oxlint) ; `make test` : tous les paquets ok
   (DATABASE_URL du Makefile, intégration comprise). CI non vérifiée (rien poussé).
+
+## Verification Report — 2026-11-10
+
+### Overall: PASS
+
+### Task Completion: 4/4 (T3 sans objet, hypothèse 1)
+
+### Commit Verification
+T2 `d88b7b8`, T4 `06b57b2` présents ; T1 (constat) et T3 (sans objet) sans commit de code, attendu.
+
+### Automated Checks
+| Check | Result | Notes |
+|---|---|---|
+| `make lint` | PASS | 0 issues |
+| `make test` | PASS | `cmd/server` (intégration seed) et `seedstore` ok (résultat en cache) |
+
+### Requirements Validation
+| Requirement | Status | Evidence |
+|---|---|---|
+| R1 cause établie | MET | sortie `seed_loads` (demo-v2 / demo-v3) dans state.md |
+| R2 relance identique = rien ajouté | MET | `cmd/server/seed_integration_test.go` appelle `runSeed` deux fois, compare 9 tables |
+| R3 README dit la coexistence | MET | paragraphe ajouté après le § seed |
+| R4 repérer deux jeux, revenir à un | MET | requête `seed_loads` + procédure |
+| R5 remise à zéro | MET | `down -v` / `make up` / `seed` |
+| R6 | N/A | hypothèse 2 écartée |
+| S1 journaliser les versions chargées | NOT MET (non bloquant) | noté dans state.md, aucune tâche ne le portait |
+
+### Acceptance Criteria
+| Criterion | Result | Evidence |
+|---|---|---|
+| AC1 cause + sortie de la requête | PASS | state.md Decisions |
+| AC2 test de relance vert | PASS | `make test` |
+| AC3 README | PASS | diff README |
+
+### Code Quality (/simplify)
+Non exécuté (diff limité à un test et au README).
+
+### Summary
+Pas de bug : les doublons viennent de deux versions de jeu différentes, désormais documentées. Réserves : procédure du README non rejouée (elle effacerait la base de dev), S1 non fait, CI non vérifiée.
