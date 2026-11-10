@@ -217,9 +217,11 @@
 }
 
 /* Arbre virtualisé + panneau latéral */
-.bom-space .workspace {
+.bom-space .bom-workspace {
   display: grid;
-  grid-template-columns: 1fr 340px;
+  /* minmax(0, 1fr) : la colonne de l'arbre ne dépend pas de son contenu (lignes en position: absolute). */
+  grid-template-columns: minmax(0, 1fr) 340px;
+  min-width: 0;
   gap: 1rem;
   flex: 1;
   min-height: 0;
@@ -350,7 +352,7 @@
     grid-template-columns: 1fr;
     height: auto;
   }
-  .bom-space .workspace {
+  .bom-space .bom-workspace {
     grid-template-columns: 1fr;
   }
   .bom-space .tree {

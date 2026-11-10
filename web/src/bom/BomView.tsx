@@ -150,7 +150,7 @@ export function BomView({ bomID, catalog, onBOMChanged, onOpenSnapshot }: Props)
         </p>
       )}
 
-      <div className="workspace">
+      <div className="bom-workspace">
         <BomTree
           nodes={tree.nodes}
           catalog={catalog}
