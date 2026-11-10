@@ -4,7 +4,7 @@ title: Seed sample-dataset : données en double après deux lancements
 source: jira
 source_ref: https://3istors.atlassian.net/browse/NLPF-73
 created: 2026-11-10
-status: in-progress
+status: review
 priority: P2
 depends_on: []
 branch: nlpf-71
@@ -86,18 +86,18 @@ remise à zéro, pas par l'UI. Si T1 conclut à l'hypothèse 2, la spec est rév
     loaded_at` sur la base qui montre les doublons. Deux lignes → hypothèse 1 ; une seule → hypothèse 2.
   - **Done when**: résultat de la requête et conclusion écrits dans state.md (Decisions).
 
-- [ ] T2: Test de bout en bout de l'idempotence via le point d'entrée `seed`
+- [x] T2: Test de bout en bout de l'idempotence via le point d'entrée `seed`
   - **Files**: `cmd/server/seed_test.go` (nouveau, intégration) ou `store_integration_test.go`
   - **Approach**: lancer deux fois la fonction de `cmd/server/seed.go` avec les mêmes `SIM_*`, comparer les
     comptes de `suppliers`, `parts`, `offers`, `boms` ; si hypothèse 2, ce test doit d'abord échouer.
   - **Done when**: le test passe (hypothèse 1) ou échoue puis passe après correctif (hypothèse 2, R6).
 
-- [ ] T3: Correctif du seed — seulement si T1 conclut à l'hypothèse 2
+- [x] T3: (sans objet, hypothèse 1 confirmée en T1) Correctif du seed — seulement si T1 conclut à l'hypothèse 2
   - **Files**: `internal/sampledata/seedstore/store.go`
   - **Approach**: à définir d'après le diagnostic ; spec révisée avant de coder.
   - **Done when**: T2 passe.
 
-- [ ] T4: README : coexistence des versions et remise à zéro de la démo
+- [x] T4: README : coexistence des versions et remise à zéro de la démo
   - **Files**: `README.md` (§ seed, l. 73-78)
   - **Approach**: dire qu'une nouvelle `SIM_DATASET_VERSION` ajoute un jeu complet à côté de l'ancien, et
     comment le voir (`SELECT dataset_version, loaded_at FROM seed_loads`) ; procédure

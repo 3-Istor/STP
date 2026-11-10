@@ -1,8 +1,8 @@
 ---
 id: nlpf-73
-status: in-progress
+status: review
 branch: nlpf-71
-current_task: T2
+current_task: null
 started: 2026-11-10
 updated: 2026-11-10
 ---
@@ -11,7 +11,10 @@ updated: 2026-11-10
 
 ## Progress
 
-T1 terminé (hypothèse 1). En cours : T2.
+All tasks completed. Ready for verification.
+- Tasks: 4/4 completed (T3 sans objet)
+- Branch: `nlpf-71`
+- Commits: 5
 
 ## Task Log
 
@@ -21,6 +24,28 @@ T1 terminé (hypothèse 1). En cours : T2.
 - **Commit**: (aucun fichier de code, constat ci-dessous)
 - **Notes**: requête sur la base compose (`stp-db-1`, `bomstudio`). Deux lignes dans `seed_loads` →
   hypothèse 1 (changement de `SIM_DATASET_VERSION` entre les deux lancements). T3 sans objet.
+
+### T2: Test de bout en bout de l'idempotence via le point d'entrée `seed`
+- **Status**: completed
+- **Time**: 2026-11-10
+- **Commit**: d88b7b8
+- **Notes**: `cmd/server/seed_integration_test.go` appelle `runSeed` deux fois (mêmes `SIM_*`, une paire FX)
+  dans un schéma privé ; compare suppliers, parts, offers, boms, bom_nodes, price_quotes, fx_quotes,
+  pricing_runs, seed_loads. Vert du premier coup (hypothèse 1). Coût : ~70 s (prix initiaux réels).
+
+### T3: Correctif du seed
+- **Status**: skipped (sans objet)
+- **Time**: 2026-11-10
+- **Commit**: aucun
+- **Notes**: T1 conclut à l'hypothèse 1, pas de bug.
+
+### T4: README : coexistence des versions et remise à zéro de la démo
+- **Status**: completed
+- **Time**: 2026-11-10
+- **Commit**: 06b57b2
+- **Notes**: paragraphe après le § seed : second jeu par nouvelle version, requête `seed_loads`,
+  procédure `down -v` → `make up` → `seed`. Procédure **non rejouée** : elle effacerait la base de dev
+  (diagnostic T1 et BOM `test1`).
 
 ## Decisions
 
@@ -44,8 +69,13 @@ T1 terminé (hypothèse 1). En cours : T2.
   (le défaut est passé à `demo-v3` dans `6377435`). Chaque version a donc ajouté son jeu complet, comme
   le prévoit `seedstore.Load` et `TestTwoDatasetVersionsCoexist`. T3 (correctif) non exécuté.
 
+- 2026-11-10 — S1 (journaliser les versions déjà chargées) non fait : aucune tâche ne le portait.
+
 ## Blockers
 
 None.
 
 ## Verification Report(s)
+
+- 2026-11-10 — `make lint` : 0 issues (go vet, golangci-lint, oxlint) ; `make test` : tous les paquets ok
+  (DATABASE_URL du Makefile, intégration comprise). CI non vérifiée (rien poussé).
