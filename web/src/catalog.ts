@@ -8,7 +8,8 @@ export type Offer = {
   currency: string
   lead_time_days: number
   origin_country: string
-  price: Money | null // dernière cotation ; null : aucune
+  price: Money | null // cotation à la source des totaux de la BOM (offerPrices.ts) ; null : aucune
+  price_source: string | null // provenance du prix (« en direct au … », « snapshot de prix #N … »)
 }
 
 export type Part = {
@@ -44,7 +45,8 @@ function fromCatalog(p: CatalogPart, supplierNames: Map<number, string>): Part {
     co2_kg: p.co2_kg_per_unit,
     mass_kg: p.mass_kg,
     production_days: p.production_days,
-    // Le prix vient des totaux de la BOM (cotation de live-price-feed), pas du catalogue.
+    // Le catalogue ne porte pas de prix : withOfferPrices (offerPrices.ts) les ajoute depuis la source
+    // des totaux de la BOM (direct ou snapshot de prix).
     offers: p.offers.map((o) => ({
       id: o.id,
       supplier: supplierNames.get(o.supplier_id) ?? `Fournisseur #${o.supplier_id}`,
@@ -52,6 +54,7 @@ function fromCatalog(p: CatalogPart, supplierNames: Map<number, string>): Part {
       lead_time_days: o.lead_time_days,
       origin_country: o.origin_country,
       price: null,
+      price_source: null,
     })),
   }
 }
