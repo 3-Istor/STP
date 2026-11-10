@@ -230,7 +230,7 @@ function AddChild({
           </select>
           <select aria-label="Offre" value={offerID} onChange={(e) => setOfferID(Number(e.target.value))}>
             {part?.offers.map((o) => (
-              <option key={o.id} value={o.id}>
+              <option key={o.id} value={o.id} title={o.price_source ?? undefined}>
                 {o.supplier} · {o.price ? formatMoney(o.price) : 'sans prix'} · {o.lead_time_days} j
               </option>
             ))}

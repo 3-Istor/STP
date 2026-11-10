@@ -101,7 +101,7 @@ export function BomTree({ nodes, catalog, readOnly, selectedID, onSelect, onChan
                   onChange={(e) => onChangeOffer(n.id, Number(e.target.value))}
                 >
                   {offers.map((o) => (
-                    <option key={o.id} value={o.id}>
+                    <option key={o.id} value={o.id} title={o.price_source ?? undefined}>
                       {o.supplier} · {o.price ? formatMoney(o.price) : 'sans prix'} · {o.lead_time_days} j
                     </option>
                   ))}
