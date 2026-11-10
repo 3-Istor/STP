@@ -40,6 +40,7 @@ Ou séparément :
 ```bash
 make db       # Postgres local
 make migrate  # migrations goose
+make seed     # jeu de démo : Fiat Multipla (~30 000 nœuds) et Aston Martin Valhalla (~15 000), idempotent
 make run      # API sur http://localhost:8080 (GET /healthz)
 make web      # front sur http://localhost:5173
 make test     # tests Go
@@ -56,12 +57,11 @@ transitent en chaînes décimales ; un prix manquant reste explicitement indispo
 Voir [les routes et exemples](docs/api-catalogue-fournisseurs.md).
 
 Le simulateur et l'ingestion de NLPF-68 sont disponibles. `make dev` démarre aussi priceapi sur
-8090 ; `make priceapi` le lance seul. L'éditeur, les totaux de BOM et l'ouverture de la Multipla
-dépendent encore de NLPF-69 ; le seed complet n'est pas disponible. L'écran consulte les cotations
+8090 ; `make priceapi` le lance seul. L'écran consulte les cotations
 persistées et s’actualise par SSE après chaque tick validé, avec repli daté en cas de panne.
 
-Le Makefile et Compose fixent des entrées **synthétiques** reproductibles : dataset `demo-v1`,
-graine `42`, date initiale `2026-01-01T00:00:00Z`, USD→EUR de référence `0.92` dans ±5 %, 40 minutes
+Le Makefile et Compose fixent des entrées **synthétiques** reproductibles : dataset `demo-v3`,
+graine `42`, date initiale `2026-01-01T00:00:00Z`, 12 paires directes EUR/USD/GBP/JPY dans ±5 %, 40 minutes
 par année de 365 jours. Ces valeurs ne sont pas des cours réels. Surcharger `SIM_DATASET_VERSION`,
 `SIM_SEED`, `SIM_AS_OF`, `SIM_FX_PAIRS`, `SIM_YEAR_DURATION` pour une autre simulation ;
 les bandes/références FX sont des chaînes JSON, voir [le contrat](docs/api-prix-et-devises.md).
@@ -69,6 +69,13 @@ Une reprise avec graine/date/version/références incompatibles refuse de rééc
 La cadence et le timeout peuvent changer au redémarrage, sans régénération ni rattrapage de l'arrêt.
 Le worker initialise 365 cotations quotidiennes par série, puis valide chaque nouveau jour par
 transaction. Un prix aberrant ou une panne ne valide pas le tick ; les anciennes données restent intactes.
+
+`make seed` (ou `docker compose run --rm back seed` avec la stack Docker) charge le jeu sample-dataset
+avec ces mêmes paramètres `SIM_*` : 27 fournisseurs fictifs, ~420 pièces, ~1 000 offres en 4 devises,
+contrats à paliers, alternatives, et les BOM Fiat Multipla (EUR) et Aston Martin Valhalla (GBP), avec
+leurs 365 jours de cotations initiales. Noms et valeurs sont **fictifs** (ADR 0021). Relancer ne change
+rien ; si une donnée du jeu a été modifiée (une BOM éditée, par exemple), le seed refuse et n'écrit rien :
+changer `SIM_DATASET_VERSION` ou repartir d'une base neuve (`docker compose down -v`).
 
 Tests de l'interface (Node compatible avec Vite ; CI : Node 24) :
 
