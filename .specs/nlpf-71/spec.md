@@ -4,7 +4,7 @@ title: Arbre BOM invisible : conflit CSS .workspace entre BOM et Fournisseurs
 source: jira
 source_ref: https://3istors.atlassian.net/browse/NLPF-71
 created: 2026-11-10
-status: in-progress
+status: review
 priority: P1
 depends_on: []
 branch: nlpf-71
@@ -75,7 +75,7 @@ Régression d'intégration NLPF-67/68 × NLPF-69. Ticket Highest, label soutenan
   - **Done when**: plus aucune règle globale `.workspace` dans `index.css` (`grep -n "^\s*\.workspace\b"`
     vide) ; `suppliers.spec.ts` passe.
 
-- [ ] T3: Renommer la mise en page BOM `.workspace` → `.bom-workspace`
+- [x] T3: Renommer la mise en page BOM `.workspace` → `.bom-workspace`
   - **Files**: `web/src/bom/bom.css` (l. 220, 353), `web/src/bom/BomView.tsx`, `web/src/bom/SnapshotView.tsx`
   - **Approach**: nom propre à l'espace, toujours préfixé `.bom-space` ; ajouter `min-width: 0` sur la
     grille pour que `1fr` ne dépende pas du contenu.
