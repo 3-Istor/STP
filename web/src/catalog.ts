@@ -1,6 +1,5 @@
 // Catalogue vu par l'UI de la BOM : noms des pièces et offres proposées au changement d'offre.
-// Source : GET /api/v1/parts (part-catalog). Avec BOM_DEMO=1, GET /api/v1/demo/catalog le remplace
-// (feature toggle — propriétaire : Arthur.presle ; à supprimer avec le seed sample-dataset).
+// Source : GET /api/v1/parts (part-catalog) et GET /api/v1/suppliers pour les noms des fournisseurs.
 import type { Money } from './money.ts'
 
 export type Offer = {
@@ -37,7 +36,7 @@ type CatalogPart = {
   offers: { id: number; supplier_id: number; currency: string; lead_time_days: number; origin_country: string }[]
 }
 
-function fromCatalog(p: CatalogPart): Part {
+function fromCatalog(p: CatalogPart, supplierNames: Map<number, string>): Part {
   return {
     id: p.id,
     name: p.name,
@@ -48,7 +47,7 @@ function fromCatalog(p: CatalogPart): Part {
     // Le prix vient des totaux de la BOM (cotation de live-price-feed), pas du catalogue.
     offers: p.offers.map((o) => ({
       id: o.id,
-      supplier: `Fournisseur #${o.supplier_id}`,
+      supplier: supplierNames.get(o.supplier_id) ?? `Fournisseur #${o.supplier_id}`,
       currency: o.currency,
       lead_time_days: o.lead_time_days,
       origin_country: o.origin_country,
@@ -58,17 +57,12 @@ function fromCatalog(p: CatalogPart): Part {
 }
 
 export async function loadCatalog(): Promise<Catalog> {
-  let parts: Part[]
-  const demo = await fetch('/api/v1/demo/catalog')
-  if (demo.ok) {
-    parts = (await demo.json()) as Part[]
-  } else if (demo.status === 404) {
-    const res = await fetch('/api/v1/parts')
-    if (!res.ok) throw new Error(`catalogue : ${res.status} ${res.statusText}`)
-    parts = ((await res.json()) as CatalogPart[]).map(fromCatalog)
-  } else {
-    throw new Error(`catalogue : ${demo.status} ${demo.statusText}`)
-  }
+  const [res, sup] = await Promise.all([fetch('/api/v1/parts'), fetch('/api/v1/suppliers')])
+  if (!res.ok) throw new Error(`catalogue : ${res.status} ${res.statusText}`)
+  // Sans la liste des fournisseurs, l'offre affiche « Fournisseur #id » : le catalogue reste utilisable.
+  const suppliers = sup.ok ? ((await sup.json()) as { id: number; name: string }[]) : []
+  const names = new Map(suppliers.map((s) => [s.id, s.name]))
+  const parts = ((await res.json()) as CatalogPart[]).map((p) => fromCatalog(p, names))
   return { parts, byPart: new Map(parts.map((p) => [p.id, p])), available: true }
 }
 
