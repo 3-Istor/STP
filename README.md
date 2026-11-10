@@ -77,6 +77,24 @@ leurs 365 jours de cotations initiales. Noms et valeurs sont **fictifs** (ADR 00
 rien ; si une donnée du jeu a été modifiée (une BOM éditée, par exemple), le seed refuse et n'écrit rien :
 changer `SIM_DATASET_VERSION` ou repartir d'une base neuve (`docker compose down -v`).
 
+Une **autre** `SIM_DATASET_VERSION` n'écrase pas le jeu déjà chargé : elle ajoute un jeu complet à côté
+(ADR 0012, 0021). Les fournisseurs et les BOM apparaissent alors en double, avec les mêmes noms. Pour voir
+les jeux chargés :
+
+```bash
+docker compose exec db psql -U bom -d bomstudio \
+  -c "SELECT dataset_version, seed, as_of, loaded_at FROM seed_loads ORDER BY loaded_at"
+```
+
+Plus d'une ligne = plusieurs jeux. Le seed ne supprime rien ; pour revenir à un seul jeu (avant une
+démo, par exemple), repartir d'une base neuve :
+
+```bash
+docker compose down -v               # efface la base (et toute saisie manuelle)
+make up                              # recrée la stack et applique les migrations
+docker compose run --rm back seed    # un seul jeu : 27 fournisseurs, 2 BOM
+```
+
 Tests de l'interface (Node compatible avec Vite ; CI : Node 24) :
 
 ```bash
