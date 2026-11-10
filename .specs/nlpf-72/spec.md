@@ -4,7 +4,7 @@ title: Le sélecteur d'offres de la BOM affiche toujours « sans prix »
 source: jira
 source_ref: https://3istors.atlassian.net/browse/NLPF-72
 created: 2026-11-10
-status: in-progress
+status: review
 priority: P2
 depends_on: []
 branch: nlpf-72
@@ -88,7 +88,7 @@ D'où vient le prix affiché dans le sélecteur :
     reste vide et « sans prix » s'affiche (pas d'invention de prix).
   - **Done when**: sur Multipla seedée, les offres cotées affichent un prix ; le `title` donne la source (S1).
 
-- [ ] T3: Test e2e du sélecteur
+- [x] T3: Test e2e du sélecteur
   - **Files**: `web/e2e/bom-offer-price.spec.ts` (nouveau)
   - **Approach**: intercepter `/api/v1/quotes` (`page.route`) avec une offre cotée et une offre sans
     cotation ; vérifier le texte des deux `<option>` (prix formaté + devise / « sans prix »).

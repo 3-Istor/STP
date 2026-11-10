@@ -1,8 +1,8 @@
 ---
 id: nlpf-72
-status: in-progress
+status: review
 branch: nlpf-71
-current_task: T3
+current_task: null
 started: 2026-11-10
 updated: 2026-11-10
 ---
@@ -11,7 +11,10 @@ updated: 2026-11-10
 
 ## Progress
 
-Execution in progress on branch `nlpf-71` (choix utilisateur : même branche que NLPF-71).
+All tasks completed. Ready for verification.
+- Tasks: 3/3 completed
+- Branch: `nlpf-71`
+- Commits: 7
 
 ## Task Log
 
@@ -26,6 +29,12 @@ Execution in progress on branch `nlpf-71` (choix utilisateur : même branche que
 - **Time**: 2026-11-10
 - **Commit**: 40498a1
 - **Notes**: `BomView` charge les prix pour `bom.price_snapshot_id` (relu après figer/défiger), les garde associés à ce `price_snapshot_id` (jamais affichés pour une autre source) et passe un catalogue enrichi (`withOfferPrices`) à `BomTree` et `NodePanel`. Les `<option>` ont `title` = provenance (S1). Échec de lecture → « sans prix ». Vérification manuelle sur Multipla seedée non faite (stack non lancée) ; couverte par l'e2e T3 sur données simulées.
+
+### T3: Test e2e du sélecteur
+- **Status**: completed
+- **Time**: 2026-11-10
+- **Commit**: c78d5fc
+- **Notes**: `web/e2e/bom-offer-price.spec.ts` : BOM en direct (offre EUR cotée, offre USD cotée, offre en erreur → « sans prix », `title` « en direct au … ») et BOM figée (prix du snapshot #5, offres non couvertes → « sans prix », `/api/v1/quotes` non lu). Vérifié : échoue sur chromium-desktop sans les changements T2, passe avec. Lancé en local sur chromium uniquement (Firefox/WebKit non installés sur le poste ; la CI les installe).
 
 ## Decisions
 
