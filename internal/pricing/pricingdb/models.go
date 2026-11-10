@@ -189,6 +189,22 @@ type PricingTick struct {
 	ManifestHash   string
 }
 
+type SeedEntity struct {
+	DatasetVersion string
+	EntityKind     string
+	LogicalKey     string
+	EntityID       int64
+}
+
+type SeedLoad struct {
+	DatasetVersion   string
+	GeneratorVersion string
+	Seed             string
+	AsOf             time.Time
+	ManifestHash     string
+	LoadedAt         time.Time
+}
+
 type Supplier struct {
 	ID           int64
 	Name         string

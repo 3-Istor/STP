@@ -1,4 +1,5 @@
-// Command server démarre l'API BOM Studio.
+// Command server démarre l'API BOM Studio. `server seed` charge le jeu sample-dataset puis s'arrête
+// (voir seed.go, ADR 0012 et 0021).
 package main
 
 import (
@@ -19,7 +20,6 @@ import (
 	"bomstudio/internal/bom/bomstore"
 	"bomstudio/internal/catalog"
 	"bomstudio/internal/catalog/catalogstore"
-	"bomstudio/internal/demo"
 	"bomstudio/internal/httpapi"
 	"bomstudio/internal/pricing"
 	"bomstudio/internal/pricing/pricingstore"
@@ -46,6 +46,9 @@ func run() error {
 		return fmt.Errorf("configure database: %w", err)
 	}
 	defer pool.Close()
+	if len(os.Args) > 1 && os.Args[1] == "seed" {
+		return runSeed(ctx, pool)
+	}
 	worker, err := configurePricing(pool)
 	if err != nil {
 		return fmt.Errorf("configure pricing source: %w", err)
@@ -72,9 +75,6 @@ func run() error {
 
 	// BOM : vrai catalogue et prix de live-price-feed (adapter pricing.BOMPricing, voir ADR 0020).
 	// Sans PRICE_API_URL, aucun prix : la BOM tourne sur un stub vide (figer et publier échouent, nommément).
-	// BOM_DEMO=1 remplace les deux par le jeu de démo (internal/demo) : feature toggle, propriétaire
-	// Arthur.presle, à supprimer avec le seed sample-dataset.
-	var cat catalog.Catalog = catalogService
 	var prices pricing.Pricing
 	if reads != nil && snapshots != nil {
 		prices = pricing.NewBOMPricing(reads, snapshots)
@@ -82,34 +82,14 @@ func run() error {
 		prices = pricing.NewStub(nil, nil)
 		slog.Warn("PRICE_API_URL is not set: BOM prices are an empty in-memory stub")
 	}
-	demoMode := os.Getenv("BOM_DEMO") == "1"
-	if demoMode {
-		if err := demo.Seed(ctx, pool); err != nil {
-			return fmt.Errorf("demo: %w", err)
-		}
-		if cat, err = demo.Catalog(); err != nil {
-			return fmt.Errorf("demo catalog: %w", err)
-		}
-		if prices, err = demo.NewPricing(pool); err != nil {
-			return fmt.Errorf("demo pricing: %w", err)
-		}
-		slog.Warn("BOM_DEMO=1: demo catalog and prices for the BOM, for development only")
-	}
-	boms := bom.NewService(bomstore.New(pool), cat, prices)
-	bomSnapshots := snapshot.NewService(snapshotstore.New(pool), boms, cat, prices)
+	boms := bom.NewService(bomstore.New(pool), catalogService, prices)
+	bomSnapshots := snapshot.NewService(snapshotstore.New(pool), boms, catalogService, prices)
 
 	handler := httpapi.NewRouter(httpapi.Services{
 		Catalog: catalogService, Supplier: supplierService, History: historyService,
 		Pricing: reads, PriceSnapshots: snapshots, PricingSignals: signals,
 		BOMs: boms, Snapshots: bomSnapshots,
 	})
-	if demoMode {
-		mux := http.NewServeMux()
-		mux.Handle("GET /api/v1/demo/catalog", demo.CatalogHandler(cat, prices))
-		mux.Handle("/", handler)
-		handler = mux
-	}
-
 	addr := ":" + envOr("PORT", "8080")
 	srv := &http.Server{
 		Addr:              addr,
