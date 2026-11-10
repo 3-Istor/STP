@@ -1,6 +1,6 @@
 ---
 id: nlpf-71
-status: review
+status: done
 branch: nlpf-71
 current_task: null
 started: 2026-11-10
@@ -69,3 +69,40 @@ None.
   NON EXÉCUTÉS (navigateurs Playwright absents localement : `npx playwright install` à lancer).
 - `make lint && make test` : PASS
 - CI distante : non vérifiée (rien n'est poussé).
+
+## Verification Report — 2026-11-10
+
+### Overall: PASS
+
+### Task Completion: 3/3
+
+### Commit Verification
+T1 `b6f6218`, T2 `f3c0468`, T3 `054a8bb` présents sur `nlpf-71` (+ commits de suivi).
+
+### Automated Checks
+| Check | Result | Notes |
+|---|---|---|
+| `cd web && npm run lint && npm run build` | PASS | oxlint propre, tsc + Vite OK |
+| `cd web && npm run test:e2e` (chromium desktop + mobile) | PASS | 26/26 ; firefox/webkit non installés, non exécutés |
+| `make lint && make test` | PASS | 0 issues ; tous paquets ok, `cmd/server` compris (résultat en cache) |
+
+### Requirements Validation
+| Requirement | Status | Evidence |
+|---|---|---|
+| R1 arbre pleine largeur | MET | `.bom-workspace` en `minmax(0, 1fr) 340px` + `min-width: 0` ; e2e `bom-layout` vert |
+| R2 pas de classe partagée | MET | plus de `.workspace` global ; seul `.workspace-tag` (autre classe) reste |
+| R3 e2e échoue si largeur nulle | MET | échec constaté sur `main` (`Received: 2`), vert maintenant |
+| S1 variantes mobile | MET | variante `@media` renommée, e2e mobile vert |
+
+### Acceptance Criteria
+| Criterion | Result | Evidence |
+|---|---|---|
+| AC1 arbre pleine largeur, brouillon et snapshot | PASS | e2e (brouillon + snapshot simulé) ; script Playwright sur Multipla réelle : 812 px. Snapshot publié réel non ouvert |
+| AC2 aucune classe partagée | PASS | plus de règle `.workspace` seule dans index.css ni bom.css |
+| AC3 spec a échoué avant, passe après | PASS | noté dans state.md T1 |
+
+### Code Quality (/simplify)
+Non exécuté (revue manuelle du diff : renommages purs, rien relevé).
+
+### Summary
+Les 3 tâches sont faites et les vérifications automatiques passent. Réserves : Firefox/WebKit non exécutés, stack Docker non reconstruite, CI distante non vérifiée.
