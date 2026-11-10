@@ -14,7 +14,7 @@ updated: 2026-11-10
 All tasks completed. Ready for verification.
 - Tasks: 3/3 completed
 - Branch: `nlpf-71`
-- Commits: 7 (3 implementation, 4 tracking)
+- Commits: 7 (3 implementation, 4 tracking, dont ce correctif)
 
 ## Task Log
 
