@@ -1,6 +1,6 @@
 ---
 id: nlpf-72
-status: review
+status: done
 branch: nlpf-71
 current_task: null
 started: 2026-11-10
@@ -48,3 +48,42 @@ All tasks completed. Ready for verification.
 None.
 
 ## Verification Report(s)
+
+## Verification Report — 2026-11-10
+
+### Overall: PASS
+
+### Task Completion: 3/3
+
+### Commit Verification
+T1 `faaa927`, T2 `40498a1`, T3 `c78d5fc` présents (sur `nlpf-71` et non `nlpf-72`, décision tracée).
+
+### Automated Checks
+| Check | Result | Notes |
+|---|---|---|
+| `cd web && npm run lint && npm run build` | PASS | oxlint propre, tsc + Vite OK |
+| `cd web && npm run test:e2e` (chromium desktop + mobile) | PASS | 26/26 ; firefox/webkit non installés, non exécutés |
+| `make lint && make test` | PASS | 0 issues ; tous paquets ok, `cmd/server` compris (résultat en cache) |
+
+### Requirements Validation
+| Requirement | Status | Evidence |
+|---|---|---|
+| R1 prix en devise d'origine | MET | `loadOfferPrices` + `withOfferPrices` ; e2e offres EUR et USD |
+| R2 « sans prix » si pas de cotation / erreur | MET | seules les cotations non nulles entrent dans la map ; e2e |
+| R3 montants en chaînes | MET | aucun `Number(`/`parseFloat` dans le diff de `offerPrices.ts`, `catalog.ts`, `BomView.tsx` |
+| R4 même source que les totaux | MET | `BomView` charge selon `bom.price_snapshot_id`, prix liés à leur source ; e2e BOM figée sans lecture de `/quotes` |
+| S1 `title` = source | MET | e2e vérifie « en direct au … » |
+
+### Acceptance Criteria
+| Criterion | Result | Evidence |
+|---|---|---|
+| AC1 offre cotée avec sa devise | PASS | e2e `bom-offer-price` |
+| AC2 offre sans cotation | PASS | e2e |
+| AC3 pas de `number` pour un montant | PASS | grep vide sur le diff |
+| AC4 figée = snapshot, direct = cotation | PASS | deux scénarios e2e ; vérification manuelle sur Multipla seedée non faite |
+
+### Code Quality (/simplify)
+Non exécuté (revue manuelle : la garde `snapshotID` évite d'afficher les prix d'une autre source).
+
+### Summary
+Conforme à l'option 2 choisie, sans changement de contrat d'API. Réserves : test manuel sur la stack réelle non fait, Firefox/WebKit non exécutés, CI non vérifiée.
