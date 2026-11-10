@@ -69,7 +69,7 @@ Régression d'intégration NLPF-67/68 × NLPF-69. Ticket Highest, label soutenan
     moins 340 px, et qu'une ligne `.tree-row` est cliquable (sélection → panneau de détail).
   - **Done when**: le test échoue sur `main` actuel (largeur ≈ 2 px) — échec constaté et noté dans state.md.
 
-- [ ] T2: Renommer la mise en page Fournisseurs `.workspace` → `.supplier-workspace`
+- [x] T2: Renommer la mise en page Fournisseurs `.workspace` → `.supplier-workspace`
   - **Files**: `web/src/index.css` (l. 34, 162, 171), `web/src/suppliers/SuppliersPage.tsx`
   - **Approach**: renommage pur de la classe et de ses variantes responsive ; `.workspace-tag` inchangé.
   - **Done when**: plus aucune règle globale `.workspace` dans `index.css` (`grep -n "^\s*\.workspace\b"`
