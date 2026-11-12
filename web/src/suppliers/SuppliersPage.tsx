@@ -90,7 +90,7 @@ export default function SuppliersPage() {
       <a className="brand" href="#main-content" aria-label="BOM Studio — accéder au contenu"><span className="brand-mark" aria-hidden="true">B</span><span>BOM Studio<small>Conception & achats</small></span></a>
       <span className="workspace-tag">Espace fournisseurs</span>
     </header>
-    <main id="main-content" className="workspace">
+    <main id="main-content" className="supplier-workspace">
       <aside className="supplier-sidebar" aria-label="Fournisseurs">
         <div className="sidebar-heading"><div><p className="eyebrow">Catalogue</p><h2>Fournisseurs <span className="count">{suppliers.length}</span></h2></div></div>
         <button className="primary-button add-supplier" disabled={supplierLoading} onClick={() => setCreateSupplier(true)}>+ Nouveau fournisseur</button>

@@ -75,7 +75,7 @@ export function SnapshotView({
           {error}
         </p>
       )}
-      <div className="workspace">
+      <div className="bom-workspace">
         <BomTree
           nodes={data.nodes}
           catalog={catalog}

@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { api, errorMessage, type NewNode, type NodePatch, type Snapshot, type Tree } from '../api.ts'
 import type { Catalog } from '../catalog.ts'
 import { formatMoney } from '../money.ts'
+import { loadOfferPrices, noOfferPrices, withOfferPrices, type OfferPrices } from '../offerPrices.ts'
 import { BomTree } from './BomTree.tsx'
 import { NodePanel } from './NodePanel.tsx'
 import { Totals } from './Totals.tsx'
@@ -22,6 +23,8 @@ export function BomView({ bomID, catalog, onBOMChanged, onOpenSnapshot }: Props)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [published, setPublished] = useState<Snapshot | null>(null)
+  // Prix lus pour un price_snapshot_id donné : ceux d'une autre source ne sont jamais affichés.
+  const [loadedPrices, setLoadedPrices] = useState<{ snapshotID: number | null; prices: OfferPrices } | null>(null)
 
   const reload = useCallback(async () => {
     const t = await api.tree(bomID)
@@ -44,6 +47,26 @@ export function BomView({ bomID, catalog, onBOMChanged, onOpenSnapshot }: Props)
       cancelled = true
     }
   }, [bomID])
+
+  // Prix des sélecteurs d'offres : même source que les totaux (direct ou snapshot de prix), relus quand la
+  // BOM est figée ou défigée. Lecture en échec : aucun prix inventé, les offres restent « sans prix ».
+  const priceSnapshotID = tree ? tree.bom.price_snapshot_id : undefined
+  useEffect(() => {
+    if (priceSnapshotID === undefined) return
+    let cancelled = false
+    loadOfferPrices(priceSnapshotID)
+      .then((p) => {
+        if (!cancelled) setLoadedPrices({ snapshotID: priceSnapshotID, prices: p })
+      })
+      .catch(() => {
+        if (!cancelled) setLoadedPrices({ snapshotID: priceSnapshotID, prices: noOfferPrices })
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [priceSnapshotID])
+  const prices = loadedPrices && loadedPrices.snapshotID === priceSnapshotID ? loadedPrices.prices : noOfferPrices
+  const pricedCatalog = useMemo(() => withOfferPrices(catalog, prices), [catalog, prices])
 
   // run exécute une action de l'utilisateur puis relit l'arbre ; une erreur de l'API est affichée telle quelle.
   async function run(action: () => Promise<unknown>, opts: { bomChanged?: boolean } = {}): Promise<boolean> {
@@ -150,10 +173,10 @@ export function BomView({ bomID, catalog, onBOMChanged, onOpenSnapshot }: Props)
         </p>
       )}
 
-      <div className="workspace">
+      <div className="bom-workspace">
         <BomTree
           nodes={tree.nodes}
-          catalog={catalog}
+          catalog={pricedCatalog}
           readOnly={false}
           selectedID={selectedID}
           onSelect={setSelectedID}
@@ -171,7 +194,7 @@ export function BomView({ bomID, catalog, onBOMChanged, onOpenSnapshot }: Props)
             node={selected}
             explanation={tree.explanation}
             volume={bom.volume}
-            catalog={catalog}
+            catalog={pricedCatalog}
             readOnly={false}
             isRoot={selected.parent_id === null}
             onAdd={(n: NewNode) => run(() => api.addNode(bom.id, n))}
