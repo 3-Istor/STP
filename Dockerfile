@@ -2,7 +2,7 @@
 # Cibles : server (API BOM Studio), priceapi (API de prix simulée), migrate (goose, one-shot).
 # Images de base épinglées : on les monte de version volontairement, jamais `latest`.
 
-FROM golang:1.27.3-alpine3.23 AS build
+FROM golang:1.27.4-alpine3.23 AS build
 WORKDIR /src
 ENV CGO_ENABLED=0
 # Dépendances d'abord : la couche reste en cache tant que go.mod / go.sum ne changent pas.

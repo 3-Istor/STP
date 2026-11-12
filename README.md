@@ -5,7 +5,7 @@ Spec : [docs/features.md](docs/features.md) · Règles du projet (humains et age
 
 ## Prérequis (dans WSL / Linux)
 
-- Go ≥ 1.27.3 (voir `go.mod`), make, Docker ; Node 20 ≥ 20.19 ou Node ≥ 22.12 (CI : 24).
+- Go ≥ 1.27.4 (voir `go.mod`), make, Docker ; Node 20 ≥ 20.19 ou Node ≥ 22.12 (CI : 24).
 
 ## Lancer toute l'app en Docker (démo, sans Go ni Node)
 
