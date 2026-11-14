@@ -2,8 +2,9 @@
 -- importé uniquement par internal/bom/bomstore : le domaine bom reste sans pgx (AGENTS §2).
 
 -- name: CreateBOM :one
-INSERT INTO boms (name, currency, volume, source_snapshot_id)
-VALUES (sqlc.arg(name), sqlc.arg(currency), sqlc.arg(volume), sqlc.narg(source_snapshot_id))
+INSERT INTO boms (name, currency, volume, source_snapshot_id, annual_hours, destination_country)
+VALUES (sqlc.arg(name), sqlc.arg(currency), sqlc.arg(volume), sqlc.narg(source_snapshot_id), sqlc.arg(annual_hours),
+    sqlc.narg(destination_country))
 RETURNING *;
 
 -- name: CreateRootNode :one
@@ -34,6 +35,18 @@ RETURNING *;
 -- name: UpdateBOMSettings :one
 UPDATE boms SET currency = $2, volume = $3
 WHERE id = $1
+RETURNING *;
+
+-- Base horaire annuelle d'un ETP (ADR 0024).
+-- name: SetBOMAnnualHours :one
+UPDATE boms SET annual_hours = $2
+WHERE id = $1
+RETURNING *;
+
+-- Pays de destination (ADR 0025) ; NULL : non renseigné.
+-- name: SetBOMDestination :one
+UPDATE boms SET destination_country = sqlc.narg(destination_country)
+WHERE id = sqlc.arg(id)
 RETURNING *;
 
 -- NULL : prix en direct ; sinon, le snapshot de prix qui fige les prix du brouillon (R9).
@@ -80,6 +93,18 @@ UPDATE bom_nodes SET production_days = $3
 WHERE bom_id = $1 AND id = $2
 RETURNING *;
 
+-- Stratégie de décision du nœud (ADR 0028) ; NULL : héritée de l'ancêtre le plus proche.
+-- name: SetNodeStrategy :one
+UPDATE bom_nodes SET strategy = sqlc.narg(strategy)
+WHERE bom_id = sqlc.arg(bom_id) AND id = sqlc.arg(id)
+RETURNING *;
+
+-- Remplace la pièce et l'offre d'un nœud pièce en gardant son id, sa quantité et ses enfants (ADR 0028).
+-- name: SetNodePart :one
+UPDATE bom_nodes SET part_id = sqlc.arg(part_id), offer_id = sqlc.arg(offer_id)
+WHERE bom_id = sqlc.arg(bom_id) AND id = sqlc.arg(id) AND part_id IS NOT NULL
+RETURNING *;
+
 -- Vrai si candidate_id est node_id lui-même ou l'un de ses descendants (CTE récursive, AGENTS §3).
 -- UNION (et non UNION ALL) : la récursion se termine même face à un cycle déjà présent.
 -- name: IsInSubtree :one
@@ -103,3 +128,34 @@ RETURNING *;
 -- name: DeleteNode :execrows
 DELETE FROM bom_nodes
 WHERE bom_id = $1 AND id = $2 AND parent_id IS NOT NULL;
+
+-- Stock propre à la BOM (ADR 0022), par pièce croissante (ordre déterministe).
+-- name: ListPartStock :many
+SELECT * FROM bom_part_stock
+WHERE bom_id = $1
+ORDER BY part_id;
+
+-- name: UpsertPartStock :one
+INSERT INTO bom_part_stock (bom_id, part_id, quantity)
+VALUES ($1, $2, $3)
+ON CONFLICT (bom_id, part_id) DO UPDATE SET quantity = EXCLUDED.quantity
+RETURNING *;
+
+-- name: DeletePartStock :execrows
+DELETE FROM bom_part_stock
+WHERE bom_id = $1 AND part_id = $2;
+
+-- Date de départ et date cible (ADR 0023).
+-- name: GetSchedule :one
+SELECT * FROM bom_schedule
+WHERE bom_id = $1;
+
+-- name: UpsertSchedule :one
+INSERT INTO bom_schedule (bom_id, start_on, target_on)
+VALUES (sqlc.arg(bom_id), sqlc.arg(start_on), sqlc.narg(target_on))
+ON CONFLICT (bom_id) DO UPDATE SET start_on = EXCLUDED.start_on, target_on = EXCLUDED.target_on
+RETURNING *;
+
+-- name: DeleteSchedule :execrows
+DELETE FROM bom_schedule
+WHERE bom_id = $1;

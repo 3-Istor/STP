@@ -15,18 +15,23 @@ import (
 
 const createSnapshot = `-- name: CreateSnapshot :one
 
-INSERT INTO bom_snapshots (bom_id, price_snapshot_id, name, currency, volume, published_at)
-VALUES ($1, $2, $3, $4, $5, $6)
-RETURNING id, bom_id, price_snapshot_id, name, currency, volume, published_at
+INSERT INTO bom_snapshots (bom_id, price_snapshot_id, name, currency, volume, published_at, annual_hours,
+    start_on, target_on, destination_country)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+RETURNING id, bom_id, price_snapshot_id, name, currency, volume, published_at, annual_hours, start_on, target_on, destination_country
 `
 
 type CreateSnapshotParams struct {
-	BomID           int64
-	PriceSnapshotID int64
-	Name            string
-	Currency        string
-	Volume          int32
-	PublishedAt     time.Time
+	BomID              int64
+	PriceSnapshotID    int64
+	Name               string
+	Currency           string
+	Volume             int32
+	PublishedAt        time.Time
+	AnnualHours        decimal.NullDecimal
+	StartOn            pgtype.Date
+	TargetOn           pgtype.Date
+	DestinationCountry pgtype.Text
 }
 
 // Requêtes du domaine snapshot (sqlc → internal/snapshot/snapshotdb). Voir ADR 0006.
@@ -39,6 +44,10 @@ func (q *Queries) CreateSnapshot(ctx context.Context, arg CreateSnapshotParams) 
 		arg.Currency,
 		arg.Volume,
 		arg.PublishedAt,
+		arg.AnnualHours,
+		arg.StartOn,
+		arg.TargetOn,
+		arg.DestinationCountry,
 	)
 	var i BomSnapshot
 	err := row.Scan(
@@ -49,12 +58,16 @@ func (q *Queries) CreateSnapshot(ctx context.Context, arg CreateSnapshotParams) 
 		&i.Currency,
 		&i.Volume,
 		&i.PublishedAt,
+		&i.AnnualHours,
+		&i.StartOn,
+		&i.TargetOn,
+		&i.DestinationCountry,
 	)
 	return i, err
 }
 
 const getSnapshot = `-- name: GetSnapshot :one
-SELECT id, bom_id, price_snapshot_id, name, currency, volume, published_at FROM bom_snapshots WHERE id = $1
+SELECT id, bom_id, price_snapshot_id, name, currency, volume, published_at, annual_hours, start_on, target_on, destination_country FROM bom_snapshots WHERE id = $1
 `
 
 func (q *Queries) GetSnapshot(ctx context.Context, id int64) (BomSnapshot, error) {
@@ -68,6 +81,10 @@ func (q *Queries) GetSnapshot(ctx context.Context, id int64) (BomSnapshot, error
 		&i.Currency,
 		&i.Volume,
 		&i.PublishedAt,
+		&i.AnnualHours,
+		&i.StartOn,
+		&i.TargetOn,
+		&i.DestinationCountry,
 	)
 	return i, err
 }
@@ -84,10 +101,18 @@ type InsertSnapshotNodesParams struct {
 	MassKg         decimal.NullDecimal
 	ProductionDays int32
 	LeadTimeDays   pgtype.Int4
+	LaborHours     decimal.NullDecimal
+	Strategy       pgtype.Text
+}
+
+type InsertSnapshotStockParams struct {
+	SnapshotID int64
+	PartID     int64
+	Quantity   decimal.Decimal
 }
 
 const listSnapshotNodes = `-- name: ListSnapshotNodes :many
-SELECT snapshot_id, node_key, parent_key, name, part_id, offer_id, quantity, co2_kg, mass_kg, production_days, lead_time_days FROM bom_snapshot_nodes WHERE snapshot_id = $1 ORDER BY node_key
+SELECT snapshot_id, node_key, parent_key, name, part_id, offer_id, quantity, co2_kg, mass_kg, production_days, lead_time_days, labor_hours, strategy FROM bom_snapshot_nodes WHERE snapshot_id = $1 ORDER BY node_key
 `
 
 func (q *Queries) ListSnapshotNodes(ctx context.Context, snapshotID int64) ([]BomSnapshotNode, error) {
@@ -111,7 +136,33 @@ func (q *Queries) ListSnapshotNodes(ctx context.Context, snapshotID int64) ([]Bo
 			&i.MassKg,
 			&i.ProductionDays,
 			&i.LeadTimeDays,
+			&i.LaborHours,
+			&i.Strategy,
 		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listSnapshotStock = `-- name: ListSnapshotStock :many
+SELECT snapshot_id, part_id, quantity FROM bom_snapshot_part_stock WHERE snapshot_id = $1 ORDER BY part_id
+`
+
+func (q *Queries) ListSnapshotStock(ctx context.Context, snapshotID int64) ([]BomSnapshotPartStock, error) {
+	rows, err := q.db.Query(ctx, listSnapshotStock, snapshotID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []BomSnapshotPartStock
+	for rows.Next() {
+		var i BomSnapshotPartStock
+		if err := rows.Scan(&i.SnapshotID, &i.PartID, &i.Quantity); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

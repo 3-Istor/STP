@@ -40,6 +40,8 @@ func (r iteratorForInsertSnapshotNodes) Values() ([]interface{}, error) {
 		r.rows[0].MassKg,
 		r.rows[0].ProductionDays,
 		r.rows[0].LeadTimeDays,
+		r.rows[0].LaborHours,
+		r.rows[0].Strategy,
 	}, nil
 }
 
@@ -50,5 +52,40 @@ func (r iteratorForInsertSnapshotNodes) Err() error {
 // Tous les nœuds en un COPY : 30 000 nœuds ne font pas 30 000 allers-retours. La FK vers le parent est
 // différée (migration 00002) : l'ordre d'insertion est libre, elle est vérifiée au commit.
 func (q *Queries) InsertSnapshotNodes(ctx context.Context, arg []InsertSnapshotNodesParams) (int64, error) {
-	return q.db.CopyFrom(ctx, []string{"bom_snapshot_nodes"}, []string{"snapshot_id", "node_key", "parent_key", "name", "part_id", "offer_id", "quantity", "co2_kg", "mass_kg", "production_days", "lead_time_days"}, &iteratorForInsertSnapshotNodes{rows: arg})
+	return q.db.CopyFrom(ctx, []string{"bom_snapshot_nodes"}, []string{"snapshot_id", "node_key", "parent_key", "name", "part_id", "offer_id", "quantity", "co2_kg", "mass_kg", "production_days", "lead_time_days", "labor_hours", "strategy"}, &iteratorForInsertSnapshotNodes{rows: arg})
+}
+
+// iteratorForInsertSnapshotStock implements pgx.CopyFromSource.
+type iteratorForInsertSnapshotStock struct {
+	rows                 []InsertSnapshotStockParams
+	skippedFirstNextCall bool
+}
+
+func (r *iteratorForInsertSnapshotStock) Next() bool {
+	if len(r.rows) == 0 {
+		return false
+	}
+	if !r.skippedFirstNextCall {
+		r.skippedFirstNextCall = true
+		return true
+	}
+	r.rows = r.rows[1:]
+	return len(r.rows) > 0
+}
+
+func (r iteratorForInsertSnapshotStock) Values() ([]interface{}, error) {
+	return []interface{}{
+		r.rows[0].SnapshotID,
+		r.rows[0].PartID,
+		r.rows[0].Quantity,
+	}, nil
+}
+
+func (r iteratorForInsertSnapshotStock) Err() error {
+	return nil
+}
+
+// Stock figé (ADR 0022), en un COPY comme les nœuds.
+func (q *Queries) InsertSnapshotStock(ctx context.Context, arg []InsertSnapshotStockParams) (int64, error) {
+	return q.db.CopyFrom(ctx, []string{"bom_snapshot_part_stock"}, []string{"snapshot_id", "part_id", "quantity"}, &iteratorForInsertSnapshotStock{rows: arg})
 }

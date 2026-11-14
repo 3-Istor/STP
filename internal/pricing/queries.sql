@@ -166,3 +166,44 @@ INSERT INTO price_snapshot_quotes(snapshot_id,price_quote_id,offer_id) VALUES ($
 
 -- name: LinkSnapshotFX :exec
 INSERT INTO price_snapshot_fx(snapshot_id,fx_quote_id,base_currency,quote_currency) VALUES ($1,$2,$3,$4);
+
+-- Coût total rendu (ADR 0025) : tables paramétrables et emballage des offres.
+-- name: GetCustomsDuty :one
+SELECT * FROM customs_duties WHERE origin_country = $1 AND destination_country = $2;
+
+-- name: ListCustomsDuties :many
+SELECT * FROM customs_duties ORDER BY origin_country, destination_country;
+
+-- name: UpsertCustomsDuty :one
+INSERT INTO customs_duties (origin_country, destination_country, duty_percent) VALUES ($1, $2, $3)
+ON CONFLICT (origin_country, destination_country) DO UPDATE SET duty_percent = EXCLUDED.duty_percent
+RETURNING *;
+
+-- name: GetFreightRate :one
+SELECT * FROM freight_rates WHERE origin_country = $1 AND destination_country = $2;
+
+-- name: ListFreightRates :many
+SELECT * FROM freight_rates ORDER BY origin_country, destination_country;
+
+-- name: UpsertFreightRate :one
+INSERT INTO freight_rates (origin_country, destination_country, amount_per_kg, currency) VALUES ($1, $2, $3, $4)
+ON CONFLICT (origin_country, destination_country)
+    DO UPDATE SET amount_per_kg = EXCLUDED.amount_per_kg, currency = EXCLUDED.currency
+RETURNING *;
+
+-- name: GetOfferPackaging :one
+SELECT id, packaging_amount, packaging_currency FROM offers WHERE id = $1;
+
+-- name: SetOfferPackaging :one
+UPDATE offers SET packaging_amount = $2, packaging_currency = $3
+WHERE id = $1
+RETURNING id, packaging_amount, packaging_currency;
+
+-- name: ClearOfferPackaging :execrows
+UPDATE offers SET packaging_amount = NULL, packaging_currency = NULL WHERE id = $1;
+
+-- name: DeleteCustomsDuty :exec
+DELETE FROM customs_duties WHERE origin_country = $1 AND destination_country = $2;
+
+-- name: DeleteFreightRate :exec
+DELETE FROM freight_rates WHERE origin_country = $1 AND destination_country = $2;

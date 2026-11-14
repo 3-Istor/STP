@@ -17,14 +17,17 @@ type memStore struct {
 	mu        sync.Mutex
 	boms      map[int64]BOM
 	nodes     map[int64]Node
-	published map[int64]bool // BOM qui ont un snapshot publié
+	published map[int64]bool               // BOM qui ont un snapshot publié
+	stock     map[[2]int64]decimal.Decimal // (bom, pièce) → quantité
+	schedules map[int64]Schedule
 	nextID    int64
 }
 
 var _ Store = (*memStore)(nil)
 
 func newMemStore() *memStore {
-	return &memStore{boms: map[int64]BOM{}, nodes: map[int64]Node{}, published: map[int64]bool{}}
+	return &memStore{boms: map[int64]BOM{}, nodes: map[int64]Node{}, published: map[int64]bool{}, stock: map[[2]int64]decimal.Decimal{},
+		schedules: map[int64]Schedule{}}
 }
 
 func (m *memStore) id() int64 { m.nextID++; return m.nextID }
@@ -33,6 +36,10 @@ func (m *memStore) CreateBOM(_ context.Context, b NewBOM) (BOM, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	out := BOM{ID: m.id(), Name: b.Name, Currency: b.Currency, Volume: b.Volume, SourceSnapshotID: b.SourceSnapshotID}
+	if b.AnnualHours != nil {
+		out.AnnualHours = *b.AnnualHours
+	}
+	out.DestinationCountry = b.DestinationCountry
 	m.boms[out.ID] = out
 	root := Node{ID: m.id(), BOMID: out.ID, Name: b.Name, Quantity: decimal.NewFromInt(1)}
 	m.nodes[root.ID] = root
@@ -82,6 +89,70 @@ func (m *memStore) RenameBOM(_ context.Context, id int64, name string) (BOM, err
 
 func (m *memStore) UpdateSettings(_ context.Context, id int64, currency string, volume int32) (BOM, error) {
 	return m.updateBOM(id, func(b *BOM) { b.Currency, b.Volume = currency, volume })
+}
+
+func (m *memStore) Stock(_ context.Context, bomID int64) ([]PartStock, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	var out []PartStock
+	for k, q := range m.stock {
+		if k[0] == bomID {
+			out = append(out, PartStock{PartID: k[1], Quantity: q})
+		}
+	}
+	slices.SortFunc(out, func(a, b PartStock) int { return cmp.Compare(a.PartID, b.PartID) })
+	return out, nil
+}
+
+func (m *memStore) SetStock(_ context.Context, bomID int64, st PartStock) (PartStock, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if _, err := m.getBOM(bomID); err != nil {
+		return PartStock{}, err
+	}
+	m.stock[[2]int64{bomID, st.PartID}] = st.Quantity
+	return st, nil
+}
+
+func (m *memStore) DeleteStock(_ context.Context, bomID, partID int64) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	delete(m.stock, [2]int64{bomID, partID})
+	return nil
+}
+
+func (m *memStore) Schedule(_ context.Context, bomID int64) (*Schedule, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if s, ok := m.schedules[bomID]; ok {
+		return &s, nil
+	}
+	return nil, nil
+}
+
+func (m *memStore) SetSchedule(_ context.Context, bomID int64, s Schedule) (Schedule, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if _, err := m.getBOM(bomID); err != nil {
+		return Schedule{}, err
+	}
+	m.schedules[bomID] = s
+	return s, nil
+}
+
+func (m *memStore) DeleteSchedule(_ context.Context, bomID int64) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	delete(m.schedules, bomID)
+	return nil
+}
+
+func (m *memStore) SetDestination(_ context.Context, id int64, c *string) (BOM, error) {
+	return m.updateBOM(id, func(b *BOM) { b.DestinationCountry = c })
+}
+
+func (m *memStore) SetAnnualHours(_ context.Context, id int64, hours decimal.Decimal) (BOM, error) {
+	return m.updateBOM(id, func(b *BOM) { b.AnnualHours = hours })
 }
 
 func (m *memStore) SetPriceSnapshot(_ context.Context, id int64, snapshotID *int64) (BOM, error) {
@@ -173,6 +244,20 @@ func (m *memStore) SetNodeQuantity(_ context.Context, bomID, nodeID int64, qty d
 
 func (m *memStore) SetNodeProductionDays(_ context.Context, bomID, nodeID int64, days int32) (Node, error) {
 	return m.updateNode(bomID, nodeID, func(n *Node) error { n.ProductionDays = days; return nil })
+}
+
+func (m *memStore) SetNodeStrategy(_ context.Context, bomID, nodeID int64, s *Strategy) (Node, error) {
+	return m.updateNode(bomID, nodeID, func(n *Node) error { n.Strategy = s; return nil })
+}
+
+func (m *memStore) SetNodePart(_ context.Context, bomID, nodeID, partID, offerID int64) (Node, error) {
+	return m.updateNode(bomID, nodeID, func(n *Node) error {
+		if !n.IsPart() {
+			return ErrNotAPart
+		}
+		n.PartID, n.OfferID = &partID, &offerID
+		return nil
+	})
 }
 
 func (m *memStore) MoveNode(_ context.Context, bomID, nodeID, newParentID int64) (Node, error) {

@@ -5,6 +5,8 @@ import { formatDate } from '../money.ts'
 import { BomTree } from './BomTree.tsx'
 import { NodePanel } from './NodePanel.tsx'
 import { Totals } from './Totals.tsx'
+import { PlanningPanel } from './PlanningPanel.tsx'
+import { Workforce } from './Workforce.tsx'
 
 // SnapshotView : snapshot publié, en lecture seule (S2). Pour le modifier : nouveau brouillon (D3).
 export function SnapshotView({
@@ -52,6 +54,10 @@ export function SnapshotView({
           <p className="muted small">
             Publié le {formatDate(s.published_at)} · {s.currency} · {s.volume} u. · lecture seule
           </p>
+          <Workforce nodes={data.nodes} annualHours={s.annual_hours} catalog={catalog} readOnly />
+          {data.planning && (
+            <PlanningPanel planning={data.planning} nodes={data.nodes} catalog={catalog} readOnly onSelect={setSelectedID} />
+          )}
         </div>
         {root?.totals && <Totals totals={root.totals} explanation={data.explanation} />}
         <div className="actions">
@@ -99,6 +105,8 @@ export function SnapshotView({
             onPatch={async () => false}
             onStartMove={() => {}}
             onDelete={() => {}}
+            stock={data.stock ?? []}
+            bomID={s.bom_id}
           />
         ) : (
           <aside className="panel muted">Sélectionnez un nœud pour voir son détail.</aside>

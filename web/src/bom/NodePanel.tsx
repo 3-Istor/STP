@@ -1,7 +1,12 @@
 import { useState, type FormEvent } from 'react'
-import type { Explanation, NewNode, NodePatch, TreeNode } from '../api.ts'
+import type { Explanation, NewNode, NodeAnomaly, NodePatch, StockLine, TreeNode } from '../api.ts'
 import { partName, type Catalog } from '../catalog.ts'
 import { formatDate, formatDecimal, formatMoney, multiplyDecimal } from '../money.ts'
+import { AnomalyFacts } from './Anomalies.tsx'
+import { LandedPanel } from './LandedPanel.tsx'
+import { MakeOrBuyPanel } from './MakeOrBuyPanel.tsx'
+import { StockPanel } from './StockPanel.tsx'
+import { StrategyPanel } from './StrategyPanel.tsx'
 
 type Props = {
   node: TreeNode
@@ -14,6 +19,13 @@ type Props = {
   onPatch: (p: NodePatch) => Promise<boolean>
   onStartMove: () => void
   onDelete: () => void
+  stock: StockLine[]
+  bomID: number
+  anomaly?: NodeAnomaly
+  treeVersion?: number
+  // destination : pays de destination de la BOM ; undefined = pas de comparaison (snapshot en lecture seule).
+  destination?: string | null
+  onSetStock?: (partID: number, quantity: string) => Promise<boolean>
 }
 
 // NodePanel : détail d'un nœud à la demande (AGENTS §5) — totaux, sur quoi ils reposent, quantités
@@ -65,7 +77,43 @@ export function NodePanel(p: Props) {
           <dd>
             {t.lead_time_days} j (dont {t.own_lead_time_days} j propres)
           </dd>
+          <dt>Main-d'œuvre</dt>
+          <dd className={t.labor_error ? 'over' : undefined}>
+            {t.labor_hours
+              ? `${formatDecimal(t.labor_hours, 2)} h par véhicule${t.fte ? ` · ${formatDecimal(t.fte, 2)} ETP` : ''}`
+              : `indisponible (pièces sans heures : ${t.missing_labor.join(', ')})`}
+          </dd>
         </dl>
+      )}
+
+      <AnomalyFacts anomaly={p.anomaly} />
+
+      <StrategyPanel
+        key={`strategy-${node.id}-${p.treeVersion ?? 0}`}
+        bomID={p.bomID}
+        node={node}
+        catalog={catalog}
+        readOnly={readOnly}
+        onPatch={p.onPatch}
+      />
+
+      {!isPart && !readOnly && p.destination !== undefined && (
+        <MakeOrBuyPanel key={`mob-${node.id}-${p.treeVersion ?? 0}`} bomID={p.bomID} nodeID={node.id} currency={explanation.currency} />
+      )}
+
+      {isPart && !readOnly && p.destination !== undefined && (
+        <LandedPanel key={`landed-${node.id}-${p.treeVersion ?? 0}`} bomID={p.bomID} node={node} catalog={catalog} destination={p.destination} />
+      )}
+
+      {isPart && (
+        <StockPanel
+          key={`stock-${node.id}-${p.stock.find((s) => s.part_id === node.part_id)?.quantity ?? '0'}`}
+          node={node}
+          stock={p.stock}
+          volume={volume}
+          readOnly={readOnly}
+          onSetStock={p.onSetStock}
+        />
       )}
 
       <details>

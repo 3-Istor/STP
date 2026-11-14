@@ -361,3 +361,98 @@ func TestAddPartAndChangeOffer(t *testing.T) {
 		})
 	}
 }
+
+// ADR 0022 : le stock est propre à la BOM ; une BOM inconnue est ErrBOMNotFound, une quantité négative est
+// refusée par la base, et supprimer la BOM supprime son stock.
+func TestStoreStock(t *testing.T) {
+	tx := testDB(t)
+	ctx := t.Context()
+	cat := newCatalog(t, tx)
+	s := bomstore.New(tx)
+	a, err := s.CreateBOM(ctx, bom.NewBOM{Name: "A", Currency: "EUR", Volume: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	other, err := s.CreateBOM(ctx, bom.NewBOM{Name: "B", Currency: "EUR", Volume: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.SetStock(ctx, a.ID, bom.PartStock{PartID: cat.part1, Quantity: dec("3")}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.SetStock(ctx, a.ID, bom.PartStock{PartID: cat.part1, Quantity: dec("7.5")}); err != nil {
+		t.Fatalf("upsert: %v", err)
+	}
+	st, err := s.Stock(ctx, a.ID)
+	if err != nil || len(st) != 1 || !st[0].Quantity.Equal(dec("7.5")) {
+		t.Fatalf("stock A = %v, %v ; want part1 × 7.5", st, err)
+	}
+	if st, _ := s.Stock(ctx, other.ID); len(st) != 0 {
+		t.Fatalf("stock B = %v, want none (pas de partage entre BOM)", st)
+	}
+	sp := savepoint(t, tx)
+	if _, err := bomstore.New(sp).SetStock(ctx, 999999, bom.PartStock{PartID: cat.part1, Quantity: dec("1")}); !errors.Is(err, bom.ErrBOMNotFound) {
+		t.Fatalf("unknown bom: err = %v, want ErrBOMNotFound", err)
+	}
+	_ = sp.Rollback(ctx)
+	sp = savepoint(t, tx)
+	if _, err := bomstore.New(sp).SetStock(ctx, a.ID, bom.PartStock{PartID: cat.part1, Quantity: dec("-1")}); err == nil {
+		t.Fatal("negative stock accepted by the database")
+	}
+	_ = sp.Rollback(ctx)
+	if err := s.DeleteBOM(ctx, a.ID); err != nil {
+		t.Fatal(err)
+	}
+	var n int
+	if err := tx.QueryRow(ctx, `SELECT count(*) FROM bom_part_stock WHERE bom_id = $1`, a.ID).Scan(&n); err != nil || n != 0 {
+		t.Fatalf("stock left after delete: %d, %v", n, err)
+	}
+}
+
+func dec(s string) decimal.Decimal { return decimal.RequireFromString(s) }
+
+// ADR 0028 : stratégie d'un nœud (contrainte de la base) et remplacement de la pièce d'un nœud.
+func TestStoreStrategyAndReplacePart(t *testing.T) {
+	tx := testDB(t)
+	ctx := t.Context()
+	cat := newCatalog(t, tx)
+	s := bomstore.New(tx)
+	b, err := s.CreateBOM(ctx, bom.NewBOM{Name: "S", Currency: "EUR", Volume: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	nodes, err := s.Tree(ctx, b.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	root := nodes[0].ID
+	p, err := s.AddNode(ctx, b.ID, bom.NewNode{ParentID: root, PartID: &cat.part1, OfferID: &cat.offer1a, Quantity: dec("2")})
+	if err != nil {
+		t.Fatal(err)
+	}
+	st := bom.StrategyBalanced
+	got, err := s.SetNodeStrategy(ctx, b.ID, root, &st)
+	if err != nil || got.Strategy == nil || *got.Strategy != st {
+		t.Fatalf("set strategy: %+v, %v", got, err)
+	}
+	if got, err = s.SetNodeStrategy(ctx, b.ID, root, nil); err != nil || got.Strategy != nil {
+		t.Fatalf("clear strategy: %+v, %v", got, err)
+	}
+	sp := savepoint(t, tx)
+	bad := bom.Strategy("cheapest")
+	if _, err := bomstore.New(sp).SetNodeStrategy(ctx, b.ID, root, &bad); err == nil {
+		t.Fatal("unknown strategy accepted by the database")
+	}
+	_ = sp.Rollback(ctx)
+
+	n, err := s.SetNodePart(ctx, b.ID, p.ID, cat.part2, cat.off2)
+	if err != nil || *n.PartID != cat.part2 || *n.OfferID != cat.off2 || !n.Quantity.Equal(dec("2")) {
+		t.Fatalf("set part: %+v, %v", n, err)
+	}
+	if _, err := s.SetNodePart(ctx, b.ID, root, cat.part2, cat.off2); !errors.Is(err, bom.ErrNotAPart) {
+		t.Fatalf("set part of a sub-assembly: err %v, want ErrNotAPart", err)
+	}
+	if _, err := s.SetNodePart(ctx, b.ID, 999999, cat.part2, cat.off2); !errors.Is(err, bom.ErrNodeNotFound) {
+		t.Fatalf("set part of unknown node: err %v, want ErrNodeNotFound", err)
+	}
+}

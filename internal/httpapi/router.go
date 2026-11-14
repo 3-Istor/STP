@@ -26,6 +26,8 @@ type Services struct {
 	// BOMs et Snapshots (snapshots de BOM) : routes /api/v1/boms et /api/v1/snapshots.
 	BOMs      BOMService
 	Snapshots SnapshotService
+	// Logistics : tables de douane, de transport et emballage (coût total rendu, ADR 0025).
+	Logistics *pricing.LogisticsService
 	// Now donne l'instant d'un gel de prix ou d'une publication (le domaine n'a pas d'horloge) ;
 	// time.Now si nil.
 	Now func() time.Time
@@ -56,6 +58,9 @@ func NewRouter(services ...Services) http.Handler {
 	}
 	if s.Catalog != nil && s.Supplier != nil && s.History != nil {
 		supplierOffersReader{catalog: s.Catalog, suppliers: s.Supplier, history: s.History, prices: s.Pricing}.register(mux)
+	}
+	if s.Logistics != nil {
+		logisticsHandler{service: s.Logistics}.register(mux)
 	}
 	if s.BOMs != nil && s.Snapshots != nil {
 		now := s.Now

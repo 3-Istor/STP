@@ -1,7 +1,7 @@
 package snapshot
 
 import (
-	"cmp"
+	"container/heap"
 	"context"
 	"errors"
 	"fmt"
@@ -29,7 +29,13 @@ type Snapshot struct {
 	Name            string
 	Currency        string // devise de référence, ISO 4217
 	Volume          int32
-	PublishedAt     time.Time
+	// AnnualHours : base horaire annuelle d'un ETP figée (ADR 0024) ; nil pour un snapshot publié avant.
+	AnnualHours *decimal.Decimal
+	// Schedule : date de départ et date cible figées (ADR 0023) ; nil si le brouillon n'en avait pas.
+	Schedule *bom.Schedule
+	// DestinationCountry : pays de destination figé (ADR 0025) ; nil si non renseigné.
+	DestinationCountry *string
+	PublishedAt        time.Time
 }
 
 // Node est un nœud figé. Key / ParentKey reprennent les ids des nœuds du brouillon à la publication.
@@ -42,6 +48,8 @@ type Node struct {
 	ProductionDays int32
 	// Part : attributs figés d'une pièce ; nil pour un sous-ensemble.
 	Part *Part
+	// Strategy : stratégie attachée au nœud à la publication (ADR 0028) ; nil = héritée ou aucune.
+	Strategy *bom.Strategy
 }
 
 // Part porte ce qu'une pièce publiée a copié du catalogue : ils ne suivent plus le catalogue ensuite.
@@ -51,17 +59,21 @@ type Part struct {
 	CO2Kg        decimal.Decimal
 	MassKg       decimal.Decimal
 	LeadTimeDays int32 // délai de livraison de l'offre
+	// LaborHours : heures de main-d'œuvre par unité copiées du catalogue ; nil si absentes (ADR 0024).
+	LaborHours *decimal.Decimal
 }
 
 // Store est l'accès aux snapshots de BOM. Il n'a aucune méthode de modification ni de suppression
 // (la base les refuse aussi, ADR 0006). L'implémentation Postgres vit dans snapshot/snapshotstore.
 type Store interface {
-	// Create insère l'en-tête et tous les nœuds dans une même transaction ; s.ID est ignoré.
-	Create(ctx context.Context, s Snapshot, nodes []Node) (Snapshot, error)
+	// Create insère l'en-tête, tous les nœuds et le stock figé dans une même transaction ; s.ID est ignoré.
+	Create(ctx context.Context, s Snapshot, nodes []Node, stock []bom.PartStock) (Snapshot, error)
 	// Get renvoie l'en-tête, ou ErrSnapshotNotFound.
 	Get(ctx context.Context, id int64) (Snapshot, error)
 	// Nodes renvoie tous les nœuds du snapshot en une requête, triés par Key.
 	Nodes(ctx context.Context, id int64) ([]Node, error)
+	// Stock renvoie le stock figé, trié par pièce ; vide pour un snapshot publié avant ADR 0022.
+	Stock(ctx context.Context, id int64) ([]bom.PartStock, error)
 }
 
 // Service publie et lit les snapshots de BOM. Il lit et crée les brouillons via bom.Service
@@ -82,7 +94,9 @@ func NewService(s Store, boms *bom.Service, c catalog.Catalog, p pricing.Pricing
 type Published struct {
 	Snapshot Snapshot
 	Nodes    []Node // triés par Key
+	Stock    []bom.PartStock
 	Totals   bom.Totals
+	Planning bom.Planning
 }
 
 // Publish fige le brouillon bomID (R10) : structure, quantités, offres, attributs des pièces (CO2, masse,
@@ -95,7 +109,15 @@ func (s *Service) Publish(ctx context.Context, bomID int64, at time.Time) (Snaps
 	if err != nil {
 		return Snapshot{}, fmt.Errorf("publish bom %d: %w", bomID, err)
 	}
+	sch, err := s.boms.Schedule(ctx, bomID)
+	if err != nil {
+		return Snapshot{}, fmt.Errorf("publish bom %d: %w", bomID, err)
+	}
 	nodes, err := s.freezeNodes(ctx, draft)
+	if err != nil {
+		return Snapshot{}, fmt.Errorf("publish bom %d: %w", bomID, err)
+	}
+	stock, err := s.boms.Stock(ctx, bomID)
 	if err != nil {
 		return Snapshot{}, fmt.Errorf("publish bom %d: %w", bomID, err)
 	}
@@ -115,8 +137,9 @@ func (s *Service) Publish(ctx context.Context, bomID int64, at time.Time) (Snaps
 	}
 
 	out, err := s.store.Create(ctx, Snapshot{
-		BOMID: b.ID, PriceSnapshotID: priceSnapID, Name: b.Name, Currency: b.Currency, Volume: b.Volume, PublishedAt: at,
-	}, nodes)
+		BOMID: b.ID, PriceSnapshotID: priceSnapID, Name: b.Name, Currency: b.Currency, Volume: b.Volume,
+		AnnualHours: &b.AnnualHours, Schedule: sch, DestinationCountry: b.DestinationCountry, PublishedAt: at,
+	}, nodes, stock)
 	if err != nil {
 		return Snapshot{}, fmt.Errorf("publish bom %d: %w", bomID, err)
 	}
@@ -130,7 +153,10 @@ func (s *Service) freezeNodes(ctx context.Context, draft []bom.Node) ([]Node, er
 	offers := map[int64]catalog.Offer{}
 	out := make([]Node, len(draft))
 	for i, n := range draft {
-		out[i] = Node{Key: n.ID, ParentKey: n.ParentID, Name: n.Name, Quantity: n.Quantity, ProductionDays: n.ProductionDays}
+		out[i] = Node{
+			Key: n.ID, ParentKey: n.ParentID, Name: n.Name, Quantity: n.Quantity, ProductionDays: n.ProductionDays,
+			Strategy: n.Strategy,
+		}
 		if !n.IsPart() {
 			continue
 		}
@@ -164,7 +190,10 @@ func (s *Service) freezeNodes(ctx context.Context, draft []bom.Node) ([]Node, er
 		}
 		out[i].Name = ""
 		out[i].ProductionDays = prod
-		out[i].Part = &Part{PartID: p.ID, OfferID: o.ID, CO2Kg: attrs.CO2KGPerUnit, MassKg: attrs.MassKG, LeadTimeDays: lead}
+		out[i].Part = &Part{
+			PartID: p.ID, OfferID: o.ID, CO2Kg: attrs.CO2KGPerUnit, MassKg: attrs.MassKG, LeadTimeDays: lead,
+			LaborHours: p.LaborHours,
+		}
 	}
 	return out, nil
 }
@@ -214,6 +243,10 @@ func (s *Service) Get(ctx context.Context, id int64) (Published, error) {
 	if err != nil {
 		return Published{}, fmt.Errorf("get snapshot %d: %w", id, err)
 	}
+	stock, err := s.store.Stock(ctx, id)
+	if err != nil {
+		return Published{}, fmt.Errorf("get snapshot %d: %w", id, err)
+	}
 	currency := money.Currency(h.Currency)
 	prices, rates, err := bom.LoadPrices(ctx, s.pricing, &h.PriceSnapshotID, offerIDs(nodes), currency)
 	if err != nil {
@@ -223,16 +256,24 @@ func (s *Service) Get(ctx context.Context, id int64) (Published, error) {
 	for i, n := range nodes {
 		calc[i] = bom.CalcNode{ID: n.Key, ParentID: n.ParentKey, Quantity: n.Quantity, ProductionDays: int(n.ProductionDays)}
 		if p := n.Part; p != nil {
-			calc[i].Part = &bom.PartFacts{OfferID: p.OfferID, LeadTimeDays: int(p.LeadTimeDays), CO2Kg: p.CO2Kg, MassKg: p.MassKg}
+			calc[i].Part = &bom.PartFacts{
+				PartID: p.PartID, OfferID: p.OfferID, LeadTimeDays: int(p.LeadTimeDays), CO2Kg: p.CO2Kg, MassKg: p.MassKg, LaborHours: p.LaborHours,
+			}
 		}
 	}
 	t, err := bom.ComputeTotals(bom.TotalsInput{
 		Nodes: calc, Currency: currency, Prices: prices, Rates: rates, PriceSnapshotID: &h.PriceSnapshotID,
+		Volume: h.Volume, AnnualHours: h.AnnualHours, Stock: bom.StockMap(stock),
+		LaborNotFrozen: h.AnnualHours == nil, // publié avant ADR 0024 : heures non figées
 	})
 	if err != nil {
 		return Published{}, fmt.Errorf("get snapshot %d: %w", id, err)
 	}
-	return Published{Snapshot: h, Nodes: nodes, Totals: t}, nil
+	plan, err := bom.PlanSchedule(calc, t, h.Schedule)
+	if err != nil {
+		return Published{}, fmt.Errorf("get snapshot %d: %w", id, err)
+	}
+	return Published{Snapshot: h, Nodes: nodes, Stock: stock, Totals: t, Planning: plan}, nil
 }
 
 // NewDraft crée un nouveau brouillon depuis le snapshot (D3, R11) : une nouvelle BOM liée au snapshot par
@@ -248,11 +289,18 @@ func (s *Service) NewDraft(ctx context.Context, id int64) (bom.BOM, error) {
 	if err != nil {
 		return bom.BOM{}, fmt.Errorf("new draft from snapshot %d: %w", id, err)
 	}
-	b, err := s.boms.CreateBOM(ctx, bom.NewBOM{Name: h.Name, Currency: h.Currency, Volume: h.Volume, SourceSnapshotID: &h.ID})
+	stock, err := s.store.Stock(ctx, id)
 	if err != nil {
 		return bom.BOM{}, fmt.Errorf("new draft from snapshot %d: %w", id, err)
 	}
-	if err := s.copyTree(ctx, b.ID, nodes); err != nil {
+	b, err := s.boms.CreateBOM(ctx, bom.NewBOM{
+		Name: h.Name, Currency: h.Currency, Volume: h.Volume, SourceSnapshotID: &h.ID, AnnualHours: h.AnnualHours,
+		DestinationCountry: h.DestinationCountry,
+	})
+	if err != nil {
+		return bom.BOM{}, fmt.Errorf("new draft from snapshot %d: %w", id, err)
+	}
+	if err := s.copyDraft(ctx, b.ID, nodes, stock, h.Schedule); err != nil {
 		if delErr := s.boms.DeleteBOM(ctx, b.ID); delErr != nil {
 			err = errors.Join(err, fmt.Errorf("remove partial draft %d: %w", b.ID, delErr))
 		}
@@ -261,8 +309,26 @@ func (s *Service) NewDraft(ctx context.Context, id int64) (bom.BOM, error) {
 	return b, nil
 }
 
-// copyTree recopie l'arbre figé sous la racine du brouillon bomID, parents avant enfants, enfants par
-// Key croissante (ordre déterministe des nouveaux ids).
+// copyDraft recopie l'arbre, le stock (ADR 0022) et le planning (ADR 0023) figés dans le brouillon bomID.
+func (s *Service) copyDraft(ctx context.Context, bomID int64, nodes []Node, stock []bom.PartStock, sch *bom.Schedule) error {
+	if err := s.copyTree(ctx, bomID, nodes); err != nil {
+		return err
+	}
+	for _, st := range stock {
+		if _, err := s.boms.SetPartStock(ctx, bomID, st.PartID, st.Quantity); err != nil {
+			return fmt.Errorf("copy stock of part %d: %w", st.PartID, err)
+		}
+	}
+	if sch != nil {
+		if _, err := s.boms.SetSchedule(ctx, bomID, *sch); err != nil {
+			return fmt.Errorf("copy schedule: %w", err)
+		}
+	}
+	return nil
+}
+
+// copyTree recopie l'arbre figé sous la racine du brouillon bomID, parents avant enfants, par Key croissante
+// parmi les nœuds prêts (ordre déterministe des nouveaux ids).
 func (s *Service) copyTree(ctx context.Context, bomID int64, nodes []Node) error {
 	_, draft, err := s.boms.Tree(ctx, bomID)
 	if err != nil {
@@ -296,29 +362,63 @@ func (s *Service) copyTree(ctx context.Context, bomID int64, nodes []Node) error
 			return fmt.Errorf("root: %w", err)
 		}
 	}
-
-	type item struct{ key, newParent int64 }
-	stack := []item{{root.Key, draftRoot.ID}}
-	for len(stack) > 0 {
-		it := stack[len(stack)-1]
-		stack = stack[:len(stack)-1]
-		kids := children[it.key]
-		slices.SortFunc(kids, func(a, b Node) int { return cmp.Compare(a.Key, b.Key) })
-		for _, c := range kids {
-			nn := bom.NewNode{ParentID: it.newParent, Quantity: c.Quantity}
-			if c.Part != nil {
-				nn.PartID, nn.OfferID = &c.Part.PartID, &c.Part.OfferID
-			} else {
-				nn.Name, nn.ProductionDays = c.Name, c.ProductionDays
-			}
-			added, err := s.boms.AddNode(ctx, bomID, nn)
-			if err != nil {
-				return fmt.Errorf("copy node %d: %w", c.Key, err)
-			}
-			stack = append(stack, item{c.Key, added.ID})
+	if root.Strategy != nil {
+		if _, err := s.boms.SetNodeStrategy(ctx, bomID, draftRoot.ID, root.Strategy); err != nil {
+			return fmt.Errorf("root: %w", err)
 		}
 	}
+
+	// Les nœuds sont créés par clé croissante parmi ceux dont le parent existe déjà (tas) : les nouveaux ids
+	// gardent l'ordre des clés figées dès que chaque parent a une clé plus petite que ses enfants, donc la même
+	// répartition du stock, qui suit l'id de nœud (ADR 0022).
+	ready := &readyNodes{}
+	push := func(parentKey, newParent int64) {
+		for _, c := range children[parentKey] {
+			heap.Push(ready, readyNode{node: c, newParent: newParent})
+		}
+	}
+	push(root.Key, draftRoot.ID)
+	for ready.Len() > 0 {
+		it := heap.Pop(ready).(readyNode)
+		c := it.node
+		nn := bom.NewNode{ParentID: it.newParent, Quantity: c.Quantity}
+		if c.Part != nil {
+			nn.PartID, nn.OfferID = &c.Part.PartID, &c.Part.OfferID
+		} else {
+			nn.Name, nn.ProductionDays = c.Name, c.ProductionDays
+		}
+		added, err := s.boms.AddNode(ctx, bomID, nn)
+		if err != nil {
+			return fmt.Errorf("copy node %d: %w", c.Key, err)
+		}
+		if c.Strategy != nil {
+			if _, err := s.boms.SetNodeStrategy(ctx, bomID, added.ID, c.Strategy); err != nil {
+				return fmt.Errorf("copy strategy of node %d: %w", c.Key, err)
+			}
+		}
+		push(c.Key, added.ID)
+	}
 	return nil
+}
+
+// readyNode : nœud figé dont le parent est déjà recréé sous newParent.
+type readyNode struct {
+	node      Node
+	newParent int64
+}
+
+// readyNodes : tas min par clé figée (container/heap).
+type readyNodes []readyNode
+
+func (h readyNodes) Len() int           { return len(h) }
+func (h readyNodes) Less(i, j int) bool { return h[i].node.Key < h[j].node.Key }
+func (h readyNodes) Swap(i, j int)      { h[i], h[j] = h[j], h[i] }
+func (h *readyNodes) Push(x any)        { *h = append(*h, x.(readyNode)) }
+func (h *readyNodes) Pop() any {
+	old := *h
+	x := old[len(old)-1]
+	*h = old[:len(old)-1]
+	return x
 }
 
 // offerIDs renvoie les offres distinctes de l'arbre figé, triées (entrée déterministe).

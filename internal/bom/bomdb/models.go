@@ -12,13 +12,15 @@ import (
 )
 
 type Bom struct {
-	ID               int64
-	Name             string
-	Currency         string
-	Volume           int32
-	CreatedAt        time.Time
-	PriceSnapshotID  pgtype.Int8
-	SourceSnapshotID pgtype.Int8
+	ID                 int64
+	Name               string
+	Currency           string
+	Volume             int32
+	CreatedAt          time.Time
+	PriceSnapshotID    pgtype.Int8
+	SourceSnapshotID   pgtype.Int8
+	AnnualHours        decimal.Decimal
+	DestinationCountry pgtype.Text
 }
 
 type BomNode struct {
@@ -30,16 +32,33 @@ type BomNode struct {
 	OfferID        pgtype.Int8
 	Quantity       decimal.Decimal
 	ProductionDays int32
+	Strategy       pgtype.Text
+}
+
+type BomPartStock struct {
+	BomID    int64
+	PartID   int64
+	Quantity decimal.Decimal
+}
+
+type BomSchedule struct {
+	BomID    int64
+	StartOn  pgtype.Date
+	TargetOn pgtype.Date
 }
 
 type BomSnapshot struct {
-	ID              int64
-	BomID           int64
-	PriceSnapshotID int64
-	Name            string
-	Currency        string
-	Volume          int32
-	PublishedAt     time.Time
+	ID                 int64
+	BomID              int64
+	PriceSnapshotID    int64
+	Name               string
+	Currency           string
+	Volume             int32
+	PublishedAt        time.Time
+	AnnualHours        decimal.NullDecimal
+	StartOn            pgtype.Date
+	TargetOn           pgtype.Date
+	DestinationCountry pgtype.Text
 }
 
 type BomSnapshotNode struct {
@@ -54,6 +73,14 @@ type BomSnapshotNode struct {
 	MassKg         decimal.NullDecimal
 	ProductionDays int32
 	LeadTimeDays   pgtype.Int4
+	LaborHours     decimal.NullDecimal
+	Strategy       pgtype.Text
+}
+
+type BomSnapshotPartStock struct {
+	SnapshotID int64
+	PartID     int64
+	Quantity   decimal.Decimal
 }
 
 type Contract struct {
@@ -77,6 +104,19 @@ type ContractTier struct {
 	DiscountPercent decimal.Decimal
 }
 
+type CustomsDuty struct {
+	OriginCountry      string
+	DestinationCountry string
+	DutyPercent        decimal.Decimal
+}
+
+type FreightRate struct {
+	OriginCountry      string
+	DestinationCountry string
+	AmountPerKg        decimal.Decimal
+	Currency           string
+}
+
 type FxQuote struct {
 	ID            int64
 	BaseCurrency  string
@@ -88,17 +128,19 @@ type FxQuote struct {
 }
 
 type Offer struct {
-	ID            int64
-	PartID        int64
-	SupplierID    int64
-	Currency      string
-	PriceMin      decimal.Decimal
-	PriceMax      decimal.Decimal
-	LeadTimeDays  int32
-	OriginCountry string
-	CreatedAt     time.Time
-	QualityScore  decimal.NullDecimal
-	ArchivedAt    pgtype.Timestamptz
+	ID                int64
+	PartID            int64
+	SupplierID        int64
+	Currency          string
+	PriceMin          decimal.Decimal
+	PriceMax          decimal.Decimal
+	LeadTimeDays      int32
+	OriginCountry     string
+	CreatedAt         time.Time
+	QualityScore      decimal.NullDecimal
+	ArchivedAt        pgtype.Timestamptz
+	PackagingAmount   decimal.NullDecimal
+	PackagingCurrency pgtype.Text
 }
 
 type Part struct {

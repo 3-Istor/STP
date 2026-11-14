@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import type { TreeNode } from '../api.ts'
+import type { NodeAnomaly, TreeNode } from '../api.ts'
 import { partName, type Catalog } from '../catalog.ts'
-import { formatMoney } from '../money.ts'
+import { formatDecimal, formatMoney } from '../money.ts'
 import { flatten } from './flatten.ts'
+import { describeAnomaly } from './anomaly.ts'
+import { strategyLabels } from './strategy.ts'
 
 // Virtualisation faite à la main (spec NLPF-69, aucune dépendance) : l'arbre est aplati en lignes de
 // hauteur fixe et seules les lignes visibles (plus une marge) sont dans le DOM, quel que soit le nombre de nœuds.
@@ -19,9 +21,11 @@ type Props = {
   // Déplacement en cours : la ligne cliquée devient le nouveau parent du nœud `moving`.
   moving: number | null
   onPickParent: (parentID: number) => void
+  // Anomalies de coût par nœud (ADR 0027) : surbrillance des pièces suspectes, raison au survol.
+  anomalies?: ReadonlyMap<number, NodeAnomaly>
 }
 
-export function BomTree({ nodes, catalog, readOnly, selectedID, onSelect, onChangeOffer, moving, onPickParent }: Props) {
+export function BomTree({ nodes, catalog, readOnly, selectedID, onSelect, onChangeOffer, moving, onPickParent, anomalies }: Props) {
   const [collapsed, setCollapsed] = useState<ReadonlySet<number>>(() => new Set())
   const rows = useMemo(() => flatten(nodes, collapsed), [nodes, collapsed])
 
@@ -64,6 +68,8 @@ export function BomTree({ nodes, catalog, readOnly, selectedID, onSelect, onChan
           const classes = ['tree-row']
           if (n.id === selectedID) classes.push('selected')
           if (t?.cost_error_code) classes.push('has-error')
+          const anomaly = anomalies?.get(n.id)
+          if (anomaly?.status === 'anomaly') classes.push('anomaly')
           return (
             <div
               key={n.id}
@@ -90,6 +96,18 @@ export function BomTree({ nodes, catalog, readOnly, selectedID, onSelect, onChan
               </button>
               <span className="name" title={isPart ? partName(catalog, n.part_id!) : n.name}>
                 {isPart ? partName(catalog, n.part_id!) : n.name}
+                {t?.in_stock && <span className="badge ok">en stock</span>}
+                {n.strategy && <span className="badge">{strategyLabels[n.strategy]}</span>}
+                {anomaly?.status === 'anomaly' && (
+                  <span className="badge over" title={describeAnomaly(anomaly)}>
+                    ×{anomaly.ratio ? formatDecimal(anomaly.ratio, 2) : '?'}
+                  </span>
+                )}
+                {anomaly?.status === 'not_evaluable' && (
+                  <span className="badge muted" title={`Coût non évaluable : ${anomaly.reason ?? ''}`}>
+                    ?
+                  </span>
+                )}
               </span>
               <span className="qty">×{n.quantity}</span>
               {isPart && !readOnly && offers.length > 0 ? (

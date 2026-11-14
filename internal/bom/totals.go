@@ -19,6 +19,12 @@ var (
 	// ErrMissingCost : un descendant n'a pas de prix ou de taux ; le parent n'a pas de total de coût
 	// (ADR 0007 règle 5). NodeTotals.MissingCost liste les pièces en défaut.
 	ErrMissingCost = errors.New("cost unavailable: missing price or rate below")
+	// ErrMissingLabor : une pièce du sous-arbre n'a pas d'heures de main-d'œuvre au catalogue ; le nœud n'a
+	// ni heures ni ETP (ADR 0024). NodeTotals.MissingLabor liste les pièces en défaut.
+	ErrMissingLabor = errors.New("labor hours unavailable: part without labor hours below")
+	// ErrLaborNotFrozen : snapshot publié avant ADR 0024, ses heures n'ont pas été figées ; aucune heure ni
+	// aucun ETP n'est reconstruit depuis le catalogue courant (le snapshot ne bouge pas).
+	ErrLaborNotFrozen = errors.New("labor hours not frozen in this snapshot")
 )
 
 // CalcNode est un nœud tel que le calcul le voit, détaché de sa provenance (brouillon ou snapshot).
@@ -35,10 +41,13 @@ type CalcNode struct {
 
 // PartFacts porte ce qu'une pièce apporte au calcul : son offre et ses attributs unitaires.
 type PartFacts struct {
+	PartID       int64 // sert au stock (ADR 0022)
 	OfferID      int64
 	LeadTimeDays int // délai de livraison de l'offre
 	CO2Kg        decimal.Decimal
 	MassKg       decimal.Decimal
+	// LaborHours : heures de main-d'œuvre par unité ; nil si le catalogue ne les renseigne pas.
+	LaborHours *decimal.Decimal
 }
 
 // PriceResult est le prix d'une offre, ou l'erreur qui explique son absence (ex. pricing.ErrNoQuote).
@@ -63,6 +72,13 @@ type TotalsInput struct {
 	Rates map[money.Currency]RateResult
 	// PriceSnapshotID : nil = prix en direct ; sinon le snapshot de prix d'où viennent Prices et Rates.
 	PriceSnapshotID *int64
+	// Volume et AnnualHours servent aux ETP (ADR 0024) ; AnnualHours nil (ancien snapshot) → pas d'ETP.
+	Volume      int32
+	AnnualHours *decimal.Decimal
+	// LaborNotFrozen : snapshot sans heures figées → chaque nœud porte ErrLaborNotFrozen.
+	LaborNotFrozen bool
+	// Stock : quantité en stock par pièce, propre à la BOM (ADR 0022) ; absente = aucun stock.
+	Stock map[int64]decimal.Decimal
 }
 
 // NodeTotals est le total d'un nœud et ce sur quoi il repose.
@@ -92,6 +108,18 @@ type NodeTotals struct {
 	Quote *pricing.Quote
 	// Rate : pour une pièce convertie, le taux utilisé ; nil si même devise ou sans conversion.
 	Rate *pricing.Rate
+	// LaborHours : heures de main-d'œuvre par voiture du sous-arbre (heures × quantité réelle) ; nil si LaborErr.
+	LaborHours *decimal.Decimal
+	// LaborErr : ErrMissingLabor si une pièce du sous-arbre n'a pas d'heures ; MissingLabor les liste.
+	LaborErr     error
+	MissingLabor []int64
+	// FTE : LaborHours × volume ÷ base horaire annuelle, à ftePrecision décimales (arrondi d'affichage en
+	// sortie) ; nil sans heures ou sans base.
+	FTE *decimal.Decimal
+	// StockCovered : pour une pièce dont la BOM a du stock, quantité couverte (sur quantité réelle × volume) ;
+	// nil si la pièce n'a pas de stock. InStock : couverture totale → délai propre nul (ADR 0022).
+	StockCovered *decimal.Decimal
+	InStock      bool
 }
 
 // Explanation dit sur quoi reposent tous les totaux d'un calcul.
@@ -183,6 +211,7 @@ func ComputeTotals(in TotalsInput) (Totals, error) {
 		}
 		out[i] = NodeTotals{NodeID: nodes[i].ID, RealQuantity: qty}
 	}
+	allocateStock(nodes, out, in)
 
 	// Remontée : ordre inverse du pré-ordre, chaque enfant est calculé avant son parent.
 	// Chaque nœud = sa contribution propre (pièce) + celle de ses enfants (ADR 0007, ADR 0008).
@@ -198,9 +227,21 @@ func ComputeTotals(in TotalsInput) (Totals, error) {
 				cost = *t.OwnCost
 			}
 		}
+		labor := decimal.Zero
+		if n.Part != nil {
+			if h := n.Part.LaborHours; h != nil {
+				labor = h.Mul(t.RealQuantity)
+			} else {
+				t.MissingLabor = []int64{n.ID}
+			}
+		}
 		maxChild := 0
 		for _, c := range children[i] {
 			ct := out[c]
+			t.MissingLabor = append(t.MissingLabor, ct.MissingLabor...)
+			if ct.LaborHours != nil {
+				labor = labor.Add(*ct.LaborHours)
+			}
 			t.CO2Kg = t.CO2Kg.Add(ct.CO2Kg)
 			t.MassKg = t.MassKg.Add(ct.MassKg)
 			maxChild = max(maxChild, ct.LeadTimeDays)
@@ -212,6 +253,16 @@ func ComputeTotals(in TotalsInput) (Totals, error) {
 			}
 		}
 		t.LeadTimeDays = maxChild + t.OwnLeadTimeDays
+		switch {
+		case in.LaborNotFrozen:
+			t.MissingLabor = nil
+			t.LaborErr = fmt.Errorf("node %d: %w", n.ID, ErrLaborNotFrozen)
+		case len(t.MissingLabor) > 0:
+			t.LaborErr = fmt.Errorf("node %d: %d part(s) without labor hours: %w", n.ID, len(t.MissingLabor), ErrMissingLabor)
+		default:
+			t.LaborHours = &labor
+			t.FTE = fte(labor, in.Volume, in.AnnualHours)
+		}
 		switch {
 		case ownErr != nil:
 			t.CostErr = fmt.Errorf("node %d: %w", n.ID, ownErr)
@@ -236,6 +287,46 @@ func ComputeTotals(in TotalsInput) (Totals, error) {
 	}, nil
 }
 
+// allocateStock répartit le stock de chaque pièce entre ses nœuds, par id de nœud croissant (déterministe,
+// ADR 0022) : chaque nœud demande quantité réelle × volume. nodes est trié par id.
+func allocateStock(nodes []CalcNode, out []NodeTotals, in TotalsInput) {
+	if len(in.Stock) == 0 {
+		return
+	}
+	left := make(map[int64]decimal.Decimal, len(in.Stock))
+	for partID, q := range in.Stock {
+		left[partID] = q
+	}
+	volume := decimal.NewFromInt32(in.Volume)
+	for i, n := range nodes {
+		if n.Part == nil {
+			continue
+		}
+		avail, ok := left[n.Part.PartID]
+		if !ok {
+			continue
+		}
+		need := out[i].RealQuantity.Mul(volume)
+		covered := decimal.Min(avail, need)
+		left[n.Part.PartID] = avail.Sub(covered)
+		out[i].StockCovered = &covered
+		out[i].InStock = need.IsPositive() && covered.Equal(need)
+	}
+}
+
+// ftePrecision : décimales gardées par la division des ETP (le quotient n'est pas toujours fini) ; l'arrondi
+// d'affichage à 2 décimales se fait en sortie, bien au-delà de cette précision.
+const ftePrecision = 28
+
+// fte = heures par voiture × volume ÷ base horaire annuelle (ADR 0024) ; nil sans base horaire positive.
+func fte(hours decimal.Decimal, volume int32, annualHours *decimal.Decimal) *decimal.Decimal {
+	if annualHours == nil || !annualHours.IsPositive() {
+		return nil
+	}
+	v := hours.Mul(decimal.NewFromInt32(volume)).DivRound(*annualHours, ftePrecision)
+	return &v
+}
+
 // partOwnTotals pose la contribution propre d'une pièce, avant celle de ses enfants : coût = prix × quantité
 // réelle, converti dans la devise de la BOM ; CO2 et masse = valeur unitaire × quantité réelle ;
 // délai propre = livraison + production. Sans prix ou taux, la pièce se liste dans MissingCost (en tête :
@@ -245,6 +336,9 @@ func partOwnTotals(t *NodeTotals, n CalcNode, in TotalsInput, usedRates map[mone
 	t.CO2Kg = p.CO2Kg.Mul(t.RealQuantity)
 	t.MassKg = p.MassKg.Mul(t.RealQuantity)
 	t.OwnLeadTimeDays = p.LeadTimeDays + n.ProductionDays
+	if t.InStock { // déjà fabriquée et disponible : ni livraison ni production (ADR 0022)
+		t.OwnLeadTimeDays = 0
+	}
 
 	cost, err := partCost(t, p.OfferID, in, usedRates)
 	if err != nil {

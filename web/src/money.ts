@@ -45,3 +45,19 @@ export function multiplyDecimal(value: string, factor: number): string {
   if (frac.length > 0) s = `${s.slice(0, s.length - frac.length)}.${s.slice(s.length - frac.length)}`
   return (neg ? '-' : '') + s
 }
+
+// decimalInput lit une saisie décimale fr-FR ou en point (« 1 600,5 » → « 1600.5 ») sans passer par `number`.
+export function decimalInput(text: string): string {
+  return text.trim().replace(/[\s ]/g, '').replace(',', '.')
+}
+
+// sameDecimal compare deux chaînes décimales sans `number` : « 1600.50 » et « 1600.5 » sont égales.
+export function sameDecimal(a: string, b: string): boolean {
+  const canon = (s: string) => {
+    let [i, f = ''] = s.split('.')
+    i = i.replace(/^(-?)0+(?=\d)/, '$1')
+    f = f.replace(/0+$/, '')
+    return f ? `${i}.${f}` : i
+  }
+  return canon(a) === canon(b)
+}

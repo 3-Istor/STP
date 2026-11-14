@@ -61,6 +61,89 @@ func (f *fakeBOMs) RenameBOM(_ context.Context, id int64, name string) (bom.BOM,
 func (f *fakeBOMs) UpdateSettings(_ context.Context, id int64, c string, v int32) (bom.BOM, error) {
 	return draft, f.record("UpdateSettings %d %s %d", id, c, v)
 }
+func (f *fakeBOMs) SetAnnualHours(_ context.Context, id int64, h decimal.Decimal) (bom.BOM, error) {
+	return draft, f.record("SetAnnualHours %d %s", id, h)
+}
+func (f *fakeBOMs) Stock(_ context.Context, id int64) ([]bom.PartStock, error) {
+	return []bom.PartStock{{PartID: 10, Quantity: decimal.RequireFromString("40")}}, f.record("Stock %d", id)
+}
+func (f *fakeBOMs) SetPartStock(_ context.Context, id, partID int64, q decimal.Decimal) (bom.PartStock, error) {
+	err := f.record("SetPartStock %d %d %s", id, partID, q)
+	if partID == 404 && err == nil {
+		err = fmt.Errorf("part 404: %w", catalog.ErrPartNotFound)
+	}
+	return bom.PartStock{PartID: partID, Quantity: q}, err
+}
+func (f *fakeBOMs) SetSchedule(_ context.Context, id int64, s bom.Schedule) (bom.Schedule, error) {
+	target := "nil"
+	if s.TargetOn != nil {
+		target = s.TargetOn.Format(time.DateOnly)
+	}
+	return s, f.record("SetSchedule %d %s %s", id, s.StartOn.Format(time.DateOnly), target)
+}
+func (f *fakeBOMs) ClearSchedule(_ context.Context, id int64) error {
+	return f.record("ClearSchedule %d", id)
+}
+func (f *fakeBOMs) SetNodeStrategy(_ context.Context, bomID, nodeID int64, st *bom.Strategy) (bom.Node, error) {
+	v := "nil"
+	if st != nil {
+		v = string(*st)
+	}
+	return bom.Node{ID: nodeID, BOMID: bomID, Strategy: st}, f.record("SetNodeStrategy %d %d %s", bomID, nodeID, v)
+}
+func (f *fakeBOMs) ReplaceNodePart(_ context.Context, bomID, nodeID, partID, offerID int64) (bom.Node, error) {
+	return bom.Node{ID: nodeID, BOMID: bomID, PartID: &partID, OfferID: &offerID},
+		f.record("ReplaceNodePart %d %d %d %d", bomID, nodeID, partID, offerID)
+}
+func (f *fakeBOMs) Suggestions(_ context.Context, bomID, nodeID int64) (bom.Suggestions, error) {
+	cost, _ := money.Parse("12.5", "EUR")
+	return bom.Suggestions{
+		NodeID: nodeID, Strategy: bom.StrategyCO2, StrategyFrom: 1, RealQuantity: decimal.NewFromInt(2), Currency: "EUR",
+		Ranked: []bom.Ranked{{Candidate: bom.Candidate{PartID: 10, OfferID: 20, Cost: &cost, LeadDays: 3, CO2Kg: decimal.RequireFromString("1.5"), HasFacts: true},
+			Score: decimal.RequireFromString("0.123456")}},
+		Excluded: []bom.Candidate{{PartID: 11, OfferID: 21, Excluded: fmt.Errorf("offer 21: %w", pricing.ErrNoQuote)}},
+	}, f.record("Suggestions %d %d", bomID, nodeID)
+}
+func (f *fakeBOMs) CostAnomalies(_ context.Context, bomID int64, th decimal.Decimal) (bom.CostAnomalies, error) {
+	cost, _ := money.Parse("340", "EUR")
+	med, _ := money.Parse("100", "EUR")
+	ratio := decimal.RequireFromString("3.4")
+	return bom.CostAnomalies{Threshold: th, Currency: "EUR", Nodes: []bom.NodeAnomaly{
+		{NodeID: 3, Anomaly: pricing.Anomaly{PartID: 10, Category: "Freins", Status: pricing.AnomalyDetected, Cost: &cost,
+			Median: &med, Ratio: &ratio, Peers: 6}},
+		{NodeID: 4, Anomaly: pricing.Anomaly{PartID: 11, Category: "Vis", Status: pricing.AnomalyNotEvaluable, Peers: 2,
+			Err: fmt.Errorf("2 of 5 required: %w", pricing.ErrTooFewPeers)}},
+	}}, f.record("CostAnomalies %d %s", bomID, th)
+}
+func (f *fakeBOMs) SetDestinationCountry(_ context.Context, id int64, c *string) (bom.BOM, error) {
+	v := "nil"
+	if c != nil {
+		v = *c
+	}
+	b := draft
+	b.DestinationCountry = c
+	return b, f.record("SetDestinationCountry %d %s", id, v)
+}
+func (f *fakeBOMs) LandedCosts(_ context.Context, bomID, partID int64, offers []int64) (bom.LandedComparison, error) {
+	buy, _ := money.Parse("100", "EUR")
+	duty, _ := money.Parse("4.5", "EUR")
+	fr := "FR"
+	return bom.LandedComparison{PartID: partID, Currency: "EUR", Offers: []bom.OfferLanded{{
+		OfferID: offers[0], Origin: "CN", Destination: &fr,
+		Landed: pricing.Landed{
+			Purchase: pricing.Component{Amount: &buy}, Customs: pricing.Component{Amount: &duty},
+			Freight:   pricing.Component{Err: fmt.Errorf("freight CN→FR: %w", pricing.ErrNoFreightRate)},
+			Packaging: pricing.Component{Err: pricing.ErrNoPackaging}, Err: pricing.ErrNoFreightRate,
+		},
+	}}}, f.record("LandedCosts %d %d %v", bomID, partID, offers)
+}
+func (f *fakeBOMs) MakeOrBuy(_ context.Context, bomID, nodeID int64, req bom.MakeOrBuyRequest) (bom.MakeOrBuyResult, error) {
+	be := int64(2000)
+	mk, _ := money.Parse("160", "EUR")
+	return bom.MakeOrBuyResult{NodeID: nodeID, RealQuantity: decimal.NewFromInt(1), Volume: 1000, Currency: "EUR",
+			MakeOrBuy: pricing.MakeOrBuy{MakePerCar: &mk, BreakEvenVolume: &be}},
+		f.record("MakeOrBuy %d %d %s %s %s %s %s", bomID, nodeID, req.FixedCosts, req.LogisticsPerUnit, req.Tier1Price, req.Tier1Origin, req.Tier1Packaging)
+}
 func (f *fakeBOMs) DeleteBOM(_ context.Context, id int64) error {
 	return f.record("DeleteBOM %d", id)
 }
@@ -149,6 +232,26 @@ func TestRoutes(t *testing.T) {
 		{"patch bom name and settings together", "PATCH", "/api/v1/boms/7", `{"name":"B","currency":"USD","volume":5}`,
 			400, "", `"error":`},
 		{"patch bom currency without volume", "PATCH", "/api/v1/boms/7", `{"currency":"USD"}`, 400, "", `"error":`},
+		{"set annual hours", "PATCH", "/api/v1/boms/7", `{"annual_hours":"1600.5"}`, 200,
+			"SetAnnualHours 7 1600.5", `"annual_hours":`},
+		{"patch bom annual hours with name", "PATCH", "/api/v1/boms/7", `{"name":"B","annual_hours":"1600"}`,
+			400, "", `"error":`},
+		{"set destination", "PATCH", "/api/v1/boms/7", `{"destination_country":"FR"}`, 200, "SetDestinationCountry 7 FR",
+			`"destination_country":"FR"`},
+		{"clear destination", "PATCH", "/api/v1/boms/7", `{"destination_country":null}`, 200, "SetDestinationCountry 7 nil",
+			`"destination_country":null`},
+		{"destination with name", "PATCH", "/api/v1/boms/7", `{"name":"B","destination_country":"FR"}`, 400, "", `"error":`},
+		{"landed cost", "GET", "/api/v1/parts/10/landed-cost?bom_id=7&offer_ids=20,21", "", 200, "LandedCosts 7 10 [20 21]",
+			`"freight":{"amount":null,"error":"freight CN→FR: no freight rate for this origin and destination","error_code":"no_freight_rate"}`},
+		{"landed cost total null when a component is missing", "GET", "/api/v1/parts/10/landed-cost?bom_id=7&offer_ids=20", "", 200,
+			"LandedCosts 7 10 [20]", `"total":null`},
+		{"landed cost bad offers", "GET", "/api/v1/parts/10/landed-cost?bom_id=7&offer_ids=20,x", "", 400, "", `offer_ids`},
+		{"landed cost without bom", "GET", "/api/v1/parts/10/landed-cost?offer_ids=20", "", 400, "", `bom_id`},
+		{"make or buy", "POST", "/api/v1/boms/7/nodes/4/make-or-buy",
+			`{"fixed_costs":{"amount":"100000","currency":"EUR"},"logistics_per_unit":{"amount":"5","currency":"EUR"},` +
+				`"tier1_price":{"amount":"100","currency":"USD"},"tier1_origin":"CN","tier1_packaging":{"amount":"0","currency":"EUR"}}`,
+			200, "MakeOrBuy 7 4 100000.00 EUR 5.00 EUR 100.00 USD CN 0.00 EUR", `"make_per_car":{"amount":"160.00","currency":"EUR"}`},
+		{"make or buy missing field", "POST", "/api/v1/boms/7/nodes/4/make-or-buy", `{"tier1_origin":"CN"}`, 400, "", `required`},
 		{"patch bom empty body", "PATCH", "/api/v1/boms/7", `{}`, 400, "", `"error":`},
 		{"delete bom", "DELETE", "/api/v1/boms/7", "", 204, "DeleteBOM 7", ""},
 		{"tree", "GET", "/api/v1/boms/7/tree", "", 200, "Totals 7", `"nodes":`},
@@ -162,9 +265,38 @@ func TestRoutes(t *testing.T) {
 		{"move node", "PATCH", "/api/v1/boms/7/nodes/3", `{"parent_id":2}`, 200, "MoveNode 7 3 2", `"id":3`},
 		{"set production days", "PATCH", "/api/v1/boms/7/nodes/3", `{"production_days":3}`, 200,
 			"SetNodeProductionDays 7 3 3", `"id":3`},
+		{"set strategy", "PATCH", "/api/v1/boms/7/nodes/3", `{"strategy":"co2"}`, 200, "SetNodeStrategy 7 3 co2", `"strategy":"co2"`},
+		{"clear strategy", "PATCH", "/api/v1/boms/7/nodes/3", `{"strategy":null}`, 200, "SetNodeStrategy 7 3 nil", `"strategy":null`},
+		{"strategy not a string", "PATCH", "/api/v1/boms/7/nodes/3", `{"strategy":3}`, 400, "", `string or null`},
+		{"replace part", "PATCH", "/api/v1/boms/7/nodes/3", `{"part_id":12,"offer_id":22}`, 200, "ReplaceNodePart 7 3 12 22", `"part_id":12`},
+		{"part without offer", "PATCH", "/api/v1/boms/7/nodes/3", `{"part_id":12}`, 400, "", `exactly one`},
+		{"replace part and quantity", "PATCH", "/api/v1/boms/7/nodes/3", `{"part_id":12,"offer_id":22,"quantity":"2"}`, 400, "", `exactly one`},
+		{"suggestions", "GET", "/api/v1/boms/7/nodes/3/suggestions", "", 200, "Suggestions 7 3",
+			`"strategy":"co2","strategy_from":1`},
+		{"suggestions score rounded on output", "GET", "/api/v1/boms/7/nodes/3/suggestions", "", 200, "Suggestions 7 3",
+			`"cost":{"amount":"12.50","currency":"EUR"},"lead_time_days":3,"co2_kg":"1.5","quote":null,"rate":null,"score":"0.1235"`},
+		{"suggestions excluded with reason", "GET", "/api/v1/boms/7/nodes/3/suggestions", "", 200, "Suggestions 7 3",
+			`"offer_id":21,"current":false,"cost":null,"lead_time_days":null,"co2_kg":null`},
 		{"patch node two fields", "PATCH", "/api/v1/boms/7/nodes/3", `{"offer_id":21,"quantity":"2"}`, 400, "", `exactly one`},
 		{"patch node no field", "PATCH", "/api/v1/boms/7/nodes/3", `{}`, 400, "", `exactly one`},
 		{"delete node", "DELETE", "/api/v1/boms/7/nodes/3", "", 204, "DeleteNode 7 3", ""},
+		{"anomalies default threshold", "GET", "/api/v1/boms/7/anomalies", "", 200, "CostAnomalies 7 3",
+			`"status":"anomaly","unit_cost":{"amount":"340.00","currency":"EUR"},"median":{"amount":"100.00","currency":"EUR"},"ratio":"3.40"`},
+		{"anomalies not evaluable has a reason", "GET", "/api/v1/boms/7/anomalies?threshold=2.5", "", 200, "CostAnomalies 7 2.5",
+			`"status":"not_evaluable","unit_cost":null,"median":null,"ratio":null,"peers":2,"missing":0,"reason":"2 of 5 required`},
+		{"anomalies bad threshold", "GET", "/api/v1/boms/7/anomalies?threshold=abc", "", 400, "", `not a decimal`},
+		{"stock", "GET", "/api/v1/boms/7/stock", "", 200, "Stock 7", `[{"part_id":10,"quantity":"40"}]`},
+		{"set part stock", "PUT", "/api/v1/boms/7/stock/10", `{"quantity":"12.5"}`, 200, "SetPartStock 7 10 12.5",
+			`{"part_id":10,"quantity":"12.5"}`},
+		{"set stock of unknown part", "PUT", "/api/v1/boms/7/stock/404", `{"quantity":"1"}`, 404, "SetPartStock 7 404 1", `"error":`},
+		{"set part stock without quantity", "PUT", "/api/v1/boms/7/stock/10", `{}`, 400, "", `quantity is required`},
+		{"set schedule", "PUT", "/api/v1/boms/7/schedule", `{"start_on":"2026-12-01","target_on":"2027-02-01"}`, 200,
+			"SetSchedule 7 2026-12-01 2027-02-01", `{"start_on":"2026-12-01","target_on":"2027-02-01"}`},
+		{"set schedule without target", "PUT", "/api/v1/boms/7/schedule", `{"start_on":"2026-12-01"}`, 200,
+			"SetSchedule 7 2026-12-01 nil", `"target_on":null`},
+		{"set schedule without start", "PUT", "/api/v1/boms/7/schedule", `{"target_on":"2027-02-01"}`, 400, "", `start_on is required`},
+		{"set schedule bad date", "PUT", "/api/v1/boms/7/schedule", `{"start_on":"01/12/2026"}`, 400, "", `not a date`},
+		{"clear schedule", "DELETE", "/api/v1/boms/7/schedule", "", 204, "ClearSchedule 7", ""},
 		{"freeze prices", "POST", "/api/v1/boms/7/freeze-prices", "", 200, "FreezePrices 7 " + at, `"price_snapshot_id":5`},
 		{"unfreeze prices", "DELETE", "/api/v1/boms/7/freeze-prices", "", 200, "UnfreezePrices 7", `"price_snapshot_id":null`},
 		{"publish", "POST", "/api/v1/boms/7/publish", "", 201, "Publish 7 " + at, `"published_at":"` + at + `"`},
@@ -446,5 +578,77 @@ func TestSnapshotBody(t *testing.T) {
 		if !strings.Contains(body, want) {
 			t.Errorf("body = %s\nwant it to contain %s", body, want)
 		}
+	}
+}
+
+// TestTreeBodyLaborAndStock : heures, ETP (arrondi half-even à 2 décimales en sortie, ADR 0024) et stock
+// (ADR 0022) dans le JSON de l'arbre. 0,375 ETP → "0.38" (une troncature donnerait "0.37").
+func TestTreeBodyLaborAndStock(t *testing.T) {
+	one := decimal.NewFromInt(1)
+	hours := decimal.RequireFromString("0.375")
+	nodes := []bom.Node{
+		{ID: 1, BOMID: 7, Name: "Citadine", Quantity: one},
+		{ID: 2, BOMID: 7, ParentID: ptr(int64(1)), PartID: ptr(int64(10)), OfferID: ptr(int64(20)), Quantity: one},
+		{ID: 3, BOMID: 7, ParentID: ptr(int64(1)), PartID: ptr(int64(11)), OfferID: ptr(int64(21)), Quantity: one},
+	}
+	calc := []bom.CalcNode{
+		{ID: 1, Quantity: one},
+		{ID: 2, ParentID: ptr(int64(1)), Quantity: one, Part: &bom.PartFacts{PartID: 10, OfferID: 20, LeadTimeDays: 9, LaborHours: &hours}},
+		{ID: 3, ParentID: ptr(int64(1)), Quantity: one, Part: &bom.PartFacts{PartID: 11, OfferID: 21, LeadTimeDays: 4}},
+	}
+	stock := []bom.PartStock{{PartID: 10, Quantity: decimal.NewFromInt(5)}}
+	totals, err := bom.ComputeTotals(bom.TotalsInput{
+		Nodes: calc, Currency: "EUR", Volume: 1, AnnualHours: &one, Stock: bom.StockMap(stock),
+		Prices: map[int64]bom.PriceResult{
+			20: {Quote: pricing.Quote{OfferID: 20, Price: mustMoney(t, "1", "EUR"), QuotedAt: testNow}},
+			21: {Quote: pricing.Quote{OfferID: 21, Price: mustMoney(t, "1", "EUR"), QuotedAt: testNow}},
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	tree := bom.TreeTotals{BOM: draft, Nodes: nodes, Stock: stock, Totals: totals}
+	rec := serve(t, &fakeBOMs{tree: tree}, &fakeSnapshots{}, "GET", "/api/v1/boms/7/tree", "")
+	if rec.Code != 200 {
+		t.Fatalf("status = %d, body %s", rec.Code, rec.Body)
+	}
+	var got struct {
+		Nodes []struct {
+			ID     int64          `json:"id"`
+			Totals map[string]any `json:"totals"`
+		} `json:"nodes"`
+		Stock []map[string]any `json:"stock"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+		t.Fatal(err)
+	}
+	byID := map[int64]map[string]any{}
+	for _, n := range got.Nodes {
+		byID[n.ID] = n.Totals
+	}
+	tests := []struct {
+		name string
+		got  any
+		want any
+	}{
+		{"part labor hours", byID[2]["labor_hours"], "0.375"},
+		{"part fte rounded half-even", byID[2]["fte"], "0.38"},
+		{"part without hours: no hours", byID[3]["labor_hours"], nil},
+		{"part without hours: named error", byID[3]["labor_error"] != nil, true},
+		{"root lists the part without hours", fmt.Sprint(byID[1]["missing_labor"]), "[3]"},
+		{"root has no fte", byID[1]["fte"], nil},
+		{"stocked part covered", byID[2]["stock_covered"], "1"},
+		{"stocked part in stock", byID[2]["in_stock"], true},
+		{"stocked part own lead time is zero", byID[2]["own_lead_time_days"], float64(0)},
+		{"part without stock: covered null", byID[3]["stock_covered"], nil},
+		{"root lead time ignores the stocked part", byID[1]["lead_time_days"], float64(4)},
+		{"stock list", fmt.Sprint(got.Stock), "[map[part_id:10 quantity:5]]"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.got != tt.want {
+				t.Errorf("got %v (%T), want %v (%T)", tt.got, tt.got, tt.want, tt.want)
+			}
+		})
 	}
 }

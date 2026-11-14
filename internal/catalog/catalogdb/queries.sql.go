@@ -16,7 +16,7 @@ import (
 const archiveOffer = `-- name: ArchiveOffer :one
 UPDATE offers SET archived_at = COALESCE(archived_at, $1::timestamptz)
 WHERE id = $2
-RETURNING id, part_id, supplier_id, currency, price_min, price_max, lead_time_days, origin_country, created_at, quality_score, archived_at
+RETURNING id, part_id, supplier_id, currency, price_min, price_max, lead_time_days, origin_country, created_at, quality_score, archived_at, packaging_amount, packaging_currency
 `
 
 type ArchiveOfferParams struct {
@@ -39,6 +39,8 @@ func (q *Queries) ArchiveOffer(ctx context.Context, arg ArchiveOfferParams) (Off
 		&i.CreatedAt,
 		&i.QualityScore,
 		&i.ArchivedAt,
+		&i.PackagingAmount,
+		&i.PackagingCurrency,
 	)
 	return i, err
 }
@@ -152,7 +154,7 @@ INSERT INTO offers (
     $1, $2, $3, $4, $5,
     $6, $7, $8
 )
-RETURNING id, part_id, supplier_id, currency, price_min, price_max, lead_time_days, origin_country, created_at, quality_score, archived_at
+RETURNING id, part_id, supplier_id, currency, price_min, price_max, lead_time_days, origin_country, created_at, quality_score, archived_at, packaging_amount, packaging_currency
 `
 
 type CreateOfferParams struct {
@@ -190,6 +192,8 @@ func (q *Queries) CreateOffer(ctx context.Context, arg CreateOfferParams) (Offer
 		&i.CreatedAt,
 		&i.QualityScore,
 		&i.ArchivedAt,
+		&i.PackagingAmount,
+		&i.PackagingCurrency,
 	)
 	return i, err
 }
@@ -251,7 +255,7 @@ func (q *Queries) DeletePart(ctx context.Context, id int64) error {
 }
 
 const getOffer = `-- name: GetOffer :one
-SELECT id, part_id, supplier_id, currency, price_min, price_max, lead_time_days, origin_country, created_at, quality_score, archived_at FROM offers WHERE id = $1
+SELECT id, part_id, supplier_id, currency, price_min, price_max, lead_time_days, origin_country, created_at, quality_score, archived_at, packaging_amount, packaging_currency FROM offers WHERE id = $1
 `
 
 func (q *Queries) GetOffer(ctx context.Context, id int64) (Offer, error) {
@@ -269,6 +273,8 @@ func (q *Queries) GetOffer(ctx context.Context, id int64) (Offer, error) {
 		&i.CreatedAt,
 		&i.QualityScore,
 		&i.ArchivedAt,
+		&i.PackagingAmount,
+		&i.PackagingCurrency,
 	)
 	return i, err
 }
@@ -319,7 +325,7 @@ func (q *Queries) InsertAlternative(ctx context.Context, arg InsertAlternativePa
 }
 
 const listActiveOffersForParts = `-- name: ListActiveOffersForParts :many
-SELECT o.id, o.part_id, o.supplier_id, o.currency, o.price_min, o.price_max, o.lead_time_days, o.origin_country, o.created_at, o.quality_score, o.archived_at FROM offers o JOIN parts p ON p.id = o.part_id
+SELECT o.id, o.part_id, o.supplier_id, o.currency, o.price_min, o.price_max, o.lead_time_days, o.origin_country, o.created_at, o.quality_score, o.archived_at, o.packaging_amount, o.packaging_currency FROM offers o JOIN parts p ON p.id = o.part_id
 WHERE o.part_id = ANY($1::bigint[]) AND o.archived_at IS NULL AND p.archived_at IS NULL
 ORDER BY o.part_id, o.id
 `
@@ -345,6 +351,8 @@ func (q *Queries) ListActiveOffersForParts(ctx context.Context, partIds []int64)
 			&i.CreatedAt,
 			&i.QualityScore,
 			&i.ArchivedAt,
+			&i.PackagingAmount,
+			&i.PackagingCurrency,
 		); err != nil {
 			return nil, err
 		}
@@ -402,7 +410,7 @@ func (q *Queries) ListAlternatives(ctx context.Context, partID int64) ([]Part, e
 }
 
 const listPartOffers = `-- name: ListPartOffers :many
-SELECT o.id, o.part_id, o.supplier_id, o.currency, o.price_min, o.price_max, o.lead_time_days, o.origin_country, o.created_at, o.quality_score, o.archived_at FROM offers o JOIN parts p ON p.id = o.part_id
+SELECT o.id, o.part_id, o.supplier_id, o.currency, o.price_min, o.price_max, o.lead_time_days, o.origin_country, o.created_at, o.quality_score, o.archived_at, o.packaging_amount, o.packaging_currency FROM offers o JOIN parts p ON p.id = o.part_id
 WHERE o.part_id = $1 AND o.archived_at IS NULL AND p.archived_at IS NULL
 ORDER BY o.id
 `
@@ -428,6 +436,8 @@ func (q *Queries) ListPartOffers(ctx context.Context, partID int64) ([]Offer, er
 			&i.CreatedAt,
 			&i.QualityScore,
 			&i.ArchivedAt,
+			&i.PackagingAmount,
+			&i.PackagingCurrency,
 		); err != nil {
 			return nil, err
 		}
@@ -502,7 +512,7 @@ func (q *Queries) ListParts(ctx context.Context, arg ListPartsParams) ([]Part, e
 }
 
 const listSupplierOffers = `-- name: ListSupplierOffers :many
-SELECT o.id, o.part_id, o.supplier_id, o.currency, o.price_min, o.price_max, o.lead_time_days, o.origin_country, o.created_at, o.quality_score, o.archived_at FROM offers o JOIN parts p ON p.id = o.part_id
+SELECT o.id, o.part_id, o.supplier_id, o.currency, o.price_min, o.price_max, o.lead_time_days, o.origin_country, o.created_at, o.quality_score, o.archived_at, o.packaging_amount, o.packaging_currency FROM offers o JOIN parts p ON p.id = o.part_id
 WHERE o.supplier_id = $1 AND o.archived_at IS NULL AND p.archived_at IS NULL
 ORDER BY o.id
 `
@@ -528,6 +538,8 @@ func (q *Queries) ListSupplierOffers(ctx context.Context, supplierID int64) ([]O
 			&i.CreatedAt,
 			&i.QualityScore,
 			&i.ArchivedAt,
+			&i.PackagingAmount,
+			&i.PackagingCurrency,
 		); err != nil {
 			return nil, err
 		}
@@ -540,7 +552,7 @@ func (q *Queries) ListSupplierOffers(ctx context.Context, supplierID int64) ([]O
 }
 
 const lockOfferForShare = `-- name: LockOfferForShare :one
-SELECT id, part_id, supplier_id, currency, price_min, price_max, lead_time_days, origin_country, created_at, quality_score, archived_at FROM offers WHERE id = $1 FOR SHARE
+SELECT id, part_id, supplier_id, currency, price_min, price_max, lead_time_days, origin_country, created_at, quality_score, archived_at, packaging_amount, packaging_currency FROM offers WHERE id = $1 FOR SHARE
 `
 
 func (q *Queries) LockOfferForShare(ctx context.Context, id int64) (Offer, error) {
@@ -558,12 +570,14 @@ func (q *Queries) LockOfferForShare(ctx context.Context, id int64) (Offer, error
 		&i.CreatedAt,
 		&i.QualityScore,
 		&i.ArchivedAt,
+		&i.PackagingAmount,
+		&i.PackagingCurrency,
 	)
 	return i, err
 }
 
 const lockOfferForUpdate = `-- name: LockOfferForUpdate :one
-SELECT id, part_id, supplier_id, currency, price_min, price_max, lead_time_days, origin_country, created_at, quality_score, archived_at FROM offers WHERE id = $1 FOR UPDATE
+SELECT id, part_id, supplier_id, currency, price_min, price_max, lead_time_days, origin_country, created_at, quality_score, archived_at, packaging_amount, packaging_currency FROM offers WHERE id = $1 FOR UPDATE
 `
 
 func (q *Queries) LockOfferForUpdate(ctx context.Context, id int64) (Offer, error) {
@@ -581,6 +595,8 @@ func (q *Queries) LockOfferForUpdate(ctx context.Context, id int64) (Offer, erro
 		&i.CreatedAt,
 		&i.QualityScore,
 		&i.ArchivedAt,
+		&i.PackagingAmount,
+		&i.PackagingCurrency,
 	)
 	return i, err
 }
@@ -642,7 +658,7 @@ func (q *Queries) LockPartForUpdate(ctx context.Context, id int64) (Part, error)
 }
 
 const lockPartOffersForUpdate = `-- name: LockPartOffersForUpdate :many
-SELECT id, part_id, supplier_id, currency, price_min, price_max, lead_time_days, origin_country, created_at, quality_score, archived_at FROM offers WHERE part_id = $1 ORDER BY id FOR UPDATE
+SELECT id, part_id, supplier_id, currency, price_min, price_max, lead_time_days, origin_country, created_at, quality_score, archived_at, packaging_amount, packaging_currency FROM offers WHERE part_id = $1 ORDER BY id FOR UPDATE
 `
 
 func (q *Queries) LockPartOffersForUpdate(ctx context.Context, partID int64) ([]Offer, error) {
@@ -666,6 +682,8 @@ func (q *Queries) LockPartOffersForUpdate(ctx context.Context, partID int64) ([]
 			&i.CreatedAt,
 			&i.QualityScore,
 			&i.ArchivedAt,
+			&i.PackagingAmount,
+			&i.PackagingCurrency,
 		); err != nil {
 			return nil, err
 		}
@@ -709,6 +727,8 @@ SELECT EXISTS (
     SELECT 1 FROM offers o WHERE o.part_id = $1
     UNION ALL SELECT 1 FROM bom_nodes b WHERE b.part_id = $1
     UNION ALL SELECT 1 FROM bom_snapshot_nodes sn WHERE sn.part_id = $1
+    UNION ALL SELECT 1 FROM bom_part_stock bs WHERE bs.part_id = $1
+    UNION ALL SELECT 1 FROM bom_snapshot_part_stock ss WHERE ss.part_id = $1
     UNION ALL SELECT 1 FROM part_alternatives a
         WHERE a.part_low_id = $1 OR a.part_high_id = $1
 ) AS referenced
@@ -796,7 +816,7 @@ UPDATE offers SET
     lead_time_days = $5, origin_country = $6,
     quality_score = $7
 WHERE id = $8
-RETURNING id, part_id, supplier_id, currency, price_min, price_max, lead_time_days, origin_country, created_at, quality_score, archived_at
+RETURNING id, part_id, supplier_id, currency, price_min, price_max, lead_time_days, origin_country, created_at, quality_score, archived_at, packaging_amount, packaging_currency
 `
 
 type UpdateOfferParams struct {
@@ -834,6 +854,8 @@ func (q *Queries) UpdateOffer(ctx context.Context, arg UpdateOfferParams) (Offer
 		&i.CreatedAt,
 		&i.QualityScore,
 		&i.ArchivedAt,
+		&i.PackagingAmount,
+		&i.PackagingCurrency,
 	)
 	return i, err
 }

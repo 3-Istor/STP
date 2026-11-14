@@ -550,3 +550,288 @@ func TestPublishRefusesPartWithMissingAttribute(t *testing.T) {
 
 // ref renvoie un pointeur vers v (attributs optionnels de catalog.Part).
 func ref[T any](v T) *T { return &v }
+
+// ADR 0024 : la base horaire et les heures des pièces sont figées ; un nouveau brouillon reprend la base.
+func TestPublishFreezesLaborAndAnnualHours(t *testing.T) {
+	f := newFixture(t)
+	ctx := t.Context()
+	f.cat.setPart(catalog.Part{ID: f.roue, Name: "Roue", CO2KGPerUnit: ref(dec("10")), MassKG: ref(dec("8")),
+		ProductionDays: ref(2), LaborHours: ref(dec("0.5"))})
+	f.cat.setPart(catalog.Part{ID: f.ecrou, Name: "Écrou", CO2KGPerUnit: ref(dec("0.1")), MassKG: ref(dec("0.01")),
+		ProductionDays: ref(0), LaborHours: ref(dec("0.1"))})
+	b, _ := f.newDraft(t)
+	if _, err := f.boms.SetAnnualHours(ctx, b.ID, dec("2000")); err != nil {
+		t.Fatal(err)
+	}
+	s := f.publish(t, b.ID)
+
+	// 4 Roues × 0,5 h + 20 Écrous × 0,1 h = 4 h par voiture ; 4 × 1 000 ÷ 2 000 = 2 ETP.
+	rootFTE := func(p snapshot.Published) string {
+		for _, n := range p.Nodes {
+			if n.ParentKey == nil {
+				r, _ := p.Totals.Node(n.Key)
+				if r.LaborHours == nil || r.FTE == nil {
+					return fmt.Sprintf("no labor (%v)", r.LaborErr)
+				}
+				return fmt.Sprintf("%s h, %s ETP", r.LaborHours, r.FTE)
+			}
+		}
+		return "no root"
+	}
+	const want = "4 h, 2 ETP"
+	if got := rootFTE(f.get(t, s.ID)); got != want {
+		t.Fatalf("à la publication : %s, want %s", got, want)
+	}
+
+	f.cat.setPart(catalog.Part{ID: f.roue, Name: "Roue", CO2KGPerUnit: ref(dec("10")), MassKG: ref(dec("8")),
+		ProductionDays: ref(2), LaborHours: ref(dec("9"))})
+	if _, err := f.boms.SetAnnualHours(ctx, b.ID, dec("1")); err != nil {
+		t.Fatal(err)
+	}
+	if got := rootFTE(f.get(t, s.ID)); got != want {
+		t.Fatalf("QUAND les heures et la base changent après publication ALORS le snapshot ne bouge pas : %s, want %s", got, want)
+	}
+
+	d, err := f.snaps.NewDraft(ctx, s.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !d.AnnualHours.Equal(dec("2000")) {
+		t.Fatalf("nouveau brouillon : base %s, want 2000", d.AnnualHours)
+	}
+}
+
+// ADR 0022 : le stock du brouillon est figé à la publication ; le changer ensuite ne change pas le snapshot,
+// et un nouveau brouillon le reprend.
+func TestPublishFreezesStock(t *testing.T) {
+	f := newFixture(t)
+	ctx := t.Context()
+	b, roue := f.newDraft(t) // Roue × 4, volume 1 000 → 4 000 roues commandées
+	if _, err := f.boms.SetPartStock(ctx, b.ID, f.roue, dec("4000")); err != nil {
+		t.Fatal(err)
+	}
+	s := f.publish(t, b.ID)
+	inStock := func(p snapshot.Published) string {
+		r, _ := p.Totals.Node(roue)
+		if r.StockCovered == nil {
+			return "no stock"
+		}
+		return fmt.Sprintf("covered %s, in stock %v, own lead %d", r.StockCovered, r.InStock, r.OwnLeadTimeDays)
+	}
+	const want = "covered 4000, in stock true, own lead 0"
+	if got := inStock(f.get(t, s.ID)); got != want {
+		t.Fatalf("à la publication : %s, want %s", got, want)
+	}
+	if _, err := f.boms.SetPartStock(ctx, b.ID, f.roue, dec("0")); err != nil {
+		t.Fatal(err)
+	}
+	if got := inStock(f.get(t, s.ID)); got != want {
+		t.Fatalf("QUAND le stock du brouillon change ALORS le snapshot ne bouge pas : %s, want %s", got, want)
+	}
+	d, err := f.snaps.NewDraft(ctx, s.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	st, err := f.boms.Stock(ctx, d.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(st) != 1 || st[0].PartID != f.roue || !st[0].Quantity.Equal(dec("4000")) {
+		t.Fatalf("nouveau brouillon : stock %v, want roue × 4000", st)
+	}
+}
+
+// ADR 0023 : la date de départ et la date cible sont figées ; le planning d'un snapshot n'en dépend plus
+// du brouillon, et un nouveau brouillon les reprend.
+func TestPublishFreezesSchedule(t *testing.T) {
+	f := newFixture(t)
+	ctx := t.Context()
+	b, _ := f.newDraft(t) // délai racine 35 j
+	start := time.Date(2027, 1, 1, 0, 0, 0, 0, time.UTC)
+	target := time.Date(2027, 1, 31, 0, 0, 0, 0, time.UTC) // 30 j : cible impossible
+	if _, err := f.boms.SetSchedule(ctx, b.ID, bom.Schedule{StartOn: start, TargetOn: &target}); err != nil {
+		t.Fatal(err)
+	}
+	s := f.publish(t, b.ID)
+	summary := func(p snapshot.Published) string {
+		pl := p.Planning
+		if pl.AvailableOn == nil || pl.TargetMet == nil {
+			return "no schedule"
+		}
+		return fmt.Sprintf("available %s, met %v, %d late", pl.AvailableOn.Format(time.DateOnly), *pl.TargetMet, len(pl.Late))
+	}
+	const want = "available 2027-02-05, met false, 3 late" // Roues, Roue et Écrou (chaînes de 35 j) dépassent 30 j
+	if got := summary(f.get(t, s.ID)); got != want {
+		t.Fatalf("à la publication : %s, want %s", got, want)
+	}
+	if err := f.boms.ClearSchedule(ctx, b.ID); err != nil {
+		t.Fatal(err)
+	}
+	if got := summary(f.get(t, s.ID)); got != want {
+		t.Fatalf("QUAND le planning du brouillon est retiré ALORS le snapshot ne bouge pas : %s, want %s", got, want)
+	}
+	d, err := f.snaps.NewDraft(ctx, s.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sch, err := f.boms.Schedule(ctx, d.ID)
+	if err != nil || sch == nil || !sch.StartOn.Equal(start) || sch.TargetOn == nil || !sch.TargetOn.Equal(target) {
+		t.Fatalf("nouveau brouillon : planning %+v (%v), want 2027-01-01 → 2027-01-31", sch, err)
+	}
+}
+
+// Revue ADR 0022 : un brouillon recréé depuis un snapshot répartit le stock comme le snapshot (mêmes nœuds
+// servis en premier), parce que copyTree recrée les nœuds dans l'ordre des clés figées. Scénario : l'écrou du
+// groupe (clé 3) est servi avant celui de la racine (clé 4) ; une copie « tous les enfants d'abord » créait
+// celui de la racine avant et inversait la couverture.
+func TestNewDraftKeepsStockAllocation(t *testing.T) {
+	f := newFixture(t)
+	ctx := t.Context()
+	b, err := f.boms.CreateBOM(ctx, bom.NewBOM{Name: "Ordre", Currency: "EUR", Volume: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, nodes, err := f.boms.Tree(ctx, b.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	group, err := f.boms.AddNode(ctx, b.ID, bom.NewNode{ParentID: nodes[0].ID, Name: "Groupe", Quantity: dec("1")})
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.addPart(t, b.ID, group.ID, f.ecrou, f.ecrouO, "4")
+	f.addPart(t, b.ID, nodes[0].ID, f.ecrou, f.ecrouO, "4")
+	if _, err := f.boms.SetPartStock(ctx, b.ID, f.ecrou, dec("4")); err != nil {
+		t.Fatal(err)
+	}
+	// coverage : pour chaque écrou par id croissant, « groupe » ou « racine » et s'il est en stock.
+	coverage := func(totals bom.Totals, parts []int64, inGroup func(int64) bool) string {
+		var out []string
+		for _, id := range parts {
+			nt, _ := totals.Node(id)
+			where := "racine"
+			if inGroup(id) {
+				where = "groupe"
+			}
+			out = append(out, fmt.Sprintf("%s:%v", where, nt.InStock))
+		}
+		return fmt.Sprint(out)
+	}
+	const want = "[groupe:true racine:false]"
+
+	s := f.publish(t, b.ID)
+	p := f.get(t, s.ID)
+	snapParent, snapGroup := map[int64]int64{}, int64(0)
+	var snapParts []int64
+	for _, n := range p.Nodes {
+		switch {
+		case n.Part != nil:
+			snapParts = append(snapParts, n.Key)
+			snapParent[n.Key] = *n.ParentKey
+		case n.ParentKey != nil:
+			snapGroup = n.Key
+		}
+	}
+	if got := coverage(p.Totals, snapParts, func(id int64) bool { return snapParent[id] == snapGroup }); got != want {
+		t.Fatalf("snapshot : %s, want %s", got, want)
+	}
+
+	d, err := f.snaps.NewDraft(ctx, s.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	dt, err := f.boms.Totals(ctx, d.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	draftParent, draftGroup := map[int64]int64{}, int64(0)
+	var draftParts []int64
+	for _, n := range dt.Nodes {
+		switch {
+		case n.PartID != nil:
+			draftParts = append(draftParts, n.ID)
+			draftParent[n.ID] = *n.ParentID
+		case n.ParentID != nil:
+			draftGroup = n.ID
+		}
+	}
+	if got := coverage(dt.Totals, draftParts, func(id int64) bool { return draftParent[id] == draftGroup }); got != want {
+		t.Fatalf("QUAND je crée un brouillon depuis le snapshot ALORS la couverture du stock est la même : %s, want %s", got, want)
+	}
+}
+
+// ADR 0028 : les stratégies des nœuds sont figées et un nouveau brouillon les reprend.
+func TestPublishFreezesStrategies(t *testing.T) {
+	f := newFixture(t)
+	ctx := t.Context()
+	b, roue := f.newDraft(t)
+	co2 := bom.StrategyCO2
+	if _, err := f.boms.SetNodeStrategy(ctx, b.ID, roue, &co2); err != nil {
+		t.Fatal(err)
+	}
+	s := f.publish(t, b.ID)
+	if _, err := f.boms.SetNodeStrategy(ctx, b.ID, roue, nil); err != nil {
+		t.Fatal(err)
+	}
+	strategies := func(names func() []*bom.Strategy) string {
+		var out []string
+		for _, st := range names() {
+			if st != nil {
+				out = append(out, string(*st))
+			}
+		}
+		return fmt.Sprint(out)
+	}
+	p := f.get(t, s.ID)
+	snap := strategies(func() (out []*bom.Strategy) {
+		for _, n := range p.Nodes {
+			out = append(out, n.Strategy)
+		}
+		return out
+	})
+	if snap != "[co2]" {
+		t.Fatalf("snapshot strategies %s, want [co2]", snap)
+	}
+	d, err := f.snaps.NewDraft(ctx, s.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, nodes, err := f.boms.Tree(ctx, d.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	draft := strategies(func() (out []*bom.Strategy) {
+		for _, n := range nodes {
+			out = append(out, n.Strategy)
+		}
+		return out
+	})
+	if draft != "[co2]" {
+		t.Fatalf("new draft strategies %s, want [co2]", draft)
+	}
+}
+
+// ADR 0025 : le pays de destination est figé et un nouveau brouillon le reprend.
+func TestPublishFreezesDestination(t *testing.T) {
+	f := newFixture(t)
+	ctx := t.Context()
+	b, _ := f.newDraft(t)
+	fr, de := "FR", "DE"
+	if _, err := f.boms.SetDestinationCountry(ctx, b.ID, &fr); err != nil {
+		t.Fatal(err)
+	}
+	s := f.publish(t, b.ID)
+	if _, err := f.boms.SetDestinationCountry(ctx, b.ID, &de); err != nil {
+		t.Fatal(err)
+	}
+	if got := f.get(t, s.ID).Snapshot.DestinationCountry; got == nil || *got != "FR" {
+		t.Fatalf("snapshot destination %v, want FR", got)
+	}
+	d, err := f.snaps.NewDraft(ctx, s.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if d.DestinationCountry == nil || *d.DestinationCountry != "FR" {
+		t.Fatalf("new draft destination %v, want FR", d.DestinationCountry)
+	}
+}

@@ -13,6 +13,18 @@ import (
 	"github.com/shopspring/decimal"
 )
 
+const clearOfferPackaging = `-- name: ClearOfferPackaging :execrows
+UPDATE offers SET packaging_amount = NULL, packaging_currency = NULL WHERE id = $1
+`
+
+func (q *Queries) ClearOfferPackaging(ctx context.Context, id int64) (int64, error) {
+	result, err := q.db.Exec(ctx, clearOfferPackaging, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const createPriceSnapshot = `-- name: CreatePriceSnapshot :one
 INSERT INTO price_snapshots(scope,scope_id,taken_at) VALUES ($1,$2,$3) RETURNING id, scope, scope_id, taken_at, created_at, creation_xid
 `
@@ -48,6 +60,89 @@ func (q *Queries) CurrentPriceAsOf(ctx context.Context) (time.Time, error) {
 	var quoted_at time.Time
 	err := row.Scan(&quoted_at)
 	return quoted_at, err
+}
+
+const deleteCustomsDuty = `-- name: DeleteCustomsDuty :exec
+DELETE FROM customs_duties WHERE origin_country = $1 AND destination_country = $2
+`
+
+type DeleteCustomsDutyParams struct {
+	OriginCountry      string
+	DestinationCountry string
+}
+
+func (q *Queries) DeleteCustomsDuty(ctx context.Context, arg DeleteCustomsDutyParams) error {
+	_, err := q.db.Exec(ctx, deleteCustomsDuty, arg.OriginCountry, arg.DestinationCountry)
+	return err
+}
+
+const deleteFreightRate = `-- name: DeleteFreightRate :exec
+DELETE FROM freight_rates WHERE origin_country = $1 AND destination_country = $2
+`
+
+type DeleteFreightRateParams struct {
+	OriginCountry      string
+	DestinationCountry string
+}
+
+func (q *Queries) DeleteFreightRate(ctx context.Context, arg DeleteFreightRateParams) error {
+	_, err := q.db.Exec(ctx, deleteFreightRate, arg.OriginCountry, arg.DestinationCountry)
+	return err
+}
+
+const getCustomsDuty = `-- name: GetCustomsDuty :one
+SELECT origin_country, destination_country, duty_percent FROM customs_duties WHERE origin_country = $1 AND destination_country = $2
+`
+
+type GetCustomsDutyParams struct {
+	OriginCountry      string
+	DestinationCountry string
+}
+
+// Coût total rendu (ADR 0025) : tables paramétrables et emballage des offres.
+func (q *Queries) GetCustomsDuty(ctx context.Context, arg GetCustomsDutyParams) (CustomsDuty, error) {
+	row := q.db.QueryRow(ctx, getCustomsDuty, arg.OriginCountry, arg.DestinationCountry)
+	var i CustomsDuty
+	err := row.Scan(&i.OriginCountry, &i.DestinationCountry, &i.DutyPercent)
+	return i, err
+}
+
+const getFreightRate = `-- name: GetFreightRate :one
+SELECT origin_country, destination_country, amount_per_kg, currency FROM freight_rates WHERE origin_country = $1 AND destination_country = $2
+`
+
+type GetFreightRateParams struct {
+	OriginCountry      string
+	DestinationCountry string
+}
+
+func (q *Queries) GetFreightRate(ctx context.Context, arg GetFreightRateParams) (FreightRate, error) {
+	row := q.db.QueryRow(ctx, getFreightRate, arg.OriginCountry, arg.DestinationCountry)
+	var i FreightRate
+	err := row.Scan(
+		&i.OriginCountry,
+		&i.DestinationCountry,
+		&i.AmountPerKg,
+		&i.Currency,
+	)
+	return i, err
+}
+
+const getOfferPackaging = `-- name: GetOfferPackaging :one
+SELECT id, packaging_amount, packaging_currency FROM offers WHERE id = $1
+`
+
+type GetOfferPackagingRow struct {
+	ID                int64
+	PackagingAmount   decimal.NullDecimal
+	PackagingCurrency pgtype.Text
+}
+
+func (q *Queries) GetOfferPackaging(ctx context.Context, id int64) (GetOfferPackagingRow, error) {
+	row := q.db.QueryRow(ctx, getOfferPackaging, id)
+	var i GetOfferPackagingRow
+	err := row.Scan(&i.ID, &i.PackagingAmount, &i.PackagingCurrency)
+	return i, err
 }
 
 const historicalPriceQuotes = `-- name: HistoricalPriceQuotes :many
@@ -343,6 +438,59 @@ type LinkSnapshotPriceParams struct {
 func (q *Queries) LinkSnapshotPrice(ctx context.Context, arg LinkSnapshotPriceParams) error {
 	_, err := q.db.Exec(ctx, linkSnapshotPrice, arg.SnapshotID, arg.PriceQuoteID, arg.OfferID)
 	return err
+}
+
+const listCustomsDuties = `-- name: ListCustomsDuties :many
+SELECT origin_country, destination_country, duty_percent FROM customs_duties ORDER BY origin_country, destination_country
+`
+
+func (q *Queries) ListCustomsDuties(ctx context.Context) ([]CustomsDuty, error) {
+	rows, err := q.db.Query(ctx, listCustomsDuties)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []CustomsDuty
+	for rows.Next() {
+		var i CustomsDuty
+		if err := rows.Scan(&i.OriginCountry, &i.DestinationCountry, &i.DutyPercent); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listFreightRates = `-- name: ListFreightRates :many
+SELECT origin_country, destination_country, amount_per_kg, currency FROM freight_rates ORDER BY origin_country, destination_country
+`
+
+func (q *Queries) ListFreightRates(ctx context.Context) ([]FreightRate, error) {
+	rows, err := q.db.Query(ctx, listFreightRates)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []FreightRate
+	for rows.Next() {
+		var i FreightRate
+		if err := rows.Scan(
+			&i.OriginCountry,
+			&i.DestinationCountry,
+			&i.AmountPerKg,
+			&i.Currency,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listPricingOffers = `-- name: ListPricingOffers :many
@@ -1030,6 +1178,31 @@ func (q *Queries) RuntimeSeries(ctx context.Context, datasetVersion string) ([]P
 	return items, nil
 }
 
+const setOfferPackaging = `-- name: SetOfferPackaging :one
+UPDATE offers SET packaging_amount = $2, packaging_currency = $3
+WHERE id = $1
+RETURNING id, packaging_amount, packaging_currency
+`
+
+type SetOfferPackagingParams struct {
+	ID                int64
+	PackagingAmount   decimal.NullDecimal
+	PackagingCurrency pgtype.Text
+}
+
+type SetOfferPackagingRow struct {
+	ID                int64
+	PackagingAmount   decimal.NullDecimal
+	PackagingCurrency pgtype.Text
+}
+
+func (q *Queries) SetOfferPackaging(ctx context.Context, arg SetOfferPackagingParams) (SetOfferPackagingRow, error) {
+	row := q.db.QueryRow(ctx, setOfferPackaging, arg.ID, arg.PackagingAmount, arg.PackagingCurrency)
+	var i SetOfferPackagingRow
+	err := row.Scan(&i.ID, &i.PackagingAmount, &i.PackagingCurrency)
+	return i, err
+}
+
 const tryRuntimeLease = `-- name: TryRuntimeLease :one
 SELECT pg_try_advisory_lock(hashtextextended($1::text, 0))::boolean
 `
@@ -1055,4 +1228,54 @@ type UpdateRuntimeRunParams struct {
 func (q *Queries) UpdateRuntimeRun(ctx context.Context, arg UpdateRuntimeRunParams) error {
 	_, err := q.db.Exec(ctx, updateRuntimeRun, arg.DatasetVersion, arg.Tick, arg.AsOf)
 	return err
+}
+
+const upsertCustomsDuty = `-- name: UpsertCustomsDuty :one
+INSERT INTO customs_duties (origin_country, destination_country, duty_percent) VALUES ($1, $2, $3)
+ON CONFLICT (origin_country, destination_country) DO UPDATE SET duty_percent = EXCLUDED.duty_percent
+RETURNING origin_country, destination_country, duty_percent
+`
+
+type UpsertCustomsDutyParams struct {
+	OriginCountry      string
+	DestinationCountry string
+	DutyPercent        decimal.Decimal
+}
+
+func (q *Queries) UpsertCustomsDuty(ctx context.Context, arg UpsertCustomsDutyParams) (CustomsDuty, error) {
+	row := q.db.QueryRow(ctx, upsertCustomsDuty, arg.OriginCountry, arg.DestinationCountry, arg.DutyPercent)
+	var i CustomsDuty
+	err := row.Scan(&i.OriginCountry, &i.DestinationCountry, &i.DutyPercent)
+	return i, err
+}
+
+const upsertFreightRate = `-- name: UpsertFreightRate :one
+INSERT INTO freight_rates (origin_country, destination_country, amount_per_kg, currency) VALUES ($1, $2, $3, $4)
+ON CONFLICT (origin_country, destination_country)
+    DO UPDATE SET amount_per_kg = EXCLUDED.amount_per_kg, currency = EXCLUDED.currency
+RETURNING origin_country, destination_country, amount_per_kg, currency
+`
+
+type UpsertFreightRateParams struct {
+	OriginCountry      string
+	DestinationCountry string
+	AmountPerKg        decimal.Decimal
+	Currency           string
+}
+
+func (q *Queries) UpsertFreightRate(ctx context.Context, arg UpsertFreightRateParams) (FreightRate, error) {
+	row := q.db.QueryRow(ctx, upsertFreightRate,
+		arg.OriginCountry,
+		arg.DestinationCountry,
+		arg.AmountPerKg,
+		arg.Currency,
+	)
+	var i FreightRate
+	err := row.Scan(
+		&i.OriginCountry,
+		&i.DestinationCountry,
+		&i.AmountPerKg,
+		&i.Currency,
+	)
+	return i, err
 }
