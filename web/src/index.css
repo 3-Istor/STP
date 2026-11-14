@@ -226,3 +226,13 @@ legend { color: #415e7c; font-size: .79rem; padding: 0 6px; font-weight: 650; }
 .offer-card { cursor: pointer; transition: border-color .15s, box-shadow .15s; }
 .offer-card:hover { border-color: #b7c9e5; box-shadow: 0 4px 14px #1d477c14; }
 .offer-card:hover .sparkline-button { color: var(--primary); }
+
+/* Graphique mensuel de l'historique (HistoryDialog.tsx) : clôture du mois + bande min–max du mois. */
+.chart-band { fill: #6088bc1f; stroke: none; }
+.chart-axis { fill: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.chart-hit { fill: transparent; cursor: pointer; }
+.chart-cursor { stroke: #b7c9e5; stroke-width: 1; }
+.chart-month.active .chart-axis { fill: var(--primary); font-weight: 650; }
+.chart-legend { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 8px; font-size: .74rem; color: var(--muted); margin: 6px 0 0; }
+.legend-line { display: inline-block; width: 18px; height: 3px; border-radius: 2px; background: #6088bc; }
+.legend-band { display: inline-block; width: 18px; height: 10px; border-radius: 2px; background: #6088bc33; margin-left: 10px; }

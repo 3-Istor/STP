@@ -1,15 +1,21 @@
 import { useEffect, useRef, useState } from 'react'
 import { formatMoney, formatUTC, formatVariation } from './format'
-import { graphPoints } from './graph'
+import { monthLabel, monthlyChart, monthlySeries, monthTitle } from './graph'
 import type { OfferView } from './types'
+
+const CHART = { width: 760, height: 250, padding: { top: 14, right: 24, bottom: 34, left: 104 } }
 
 export function HistoryDialog({ view, onClose }: { view: OfferView; onClose: () => void }) {
   const dialog = useRef<HTMLDialogElement>(null)
   const [selectedID, setSelectedID] = useState<number | null>(null)
   const stats = view.statistics
   const history = stats?.history ?? []
-  const points = graphPoints(history, 720, 220)
+  // Une année de cotations quotidiennes est illisible point par point : un point par mois (clôture) et
+  // une bande entre la plus basse et la plus haute cotation du mois.
+  const months = monthlySeries(history)
+  const chart = monthlyChart(months, CHART.width, CHART.height, CHART.padding)
   const selected = history.find((quote) => quote.id === selectedID) ?? history.at(-1) ?? stats?.current_quote
+  const selectedMonth = months.find((month) => selected && month.key === selected.quoted_at.slice(0, 7))
   useEffect(() => {
     const opener = document.activeElement
     if (dialog.current && !dialog.current.open) dialog.current.showModal()
@@ -30,17 +36,29 @@ export function HistoryDialog({ view, onClose }: { view: OfferView; onClose: () 
       {view.error && <p className="notice" role="status">{view.error}</p>}
       {history.length ? <>
         <p className="muted">Cotations du {formatUTC(stats?.window_start)} au {formatUTC(stats?.as_of)}. Les prix restent dans leur devise d’origine.</p>
-        <svg viewBox="0 0 720 220" className="detail-chart" aria-hidden="true">
-          <line x1="8" y1="212" x2="712" y2="212" className="chart-grid" />
-          <line x1="8" y1="110" x2="712" y2="110" className="chart-grid" />
-          <polyline points={points.map((point) => `${point.x},${point.y}`).join(' ')} className="chart-line" />
-          {points.map((point) => <circle key={point.quote.id} cx={point.x} cy={point.y} r={selected?.id === point.quote.id ? 6 : 4}
-            className={selected?.id === point.quote.id ? 'chart-dot selected' : 'chart-dot'}
-            onPointerEnter={() => setSelectedID(point.quote.id)} onPointerDown={() => setSelectedID(point.quote.id)}>
-            <title>{formatUTC(point.quote.quoted_at)} : {formatMoney(point.quote.price)}</title>
-          </circle>)}
-        </svg>
-        {selected && <div className="quote-detail" data-testid="quote-detail" role="status" aria-live="polite"><strong>{formatMoney(selected.price)}</strong><span>{formatUTC(selected.quoted_at)}</span><span className="muted">Source : {selected.source} · cotation #{selected.id}</span></div>}
+        {chart && <svg viewBox={`0 0 ${CHART.width} ${CHART.height}`} className="detail-chart" aria-hidden="true">
+          <line x1={CHART.padding.left} y1={chart.top} x2={CHART.width - CHART.padding.right} y2={chart.top} className="chart-grid" />
+          <line x1={CHART.padding.left} y1={chart.bottom} x2={CHART.width - CHART.padding.right} y2={chart.bottom} className="chart-grid" />
+          <text x={CHART.padding.left - 10} y={chart.top + 4} className="chart-axis" textAnchor="end">{formatMoney(chart.high.price)}</text>
+          <text x={CHART.padding.left - 10} y={chart.bottom + 4} className="chart-axis" textAnchor="end">{formatMoney(chart.low.price)}</text>
+          <polygon className="chart-band" points={[...chart.points.map((p) => `${p.x},${p.high}`), ...[...chart.points].reverse().map((p) => `${p.x},${p.low}`)].join(' ')} />
+          <polyline points={chart.points.map((p) => `${p.x},${p.close}`).join(' ')} className="chart-line" />
+          {chart.points.map((p, index) => {
+            const active = selectedMonth?.key === p.month.key
+            const half = chart.points.length > 1 ? (chart.points[1].x - chart.points[0].x) / 2 : CHART.width / 2
+            return <g key={p.month.key} className={active ? 'chart-month active' : 'chart-month'}
+              onPointerEnter={() => setSelectedID(p.month.close.id)} onPointerDown={() => setSelectedID(p.month.close.id)}>
+              <rect x={p.x - half} y={0} width={half * 2} height={CHART.height} className="chart-hit" />
+              {active && <line x1={p.x} y1={chart.top} x2={p.x} y2={chart.bottom} className="chart-cursor" />}
+              <circle cx={p.x} cy={p.close} r={active ? 6 : 4} className={active ? 'chart-dot selected' : 'chart-dot'}>
+                <title>{monthTitle(p.month)} : clôture {formatMoney(p.month.close.price)}, min. {formatMoney(p.month.low.price)}, max. {formatMoney(p.month.high.price)}</title>
+              </circle>
+              <text x={p.x} y={CHART.height - 6} className="chart-axis" textAnchor="middle">{monthLabel(p.month, index)}</text>
+            </g>
+          })}
+        </svg>}
+        <p className="chart-legend"><span className="legend-line" aria-hidden="true" /> Dernière cotation du mois <span className="legend-band" aria-hidden="true" /> Plus basse et plus haute cotation du mois</p>
+        {selected && <div className="quote-detail" data-testid="quote-detail" role="status" aria-live="polite"><strong>{formatMoney(selected.price)}</strong><span>{formatUTC(selected.quoted_at)}</span>{selectedMonth && <span>{monthTitle(selectedMonth)} : min. {formatMoney(selectedMonth.low.price)} · max. {formatMoney(selectedMonth.high.price)} · {selectedMonth.count} cotation{selectedMonth.count > 1 ? 's' : ''}</span>}<span className="muted">Source : {selected.source} · cotation #{selected.id}</span></div>}
         <details className="quotes-disclosure" open={history.length <= 7}>
           <summary>Consulter les {history.length} cotations (clavier et tactile)</summary>
           <p className="muted">Choisissez une cotation pour afficher sa date et son prix sur le graphique.</p>

@@ -131,6 +131,30 @@ test('carte d’offre entièrement cliquable, offres triées et recherche', asyn
   await expect(page.getByText('Aucune offre ne correspond à « aucune pièce »')).toBeVisible()
 })
 
+test('historique lisible : un point par mois, clôture et bornes réelles du mois', async ({ page }, testInfo) => {
+  const pages = defaultPages()
+  const view = offerView({ id: 101, name: 'Injecteur Atlas' })
+  const q = (id: number, amount: string, at: string) => ({ id, offer_id: 101, price: { amount, currency: 'EUR' }, source: 'e2e-fixture', quoted_at: at })
+  // Octobre : trois cotations, la dernière (clôture) n'est ni la plus basse ni la plus haute.
+  view.statistics.history = [
+    q(1, '100.00', '2026-10-01T00:00:00Z'), q(2, '130.00', '2026-10-15T00:00:00Z'), q(3, '95.00', '2026-10-20T00:00:00Z'),
+    q(4, '105.00', '2026-10-28T00:00:00Z'), q(5, '110.00', '2026-11-04T12:00:00Z'),
+  ]
+  pages['1'].offers[0] = view
+  await mockSupplierAPI(page, pages)
+  await page.goto('/#fournisseurs')
+  await chooseSupplier(page, 'Atlas')
+  await page.getByRole('button', { name: 'Historique de Injecteur Atlas', exact: true }).click()
+  const dialog = page.getByRole('dialog', { name: 'Historique : Injecteur Atlas' })
+  await expect(dialog.locator('.chart-month')).toHaveCount(2)
+  await expect(dialog.locator('.chart-month text')).toHaveText(['oct. 2026', 'nov.'])
+  const october = dialog.locator('.chart-month').first().locator('circle')
+  if (testInfo.project.use.hasTouch) await october.tap()
+  else await october.hover()
+  await expect(dialog.getByTestId('quote-detail')).toContainText(/105,00\s*€/)
+  await expect(dialog.getByTestId('quote-detail')).toContainText(/octobre 2026 : min\. 95,00\s*€ · max\. 130,00\s*€ · 4 cotations/)
+})
+
 test('petit écran sans débordement et commandes toujours accessibles', async ({ page }, testInfo) => {
   await mockSupplierAPI(page)
   await page.goto('/#fournisseurs')
