@@ -1,11 +1,10 @@
 import { useState, type FormEvent } from 'react'
 import type { BOM } from '../api.ts'
-import { currencyChoices } from '../currencies.ts'
+import { CurrencySelect } from '../CurrencySelect.tsx'
 import { byName } from '../text.ts'
 
 type Props = {
   boms: BOM[]
-  currencies: string[]
   selectedID: number | null
   onSelect: (id: number) => void
   onCreate: (b: { name: string; currency: string; volume: number }) => Promise<void>
@@ -13,7 +12,7 @@ type Props = {
 }
 
 // BomList : liste des BOM et création d'une BOM (nom, devise de référence, volume).
-export function BomList({ boms, currencies, selectedID, onSelect, onCreate, onDelete }: Props) {
+export function BomList({ boms, selectedID, onSelect, onCreate, onDelete }: Props) {
   const [name, setName] = useState('')
   const [currency, setCurrency] = useState('EUR')
   const [volume, setVolume] = useState('1000')
@@ -64,13 +63,7 @@ export function BomList({ boms, currencies, selectedID, onSelect, onCreate, onDe
       <form onSubmit={(e) => void submit(e)} className="stack">
         <input required placeholder="Nom de la BOM" value={name} onChange={(e) => setName(e.target.value)} />
         <div className="row">
-          <select required aria-label="Devise" value={currency} onChange={(e) => setCurrency(e.target.value)}>
-            {currencyChoices(currencies, [currency]).map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
+          <CurrencySelect required aria-label="Devise" value={currency} onChange={setCurrency} />
           <input
             required
             aria-label="Volume"

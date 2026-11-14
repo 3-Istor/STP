@@ -1,3 +1,5 @@
+import { createContext } from 'react'
+
 // Devises proposées au choix de la devise de référence d'une BOM : celles pour lesquelles la source de
 // prix publie des taux (GET /api/v1/fx), plus celles déjà utilisées par une BOM (jamais retirées du choix).
 // Sans taux lisibles, seules les devises déjà utilisées sont proposées : aucune devise n'est inventée.
@@ -15,3 +17,6 @@ export async function loadCurrencies(): Promise<string[]> {
 export function currencyChoices(...lists: readonly string[][]): string[] {
   return [...new Set(lists.flat().map((c) => c.trim().toUpperCase()).filter((c) => c !== ''))].sort()
 }
+
+// Devises proposées par tous les sélecteurs de devise (CurrencySelect), fournies par BomPage.
+export const CurrenciesContext = createContext<string[]>([])

@@ -4,7 +4,7 @@ import { BomList } from './BomList.tsx'
 import { BomView } from './BomView.tsx'
 import { SnapshotView } from './SnapshotView.tsx'
 import { emptyCatalog, loadCatalog, type Catalog } from '../catalog.ts'
-import { currencyChoices, loadCurrencies } from '../currencies.ts'
+import { CurrenciesContext, currencyChoices, loadCurrencies } from '../currencies.ts'
 import './bom.css'
 
 type Open = { kind: 'bom'; id: number } | { kind: 'snapshot'; id: number } | null
@@ -65,11 +65,11 @@ export default function BomPage() {
   }
 
   return (
+    <CurrenciesContext value={currencies}>
     <div className="bom-space">
     <div className="app">
       <BomList
         boms={boms}
-        currencies={currencies}
         selectedID={open?.kind === 'bom' ? open.id : null}
         onSelect={openBOM}
         onCreate={create}
@@ -91,7 +91,6 @@ export default function BomPage() {
             key={open.id}
             bomID={open.id}
             catalog={catalog}
-            currencies={currencies}
             onBOMChanged={refresh}
             onOpenSnapshot={(id) => setOpen({ kind: 'snapshot', id })}
           />
@@ -103,5 +102,6 @@ export default function BomPage() {
       </main>
     </div>
     </div>
+    </CurrenciesContext>
   )
 }

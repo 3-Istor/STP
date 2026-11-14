@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { api, errorMessage, type CostAnomalies, type NewNode, type NodePatch, type Snapshot, type Tree } from '../api.ts'
 import type { Catalog } from '../catalog.ts'
-import { currencyChoices } from '../currencies.ts'
+import { CurrencySelect } from '../CurrencySelect.tsx'
 import { formatMoney } from '../money.ts'
 import { loadOfferPrices, noOfferPrices, withOfferPrices, type OfferPrices } from '../offerPrices.ts'
 import { AnomalySettings } from './Anomalies.tsx'
@@ -14,14 +14,13 @@ import { Workforce } from './Workforce.tsx'
 type Props = {
   bomID: number
   catalog: Catalog
-  currencies: string[]
   onBOMChanged: () => void
   onOpenSnapshot: (id: number) => void
 }
 
 // BomView : un brouillon — réglages, totaux de la racine, arbre virtualisé et panneau latéral.
 // Après chaque action, l'arbre et ses totaux sont relus (pas de recalcul côté front).
-export function BomView({ bomID, catalog, currencies, onBOMChanged, onOpenSnapshot }: Props) {
+export function BomView({ bomID, catalog, onBOMChanged, onOpenSnapshot }: Props) {
   const [tree, setTree] = useState<Tree | null>(null)
   const [selectedID, setSelectedID] = useState<number | null>(null)
   const [moving, setMoving] = useState<number | null>(null)
@@ -150,7 +149,6 @@ export function BomView({ bomID, catalog, currencies, onBOMChanged, onOpenSnapsh
           <Settings
             key={`${bom.currency}-${bom.volume}`}
             currency={bom.currency}
-            currencies={currencies}
             volume={bom.volume}
             onApply={(c, v) => void run(() => api.updateSettings(bom.id, c, v), { bomChanged: true })}
           />
@@ -294,12 +292,10 @@ export function BomView({ bomID, catalog, currencies, onBOMChanged, onOpenSnapsh
 
 function Settings({
   currency,
-  currencies,
   volume,
   onApply,
 }: {
   currency: string
-  currencies: string[]
   volume: number
   onApply: (currency: string, volume: number) => void
 }) {
@@ -316,13 +312,7 @@ function Settings({
     >
       <label>
         Devise{' '}
-        <select aria-label="Devise de référence" value={c} onChange={(e) => setC(e.target.value)}>
-          {currencyChoices(currencies, [currency]).map((code) => (
-            <option key={code} value={code}>
-              {code}
-            </option>
-          ))}
-        </select>
+        <CurrencySelect aria-label="Devise de référence" value={c} onChange={setC} />
       </label>
       <label>
         Volume <input aria-label="Volume" type="number" min={1} step={1} value={v} onChange={(e) => setV(e.target.value)} />
