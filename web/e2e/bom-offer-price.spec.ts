@@ -35,6 +35,7 @@ async function mockAPI(page: Page, priceSnapshotID: number | null) {
       '/api/v1/boms/1/tree': { bom, nodes, explanation: { currency: 'EUR', price_snapshot_id: priceSnapshotID, rates: [] }, stock: [], planning: { schedule: null, lead_time_days: 0, available_on: null, critical: [], allowed_days: null, target_met: null, late: [] } },
       '/api/v1/parts': [part],
       '/api/v1/suppliers': [{ id: 1, name: 'Atlas' }, { id: 2, name: 'Boréal' }],
+      '/api/v1/fx': { rates: [] },
       // En direct : 101 et 102 cotées, 103 en erreur de cotation.
       '/api/v1/quotes': {
         context: { mode: 'live', as_of: asOf, tick: 7 },
@@ -67,15 +68,16 @@ async function openOfferSelect(page: Page) {
 test('BOM en direct : prix de la dernière cotation, « sans prix » sans cotation', async ({ page }) => {
   await mockAPI(page, null)
   const options = (await openOfferSelect(page)).locator('option')
-  await expect(options).toHaveText([/^Atlas · 92,00\s€ · 12 j$/, /^Boréal · 100,50\s\$US · 5 j$/, 'Atlas · sans prix · 3 j'])
+  // Offres triées par fournisseur (ordre alphabétique), puis par id.
+  await expect(options).toHaveText([/^Atlas · 92,00\s€ · 12 j$/, 'Atlas · sans prix · 3 j', /^Boréal · 100,50\s\$US · 5 j$/])
   await expect(options.nth(0)).toHaveAttribute('title', 'en direct au 04/11/2026 12:00 UTC')
-  await expect(options.nth(2)).not.toHaveAttribute('title')
+  await expect(options.nth(1)).not.toHaveAttribute('title')
 })
 
 test('BOM figée : prix du snapshot de prix, pas la cotation en direct', async ({ page }) => {
   const reads = await mockAPI(page, 5)
   const options = (await openOfferSelect(page)).locator('option')
-  await expect(options).toHaveText([/^Atlas · 80,00\s€ · 12 j$/, 'Boréal · sans prix · 5 j', 'Atlas · sans prix · 3 j'])
+  await expect(options).toHaveText([/^Atlas · 80,00\s€ · 12 j$/, 'Atlas · sans prix · 3 j', 'Boréal · sans prix · 5 j'])
   await expect(options.nth(0)).toHaveAttribute('title', 'snapshot de prix #5 du 01/11/2026 08:00 UTC')
   expect(reads).not.toContain('/api/v1/quotes')
 })

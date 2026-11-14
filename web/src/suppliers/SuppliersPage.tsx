@@ -4,10 +4,13 @@ import { ContractDialog, SupplierDialog } from './Forms'
 import { HistoryDialog } from './HistoryDialog'
 import { formatDay, formatDecimal, formatMoney, formatUTC, formatVariation } from './format'
 import { graphPoints } from './graph'
+import { byName, normalize } from '../text'
 import type { Contract, OffersPage, OfferView, Supplier } from './types'
 
 type StreamState = 'connecting' | 'connected' | 'unavailable'
 type PageState = { supplierID: number; data: OffersPage }
+function sortByName(items: Supplier[]) { return [...items].sort((a, b) => byName.compare(a.name, b.name) || a.id - b.id) }
+
 type ContractsState = { supplierID: number; asOf: string | null; data: Contract[] }
 
 export default function SuppliersPage() {
@@ -26,12 +29,13 @@ export default function SuppliersPage() {
   const [createSupplier, setCreateSupplier] = useState(false)
   const [contractForm, setContractForm] = useState<{ supplierID: number; contract: Contract | null } | null>(null)
   const [historyID, setHistoryID] = useState<number | null>(null)
+  const [offerQuery, setOfferQuery] = useState('')
 
   useEffect(() => {
     const controller = new AbortController()
     let active = true
     request<Supplier[]>('/suppliers', { signal: controller.signal })
-      .then((items) => { if (active) { setSuppliers(items); setSelectedID((old) => old ?? items[0]?.id ?? null) } })
+      .then((items) => { if (active) { const sorted = sortByName(items); setSuppliers(sorted); setSelectedID((old) => old ?? sorted[0]?.id ?? null) } })
       .catch((error) => { if (active) setSupplierError(errorMessage(error)) })
       .finally(() => { if (active) setSupplierLoading(false) })
     return () => { active = false; controller.abort() }
@@ -78,18 +82,19 @@ export default function SuppliersPage() {
   const currentContracts = contracts?.supplierID === selectedID ? contracts.data : null
   const contractAsOf = contracts?.supplierID === selectedID ? contracts.asOf : null
   const historyView = currentPage?.offers.find((view) => view.offer.id === historyID)
+  // Offres triées par nom de pièce, filtrées par la recherche (nom, catégorie, zone ou numéro d'offre).
+  const query = normalize(offerQuery)
+  const shownOffers = currentPage ? [...currentPage.offers]
+    .sort((a, b) => byName.compare(a.part.name, b.part.name) || a.offer.id - b.offer.id)
+    .filter((view) => query === '' || normalize([view.part.name, view.part.category, view.part.zone, `#${view.offer.id}`].filter(Boolean).join(' ')).includes(query)) : []
   function refreshData() { setPageError(''); setContractsError(''); setRefresh((version) => version + 1) }
   function chooseSupplier(id: number) {
     // Une sélection inchangée ne relance pas l'effet : conserver aussi ses erreurs visibles.
     if (id === selectedID) return
-    setPageError(''); setContractsError(''); setSelectedID(id); setHistoryID(null); setContractForm(null)
+    setPageError(''); setContractsError(''); setSelectedID(id); setHistoryID(null); setContractForm(null); setOfferQuery('')
   }
 
   return <>
-    <header className="app-header">
-      <a className="brand" href="#main-content" aria-label="BOM Studio — accéder au contenu"><span className="brand-mark" aria-hidden="true">B</span><span>BOM Studio<small>Conception & achats</small></span></a>
-      <span className="workspace-tag">Espace fournisseurs</span>
-    </header>
     <main id="main-content" className="supplier-workspace">
       <aside className="supplier-sidebar" aria-label="Fournisseurs">
         <div className="sidebar-heading"><div><p className="eyebrow">Catalogue</p><h2>Fournisseurs <span className="count">{suppliers.length}</span></h2></div></div>
@@ -103,7 +108,7 @@ export default function SuppliersPage() {
       <section className="supplier-content" aria-label="Détail du fournisseur">
         {supplier ? <>
           <div className="page-heading"><div><p className="eyebrow">Votre réseau d’approvisionnement</p><h1>{supplier.name}</h1><div className="supplier-ratings"><span>Qualité <strong>{formatDecimal(supplier.quality_score)}{supplier.quality_score !== null ? ' / 5' : ''}</strong></span><span>Confiance <strong>{formatDecimal(supplier.trust_score)}{supplier.trust_score !== null ? ' / 5' : ''}</strong></span></div></div><button type="button" className="secondary-button refresh-button" onClick={refreshData} aria-label="Actualiser les données">↻ <span>Actualiser</span></button></div>
-          <div className="feed-status" aria-live="polite"><span className={`status-dot ${stream === 'connected' ? 'connected' : ''}`} aria-hidden="true" /><span>{stream === 'connected' ? 'Mises à jour automatiques actives' : stream === 'connecting' ? 'Connexion aux mises à jour…' : 'Mises à jour automatiques indisponibles — actualisez manuellement'}</span>{loading && <span className="updating">Actualisation…</span>}</div>
+          <div className="feed-status" aria-live="polite"><span className={`status-dot ${stream === 'connected' ? 'connected' : ''}`} aria-hidden="true" /><span>{stream === 'connected' ? 'Mises à jour automatiques actives' : stream === 'connecting' ? 'Connexion aux mises à jour…' : 'Mises à jour automatiques indisponibles, actualisez manuellement'}</span>{loading && <span className="updating">Actualisation…</span>}</div>
           <div className="tabs" role="tablist" aria-label="Vue du fournisseur" onKeyDown={(event) => {
             if (['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) {
               event.preventDefault()
@@ -120,7 +125,9 @@ export default function SuppliersPage() {
             {pageError && <p className="form-error" role="alert">Impossible d’actualiser les offres : {pageError}{currentPage ? ' Les dernières données reçues restent affichées.' : ''}</p>}
             {!currentPage && loading && <div className="loading-state" role="status">Chargement des offres…</div>}
             {currentPage?.offers.length === 0 && <div className="empty-state"><strong>Aucune offre pour ce fournisseur</strong><p>Les offres rattachées à {supplier.name} apparaîtront ici.</p></div>}
-            <div className="offer-list">{currentPage?.offers.map((view) => <OfferCard key={view.offer.id} view={view} onHistory={() => setHistoryID(view.offer.id)} />)}</div>
+            {!!currentPage?.offers.length && <input type="search" className="offer-search" placeholder="Rechercher une pièce…" aria-label="Rechercher une offre" value={offerQuery} onChange={(event) => setOfferQuery(event.target.value)} />}
+            {!!currentPage?.offers.length && !shownOffers.length && <div className="empty-state"><strong>Aucune offre ne correspond à « {offerQuery} »</strong></div>}
+            <div className="offer-list">{shownOffers.map((view) => <OfferCard key={view.offer.id} view={view} onHistory={() => setHistoryID(view.offer.id)} />)}</div>
           </section> : <section role="tabpanel" id="contracts-panel" aria-labelledby="contracts-tab">
             <div className="section-heading"><div><h2>Contrats et remises</h2><p className="muted">{contractAsOf ? `Validité évaluée au ${formatUTC(contractAsOf)}` : 'Validité non évaluée : aucune date de prix connue.'}</p></div><button type="button" className="primary-button" onClick={() => setContractForm({ supplierID: supplier.id, contract: null })}>+ Nouveau contrat</button></div>
             {contractsError && <p className="form-error" role="alert">Lecture des contrats impossible : {contractsError}</p>}
@@ -137,7 +144,7 @@ export default function SuppliersPage() {
         </> : <div className="welcome-panel"><span className="welcome-symbol" aria-hidden="true">◇</span><h1>Un regard clair sur vos fournisseurs</h1><p>Retrouvez les offres, les prix et les contrats au même endroit.</p>{!supplierLoading && <button className="primary-button" onClick={() => setCreateSupplier(true)}>Créer le premier fournisseur</button>}</div>}
       </section>
     </main>
-    {createSupplier && <SupplierDialog onClose={() => setCreateSupplier(false)} onSaved={(item) => { setSuppliers((old) => [...old.filter((supplier) => supplier.id !== item.id), item]); chooseSupplier(item.id); setCreateSupplier(false) }} />}
+    {createSupplier && <SupplierDialog onClose={() => setCreateSupplier(false)} onSaved={(item) => { setSuppliers((old) => sortByName([...old.filter((supplier) => supplier.id !== item.id), item])); chooseSupplier(item.id); setCreateSupplier(false) }} />}
     {contractForm && supplier?.id === contractForm.supplierID && <ContractDialog key={contractForm.contract?.id ?? 'new'} supplierID={supplier.id} offers={currentPage?.offers ?? []} contract={contractForm.contract} onClose={() => setContractForm(null)} onSaved={() => { setContractForm(null); setRefresh((version) => version + 1) }} />}
     {historyView && <HistoryDialog key={historyView.offer.id} view={historyView} onClose={() => setHistoryID(null)} />}
   </>
@@ -146,11 +153,12 @@ export default function SuppliersPage() {
 function OfferCard({ view, onHistory }: { view: OfferView; onHistory: () => void }) {
   const stats = view.statistics
   const points = graphPoints(stats?.history ?? [], 160, 46)
-  return <article className="offer-card" aria-label={`Offre ${view.offer.id} — ${view.part.name}`}>
+  // Toute la carte ouvre l'historique ; le bouton reste la cible clavier et lecteur d'écran.
+  return <article className="offer-card" aria-label={`Offre ${view.offer.id} : ${view.part.name}`} onClick={onHistory}>
     <div className="offer-part"><div className="part-icon" aria-hidden="true">◇</div><div><h3>{view.part.name}</h3><p>{[view.part.category, view.part.zone].filter(Boolean).join(' · ') || `Pièce #${view.part.id}`}</p><small>Offre #{view.offer.id} · {view.offer.origin_country} · délai {view.offer.lead_time_days} j</small></div></div>
     <div className="offer-price"><span className="field-caption">Dernière cotation</span><strong data-testid={`price-${view.offer.id}`}>{formatMoney(stats?.current_quote?.price)}</strong><small>{stats?.current_quote ? formatUTC(stats.current_quote.quoted_at) : 'Aucun prix reçu'}</small></div>
     <div className="offer-evolution"><span className={`trend trend-${stats?.trend ?? 'unknown'}`} data-testid={`variation-${view.offer.id}`} data-trend={stats?.trend ?? 'unknown'}>{formatVariation(stats?.variation_percent, stats?.trend)}</span><p>Min. {stats?.minimum ? formatMoney(stats.minimum) : 'indisponible'}<br />Max. {stats?.maximum ? formatMoney(stats.maximum) : 'indisponible'}</p></div>
-    <button type="button" className="sparkline-button" onClick={onHistory} aria-label={`Historique de ${view.part.name}`}>
+    <button type="button" className="sparkline-button" onClick={(event) => { event.stopPropagation(); onHistory() }} aria-label={`Historique de ${view.part.name}`}>
       {points.length ? <svg viewBox="0 0 160 46" aria-hidden="true"><polyline points={points.map((point) => `${point.x},${point.y}`).join(' ')} className="chart-line" />{points.length === 1 && <circle cx={points[0].x} cy={points[0].y} r="3" className="chart-dot" />}</svg> : <span className="no-history">Pas de courbe</span>}
       <span>Voir l’historique <span aria-hidden="true">↗</span></span>
     </button>

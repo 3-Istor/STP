@@ -52,9 +52,9 @@ export function Workforce({ nodes, annualHours, catalog, readOnly, onApplyAnnual
             {subsystems.map((n) => (
               <tr key={n.id}>
                 <td>{n.part_id !== null ? partName(catalog, n.part_id) : n.name}</td>
-                <td>{n.totals?.labor_hours ? formatDecimal(n.totals.labor_hours, 2) : '—'}</td>
+                <td>{n.totals?.labor_hours ? formatDecimal(n.totals.labor_hours, 2) : 'n/d'}</td>
                 <td className={n.totals?.labor_error ? 'over' : undefined} title={n.totals?.labor_error ?? undefined}>
-                  {n.totals?.fte ? formatDecimal(n.totals.fte, 2) : '—'}
+                  {n.totals?.fte ? formatDecimal(n.totals.fte, 2) : 'n/d'}
                 </td>
               </tr>
             ))}

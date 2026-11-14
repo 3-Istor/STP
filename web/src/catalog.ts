@@ -1,6 +1,7 @@
 // Catalogue vu par l'UI de la BOM : noms des pièces et offres proposées au changement d'offre.
 // Source : GET /api/v1/parts (part-catalog) et GET /api/v1/suppliers pour les noms des fournisseurs.
 import type { Money } from './money.ts'
+import { byName } from './text.ts'
 
 export type Offer = {
   id: number
@@ -65,7 +66,11 @@ export async function loadCatalog(): Promise<Catalog> {
   // Sans la liste des fournisseurs, l'offre affiche « Fournisseur #id » : le catalogue reste utilisable.
   const suppliers = sup.ok ? ((await sup.json()) as { id: number; name: string }[]) : []
   const names = new Map(suppliers.map((s) => [s.id, s.name]))
-  const parts = ((await res.json()) as CatalogPart[]).map((p) => fromCatalog(p, names))
+  // Ordre alphabétique (pièces, puis fournisseurs de chaque pièce) pour tous les sélecteurs de l'UI.
+  const parts = ((await res.json()) as CatalogPart[])
+    .map((p) => fromCatalog(p, names))
+    .sort((a, b) => byName.compare(a.name, b.name) || a.id - b.id)
+  for (const p of parts) p.offers.sort((a, b) => byName.compare(a.supplier, b.supplier) || a.id - b.id)
   return { parts, byPart: new Map(parts.map((p) => [p.id, p])), available: true }
 }
 

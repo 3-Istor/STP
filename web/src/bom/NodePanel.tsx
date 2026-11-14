@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import type { Explanation, NewNode, NodeAnomaly, NodePatch, StockLine, TreeNode } from '../api.ts'
 import { partName, type Catalog } from '../catalog.ts'
+import { normalize } from '../text.ts'
 import { formatDate, formatDecimal, formatMoney, multiplyDecimal } from '../money.ts'
 import { AnomalyFacts } from './Anomalies.tsx'
 import { LandedPanel } from './LandedPanel.tsx'
@@ -48,7 +49,7 @@ export function NodePanel(p: Props) {
         <dl className="facts">
           <dt>Coût total</dt>
           <dd className={t.cost_error_code ? 'over' : undefined}>
-            {t.cost ? formatMoney(t.cost) : (t.cost_error ?? '—')}
+            {t.cost ? formatMoney(t.cost) : (t.cost_error ?? 'n/d')}
           </dd>
           {t.missing_cost.length > 0 && (
             <>
@@ -222,7 +223,16 @@ function AddChild({
   const [kind, setKind] = useState<'part' | 'group'>(catalog.available ? 'part' : 'group')
   const [name, setName] = useState('')
   const [partID, setPartID] = useState(catalog.parts[0]?.id ?? 0)
+  const [partQuery, setPartQuery] = useState('')
   const part = catalog.byPart.get(partID)
+  const q = normalize(partQuery)
+  // La pièce choisie reste dans la liste même si elle ne correspond plus à la recherche : le sélecteur
+  // n'affiche jamais une valeur absente de ses options.
+  const shownParts = q === '' ? catalog.parts : catalog.parts.filter((pt) => pt.id === partID || normalize(pt.name).includes(q))
+  function choosePart(id: number) {
+    setPartID(id)
+    setOfferID(catalog.byPart.get(id)?.offers[0]?.id ?? 0)
+  }
   const [offerID, setOfferID] = useState(part?.offers[0]?.id ?? 0)
   const [qty, setQty] = useState('1')
   const [days, setDays] = useState('0')
@@ -261,16 +271,21 @@ function AddChild({
       </div>
       {kind === 'part' ? (
         <>
-          <select
-            aria-label="Pièce"
-            value={partID}
+          <input
+            type="search"
+            placeholder="Rechercher une pièce…"
+            aria-label="Rechercher une pièce"
+            value={partQuery}
             onChange={(e) => {
-              const id = Number(e.target.value)
-              setPartID(id)
-              setOfferID(catalog.byPart.get(id)?.offers[0]?.id ?? 0)
+              setPartQuery(e.target.value)
+              // Premier résultat présélectionné : la recherche suffit souvent à choisir la pièce.
+              const next = normalize(e.target.value)
+              const hit = catalog.parts.find((pt) => normalize(pt.name).includes(next))
+              if (next !== '' && hit) choosePart(hit.id)
             }}
-          >
-            {catalog.parts.map((pt) => (
+          />
+          <select aria-label="Pièce" value={partID} onChange={(e) => choosePart(Number(e.target.value))}>
+            {shownParts.map((pt) => (
               <option key={pt.id} value={pt.id}>
                 {pt.name}
               </option>

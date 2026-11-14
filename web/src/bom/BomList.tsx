@@ -1,8 +1,11 @@
 import { useState, type FormEvent } from 'react'
 import type { BOM } from '../api.ts'
+import { currencyChoices } from '../currencies.ts'
+import { byName } from '../text.ts'
 
 type Props = {
   boms: BOM[]
+  currencies: string[]
   selectedID: number | null
   onSelect: (id: number) => void
   onCreate: (b: { name: string; currency: string; volume: number }) => Promise<void>
@@ -10,14 +13,15 @@ type Props = {
 }
 
 // BomList : liste des BOM et création d'une BOM (nom, devise de référence, volume).
-export function BomList({ boms, selectedID, onSelect, onCreate, onDelete }: Props) {
+export function BomList({ boms, currencies, selectedID, onSelect, onCreate, onDelete }: Props) {
   const [name, setName] = useState('')
   const [currency, setCurrency] = useState('EUR')
   const [volume, setVolume] = useState('1000')
+  const sorted = [...boms].sort((a, b) => byName.compare(a.name, b.name) || a.id - b.id)
 
   async function submit(e: FormEvent) {
     e.preventDefault()
-    await onCreate({ name: name.trim(), currency: currency.trim().toUpperCase(), volume: Number.parseInt(volume, 10) })
+    await onCreate({ name: name.trim(), currency, volume: Number.parseInt(volume, 10) })
     setName('')
   }
 
@@ -25,7 +29,7 @@ export function BomList({ boms, selectedID, onSelect, onCreate, onDelete }: Prop
     <nav className="bom-list" aria-label="BOM">
       <h2>BOM</h2>
       <ul>
-        {boms.map((b) => (
+        {sorted.map((b) => (
           <li key={b.id} className={b.id === selectedID ? 'selected' : undefined}>
             <button type="button" className="link" onClick={() => onSelect(b.id)}>
               {b.name}
@@ -49,14 +53,13 @@ export function BomList({ boms, selectedID, onSelect, onCreate, onDelete }: Prop
       <form onSubmit={(e) => void submit(e)} className="stack">
         <input required placeholder="Nom de la BOM" value={name} onChange={(e) => setName(e.target.value)} />
         <div className="row">
-          <input
-            required
-            aria-label="Devise"
-            pattern="[A-Za-z]{3}"
-            size={4}
-            value={currency}
-            onChange={(e) => setCurrency(e.target.value)}
-          />
+          <select required aria-label="Devise" value={currency} onChange={(e) => setCurrency(e.target.value)}>
+            {currencyChoices(currencies, [currency]).map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
           <input
             required
             aria-label="Volume"

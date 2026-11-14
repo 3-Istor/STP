@@ -33,7 +33,7 @@ test('offres isolées, variations explicites et prix manquant visible', async ({
   await mockSupplierAPI(page)
   await page.goto('/#fournisseurs')
   await chooseSupplier(page, 'Atlas')
-  await expect(page.getByRole('article', { name: 'Offre 101 — Injecteur Atlas' })).toBeVisible()
+  await expect(page.getByRole('article', { name: 'Offre 101 : Injecteur Atlas' })).toBeVisible()
   await expect(page.getByText('Moteur Boréal', { exact: true })).toHaveCount(0)
 
   const up = page.getByTestId('variation-101')
@@ -49,12 +49,12 @@ test('offres isolées, variations explicites et prix manquant visible', async ({
   expect(downColor.actual).toBe(downColor.ok)
   expect(stableColor.actual).not.toBe(stableColor.ok)
   expect(stableColor.actual).not.toBe(stableColor.over)
-  const missing = page.getByRole('article', { name: 'Offre 104 — Sans cotation Atlas' })
+  const missing = page.getByRole('article', { name: 'Offre 104 : Sans cotation Atlas' })
   await expect(missing).toContainText('Aucune cotation disponible')
   await expect(missing).not.toContainText('0,00')
 
   await chooseSupplier(page, 'Boréal')
-  await expect(page.getByRole('article', { name: 'Offre 201 — Moteur Boréal' })).toBeVisible()
+  await expect(page.getByRole('article', { name: 'Offre 201 : Moteur Boréal' })).toBeVisible()
   await expect(page.getByText('Injecteur Atlas', { exact: true })).toHaveCount(0)
 })
 
@@ -89,7 +89,7 @@ test('historique utilisable au clic, au clavier et au toucher', async ({ page },
   const open = page.getByRole('button', { name: 'Historique de Injecteur Atlas', exact: true })
   if (testInfo.project.use.hasTouch) await open.tap()
   else await open.click()
-  const dialog = page.getByRole('dialog', { name: 'Historique — Injecteur Atlas' })
+  const dialog = page.getByRole('dialog', { name: 'Historique : Injecteur Atlas' })
   await expect(dialog).toBeVisible()
   await expect(dialog).toContainText(/110,00\s*€/)
   const point = dialog.getByRole('button', { name: /^Cotation du / }).first()
@@ -105,9 +105,30 @@ test('historique utilisable au clic, au clavier et au toucher', async ({ page },
   await expect(dialog).toHaveCount(0)
   await open.focus()
   await page.keyboard.press('Enter')
-  await expect(page.getByRole('dialog', { name: 'Historique — Injecteur Atlas' })).toBeVisible()
+  await expect(page.getByRole('dialog', { name: 'Historique : Injecteur Atlas' })).toBeVisible()
   await page.keyboard.press('Escape')
   await expect(page.getByRole('dialog')).toHaveCount(0)
+})
+
+test('carte d’offre entièrement cliquable, offres triées et recherche', async ({ page }, testInfo) => {
+  await mockSupplierAPI(page)
+  await page.goto('/#fournisseurs')
+  await chooseSupplier(page, 'Atlas')
+  // Offres triées par nom de pièce.
+  await expect(page.locator('.offer-card h3')).toHaveText(['Capteur Atlas', 'Filtre Atlas', 'Injecteur Atlas', 'Sans cotation Atlas'])
+  // Un clic sur le nom de la pièce (hors bouton « Voir l’historique ») ouvre l’historique.
+  const title = page.getByRole('article', { name: 'Offre 101 : Injecteur Atlas' }).getByRole('heading', { name: 'Injecteur Atlas' })
+  if (testInfo.project.use.hasTouch) await title.tap()
+  else await title.click()
+  await expect(page.getByRole('dialog', { name: 'Historique : Injecteur Atlas' })).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+
+  const search = page.getByRole('searchbox', { name: 'Rechercher une offre' })
+  await search.fill('filtre')
+  await expect(page.locator('.offer-card h3')).toHaveText(['Filtre Atlas'])
+  await search.fill('aucune pièce')
+  await expect(page.getByText('Aucune offre ne correspond à « aucune pièce »')).toBeVisible()
 })
 
 test('petit écran sans débordement et commandes toujours accessibles', async ({ page }, testInfo) => {
@@ -151,7 +172,7 @@ test('signal de prix relu sans navigation ni fuite de connexion', async ({ page 
   await expect(page.getByTestId('variation-101')).toHaveText(/\+20,0\s*%/)
   expect(navigations).toBe(0)
   await page.evaluate(() => window.__specDrumSse.disconnect())
-  await expect(page.getByText('Mises à jour automatiques indisponibles — actualisez manuellement', { exact: true })).toBeVisible()
+  await expect(page.getByText('Mises à jour automatiques indisponibles, actualisez manuellement', { exact: true })).toBeVisible()
   const beforeReconnect = api.calls['1']
   await page.evaluate(() => window.__specDrumSse.emit('open'))
   await expect(page.getByText('Mises à jour automatiques actives', { exact: true })).toBeVisible()
@@ -169,13 +190,13 @@ test('une réponse Atlas retardée ne remplace pas les offres Boréal', async ({
     await chooseSupplier(page, 'Atlas')
     await held.requested
     await chooseSupplier(page, 'Boréal')
-    await expect(page.getByRole('article', { name: 'Offre 201 — Moteur Boréal' })).toBeVisible()
+    await expect(page.getByRole('article', { name: 'Offre 201 : Moteur Boréal' })).toBeVisible()
     held.release()
     await held.settled
     // Attendre le rendu après la résolution réseau, sans minuterie arbitraire.
     await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))))
     await expect(page.getByRole('heading', { name: 'Boréal', exact: true })).toBeVisible()
-    await expect(page.getByRole('article', { name: 'Offre 201 — Moteur Boréal' })).toBeVisible()
+    await expect(page.getByRole('article', { name: 'Offre 201 : Moteur Boréal' })).toBeVisible()
     await expect(page.getByText('Injecteur Atlas', { exact: true })).toHaveCount(0)
   } finally {
     held.release()

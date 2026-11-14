@@ -99,9 +99,9 @@ function SuggestionList({ bomID, node, catalog, onPatch }: Omit<Props, 'readOnly
                 >
                   <td>{offerLabel(c.part_id, c.offer_id)}</td>
                   <td>{formatMoney(c.cost)}</td>
-                  <td>{c.lead_time_days === null ? '—' : `${c.lead_time_days} j`}</td>
-                  <td>{c.co2_kg === null ? '—' : `${formatDecimal(c.co2_kg, 2)} kg`}</td>
-                  <td>{c.score ? formatDecimal(c.score, 2) : '—'}</td>
+                  <td>{c.lead_time_days === null ? 'n/d' : `${c.lead_time_days} j`}</td>
+                  <td>{c.co2_kg === null ? 'n/d' : `${formatDecimal(c.co2_kg, 2)} kg`}</td>
+                  <td>{c.score ? formatDecimal(c.score, 2) : 'n/d'}</td>
                   <td>
                     {c.current ? (
                       <span className="muted">actuelle</span>

@@ -41,8 +41,8 @@ export function ContractDialog({ supplierID, offers, contract, onClose, onSaved 
   const [error, setError] = useState('')
   const [selected, setSelected] = useState<number[]>(contract?.offer_ids ?? [])
   const [tiers, setTiers] = useState<Tier[]>(contract?.tiers ?? [{ min_quantity: '', discount_percent: '' }])
-  const options = [...offers.map((view) => ({ id: view.offer.id, label: `${view.part.name} — offre #${view.offer.id}` })),
-    ...(contract?.offer_ids.filter((id) => !offers.some((view) => view.offer.id === id)).map((id) => ({ id, label: `Offre #${id} — indisponible au catalogue` })) ?? [])]
+  const options = [...offers.map((view) => ({ id: view.offer.id, label: `${view.part.name} · offre #${view.offer.id}` })),
+    ...(contract?.offer_ids.filter((id) => !offers.some((view) => view.offer.id === id)).map((id) => ({ id, label: `Offre #${id} (indisponible au catalogue)` })) ?? [])]
   function changeTier(index: number, field: keyof Tier, value: string) { setTiers((old) => old.map((tier, i) => i === index ? { ...tier, [field]: value } : tier)) }
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()

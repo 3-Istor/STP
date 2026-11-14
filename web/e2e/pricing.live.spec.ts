@@ -14,7 +14,7 @@ test('tick réel, contexte figé et reconnexion sans navigation', async ({ page,
   await page.getByRole('button', { name: 'Fournisseur Flux Boréal', exact: true }).click()
   const supplier = page.getByRole('button', { name: 'Fournisseur Flux Boréal', exact: true })
   const price = page.getByTestId(`price-${info.second}`)
-  await expect(price).not.toHaveText('—')
+  await expect(price).not.toHaveText('n/d')
   const oldPrice = await price.locator('..').textContent()
   await page.getByRole('button', { name: 'Historique de runtime part', exact: true }).click()
   await expect(page.getByRole('dialog')).toBeVisible()

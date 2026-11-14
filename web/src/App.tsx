@@ -21,10 +21,17 @@ export default function App() {
 
   return (
     <>
-      <nav className="space-nav" aria-label="Espaces">
-        <a href="#boms" aria-current={space === 'boms' ? 'page' : undefined}>BOM</a>
-        <a href="#fournisseurs" aria-current={space === 'fournisseurs' ? 'page' : undefined}>Fournisseurs</a>
-      </nav>
+      {/* En-tête commun aux deux espaces : même marque, même navigation, même palette (index.css). */}
+      <header className="app-header">
+        <span className="brand">
+          <span className="brand-mark" aria-hidden="true">B</span>
+          <span>BOM Studio<small>Conception & achats</small></span>
+        </span>
+        <nav className="space-nav" aria-label="Espaces">
+          <a href="#boms" aria-current={space === 'boms' ? 'page' : undefined}>BOM</a>
+          <a href="#fournisseurs" aria-current={space === 'fournisseurs' ? 'page' : undefined}>Fournisseurs</a>
+        </nav>
+      </header>
       {space === 'boms' ? <BomPage /> : <SuppliersPage />}
     </>
   )

@@ -9,7 +9,7 @@ type Decimal = Intl.StringNumericLiteral
 const moneyFormats = new Map<string, Intl.NumberFormat>()
 
 export function formatMoney(m: Money | null | undefined): string {
-  if (!m) return '—'
+  if (!m) return 'n/d'
   let f = moneyFormats.get(m.currency)
   if (!f) {
     f = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: m.currency, roundingMode: 'halfEven' })

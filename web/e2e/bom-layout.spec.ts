@@ -28,6 +28,7 @@ async function mockBomAPI(page: Page) {
       },
       '/api/v1/parts': [],
       '/api/v1/suppliers': [],
+      '/api/v1/fx': { rates: [] },
     }[path]
     if (json === undefined) await route.fulfill({ status: 404, json: { error: `Fixture API absente : ${path}` } })
     else await route.fulfill({ json })

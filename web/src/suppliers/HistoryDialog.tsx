@@ -18,7 +18,7 @@ export function HistoryDialog({ view, onClose }: { view: OfferView; onClose: () 
   return (
     <dialog ref={dialog} className="history-dialog" aria-labelledby="history-title" onCancel={(event) => { event.preventDefault(); onClose() }}>
       <div className="dialog-heading">
-        <div><p className="eyebrow">Détail de l’offre #{view.offer.id}</p><h2 id="history-title">Historique — {view.part.name}</h2></div>
+        <div><p className="eyebrow">Détail de l’offre #{view.offer.id}</p><h2 id="history-title">Historique : {view.part.name}</h2></div>
         <button type="button" className="icon-button" aria-label="Fermer l’historique" onClick={onClose}>×</button>
       </div>
       <div className="history-summary">
@@ -42,7 +42,7 @@ export function HistoryDialog({ view, onClose }: { view: OfferView; onClose: () 
         </svg>
         {selected && <div className="quote-detail" data-testid="quote-detail" role="status" aria-live="polite"><strong>{formatMoney(selected.price)}</strong><span>{formatUTC(selected.quoted_at)}</span><span className="muted">Source : {selected.source} · cotation #{selected.id}</span></div>}
         <details className="quotes-disclosure" open={history.length <= 7}>
-          <summary>Consulter les {history.length} cotations — clavier et tactile</summary>
+          <summary>Consulter les {history.length} cotations (clavier et tactile)</summary>
           <p className="muted">Choisissez une cotation pour afficher sa date et son prix sur le graphique.</p>
           <div className="quote-list" role="list" aria-label="Cotations de la période">
             {history.map((quote) => <div key={quote.id} role="listitem"><button type="button" aria-pressed={selected?.id === quote.id}
