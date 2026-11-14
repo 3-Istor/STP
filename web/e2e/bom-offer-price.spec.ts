@@ -23,7 +23,7 @@ const quote = (offerID: number, amount: string, currency: string) => ({
 
 async function mockAPI(page: Page, priceSnapshotID: number | null) {
   const bom = {
-    id: 1, name: 'Fiat Multipla', currency: 'EUR', volume: 1000,
+    id: 1, name: 'Fiat Multipla', currency: 'EUR', volume: 1000, annual_hours: '1607', destination_country: null,
     price_snapshot_id: priceSnapshotID, source_snapshot_id: null, created_at: asOf,
   }
   const reads: string[] = []
@@ -32,7 +32,7 @@ async function mockAPI(page: Page, priceSnapshotID: number | null) {
     reads.push(path)
     const json = {
       '/api/v1/boms': [bom],
-      '/api/v1/boms/1/tree': { bom, nodes, explanation: { currency: 'EUR', price_snapshot_id: priceSnapshotID, rates: [] } },
+      '/api/v1/boms/1/tree': { bom, nodes, explanation: { currency: 'EUR', price_snapshot_id: priceSnapshotID, rates: [] }, stock: [], planning: { schedule: null, lead_time_days: 0, available_on: null, critical: [], allowed_days: null, target_met: null, late: [] } },
       '/api/v1/parts': [part],
       '/api/v1/suppliers': [{ id: 1, name: 'Atlas' }, { id: 2, name: 'Boréal' }],
       // En direct : 101 et 102 cotées, 103 en erreur de cotation.
