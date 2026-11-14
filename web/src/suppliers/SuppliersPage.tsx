@@ -33,6 +33,7 @@ export default function SuppliersPage() {
   const [historyID, setHistoryID] = useState<number | null>(null)
   const [offerQuery, setOfferQuery] = useState('')
   const [offerForm, setOfferForm] = useState(false)
+  const [supplierQuery, setSupplierQuery] = useState('')
 
   useEffect(() => {
     const controller = new AbortController()
@@ -84,6 +85,9 @@ export default function SuppliersPage() {
   const currentPage = page?.supplierID === selectedID ? page.data : null
   const currentContracts = contracts?.supplierID === selectedID ? contracts.data : null
   const contractAsOf = contracts?.supplierID === selectedID ? contracts.asOf : null
+  // Filtre de la liste (nom ou numéro) ; le fournisseur affiché reste sélectionné même s'il est masqué.
+  const supplierFilter = normalize(supplierQuery)
+  const shownSuppliers = supplierFilter === '' ? suppliers : suppliers.filter((item) => normalize(`${item.name} #${item.id}`).includes(supplierFilter))
   const historyView = currentPage?.offers.find((view) => view.offer.id === historyID)
   // Offres triées par nom de pièce, filtrées par la recherche (nom, catégorie, zone ou numéro d'offre).
   const query = normalize(offerQuery)
@@ -100,12 +104,14 @@ export default function SuppliersPage() {
   return <>
     <main id="main-content" className="supplier-workspace">
       <aside className="supplier-sidebar" aria-label="Fournisseurs">
-        <div className="sidebar-heading"><div><p className="eyebrow">Catalogue</p><h2>Fournisseurs <span className="count">{suppliers.length}</span></h2></div></div>
+        <div className="sidebar-heading"><div><p className="eyebrow">Catalogue</p><h2>Fournisseurs <span className="count">{supplierFilter === '' ? suppliers.length : `${shownSuppliers.length} / ${suppliers.length}`}</span></h2></div></div>
         <button className="primary-button add-supplier" disabled={supplierLoading} onClick={() => setCreateSupplier(true)}>+ Nouveau fournisseur</button>
         {supplierLoading && <p className="muted" role="status">Chargement des fournisseurs…</p>}
         {supplierError && <p className="form-error" role="alert">{supplierError}</p>}
         {!supplierLoading && !supplierError && !suppliers.length && <p className="muted">Ajoutez votre premier fournisseur pour retrouver ses offres et ses contrats.</p>}
-        <nav className="supplier-list" aria-label="Choisir un fournisseur">{suppliers.map((item) => <button type="button" key={item.id} aria-label={`Fournisseur ${item.name}`} aria-current={item.id === selectedID ? 'page' : undefined}
+        {suppliers.length > 0 && <input type="search" className="supplier-search" placeholder="Filtrer les fournisseurs…" aria-label="Filtrer les fournisseurs" value={supplierQuery} onChange={(event) => setSupplierQuery(event.target.value)} />}
+        {supplierFilter !== '' && !shownSuppliers.length && <p className="muted">Aucun fournisseur ne correspond à « {supplierQuery} ».</p>}
+        <nav className="supplier-list" aria-label="Choisir un fournisseur">{shownSuppliers.map((item) => <button type="button" key={item.id} aria-label={`Fournisseur ${item.name}`} aria-current={item.id === selectedID ? 'page' : undefined}
           onClick={() => chooseSupplier(item.id)}><span className="supplier-avatar" aria-hidden="true">{item.name.slice(0, 2).toLocaleUpperCase('fr')}</span><span className="supplier-list-name">{item.name}<small>Fournisseur #{item.id}</small></span><span aria-hidden="true" className="selection-chevron">›</span></button>)}</nav>
       </aside>
       <section className="supplier-content" aria-label="Détail du fournisseur">

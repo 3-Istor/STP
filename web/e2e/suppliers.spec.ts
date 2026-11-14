@@ -276,6 +276,26 @@ test('nouvelle pièce : tous ses attributs, et pas de doublon si l’offre est r
   expect(posts[2].body).toMatchObject({ supplier_id: 1, price_min: '700', price_max: '800', origin_country: 'DE' })
 })
 
+test('liste des fournisseurs filtrable, défilement propre sur grand écran', async ({ page }, testInfo) => {
+  await mockSupplierAPI(page)
+  await page.goto('/#fournisseurs')
+  const list = page.getByRole('navigation', { name: 'Choisir un fournisseur' })
+  await expect(list.getByRole('button')).toHaveCount(2)
+  const filter = page.getByRole('searchbox', { name: 'Filtrer les fournisseurs' })
+  await filter.fill('boreal')
+  await expect(list.getByRole('button')).toHaveText([/Boréal/])
+  await expect(page.locator('.supplier-sidebar .count')).toHaveText('1 / 2')
+  await filter.fill('zzz')
+  await expect(page.getByText('Aucun fournisseur ne correspond à « zzz ».')).toBeVisible()
+  await filter.fill('')
+  await expect(list.getByRole('button')).toHaveCount(2)
+  if (!testInfo.project.use.isMobile && !testInfo.project.use.hasTouch) {
+    // La liste défile dans sa colonne, bornée à la hauteur de la fenêtre.
+    await expect(list).toHaveCSS('overflow-y', 'auto')
+    await expect(page.locator('.supplier-sidebar')).toHaveCSS('position', 'sticky')
+  }
+})
+
 test('petit écran sans débordement et commandes toujours accessibles', async ({ page }, testInfo) => {
   await mockSupplierAPI(page)
   await page.goto('/#fournisseurs')

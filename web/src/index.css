@@ -33,6 +33,12 @@ button { transition: background-color .15s, border-color .15s; }
 .brand-mark { display: grid; place-items: center; width: 39px; height: 42px; background: #1d477c; color: #fff; border-radius: 12px 12px 12px 3px; font-size: 1.7rem; font-weight: 600; }
 .supplier-workspace { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 32px; max-width: 1540px; margin: 0 auto; padding: 36px clamp(20px, 4vw, 56px) 60px; }
 .supplier-sidebar { align-self: start; padding: 18px 0; min-width: 0; }
+/* La liste défile seule : la colonne reste sous l'en-tête pendant que la page défile (desktop). */
+@media (min-width: 721px) {
+  .supplier-sidebar { position: sticky; top: var(--header-height); display: flex; flex-direction: column; max-height: calc(100vh - var(--header-height)); max-height: calc(100dvh - var(--header-height)); }
+  .supplier-list { flex: 1; min-height: 0; overflow-y: auto; padding-right: 4px; overscroll-behavior: contain; }
+}
+.supplier-search { margin-bottom: 12px; }
 .sidebar-heading { display: flex; justify-content: space-between; margin-bottom: 22px; }
 .eyebrow { margin-bottom: 8px; color: var(--muted); font-size: .69rem; font-weight: 650; text-transform: uppercase; letter-spacing: .12em; }
 .count { display: inline-flex; align-items: center; justify-content: center; min-width: 23px; padding: 2px 7px; margin-left: 6px; background: #e8eef6; color: #526985; border-radius: 7px; font-size: .72rem; vertical-align: middle; font-weight: 650; }
