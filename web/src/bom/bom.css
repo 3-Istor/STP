@@ -464,3 +464,45 @@
   padding: 0.8rem;
   margin: 0;
 }
+
+/* Fenêtre d'ajout d'un nœud (AddNodeDialog.tsx). Les sélecteurs .bom-space .add-dialog l'emportent sur
+   les contrôles compacts de l'espace BOM : la fenêtre reprend le style des dialogues fournisseurs. */
+.bom-space .add-dialog { width: min(640px, calc(100% - 28px)); }
+.bom-space .add-dialog form label { flex-direction: column; align-items: stretch; gap: 6px; }
+.bom-space .add-dialog input:not([type='radio']),
+.bom-space .add-dialog select { width: 100%; padding: 9px 11px; }
+.bom-space .add-dialog .primary-button { background: var(--primary); color: #fff; border: 0; padding: 10px 16px; }
+.bom-space .add-dialog .primary-button:hover:not(:disabled) { background: #184eaf; }
+.bom-space .add-dialog .primary-button:disabled { cursor: not-allowed; opacity: .5; }
+.bom-space .add-dialog .icon-button { border: 0; padding: 0; }
+.bom-space .segmented { display: flex; gap: 4px; padding: 4px; margin-bottom: 16px; background: #eef3f9; border-radius: 10px; }
+.bom-space .segmented button { flex: 1; border: 0; background: transparent; }
+.bom-space .segmented button[aria-checked='true'] { background: #fff; color: var(--primary); box-shadow: 0 1px 3px #1d477c26; }
+.bom-space .add-filters { display: grid; grid-template-columns: minmax(0, 1fr) 200px; gap: 8px; margin-bottom: 8px; }
+.bom-space .pick-list { list-style: none; margin: 0; padding: 4px; max-height: 260px; overflow-y: auto; border: 1px solid var(--line); border-radius: 9px; }
+.bom-space .pick-list button { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; width: 100%; border: 0; border-radius: 6px; background: transparent; text-align: left; padding: 8px 10px; font-weight: 500; }
+.bom-space .pick-list li[aria-selected='true'] button { background: var(--accent-bg); color: #214e99; }
+.bom-space .pick-name { font-weight: 620; overflow-wrap: anywhere; }
+.bom-space .pick-meta { color: var(--muted); font-size: .8rem; white-space: nowrap; }
+.bom-space .pick-empty, .bom-space .pick-more { padding: 8px 10px; margin: 4px 0 0; font-size: .8rem; }
+.bom-space .add-dialog fieldset { margin: 16px 0 0; }
+.bom-space .add-dialog .offer-choice { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; gap: 10px; flex-direction: row; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; font-weight: 450; color: var(--fg); }
+.bom-space .add-dialog .offer-choice:has(input:checked) { border-color: var(--primary); background: #f3f7fd; }
+.bom-space .add-group { display: grid; gap: 12px; }
+.bom-space .add-dialog .form-actions { align-items: flex-end; }
+.bom-space .add-dialog .qty-field { margin-right: auto; width: 120px; }
+@media (max-width: 720px) {
+  .bom-space .add-filters { grid-template-columns: 1fr; }
+  .bom-space .add-dialog .offer-choice { grid-template-columns: auto minmax(0, 1fr); }
+}
+
+/* Arbre étroit (petit écran, panneau latéral ouvert) : les colonnes gardent leur largeur et l'arbre
+   défile horizontalement, plutôt que d'écraser le nom ou de masquer le sélecteur d'offre (changement
+   d'offre en un geste, spec BOM). */
+.bom-space .tree-pane { container-type: inline-size; }
+.bom-space .tree-row .name,
+.bom-space .tree-head .name { min-width: 9rem; }
+.bom-space .tree-pane .tree { overflow: auto; }
+@container (max-width: 680px) {
+  .bom-space .tree-pane .tree > * { min-width: 680px; }
+}
