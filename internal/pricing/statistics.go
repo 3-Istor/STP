@@ -131,7 +131,11 @@ func validateHistoricalQuote(offerID int64, quote HistoricalQuote, currency mone
 // roundedVariation calcule difference/reference×100 puis arrondit directement à 0,1 %.
 // Le quotient et le reste entiers évitent tout Div et tout arrondi intermédiaire implicite.
 func roundedVariation(difference, reference decimal.Decimal) string {
-	ratio := new(big.Rat).Quo(difference.Rat(), reference.Rat())
+	return roundedPercent(new(big.Rat).Quo(difference.Rat(), reference.Rat()))
+}
+
+// roundedPercent arrondit ratio×100 à 0,1 % en half-even, sur entiers exacts.
+func roundedPercent(ratio *big.Rat) string {
 	numerator := new(big.Int).Mul(ratio.Num(), big.NewInt(1000))
 	negative := numerator.Sign() < 0
 	numerator.Abs(numerator)

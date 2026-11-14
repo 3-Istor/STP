@@ -74,6 +74,17 @@ func (m Exact) Exchange(target Currency, numerator, denominator decimal.Decimal)
 	return Exact{value: new(big.Rat).Mul(m.value, factor), currency: target}, nil
 }
 
+// Ratio returns the exact quotient m/o of two amounts in the same currency.
+func (m Exact) Ratio(o Exact) (*big.Rat, error) {
+	if err := m.check(o); err != nil {
+		return nil, err
+	}
+	if o.Sign() == 0 {
+		return nil, fmt.Errorf("divide amount by zero: %w", ErrInvalidAmount)
+	}
+	return new(big.Rat).Quo(m.value, o.value), nil
+}
+
 // FloorRatio returns the exact integer floor, including for negative ratios.
 func (m Exact) FloorRatio(o Exact) (*big.Int, error) {
 	if err := m.check(o); err != nil {
