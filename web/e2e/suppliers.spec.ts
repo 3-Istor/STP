@@ -184,6 +184,98 @@ test('historique affiché en euros au taux du jour, prix d’origine et taux vis
   await expect(detail).toContainText(/Coté 110,00\s*£GB · taux GBP→EUR 1,2 du/)
 })
 
+// Fenêtre « Nouvelle pièce vendue » : une offre du fournisseur sur une pièce du catalogue ou créée.
+async function mockCatalogWrites(page: Page, offerFailures = 0) {
+  const posts: { path: string; body: unknown }[] = []
+  let failures = offerFailures
+  await page.route('**/api/v1/fx', (route) => route.fulfill({ json: { rates: [{ base_currency: 'GBP', quote_currency: 'EUR' }] } }))
+  await page.route('**/api/v1/parts**', async (route) => {
+    const path = new URL(route.request().url()).pathname
+    if (route.request().method() === 'GET') {
+      await route.fulfill({ json: [
+        { id: 10, name: 'Injecteur Atlas', category: 'moteur', zone: 'moteur', offers: [{ supplier_id: 1 }] },
+        { id: 11, name: 'Bougie d’allumage', category: 'moteur', zone: 'moteur', offers: [] },
+      ] })
+      return
+    }
+    posts.push({ path, body: route.request().postDataJSON() })
+    if (path === '/api/v1/parts') await route.fulfill({ status: 201, json: { id: 50, name: 'Turbo' } })
+    else if (failures-- > 0) await route.fulfill({ status: 400, json: { error: 'price_min must not exceed price_max' } })
+    else await route.fulfill({ status: 201, json: { id: 900 } })
+  })
+  return posts
+}
+
+test('pièce du catalogue ajoutée au fournisseur : recherche, offre complète', async ({ page }) => {
+  await mockSupplierAPI(page)
+  const posts = await mockCatalogWrites(page)
+  await page.goto('/#fournisseurs')
+  await chooseSupplier(page, 'Atlas')
+  await page.getByRole('button', { name: '+ Nouvelle pièce vendue' }).click()
+  const dialog = page.getByRole('dialog', { name: 'Nouvelle pièce vendue' })
+  const parts = dialog.getByRole('listbox', { name: 'Pièces du catalogue' }).getByRole('option')
+  await expect(parts).toHaveText([/^Bougie d’allumage/, /^Injecteur Atlas.*déjà vendue par ce fournisseur/])
+  await dialog.getByRole('searchbox', { name: 'Rechercher une pièce' }).fill('bougie')
+  await expect(parts).toHaveCount(1)
+  const add = dialog.getByRole('button', { name: 'Ajouter la pièce' })
+  await expect(add).toBeDisabled()
+  await parts.getByRole('button').click()
+  // Devise et pays : listes, jamais de saisie libre.
+  await expect(dialog.getByRole('combobox', { name: 'Devise de l’offre' }).locator('option')).toHaveText(['EUR', 'GBP'])
+  await dialog.getByRole('combobox', { name: 'Devise de l’offre' }).selectOption('GBP')
+  await dialog.getByRole('combobox', { name: 'Pays d’origine' }).selectOption('GB')
+  await dialog.getByLabel('Prix mini').fill('8,50')
+  await dialog.getByLabel('Prix maxi').fill('12')
+  await dialog.getByLabel('Délai de livraison (jours)').fill('6')
+  await dialog.getByLabel('Qualité (sur 5)').fill('4.5')
+  await add.click()
+  await expect(dialog).toHaveCount(0)
+  expect(posts).toEqual([{ path: '/api/v1/parts/11/offers', body: {
+    supplier_id: 1, currency: 'GBP', price_min: '8.50', price_max: '12', lead_time_days: 6, quality_score: '4.5', origin_country: 'GB',
+  } }])
+})
+
+test('nouvelle pièce : tous ses attributs, et pas de doublon si l’offre est refusée', async ({ page }) => {
+  await mockSupplierAPI(page)
+  const posts = await mockCatalogWrites(page, 1)
+  await page.goto('/#fournisseurs')
+  await chooseSupplier(page, 'Atlas')
+  await page.getByRole('button', { name: '+ Nouvelle pièce vendue' }).click()
+  const dialog = page.getByRole('dialog', { name: 'Nouvelle pièce vendue' })
+  await dialog.getByRole('radio', { name: 'Nouvelle pièce' }).click()
+  const fill = async (label: string, value: string) => dialog.getByLabel(label, { exact: true }).fill(value)
+  await fill('Nom', 'Turbo')
+  await fill('Catégorie', 'moteur')
+  await fill('Zone de la voiture', 'moteur')
+  await fill('Masse (kg)', '7,2')
+  await fill('CO2 (kg CO2e par unité)', '35')
+  await fill('Matière recyclée (%)', '20')
+  await fill('Recyclabilité (%)', '80')
+  await fill('Coût de fabrication', '400')
+  await fill('Délai de production (jours)', '3')
+  await fill('Main-d’œuvre (heures par unité)', '1.5')
+  await fill('Taux horaire', '45')
+  await dialog.getByRole('combobox', { name: 'Pays d’origine' }).selectOption('DE')
+  await fill('Prix mini', '900')
+  await fill('Prix maxi', '800')
+  await fill('Délai de livraison (jours)', '10')
+  await fill('Qualité (sur 5)', '4')
+  await dialog.getByRole('button', { name: 'Ajouter la pièce' }).click()
+  // L'offre est refusée : l'erreur de l'API est montrée, la pièce créée n'est pas perdue.
+  await expect(dialog.getByRole('alert')).toHaveText('price_min must not exceed price_max')
+  await expect(dialog).toContainText('Pièce « Turbo » créée (#50)')
+  await fill('Prix mini', '700')
+  await dialog.getByRole('button', { name: 'Ajouter la pièce' }).click()
+  await expect(dialog).toHaveCount(0)
+  expect(posts.map((p) => p.path)).toEqual(['/api/v1/parts', '/api/v1/parts/50/offers', '/api/v1/parts/50/offers'])
+  expect(posts[0].body).toEqual({
+    name: 'Turbo', category: 'moteur', zone: 'moteur', mass_kg: '7.2', co2_kg_per_unit: '35', recycled_percent: '20',
+    recyclability_percent: '80', manufacturing_cost: { amount: '400', currency: 'EUR' }, production_days: 3,
+    labor_hours: '1.5', hourly_rate: { amount: '45', currency: 'EUR' },
+  })
+  expect(posts[2].body).toMatchObject({ supplier_id: 1, price_min: '700', price_max: '800', origin_country: 'DE' })
+})
+
 test('petit écran sans débordement et commandes toujours accessibles', async ({ page }, testInfo) => {
   await mockSupplierAPI(page)
   await page.goto('/#fournisseurs')

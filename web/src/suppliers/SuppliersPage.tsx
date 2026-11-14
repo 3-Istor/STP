@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { errorMessage, request } from './api'
 import { ContractDialog, SupplierDialog } from './Forms'
 import { HistoryDialog } from './HistoryDialog'
+import { OfferDialog } from './OfferDialog'
 import { formatDay, formatDecimal, formatMoney, formatUTC, formatVariation } from './format'
 import { DISPLAY_CURRENCY, displayStats } from './display'
 import { monthlyChart, monthlySeries } from './graph'
@@ -31,6 +32,7 @@ export default function SuppliersPage() {
   const [contractForm, setContractForm] = useState<{ supplierID: number; contract: Contract | null } | null>(null)
   const [historyID, setHistoryID] = useState<number | null>(null)
   const [offerQuery, setOfferQuery] = useState('')
+  const [offerForm, setOfferForm] = useState(false)
 
   useEffect(() => {
     const controller = new AbortController()
@@ -92,7 +94,7 @@ export default function SuppliersPage() {
   function chooseSupplier(id: number) {
     // Une sélection inchangée ne relance pas l'effet : conserver aussi ses erreurs visibles.
     if (id === selectedID) return
-    setPageError(''); setContractsError(''); setSelectedID(id); setHistoryID(null); setContractForm(null); setOfferQuery('')
+    setPageError(''); setContractsError(''); setSelectedID(id); setHistoryID(null); setContractForm(null); setOfferQuery(''); setOfferForm(false)
   }
 
   return <>
@@ -122,7 +124,7 @@ export default function SuppliersPage() {
           </div>
           {tab === 'offers' ? <section role="tabpanel" id="offers-panel" aria-labelledby="offers-tab">
             {currentPage?.context?.mode === 'snapshot_fallback' && <p className="notice" role="status">Source de prix indisponible. Prix du snapshot #{currentPage.context.snapshot_id}, figé au {formatUTC(currentPage.context.as_of)}.</p>}
-            <div className="section-heading"><div><h2>Offres du fournisseur</h2><p className="muted">{currentPage?.as_of ? `Prix observés au ${formatUTC(currentPage.as_of)}` : 'Les prix et leur historique apparaîtront à la réception de cotations.'}</p></div><span className="subtle-label">Devise d’origine</span></div>
+            <div className="section-heading"><div><h2>Offres du fournisseur</h2><p className="muted">{currentPage?.as_of ? `Prix observés au ${formatUTC(currentPage.as_of)}` : 'Les prix et leur historique apparaîtront à la réception de cotations.'}</p></div><button type="button" className="primary-button" onClick={() => setOfferForm(true)}>+ Nouvelle pièce vendue</button></div>
             {pageError && <p className="form-error" role="alert">Impossible d’actualiser les offres : {pageError}{currentPage ? ' Les dernières données reçues restent affichées.' : ''}</p>}
             {!currentPage && loading && <div className="loading-state" role="status">Chargement des offres…</div>}
             {currentPage?.offers.length === 0 && <div className="empty-state"><strong>Aucune offre pour ce fournisseur</strong><p>Les offres rattachées à {supplier.name} apparaîtront ici.</p></div>}
@@ -147,6 +149,7 @@ export default function SuppliersPage() {
     </main>
     {createSupplier && <SupplierDialog onClose={() => setCreateSupplier(false)} onSaved={(item) => { setSuppliers((old) => sortByName([...old.filter((supplier) => supplier.id !== item.id), item])); chooseSupplier(item.id); setCreateSupplier(false) }} />}
     {contractForm && supplier?.id === contractForm.supplierID && <ContractDialog key={contractForm.contract?.id ?? 'new'} supplierID={supplier.id} offers={currentPage?.offers ?? []} contract={contractForm.contract} onClose={() => setContractForm(null)} onSaved={() => { setContractForm(null); setRefresh((version) => version + 1) }} />}
+    {offerForm && supplier && <OfferDialog supplier={supplier} onClose={() => setOfferForm(false)} onSaved={() => { setOfferForm(false); refreshData() }} />}
     {historyView && <HistoryDialog key={historyView.offer.id} view={historyView} onClose={() => setHistoryID(null)} />}
   </>
 }

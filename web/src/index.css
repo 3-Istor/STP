@@ -234,3 +234,20 @@ legend { color: #415e7c; font-size: .79rem; padding: 0 6px; font-weight: 650; }
 .chart-month.active .chart-axis { fill: var(--primary); font-weight: 650; }
 .chart-legend { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 8px; font-size: .74rem; color: var(--muted); margin: 6px 0 0; }
 .legend-line { display: inline-block; width: 18px; height: 3px; border-radius: 2px; background: #6088bc; }
+
+/* Bascule à deux choix et liste de choix avec recherche, partagées par les fenêtres d'ajout
+   (AddNodeDialog côté BOM, OfferDialog côté fournisseurs). */
+.segmented { display: flex; gap: 4px; padding: 4px; margin-bottom: 16px; background: #eef3f9; border-radius: 10px; }
+.segmented button { flex: 1; border: 0; border-radius: 7px; background: transparent; color: #3f5877; padding: 8px 10px; font-size: .84rem; font-weight: 620; }
+.segmented button[aria-checked='true'] { background: #fff; color: var(--primary); box-shadow: 0 1px 3px #1d477c26; }
+.pick-list { list-style: none; margin: 0 0 8px; padding: 4px; max-height: 260px; overflow-y: auto; border: 1px solid var(--border); border-radius: 9px; }
+.pick-list button { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; width: 100%; border: 0; border-radius: 6px; background: transparent; color: inherit; text-align: left; padding: 8px 10px; font-size: .85rem; }
+.pick-list button:hover { background: #eef3fa; }
+.pick-list li[aria-selected='true'] button { background: #e7eefc; color: #214e99; }
+.pick-name { font-weight: 620; overflow-wrap: anywhere; }
+.pick-meta { color: var(--muted); font-size: .78rem; white-space: nowrap; }
+.pick-empty, .pick-more { padding: 8px 10px; margin: 4px 0 0; font-size: .8rem; }
+.offer-dialog { width: min(720px, calc(100% - 28px)); }
+.offer-dialog fieldset { margin: 16px 0 0; }
+.money-field { display: grid; grid-template-columns: minmax(0, 1fr) 90px; gap: 6px; }
+@media (max-width: 720px) { .pick-meta { white-space: normal; text-align: right; } }
