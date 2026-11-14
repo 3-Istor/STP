@@ -155,6 +155,35 @@ test('historique lisible : un point par mois, clôture et bornes réelles du moi
   await expect(dialog.getByTestId('quote-detail')).toContainText(/octobre 2026 : min\. 95,00\s*€ · max\. 130,00\s*€ · 4 cotations/)
 })
 
+test('historique affiché en euros au taux du jour, prix d’origine et taux visibles', async ({ page }) => {
+  const pages = defaultPages()
+  const view = offerView({ id: 101, name: 'Injecteur Atlas', currency: 'GBP', amount: '110.00', reference: '100.00' })
+  const [first, last] = view.statistics.history
+  const rate = (id: number, value: string, at: string) => ({ id, base_currency: 'GBP', quote_currency: 'EUR', rate: value, source: 'e2e-fx', quoted_at: at })
+  const converted = (quoteID: number, at: string, amount: string | null, fx?: ReturnType<typeof rate>) =>
+    ({ quote_id: quoteID, quoted_at: at, price: amount ? { amount, currency: 'EUR' } : null, direction: fx ? 'direct' : undefined, fx_quote: fx, error: amount ? undefined : 'aucun taux GBP→EUR' })
+  const current = converted(last.id, last.quoted_at, '132.00', rate(2, '1.2', last.quoted_at))
+  pages['1'].offers[0] = { ...view, converted: {
+    currency: 'EUR', current_quote: current, reference_quote: converted(view.statistics.reference_quote.id, view.statistics.reference_quote.quoted_at, '115.00', rate(1, '1.15', '2025-11-03T00:00:00Z')),
+    minimum: { amount: '132.00', currency: 'EUR' }, maximum: { amount: '132.00', currency: 'EUR' }, variation_percent: '14.8', trend: 'up',
+    history: [converted(first.id, first.quoted_at, null), current], missing: 1,
+  } } as typeof view
+  await mockSupplierAPI(page, pages)
+  await page.goto('/#fournisseurs')
+  await chooseSupplier(page, 'Atlas')
+  await page.getByRole('button', { name: 'Historique de Injecteur Atlas', exact: true }).click()
+  const dialog = page.getByRole('dialog', { name: 'Historique : Injecteur Atlas' })
+  await expect(dialog.locator('.history-summary')).toContainText(/132,00\s*€/)
+  await expect(dialog.locator('.history-summary')).toContainText('+14,8 %')
+  await expect(dialog).toContainText('Prix convertis en EUR au taux coté le jour de chaque cotation (devise d’origine : GBP)')
+  // Cotation sans taux du jour : signalée, jamais tracée à zéro.
+  await expect(dialog.getByText('1 cotation sans taux de change du jour, non tracée.')).toBeVisible()
+  await expect(dialog.locator('.chart-month')).toHaveCount(1)
+  const detail = dialog.getByTestId('quote-detail')
+  await expect(detail).toContainText(/132,00\s*€/)
+  await expect(detail).toContainText(/Coté 110,00\s*£GB · taux GBP→EUR 1,2 du/)
+})
+
 test('petit écran sans débordement et commandes toujours accessibles', async ({ page }, testInfo) => {
   await mockSupplierAPI(page)
   await page.goto('/#fournisseurs')
@@ -229,7 +258,7 @@ test('une réponse Atlas retardée ne remplace pas les offres Boréal', async ({
 
 test('erreur REST explicitement visible sans prix fabriqué', async ({ page }) => {
   await mockSupplierAPI(page)
-  await page.route('**/api/v1/suppliers/1/offers', (route) => route.fulfill({
+  await page.route('**/api/v1/suppliers/1/offers?*', (route) => route.fulfill({
     status: 503, json: { error: 'Lecture des offres temporairement indisponible' },
   }))
   await page.goto('/#fournisseurs')

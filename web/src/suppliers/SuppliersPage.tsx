@@ -3,6 +3,7 @@ import { errorMessage, request } from './api'
 import { ContractDialog, SupplierDialog } from './Forms'
 import { HistoryDialog } from './HistoryDialog'
 import { formatDay, formatDecimal, formatMoney, formatUTC, formatVariation } from './format'
+import { DISPLAY_CURRENCY, displayStats } from './display'
 import { monthlyChart, monthlySeries } from './graph'
 import { byName, normalize } from '../text'
 import type { Contract, OffersPage, OfferView, Supplier } from './types'
@@ -49,7 +50,7 @@ export default function SuppliersPage() {
     async function load() {
       let asOf: string | null = null
       try {
-        const data = await request<OffersPage>(`/suppliers/${id}/offers`, { signal: controller.signal })
+        const data = await request<OffersPage>(`/suppliers/${id}/offers?currency=${DISPLAY_CURRENCY}`, { signal: controller.signal })
         if (!active) return
         asOf = data.as_of
         setPage({ supplierID: id, data })
@@ -152,8 +153,8 @@ export default function SuppliersPage() {
 
 function OfferCard({ view, onHistory }: { view: OfferView; onHistory: () => void }) {
   const stats = view.statistics
-  // Aperçu : clôture mensuelle de l'année (le détail jour par jour est dans l'historique).
-  const points = monthlyChart(monthlySeries(stats?.history ?? []), 160, 46, { top: 5, right: 5, bottom: 5, left: 5 })?.points.map((p) => ({ x: p.x, y: p.close })) ?? []
+  // Aperçu : clôture mensuelle de l'année en devise d'affichage (ADR 0030), le détail est dans l'historique.
+  const points = monthlyChart(monthlySeries(displayStats(view)?.history ?? []), 160, 46, { top: 5, right: 5, bottom: 5, left: 5 })?.points.map((p) => ({ x: p.x, y: p.close })) ?? []
   // Toute la carte ouvre l'historique ; le bouton reste la cible clavier et lecteur d'écran.
   return <article className="offer-card" aria-label={`Offre ${view.offer.id} : ${view.part.name}`} onClick={onHistory}>
     <div className="offer-part"><div className="part-icon" aria-hidden="true">◇</div><div><h3>{view.part.name}</h3><p>{[view.part.category, view.part.zone].filter(Boolean).join(' · ') || `Pièce #${view.part.id}`}</p><small>Offre #{view.offer.id} · {view.offer.origin_country} · délai {view.offer.lead_time_days} j</small></div></div>
