@@ -73,3 +73,13 @@ test('devise de référence choisie dans la liste des devises cotées', async ({
   await page.getByRole('button', { name: 'Fiat Multipla', exact: true }).click()
   await expect(page.getByRole('combobox', { name: 'Devise de référence' })).toHaveValue('EUR')
 })
+
+test('toute la ligne d’une BOM l’ouvre, pas seulement son nom', async ({ page }, testInfo) => {
+  await mockAPI(page)
+  await page.goto('/#boms')
+  const details = page.locator('.bom-list li').filter({ hasText: 'Fiat Multipla' }).locator('.muted')
+  if (testInfo.project.use.hasTouch) await details.tap()
+  else await details.click()
+  await expect(page.getByRole('heading', { name: /Fiat Multipla/ })).toBeVisible()
+  await expect(page.locator('.bom-list li.selected')).toContainText('Fiat Multipla')
+})

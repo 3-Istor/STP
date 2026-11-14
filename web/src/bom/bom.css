@@ -201,6 +201,11 @@
   grid-column: 2;
 }
 
+.bom-space .bom-list li:hover {
+  background: var(--hover);
+  cursor: pointer;
+}
+
 .bom-space .bom-list li.selected {
   background: var(--accent-bg);
 }

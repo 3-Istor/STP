@@ -30,8 +30,16 @@ export function BomList({ boms, currencies, selectedID, onSelect, onCreate, onDe
       <h2>BOM</h2>
       <ul>
         {sorted.map((b) => (
-          <li key={b.id} className={b.id === selectedID ? 'selected' : undefined}>
-            <button type="button" className="link" onClick={() => onSelect(b.id)}>
+          // Toute la ligne ouvre la BOM ; le bouton du nom reste la cible clavier et lecteur d'écran.
+          <li key={b.id} className={b.id === selectedID ? 'selected' : undefined} onClick={() => onSelect(b.id)}>
+            <button
+              type="button"
+              className="link"
+              onClick={(e) => {
+                e.stopPropagation()
+                onSelect(b.id)
+              }}
+            >
               {b.name}
             </button>
             <span className="muted">
@@ -42,7 +50,10 @@ export function BomList({ boms, currencies, selectedID, onSelect, onCreate, onDe
               className="icon"
               title="Supprimer la BOM"
               aria-label={`Supprimer ${b.name}`}
-              onClick={() => void onDelete(b)}
+              onClick={(e) => {
+                e.stopPropagation()
+                void onDelete(b)
+              }}
             >
               ×
             </button>
