@@ -18,7 +18,7 @@ VALUES (
     $1, $2, $3, $4, $5,
     $6, $7
 )
-RETURNING id, bom_id, parent_id, name, part_id, offer_id, quantity, production_days
+RETURNING id, bom_id, parent_id, name, part_id, offer_id, quantity, production_days, strategy
 `
 
 type AddNodeParams struct {
@@ -51,22 +51,26 @@ func (q *Queries) AddNode(ctx context.Context, arg AddNodeParams) (BomNode, erro
 		&i.OfferID,
 		&i.Quantity,
 		&i.ProductionDays,
+		&i.Strategy,
 	)
 	return i, err
 }
 
 const createBOM = `-- name: CreateBOM :one
 
-INSERT INTO boms (name, currency, volume, source_snapshot_id)
-VALUES ($1, $2, $3, $4)
-RETURNING id, name, currency, volume, created_at, price_snapshot_id, source_snapshot_id
+INSERT INTO boms (name, currency, volume, source_snapshot_id, annual_hours, destination_country)
+VALUES ($1, $2, $3, $4, $5,
+    $6)
+RETURNING id, name, currency, volume, created_at, price_snapshot_id, source_snapshot_id, annual_hours, destination_country
 `
 
 type CreateBOMParams struct {
-	Name             string
-	Currency         string
-	Volume           int32
-	SourceSnapshotID pgtype.Int8
+	Name               string
+	Currency           string
+	Volume             int32
+	SourceSnapshotID   pgtype.Int8
+	AnnualHours        decimal.Decimal
+	DestinationCountry pgtype.Text
 }
 
 // Requêtes du domaine bom (sqlc, voir sqlc.yaml). Code généré dans internal/bom/bomdb,
@@ -77,6 +81,8 @@ func (q *Queries) CreateBOM(ctx context.Context, arg CreateBOMParams) (Bom, erro
 		arg.Currency,
 		arg.Volume,
 		arg.SourceSnapshotID,
+		arg.AnnualHours,
+		arg.DestinationCountry,
 	)
 	var i Bom
 	err := row.Scan(
@@ -87,6 +93,8 @@ func (q *Queries) CreateBOM(ctx context.Context, arg CreateBOMParams) (Bom, erro
 		&i.CreatedAt,
 		&i.PriceSnapshotID,
 		&i.SourceSnapshotID,
+		&i.AnnualHours,
+		&i.DestinationCountry,
 	)
 	return i, err
 }
@@ -94,7 +102,7 @@ func (q *Queries) CreateBOM(ctx context.Context, arg CreateBOMParams) (Bom, erro
 const createRootNode = `-- name: CreateRootNode :one
 INSERT INTO bom_nodes (bom_id, name)
 VALUES ($1, $2)
-RETURNING id, bom_id, parent_id, name, part_id, offer_id, quantity, production_days
+RETURNING id, bom_id, parent_id, name, part_id, offer_id, quantity, production_days, strategy
 `
 
 type CreateRootNodeParams struct {
@@ -114,6 +122,7 @@ func (q *Queries) CreateRootNode(ctx context.Context, arg CreateRootNodeParams) 
 		&i.OfferID,
 		&i.Quantity,
 		&i.ProductionDays,
+		&i.Strategy,
 	)
 	return i, err
 }
@@ -150,8 +159,39 @@ func (q *Queries) DeleteNode(ctx context.Context, arg DeleteNodeParams) (int64, 
 	return result.RowsAffected(), nil
 }
 
+const deletePartStock = `-- name: DeletePartStock :execrows
+DELETE FROM bom_part_stock
+WHERE bom_id = $1 AND part_id = $2
+`
+
+type DeletePartStockParams struct {
+	BomID  int64
+	PartID int64
+}
+
+func (q *Queries) DeletePartStock(ctx context.Context, arg DeletePartStockParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deletePartStock, arg.BomID, arg.PartID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const deleteSchedule = `-- name: DeleteSchedule :execrows
+DELETE FROM bom_schedule
+WHERE bom_id = $1
+`
+
+func (q *Queries) DeleteSchedule(ctx context.Context, bomID int64) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteSchedule, bomID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const getBOM = `-- name: GetBOM :one
-SELECT id, name, currency, volume, created_at, price_snapshot_id, source_snapshot_id FROM boms
+SELECT id, name, currency, volume, created_at, price_snapshot_id, source_snapshot_id, annual_hours, destination_country FROM boms
 WHERE id = $1
 `
 
@@ -166,12 +206,14 @@ func (q *Queries) GetBOM(ctx context.Context, id int64) (Bom, error) {
 		&i.CreatedAt,
 		&i.PriceSnapshotID,
 		&i.SourceSnapshotID,
+		&i.AnnualHours,
+		&i.DestinationCountry,
 	)
 	return i, err
 }
 
 const getNode = `-- name: GetNode :one
-SELECT id, bom_id, parent_id, name, part_id, offer_id, quantity, production_days FROM bom_nodes
+SELECT id, bom_id, parent_id, name, part_id, offer_id, quantity, production_days, strategy FROM bom_nodes
 WHERE bom_id = $1 AND id = $2
 `
 
@@ -192,7 +234,21 @@ func (q *Queries) GetNode(ctx context.Context, arg GetNodeParams) (BomNode, erro
 		&i.OfferID,
 		&i.Quantity,
 		&i.ProductionDays,
+		&i.Strategy,
 	)
+	return i, err
+}
+
+const getSchedule = `-- name: GetSchedule :one
+SELECT bom_id, start_on, target_on FROM bom_schedule
+WHERE bom_id = $1
+`
+
+// Date de départ et date cible (ADR 0023).
+func (q *Queries) GetSchedule(ctx context.Context, bomID int64) (BomSchedule, error) {
+	row := q.db.QueryRow(ctx, getSchedule, bomID)
+	var i BomSchedule
+	err := row.Scan(&i.BomID, &i.StartOn, &i.TargetOn)
 	return i, err
 }
 
@@ -225,7 +281,7 @@ func (q *Queries) IsInSubtree(ctx context.Context, arg IsInSubtreeParams) (bool,
 }
 
 const listBOMs = `-- name: ListBOMs :many
-SELECT id, name, currency, volume, created_at, price_snapshot_id, source_snapshot_id FROM boms
+SELECT id, name, currency, volume, created_at, price_snapshot_id, source_snapshot_id, annual_hours, destination_country FROM boms
 ORDER BY id
 `
 
@@ -246,6 +302,8 @@ func (q *Queries) ListBOMs(ctx context.Context) ([]Bom, error) {
 			&i.CreatedAt,
 			&i.PriceSnapshotID,
 			&i.SourceSnapshotID,
+			&i.AnnualHours,
+			&i.DestinationCountry,
 		); err != nil {
 			return nil, err
 		}
@@ -258,7 +316,7 @@ func (q *Queries) ListBOMs(ctx context.Context) ([]Bom, error) {
 }
 
 const listNodes = `-- name: ListNodes :many
-SELECT id, bom_id, parent_id, name, part_id, offer_id, quantity, production_days FROM bom_nodes
+SELECT id, bom_id, parent_id, name, part_id, offer_id, quantity, production_days, strategy FROM bom_nodes
 WHERE bom_id = $1
 ORDER BY id
 `
@@ -282,7 +340,35 @@ func (q *Queries) ListNodes(ctx context.Context, bomID int64) ([]BomNode, error)
 			&i.OfferID,
 			&i.Quantity,
 			&i.ProductionDays,
+			&i.Strategy,
 		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPartStock = `-- name: ListPartStock :many
+SELECT bom_id, part_id, quantity FROM bom_part_stock
+WHERE bom_id = $1
+ORDER BY part_id
+`
+
+// Stock propre à la BOM (ADR 0022), par pièce croissante (ordre déterministe).
+func (q *Queries) ListPartStock(ctx context.Context, bomID int64) ([]BomPartStock, error) {
+	rows, err := q.db.Query(ctx, listPartStock, bomID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []BomPartStock
+	for rows.Next() {
+		var i BomPartStock
+		if err := rows.Scan(&i.BomID, &i.PartID, &i.Quantity); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -311,7 +397,7 @@ func (q *Queries) LockBOM(ctx context.Context, id int64) (int64, error) {
 const renameBOM = `-- name: RenameBOM :one
 UPDATE boms SET name = $2
 WHERE id = $1
-RETURNING id, name, currency, volume, created_at, price_snapshot_id, source_snapshot_id
+RETURNING id, name, currency, volume, created_at, price_snapshot_id, source_snapshot_id, annual_hours, destination_country
 `
 
 type RenameBOMParams struct {
@@ -330,6 +416,66 @@ func (q *Queries) RenameBOM(ctx context.Context, arg RenameBOMParams) (Bom, erro
 		&i.CreatedAt,
 		&i.PriceSnapshotID,
 		&i.SourceSnapshotID,
+		&i.AnnualHours,
+		&i.DestinationCountry,
+	)
+	return i, err
+}
+
+const setBOMAnnualHours = `-- name: SetBOMAnnualHours :one
+UPDATE boms SET annual_hours = $2
+WHERE id = $1
+RETURNING id, name, currency, volume, created_at, price_snapshot_id, source_snapshot_id, annual_hours, destination_country
+`
+
+type SetBOMAnnualHoursParams struct {
+	ID          int64
+	AnnualHours decimal.Decimal
+}
+
+// Base horaire annuelle d'un ETP (ADR 0024).
+func (q *Queries) SetBOMAnnualHours(ctx context.Context, arg SetBOMAnnualHoursParams) (Bom, error) {
+	row := q.db.QueryRow(ctx, setBOMAnnualHours, arg.ID, arg.AnnualHours)
+	var i Bom
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Currency,
+		&i.Volume,
+		&i.CreatedAt,
+		&i.PriceSnapshotID,
+		&i.SourceSnapshotID,
+		&i.AnnualHours,
+		&i.DestinationCountry,
+	)
+	return i, err
+}
+
+const setBOMDestination = `-- name: SetBOMDestination :one
+UPDATE boms SET destination_country = $1
+WHERE id = $2
+RETURNING id, name, currency, volume, created_at, price_snapshot_id, source_snapshot_id, annual_hours, destination_country
+`
+
+type SetBOMDestinationParams struct {
+	DestinationCountry pgtype.Text
+	ID                 int64
+}
+
+// Pays de destination (ADR 0025) ; NULL : non renseigné.
+func (q *Queries) SetBOMDestination(ctx context.Context, arg SetBOMDestinationParams) (Bom, error) {
+	row := q.db.QueryRow(ctx, setBOMDestination, arg.DestinationCountry, arg.ID)
+	var i Bom
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Currency,
+		&i.Volume,
+		&i.CreatedAt,
+		&i.PriceSnapshotID,
+		&i.SourceSnapshotID,
+		&i.AnnualHours,
+		&i.DestinationCountry,
 	)
 	return i, err
 }
@@ -337,7 +483,7 @@ func (q *Queries) RenameBOM(ctx context.Context, arg RenameBOMParams) (Bom, erro
 const setBOMPriceSnapshot = `-- name: SetBOMPriceSnapshot :one
 UPDATE boms SET price_snapshot_id = $1
 WHERE id = $2
-RETURNING id, name, currency, volume, created_at, price_snapshot_id, source_snapshot_id
+RETURNING id, name, currency, volume, created_at, price_snapshot_id, source_snapshot_id, annual_hours, destination_country
 `
 
 type SetBOMPriceSnapshotParams struct {
@@ -357,6 +503,8 @@ func (q *Queries) SetBOMPriceSnapshot(ctx context.Context, arg SetBOMPriceSnapsh
 		&i.CreatedAt,
 		&i.PriceSnapshotID,
 		&i.SourceSnapshotID,
+		&i.AnnualHours,
+		&i.DestinationCountry,
 	)
 	return i, err
 }
@@ -364,7 +512,7 @@ func (q *Queries) SetBOMPriceSnapshot(ctx context.Context, arg SetBOMPriceSnapsh
 const setNodeOffer = `-- name: SetNodeOffer :one
 UPDATE bom_nodes SET offer_id = $3
 WHERE bom_id = $1 AND id = $2
-RETURNING id, bom_id, parent_id, name, part_id, offer_id, quantity, production_days
+RETURNING id, bom_id, parent_id, name, part_id, offer_id, quantity, production_days, strategy
 `
 
 type SetNodeOfferParams struct {
@@ -386,6 +534,7 @@ func (q *Queries) SetNodeOffer(ctx context.Context, arg SetNodeOfferParams) (Bom
 		&i.OfferID,
 		&i.Quantity,
 		&i.ProductionDays,
+		&i.Strategy,
 	)
 	return i, err
 }
@@ -393,7 +542,7 @@ func (q *Queries) SetNodeOffer(ctx context.Context, arg SetNodeOfferParams) (Bom
 const setNodeParent = `-- name: SetNodeParent :one
 UPDATE bom_nodes SET parent_id = $1
 WHERE bom_id = $2 AND id = $3
-RETURNING id, bom_id, parent_id, name, part_id, offer_id, quantity, production_days
+RETURNING id, bom_id, parent_id, name, part_id, offer_id, quantity, production_days, strategy
 `
 
 type SetNodeParentParams struct {
@@ -414,6 +563,43 @@ func (q *Queries) SetNodeParent(ctx context.Context, arg SetNodeParentParams) (B
 		&i.OfferID,
 		&i.Quantity,
 		&i.ProductionDays,
+		&i.Strategy,
+	)
+	return i, err
+}
+
+const setNodePart = `-- name: SetNodePart :one
+UPDATE bom_nodes SET part_id = $1, offer_id = $2
+WHERE bom_id = $3 AND id = $4 AND part_id IS NOT NULL
+RETURNING id, bom_id, parent_id, name, part_id, offer_id, quantity, production_days, strategy
+`
+
+type SetNodePartParams struct {
+	PartID  pgtype.Int8
+	OfferID pgtype.Int8
+	BomID   int64
+	ID      int64
+}
+
+// Remplace la pièce et l'offre d'un nœud pièce en gardant son id, sa quantité et ses enfants (ADR 0028).
+func (q *Queries) SetNodePart(ctx context.Context, arg SetNodePartParams) (BomNode, error) {
+	row := q.db.QueryRow(ctx, setNodePart,
+		arg.PartID,
+		arg.OfferID,
+		arg.BomID,
+		arg.ID,
+	)
+	var i BomNode
+	err := row.Scan(
+		&i.ID,
+		&i.BomID,
+		&i.ParentID,
+		&i.Name,
+		&i.PartID,
+		&i.OfferID,
+		&i.Quantity,
+		&i.ProductionDays,
+		&i.Strategy,
 	)
 	return i, err
 }
@@ -421,7 +607,7 @@ func (q *Queries) SetNodeParent(ctx context.Context, arg SetNodeParentParams) (B
 const setNodeProductionDays = `-- name: SetNodeProductionDays :one
 UPDATE bom_nodes SET production_days = $3
 WHERE bom_id = $1 AND id = $2
-RETURNING id, bom_id, parent_id, name, part_id, offer_id, quantity, production_days
+RETURNING id, bom_id, parent_id, name, part_id, offer_id, quantity, production_days, strategy
 `
 
 type SetNodeProductionDaysParams struct {
@@ -442,6 +628,7 @@ func (q *Queries) SetNodeProductionDays(ctx context.Context, arg SetNodeProducti
 		&i.OfferID,
 		&i.Quantity,
 		&i.ProductionDays,
+		&i.Strategy,
 	)
 	return i, err
 }
@@ -449,7 +636,7 @@ func (q *Queries) SetNodeProductionDays(ctx context.Context, arg SetNodeProducti
 const setNodeQuantity = `-- name: SetNodeQuantity :one
 UPDATE bom_nodes SET quantity = $3
 WHERE bom_id = $1 AND id = $2
-RETURNING id, bom_id, parent_id, name, part_id, offer_id, quantity, production_days
+RETURNING id, bom_id, parent_id, name, part_id, offer_id, quantity, production_days, strategy
 `
 
 type SetNodeQuantityParams struct {
@@ -470,6 +657,37 @@ func (q *Queries) SetNodeQuantity(ctx context.Context, arg SetNodeQuantityParams
 		&i.OfferID,
 		&i.Quantity,
 		&i.ProductionDays,
+		&i.Strategy,
+	)
+	return i, err
+}
+
+const setNodeStrategy = `-- name: SetNodeStrategy :one
+UPDATE bom_nodes SET strategy = $1
+WHERE bom_id = $2 AND id = $3
+RETURNING id, bom_id, parent_id, name, part_id, offer_id, quantity, production_days, strategy
+`
+
+type SetNodeStrategyParams struct {
+	Strategy pgtype.Text
+	BomID    int64
+	ID       int64
+}
+
+// Stratégie de décision du nœud (ADR 0028) ; NULL : héritée de l'ancêtre le plus proche.
+func (q *Queries) SetNodeStrategy(ctx context.Context, arg SetNodeStrategyParams) (BomNode, error) {
+	row := q.db.QueryRow(ctx, setNodeStrategy, arg.Strategy, arg.BomID, arg.ID)
+	var i BomNode
+	err := row.Scan(
+		&i.ID,
+		&i.BomID,
+		&i.ParentID,
+		&i.Name,
+		&i.PartID,
+		&i.OfferID,
+		&i.Quantity,
+		&i.ProductionDays,
+		&i.Strategy,
 	)
 	return i, err
 }
@@ -477,7 +695,7 @@ func (q *Queries) SetNodeQuantity(ctx context.Context, arg SetNodeQuantityParams
 const updateBOMSettings = `-- name: UpdateBOMSettings :one
 UPDATE boms SET currency = $2, volume = $3
 WHERE id = $1
-RETURNING id, name, currency, volume, created_at, price_snapshot_id, source_snapshot_id
+RETURNING id, name, currency, volume, created_at, price_snapshot_id, source_snapshot_id, annual_hours, destination_country
 `
 
 type UpdateBOMSettingsParams struct {
@@ -497,6 +715,48 @@ func (q *Queries) UpdateBOMSettings(ctx context.Context, arg UpdateBOMSettingsPa
 		&i.CreatedAt,
 		&i.PriceSnapshotID,
 		&i.SourceSnapshotID,
+		&i.AnnualHours,
+		&i.DestinationCountry,
 	)
+	return i, err
+}
+
+const upsertPartStock = `-- name: UpsertPartStock :one
+INSERT INTO bom_part_stock (bom_id, part_id, quantity)
+VALUES ($1, $2, $3)
+ON CONFLICT (bom_id, part_id) DO UPDATE SET quantity = EXCLUDED.quantity
+RETURNING bom_id, part_id, quantity
+`
+
+type UpsertPartStockParams struct {
+	BomID    int64
+	PartID   int64
+	Quantity decimal.Decimal
+}
+
+func (q *Queries) UpsertPartStock(ctx context.Context, arg UpsertPartStockParams) (BomPartStock, error) {
+	row := q.db.QueryRow(ctx, upsertPartStock, arg.BomID, arg.PartID, arg.Quantity)
+	var i BomPartStock
+	err := row.Scan(&i.BomID, &i.PartID, &i.Quantity)
+	return i, err
+}
+
+const upsertSchedule = `-- name: UpsertSchedule :one
+INSERT INTO bom_schedule (bom_id, start_on, target_on)
+VALUES ($1, $2, $3)
+ON CONFLICT (bom_id) DO UPDATE SET start_on = EXCLUDED.start_on, target_on = EXCLUDED.target_on
+RETURNING bom_id, start_on, target_on
+`
+
+type UpsertScheduleParams struct {
+	BomID    int64
+	StartOn  pgtype.Date
+	TargetOn pgtype.Date
+}
+
+func (q *Queries) UpsertSchedule(ctx context.Context, arg UpsertScheduleParams) (BomSchedule, error) {
+	row := q.db.QueryRow(ctx, upsertSchedule, arg.BomID, arg.StartOn, arg.TargetOn)
+	var i BomSchedule
+	err := row.Scan(&i.BomID, &i.StartOn, &i.TargetOn)
 	return i, err
 }

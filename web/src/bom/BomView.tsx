@@ -1,11 +1,14 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import { api, errorMessage, type NewNode, type NodePatch, type Snapshot, type Tree } from '../api.ts'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { api, errorMessage, type CostAnomalies, type NewNode, type NodePatch, type Snapshot, type Tree } from '../api.ts'
 import type { Catalog } from '../catalog.ts'
 import { formatMoney } from '../money.ts'
 import { loadOfferPrices, noOfferPrices, withOfferPrices, type OfferPrices } from '../offerPrices.ts'
+import { AnomalySettings } from './Anomalies.tsx'
 import { BomTree } from './BomTree.tsx'
 import { NodePanel } from './NodePanel.tsx'
 import { Totals } from './Totals.tsx'
+import { PlanningPanel } from './PlanningPanel.tsx'
+import { Workforce } from './Workforce.tsx'
 
 type Props = {
   bomID: number
@@ -26,11 +29,39 @@ export function BomView({ bomID, catalog, onBOMChanged, onOpenSnapshot }: Props)
   // Prix lus pour un price_snapshot_id donné : ceux d'une autre source ne sont jamais affichés.
   const [loadedPrices, setLoadedPrices] = useState<{ snapshotID: number | null; prices: OfferPrices } | null>(null)
 
+  // Anomalies de coût (ADR 0027), relues avec l'arbre ; en échec, aucune surbrillance et l'erreur est montrée.
+  const [threshold, setThreshold] = useState('3')
+  const [anomalies, setAnomalies] = useState<{ data: CostAnomalies | null; error: string | null }>({ data: null, error: null })
+  // Seule la dernière requête lancée est affichée : une réponse plus ancienne (autre seuil) est ignorée.
+  const anomalyRequest = useRef(0)
+  const loadAnomalies = useCallback(
+    (th: string) => {
+      const req = ++anomalyRequest.current
+      return api
+        .anomalies(bomID, th)
+        .then((data) => {
+          if (req === anomalyRequest.current) setAnomalies({ data, error: null })
+          return true
+        })
+        .catch((e: unknown) => {
+          if (req === anomalyRequest.current) setAnomalies({ data: null, error: errorMessage(e) })
+          return false
+        })
+    },
+    [bomID],
+  )
+  const anomalyByNode = useMemo(() => new Map((anomalies.data?.nodes ?? []).map((a) => [a.node_id, a])), [anomalies.data])
+
+  // version : change à chaque relecture de l'arbre ; les panneaux qui ont des données dérivées (suggestions)
+  // se remontent, une stratégie héritée ou une quantité d'ancêtre ayant pu changer.
+  const [version, setVersion] = useState(0)
   const reload = useCallback(async () => {
     const t = await api.tree(bomID)
     setTree(t)
+    setVersion((v) => v + 1)
+    void loadAnomalies(threshold)
     return t
-  }, [bomID])
+  }, [bomID, loadAnomalies, threshold])
 
   useEffect(() => {
     // La vue est remontée (key) quand on change de BOM : pas d'état à remettre à zéro ici.
@@ -40,13 +71,16 @@ export function BomView({ bomID, catalog, onBOMChanged, onOpenSnapshot }: Props)
       .then((t) => {
         if (!cancelled) setTree(t)
       })
+      .then(() => {
+        if (!cancelled) void loadAnomalies('3')
+      })
       .catch((e: unknown) => {
         if (!cancelled) setError(errorMessage(e))
       })
     return () => {
       cancelled = true
     }
-  }, [bomID])
+  }, [bomID, loadAnomalies])
 
   // Prix des sélecteurs d'offres : même source que les totaux (direct ou snapshot de prix), relus quand la
   // BOM est figée ou défigée. Lecture en échec : aucun prix inventé, les offres restent « sans prix ».
@@ -117,6 +151,40 @@ export function BomView({ bomID, catalog, onBOMChanged, onOpenSnapshot }: Props)
             volume={bom.volume}
             onApply={(c, v) => void run(() => api.updateSettings(bom.id, c, v), { bomChanged: true })}
           />
+          <Destination
+            key={`dest-${bom.destination_country ?? ''}`}
+            country={bom.destination_country}
+            onApply={(c) => void run(() => api.setDestination(bom.id, c), { bomChanged: true })}
+          />
+          <Workforce
+            key={`fte-${bom.annual_hours}`}
+            nodes={tree.nodes}
+            annualHours={bom.annual_hours}
+            catalog={pricedCatalog}
+            readOnly={false}
+            onApplyAnnualHours={(h) => void run(() => api.setAnnualHours(bom.id, h), { bomChanged: true })}
+          />
+          <AnomalySettings
+            result={anomalies.data}
+            error={anomalies.error}
+            threshold={threshold}
+            onApply={(th) => {
+              // Le seuil n'est retenu que s'il est accepté : un seuil refusé ne fait pas échouer les relectures.
+              void loadAnomalies(th).then((ok) => {
+                if (ok) setThreshold(th)
+              })
+            }}
+          />
+          <PlanningPanel
+            key={`plan-${tree.planning.schedule?.start_on ?? ''}-${tree.planning.schedule?.target_on ?? ''}`}
+            planning={tree.planning}
+            nodes={tree.nodes}
+            catalog={pricedCatalog}
+            readOnly={false}
+            onSetSchedule={(sch) => void run(() => api.setSchedule(bom.id, sch))}
+            onClearSchedule={() => void run(() => api.clearSchedule(bom.id))}
+            onSelect={setSelectedID}
+          />
           {bom.source_snapshot_id !== null && (
             <p className="muted small">
               Créé depuis le{' '}
@@ -180,6 +248,7 @@ export function BomView({ bomID, catalog, onBOMChanged, onOpenSnapshot }: Props)
           readOnly={false}
           selectedID={selectedID}
           onSelect={setSelectedID}
+          anomalies={anomalyByNode}
           onChangeOffer={(nodeID, offerID) => void run(() => api.patchNode(bom.id, nodeID, { offer_id: offerID }))}
           moving={moving}
           onPickParent={(parentID) => {
@@ -199,6 +268,12 @@ export function BomView({ bomID, catalog, onBOMChanged, onOpenSnapshot }: Props)
             isRoot={selected.parent_id === null}
             onAdd={(n: NewNode) => run(() => api.addNode(bom.id, n))}
             onPatch={(p: NodePatch) => run(() => api.patchNode(bom.id, selected.id, p))}
+            stock={tree.stock}
+            bomID={bom.id}
+            anomaly={anomalyByNode.get(selected.id)}
+            treeVersion={version}
+            destination={bom.destination_country}
+            onSetStock={(partID, q) => run(() => api.setPartStock(bom.id, partID, q))}
             onStartMove={() => setMoving(selected.id)}
             onDelete={() => {
               if (!window.confirm('Supprimer ce nœud et tout son sous-arbre ?')) return
@@ -241,6 +316,26 @@ function Settings({
         Volume <input aria-label="Volume" type="number" min={1} step={1} value={v} onChange={(e) => setV(e.target.value)} />
       </label>
       {changed && <button type="submit">Appliquer</button>}
+    </form>
+  )
+}
+
+// Destination : pays de l'usine d'assemblage (ISO 3166-1 alpha-2), pour la douane et le transport (ADR 0025).
+function Destination({ country, onApply }: { country: string | null; onApply: (country: string | null) => void }) {
+  const [c, setC] = useState(country ?? '')
+  const next = c.trim().toUpperCase()
+  return (
+    <form
+      className="row small"
+      onSubmit={(e) => {
+        e.preventDefault()
+        onApply(next === '' ? null : next)
+      }}
+    >
+      <label>
+        Destination <input aria-label="Pays de destination" size={3} pattern="[A-Za-z]{2}" value={c} onChange={(e) => setC(e.target.value)} />
+      </label>
+      {next !== (country ?? '') && <button type="submit">Appliquer</button>}
     </form>
   )
 }

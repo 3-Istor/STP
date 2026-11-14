@@ -55,6 +55,8 @@ SELECT EXISTS (
     SELECT 1 FROM offers o WHERE o.part_id = sqlc.arg(part_id)
     UNION ALL SELECT 1 FROM bom_nodes b WHERE b.part_id = sqlc.arg(part_id)
     UNION ALL SELECT 1 FROM bom_snapshot_nodes sn WHERE sn.part_id = sqlc.arg(part_id)
+    UNION ALL SELECT 1 FROM bom_part_stock bs WHERE bs.part_id = sqlc.arg(part_id)
+    UNION ALL SELECT 1 FROM bom_snapshot_part_stock ss WHERE ss.part_id = sqlc.arg(part_id)
     UNION ALL SELECT 1 FROM part_alternatives a
         WHERE a.part_low_id = sqlc.arg(part_id) OR a.part_high_id = sqlc.arg(part_id)
 ) AS referenced;

@@ -29,11 +29,44 @@ type Service struct {
 	store   Store
 	catalog catalog.Catalog
 	pricing pricing.Pricing
+	// listing : alternatives et offres du catalogue, pour les suggestions (ADR 0028) ; nil → indisponible.
+	listing CatalogListing
+	// anomalies : détecteur des anomalies de coût (ADR 0027), remplaçable par un modèle IA.
+	anomalies pricing.AnomalyDetector
+	// logistics : tables de douane, de transport et emballage (coût rendu, ADR 0025) ; nil → indisponible.
+	logistics pricing.LogisticsStore
+}
+
+// WithLogistics branche les tables du coût total rendu (ADR 0025).
+func (s *Service) WithLogistics(l pricing.LogisticsStore) *Service {
+	s.logistics = l
+	return s
+}
+
+// CatalogListing : ce que les suggestions lisent du catalogue. *catalog.Service la satisfait.
+type CatalogListing interface {
+	Alternatives(ctx context.Context, partID int64) ([]catalog.Part, error)
+	ListParts(ctx context.Context, f catalog.Filters) ([]catalog.PartWithOffers, error)
+}
+
+// ErrSuggestionsUnavailable : le service a été câblé sans accès aux alternatives du catalogue.
+var ErrSuggestionsUnavailable = errors.New("suggestions unavailable: no catalog listing")
+
+// WithAnomalyDetector remplace le détecteur des anomalies de coût (par défaut : médiane, 5 pièces minimum).
+func (s *Service) WithAnomalyDetector(d pricing.AnomalyDetector) *Service {
+	s.anomalies = d
+	return s
+}
+
+// WithCatalogListing branche la lecture des alternatives et des offres (suggestions, ADR 0028).
+func (s *Service) WithCatalogListing(l CatalogListing) *Service {
+	s.listing = l
+	return s
 }
 
 // NewService câble le service sur un store de brouillons, un catalogue et une source de prix.
 func NewService(s Store, c catalog.Catalog, p pricing.Pricing) *Service {
-	return &Service{store: s, catalog: c, pricing: p}
+	return &Service{store: s, catalog: c, pricing: p, anomalies: pricing.MedianDetector{MinPeers: 5}}
 }
 
 // PricedOffer est une offre accompagnée de la cotation qui donne son prix.
@@ -67,7 +100,19 @@ func (s *Service) CreateBOM(ctx context.Context, b NewBOM) (BOM, error) {
 	if err := validateSettings(b.Currency, b.Volume); err != nil {
 		return BOM{}, fmt.Errorf("create bom: %w", err)
 	}
-	out, err := s.store.CreateBOM(ctx, b)
+	if b.AnnualHours == nil {
+		h := DefaultAnnualHours
+		b.AnnualHours = &h
+	}
+	if err := validateAnnualHours(*b.AnnualHours); err != nil {
+		return BOM{}, fmt.Errorf("create bom: %w", err)
+	}
+	if b.DestinationCountry != nil {
+		if err := pricing.ValidCountry(*b.DestinationCountry); err != nil {
+			return BOM{}, fmt.Errorf("create bom: %w: %w", err, ErrInvalidInput)
+		}
+	}
+	out, err := s.store.CreateBOM(ctx, b) // destination comprise, dans la même transaction
 	if err != nil {
 		return BOM{}, fmt.Errorf("create bom: %w", err)
 	}
@@ -128,6 +173,46 @@ func (s *Service) UpdateSettings(ctx context.Context, id int64, currency string,
 		return BOM{}, fmt.Errorf("update settings of bom %d: %w", id, err)
 	}
 	return out, nil
+}
+
+// SetDestinationCountry fixe le pays de destination (ISO 3166-1 alpha-2) ; nil l'efface (ADR 0025).
+func (s *Service) SetDestinationCountry(ctx context.Context, id int64, country *string) (BOM, error) {
+	if country != nil {
+		if err := pricing.ValidCountry(*country); err != nil {
+			return BOM{}, fmt.Errorf("set destination of bom %d: %w: %w", id, err, ErrInvalidInput)
+		}
+	}
+	out, err := s.store.SetDestination(ctx, id, country)
+	if err != nil {
+		return BOM{}, fmt.Errorf("set destination of bom %d: %w", id, err)
+	}
+	return out, nil
+}
+
+// DefaultAnnualHours : base horaire annuelle d'un ETP à la création d'une BOM (ADR 0024).
+var DefaultAnnualHours = decimal.NewFromInt(1607)
+
+// SetAnnualHours change la base horaire annuelle d'un ETP ; elle doit être > 0.
+func (s *Service) SetAnnualHours(ctx context.Context, id int64, hours decimal.Decimal) (BOM, error) {
+	if err := validateAnnualHours(hours); err != nil {
+		return BOM{}, fmt.Errorf("set annual hours of bom %d: %w", id, err)
+	}
+	out, err := s.store.SetAnnualHours(ctx, id, hours)
+	if err != nil {
+		return BOM{}, fmt.Errorf("set annual hours of bom %d: %w", id, err)
+	}
+	return out, nil
+}
+
+// maxAnnualHours : une année bissextile compte 8 784 heures ; au-delà, la base n'a pas de sens (et une
+// valeur hors des bornes de NUMERIC ferait échouer la base au lieu d'un refus explicite).
+var maxAnnualHours = decimal.NewFromInt(8784)
+
+func validateAnnualHours(h decimal.Decimal) error {
+	if !h.IsPositive() || h.GreaterThan(maxAnnualHours) {
+		return fmt.Errorf("annual hours %s must be in ]0, %s]: %w", h, maxAnnualHours, ErrInvalidInput)
+	}
+	return nil
 }
 
 // DeleteBOM supprime la BOM et son arbre ; ErrHasSnapshots si un snapshot a été publié (R2).
@@ -274,6 +359,73 @@ func (s *Service) SetNodeProductionDays(ctx context.Context, bomID, nodeID int64
 	return out, nil
 }
 
+// SetNodeStrategy attache une stratégie au nœud (sous-ensemble ou pièce) ; nil la retire (ADR 0028).
+func (s *Service) SetNodeStrategy(ctx context.Context, bomID, nodeID int64, st *Strategy) (Node, error) {
+	if st != nil {
+		if _, err := ParseStrategy(string(*st)); err != nil {
+			return Node{}, fmt.Errorf("set strategy of node %d in bom %d: %w: %w", nodeID, bomID, err, ErrInvalidInput)
+		}
+	}
+	out, err := s.store.SetNodeStrategy(ctx, bomID, nodeID, st)
+	if err != nil {
+		return Node{}, fmt.Errorf("set strategy of node %d in bom %d: %w", nodeID, bomID, err)
+	}
+	return out, nil
+}
+
+// ReplaceNodePart applique une suggestion confirmée par l'utilisateur : la pièce du nœud devient partID
+// vendue par offerID (même pièce : simple changement d'offre). Id, quantité et enfants sont gardés.
+func (s *Service) ReplaceNodePart(ctx context.Context, bomID, nodeID, partID, offerID int64) (Node, error) {
+	n, err := s.node(ctx, bomID, nodeID)
+	if err != nil {
+		return Node{}, fmt.Errorf("replace part of node %d in bom %d: %w", nodeID, bomID, err)
+	}
+	if !n.IsPart() {
+		return Node{}, fmt.Errorf("replace part of node %d in bom %d: %w", nodeID, bomID, ErrNotAPart)
+	}
+	if err := s.checkReplacement(ctx, *n.PartID, partID, offerID); err != nil {
+		return Node{}, fmt.Errorf("replace part of node %d in bom %d: %w", nodeID, bomID, err)
+	}
+	out, err := s.store.SetNodePart(ctx, bomID, nodeID, partID, offerID)
+	if err != nil {
+		return Node{}, fmt.Errorf("replace part of node %d in bom %d: %w", nodeID, bomID, err)
+	}
+	return out, nil
+}
+
+// checkReplacement : l'offre vend la pièce, ni l'une ni l'autre n'est archivée (ADR 0009), et la pièce est
+// celle du nœud ou l'une de ses alternatives déclarées (une suggestion, pas un remplacement arbitraire).
+func (s *Service) checkReplacement(ctx context.Context, currentPart, partID, offerID int64) error {
+	if err := s.checkOfferSellsPart(ctx, offerID, partID); err != nil {
+		return err
+	}
+	o, err := s.catalog.Offer(ctx, offerID)
+	if err != nil {
+		return err
+	}
+	p, err := s.catalog.Part(ctx, partID)
+	if err != nil {
+		return err
+	}
+	if o.ArchivedAt != nil || p.ArchivedAt != nil {
+		return fmt.Errorf("part %d / offer %d: %w: %w", partID, offerID, ErrArchived, ErrInvalidInput)
+	}
+	if partID == currentPart {
+		return nil
+	}
+	if s.listing == nil {
+		return ErrSuggestionsUnavailable
+	}
+	alts, err := s.listing.Alternatives(ctx, currentPart)
+	if err != nil {
+		return err
+	}
+	if !slices.ContainsFunc(alts, func(a catalog.Part) bool { return a.ID == partID }) {
+		return fmt.Errorf("part %d is not a declared alternative of part %d: %w", partID, currentPart, ErrInvalidInput)
+	}
+	return nil
+}
+
 // MoveNode rattache le nœud à un autre parent ; ErrCycle si c'est le nœud ou l'un de ses descendants
 // (contrôle fait par le store, dans la transaction de la mise à jour).
 func (s *Service) MoveNode(ctx context.Context, bomID, nodeID, newParentID int64) (Node, error) {
@@ -290,6 +442,111 @@ func (s *Service) DeleteNode(ctx context.Context, bomID, nodeID int64) error {
 		return fmt.Errorf("delete node %d in bom %d: %w", nodeID, bomID, err)
 	}
 	return nil
+}
+
+// --- Stock (ADR 0022) ---------------------------------------------------------------------------------
+
+// Stock renvoie le stock de la BOM, trié par pièce ; ErrBOMNotFound si elle n'existe pas.
+func (s *Service) Stock(ctx context.Context, bomID int64) ([]PartStock, error) {
+	if _, err := s.store.GetBOM(ctx, bomID); err != nil {
+		return nil, fmt.Errorf("stock of bom %d: %w", bomID, err)
+	}
+	out, err := s.store.Stock(ctx, bomID)
+	if err != nil {
+		return nil, fmt.Errorf("stock of bom %d: %w", bomID, err)
+	}
+	return out, nil
+}
+
+// SetPartStock fixe la quantité en stock d'une pièce du catalogue pour cette BOM. Zéro retire le stock ;
+// une quantité négative est refusée.
+func (s *Service) SetPartStock(ctx context.Context, bomID, partID int64, qty decimal.Decimal) (PartStock, error) {
+	if qty.IsNegative() || qty.GreaterThanOrEqual(maxStockQuantity) || qty.Exponent() < -maxStockDecimals {
+		return PartStock{}, fmt.Errorf("set stock of part %d in bom %d: quantity %s must be in [0, %s[ with at most %d decimals: %w",
+			partID, bomID, qty, maxStockQuantity, maxStockDecimals, ErrInvalidInput)
+	}
+	if _, err := s.store.GetBOM(ctx, bomID); err != nil {
+		return PartStock{}, fmt.Errorf("set stock of part %d in bom %d: %w", partID, bomID, err)
+	}
+	p, err := s.catalog.Part(ctx, partID)
+	if err != nil {
+		return PartStock{}, fmt.Errorf("set stock of part %d in bom %d: %w", partID, bomID, err)
+	}
+	if p.ArchivedAt != nil && qty.IsPositive() { // ADR 0009 : une pièce archivée ne reçoit pas de nouvelle association
+		return PartStock{}, fmt.Errorf("set stock of part %d in bom %d: part is archived: %w", partID, bomID, ErrInvalidInput)
+	}
+	if qty.IsZero() {
+		if err := s.store.DeleteStock(ctx, bomID, partID); err != nil {
+			return PartStock{}, fmt.Errorf("set stock of part %d in bom %d: %w", partID, bomID, err)
+		}
+		return PartStock{PartID: partID, Quantity: decimal.Zero}, nil
+	}
+	out, err := s.store.SetStock(ctx, bomID, PartStock{PartID: partID, Quantity: qty})
+	if err != nil {
+		return PartStock{}, fmt.Errorf("set stock of part %d in bom %d: %w", partID, bomID, err)
+	}
+	return out, nil
+}
+
+// Bornes de saisie du stock : au-delà, la valeur n'a pas de sens physique et dépasserait NUMERIC (la base
+// renverrait une erreur serveur au lieu d'un refus explicite).
+var maxStockQuantity = decimal.New(1, 15)
+
+const maxStockDecimals = 6
+
+// StockMap indexe un stock par pièce, pour le calcul des totaux.
+func StockMap(stock []PartStock) map[int64]decimal.Decimal {
+	m := make(map[int64]decimal.Decimal, len(stock))
+	for _, st := range stock {
+		m[st.PartID] = st.Quantity
+	}
+	return m
+}
+
+// --- Planning (ADR 0023) -----------------------------------------------------------------------------
+
+// SetSchedule fixe la date de départ et, optionnellement, la date cible. Les dates sont des jours
+// calendaires (minuit UTC) ; une cible avant le départ est refusée.
+func (s *Service) SetSchedule(ctx context.Context, bomID int64, sch Schedule) (Schedule, error) {
+	if !isDate(sch.StartOn) || (sch.TargetOn != nil && !isDate(*sch.TargetOn)) {
+		return Schedule{}, fmt.Errorf("set schedule of bom %d: dates must be calendar days (midnight UTC): %w", bomID, ErrInvalidInput)
+	}
+	if sch.TargetOn != nil && sch.TargetOn.Before(sch.StartOn) {
+		return Schedule{}, fmt.Errorf("set schedule of bom %d: target %s before start %s: %w",
+			bomID, sch.TargetOn.Format(time.DateOnly), sch.StartOn.Format(time.DateOnly), ErrInvalidInput)
+	}
+	out, err := s.store.SetSchedule(ctx, bomID, sch)
+	if err != nil {
+		return Schedule{}, fmt.Errorf("set schedule of bom %d: %w", bomID, err)
+	}
+	return out, nil
+}
+
+// Schedule renvoie le planning du brouillon, ou nil s'il n'en a pas.
+func (s *Service) Schedule(ctx context.Context, bomID int64) (*Schedule, error) {
+	if _, err := s.store.GetBOM(ctx, bomID); err != nil {
+		return nil, fmt.Errorf("schedule of bom %d: %w", bomID, err)
+	}
+	out, err := s.store.Schedule(ctx, bomID)
+	if err != nil {
+		return nil, fmt.Errorf("schedule of bom %d: %w", bomID, err)
+	}
+	return out, nil
+}
+
+// ClearSchedule retire le planning : les délais restent en jours, sans date.
+func (s *Service) ClearSchedule(ctx context.Context, bomID int64) error {
+	if _, err := s.store.GetBOM(ctx, bomID); err != nil {
+		return fmt.Errorf("clear schedule of bom %d: %w", bomID, err)
+	}
+	if err := s.store.DeleteSchedule(ctx, bomID); err != nil {
+		return fmt.Errorf("clear schedule of bom %d: %w", bomID, err)
+	}
+	return nil
+}
+
+func isDate(t time.Time) bool {
+	return t.Location() == time.UTC && t.Equal(time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, time.UTC))
 }
 
 // --- Prix figés ou en direct -------------------------------------------------------------------------
@@ -344,9 +601,11 @@ func offerIDs(nodes []Node) []int64 {
 
 // TreeTotals est l'arbre d'un brouillon et ses totaux par nœud.
 type TreeTotals struct {
-	BOM    BOM
-	Nodes  []Node // triés par id
-	Totals Totals
+	BOM      BOM
+	Nodes    []Node      // triés par id
+	Stock    []PartStock // stock de la BOM, par pièce (ADR 0022)
+	Totals   Totals
+	Planning Planning // ADR 0023
 }
 
 // Totals calcule les totaux du brouillon (ADR 0007, ADR 0008), avec les prix en direct ou ceux de son
@@ -362,7 +621,11 @@ func (s *Service) Totals(ctx context.Context, bomID int64) (TreeTotals, error) {
 	if err != nil {
 		return TreeTotals{}, fmt.Errorf("totals of bom %d: %w", bomID, err)
 	}
-	in, err := s.totalsInput(ctx, b, nodes)
+	stock, err := s.store.Stock(ctx, bomID)
+	if err != nil {
+		return TreeTotals{}, fmt.Errorf("totals of bom %d: %w", bomID, err)
+	}
+	in, err := s.totalsInput(ctx, b, nodes, stock)
 	if err != nil {
 		return TreeTotals{}, fmt.Errorf("totals of bom %d: %w", bomID, err)
 	}
@@ -370,10 +633,18 @@ func (s *Service) Totals(ctx context.Context, bomID int64) (TreeTotals, error) {
 	if err != nil {
 		return TreeTotals{}, fmt.Errorf("totals of bom %d: %w", bomID, err)
 	}
-	return TreeTotals{BOM: b, Nodes: nodes, Totals: t}, nil
+	sch, err := s.store.Schedule(ctx, bomID)
+	if err != nil {
+		return TreeTotals{}, fmt.Errorf("totals of bom %d: %w", bomID, err)
+	}
+	plan, err := PlanSchedule(in.Nodes, t, sch)
+	if err != nil {
+		return TreeTotals{}, fmt.Errorf("totals of bom %d: %w", bomID, err)
+	}
+	return TreeTotals{BOM: b, Nodes: nodes, Stock: stock, Totals: t, Planning: plan}, nil
 }
 
-func (s *Service) totalsInput(ctx context.Context, b BOM, nodes []Node) (TotalsInput, error) {
+func (s *Service) totalsInput(ctx context.Context, b BOM, nodes []Node, stock []PartStock) (TotalsInput, error) {
 	currency := money.Currency(b.Currency)
 	parts := map[int64]catalog.Part{}
 	offers := map[int64]catalog.Offer{}
@@ -404,14 +675,20 @@ func (s *Service) totalsInput(ctx context.Context, b BOM, nodes []Node) (TotalsI
 			return TotalsInput{}, fmt.Errorf("node %d: %w", n.ID, err)
 		}
 		calc[i].ProductionDays = attrs.ProductionDays // ADR 0007 règle 4 : production de la pièce (catalogue)
-		calc[i].Part = &PartFacts{OfferID: o.ID, LeadTimeDays: o.LeadTimeDays, CO2Kg: attrs.CO2KGPerUnit, MassKg: attrs.MassKG}
+		calc[i].Part = &PartFacts{
+			PartID: p.ID, OfferID: o.ID, LeadTimeDays: o.LeadTimeDays, CO2Kg: attrs.CO2KGPerUnit, MassKg: attrs.MassKG,
+			LaborHours: p.LaborHours, // nil : heures absentes du catalogue → ETP indisponible, jamais zéro
+		}
 	}
 
 	prices, rates, err := LoadPrices(ctx, s.pricing, b.PriceSnapshotID, offerIDs(nodes), currency)
 	if err != nil {
 		return TotalsInput{}, err
 	}
-	return TotalsInput{Nodes: calc, Currency: currency, Prices: prices, Rates: rates, PriceSnapshotID: b.PriceSnapshotID}, nil
+	return TotalsInput{
+		Nodes: calc, Currency: currency, Prices: prices, Rates: rates, PriceSnapshotID: b.PriceSnapshotID,
+		Volume: b.Volume, AnnualHours: &b.AnnualHours, Stock: StockMap(stock),
+	}, nil
 }
 
 // LoadPrices lit, une seule fois chacun, le prix de chaque offre de offerIDs et le taux de chaque devise

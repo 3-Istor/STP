@@ -22,6 +22,10 @@ export function Totals({ totals, explanation }: { totals: NodeTotals; explanatio
         <span className="muted small">Délai</span>
         <strong>{totals.lead_time_days} j</strong>
       </div>
+      <div title={totals.labor_error ?? (totals.labor_hours ? `${formatDecimal(totals.labor_hours, 2)} h par véhicule` : undefined)}>
+        <span className="muted small">ETP</span>
+        <strong className={totals.labor_error ? 'over' : undefined}>{totals.fte ? formatDecimal(totals.fte, 2) : '—'}</strong>
+      </div>
       <p className="muted small">
         {explanation.currency}, {source}
         {totals.missing_cost.length > 0 && <span className="over"> · {totals.missing_cost.length} nœud(s) sans prix</span>}

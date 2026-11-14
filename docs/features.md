@@ -380,7 +380,7 @@ En tant qu'acheteur, je veux le coût total rendu d'une pièce, afin de comparer
 
 ## Feature : taxes-and-optimization
 **Priorité** : P4 (plus tard : la liste des taxes et leurs formules sont à définir avant de la spécifier)
-**Dépend de** : total-landed-cost, recyclability-index
+**Dépend de** : total-landed-cost
 
 ### Pourquoi
 Une fois la BOM faite, il faut voir les taxes économiques et écologiques, et les options pour les réduire.
@@ -392,24 +392,6 @@ Une fois la BOM faite, il faut voir les taxes économiques et écologiques, et l
 
 ### Critères d'acceptation
 - QUAND une option est proposée ALORS le système DOIT afficher son impact sur le coût, le délai et le CO2
-
----
-
-## Feature : recyclability-index
-**Priorité** : P2
-**Dépend de** : part-catalog, bom-tree-editor
-
-### Pourquoi
-La directive VHU impose des objectifs de recyclage en fin de vie. Il faut mesurer la BOM et l'améliorer.
-
-### Exigences
-- Must : pourcentage de matériaux recyclés et recyclables de la voiture (pondéré par la masse)
-- Should : suggestion d'alternatives qui améliorent l'indice
-- Won't : estimation des pénalités de fin de vie
-- Won't : certification réglementaire
-
-### Critères d'acceptation
-- QUAND je remplace une pièce par une alternative plus recyclable ALORS l'indice DOIT être recalculé immédiatement
 
 ---
 

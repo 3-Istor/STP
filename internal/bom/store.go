@@ -29,6 +29,10 @@ type BOM struct {
 	Name     string
 	Currency string // devise de référence, ISO 4217
 	Volume   int32  // volume de production
+	// AnnualHours : base horaire annuelle d'un ETP (ADR 0024), > 0.
+	AnnualHours decimal.Decimal
+	// DestinationCountry : pays de l'usine d'assemblage (ISO 3166-1 alpha-2, ADR 0025) ; nil si non renseigné.
+	DestinationCountry *string
 	// PriceSnapshotID : nil = prix en direct ; sinon les prix du brouillon sont figés (R9).
 	PriceSnapshotID *int64
 	// SourceSnapshotID : snapshot dont ce brouillon a été créé (D3), nil sinon.
@@ -42,6 +46,10 @@ type NewBOM struct {
 	Currency         string
 	Volume           int32
 	SourceSnapshotID *int64
+	// AnnualHours : nil → DefaultAnnualHours (ADR 0024).
+	AnnualHours *decimal.Decimal
+	// DestinationCountry : recopié d'un snapshot (ADR 0025) ; nil sinon.
+	DestinationCountry *string
 }
 
 // Node est un nœud de l'arbre : un sous-ensemble (Name, PartID et OfferID nil) ou une pièce
@@ -57,6 +65,8 @@ type Node struct {
 	Quantity decimal.Decimal
 	// ProductionDays : jours de production propres au nœud (ADR 0007).
 	ProductionDays int32
+	// Strategy : stratégie attachée à ce nœud (ADR 0028) ; nil = celle de l'ancêtre le plus proche.
+	Strategy *Strategy
 }
 
 // IsPart dit si le nœud est une pièce (et non un sous-ensemble).
@@ -72,6 +82,12 @@ type NewNode struct {
 	ProductionDays int32
 }
 
+// PartStock est la quantité d'une pièce en stock pour une BOM, propre à cette BOM (ADR 0022).
+type PartStock struct {
+	PartID   int64
+	Quantity decimal.Decimal // > 0 ; un stock nul n'est pas enregistré
+}
+
 // Store est l'accès aux brouillons de BOM. Le domaine ne connaît que cette interface ;
 // l'implémentation Postgres vit dans bom/bomstore (le domaine reste sans pgx, AGENTS §2).
 type Store interface {
@@ -83,6 +99,8 @@ type Store interface {
 	GetBOM(ctx context.Context, id int64) (BOM, error)
 	RenameBOM(ctx context.Context, id int64, name string) (BOM, error)
 	UpdateSettings(ctx context.Context, id int64, currency string, volume int32) (BOM, error)
+	SetAnnualHours(ctx context.Context, id int64, hours decimal.Decimal) (BOM, error)
+	SetDestination(ctx context.Context, id int64, country *string) (BOM, error)
 	// SetPriceSnapshot fige les prix (snapshotID non nil) ou les remet en direct (nil).
 	SetPriceSnapshot(ctx context.Context, id int64, snapshotID *int64) (BOM, error)
 	// DeleteBOM supprime la BOM et son arbre ; ErrHasSnapshots si un snapshot existe.
@@ -96,9 +114,26 @@ type Store interface {
 	SetNodeOffer(ctx context.Context, bomID, nodeID, offerID int64) (Node, error)
 	SetNodeQuantity(ctx context.Context, bomID, nodeID int64, qty decimal.Decimal) (Node, error)
 	SetNodeProductionDays(ctx context.Context, bomID, nodeID int64, days int32) (Node, error)
+	// SetNodeStrategy attache (ou retire, nil) une stratégie au nœud.
+	SetNodeStrategy(ctx context.Context, bomID, nodeID int64, s *Strategy) (Node, error)
+	// SetNodePart remplace la pièce et l'offre d'un nœud pièce (id, quantité et enfants gardés) ; ErrNotAPart
+	// sur un sous-ensemble.
+	SetNodePart(ctx context.Context, bomID, nodeID, partID, offerID int64) (Node, error)
 	// MoveNode rattache le nœud à newParentID ; ErrCycle si newParentID est le nœud ou un descendant.
 	// Le contrôle et la mise à jour se font dans la même transaction.
 	MoveNode(ctx context.Context, bomID, nodeID, newParentID int64) (Node, error)
 	// DeleteNode supprime le nœud et son sous-arbre ; ErrRootNode pour la racine.
 	DeleteNode(ctx context.Context, bomID, nodeID int64) error
+
+	// Stock renvoie le stock de la BOM, trié par pièce (ADR 0022).
+	Stock(ctx context.Context, bomID int64) ([]PartStock, error)
+	// SetStock enregistre (ou remplace) le stock d'une pièce ; ErrBOMNotFound si la BOM n'existe pas.
+	SetStock(ctx context.Context, bomID int64, st PartStock) (PartStock, error)
+	// DeleteStock retire le stock d'une pièce (sans effet s'il n'y en a pas).
+	DeleteStock(ctx context.Context, bomID, partID int64) error
+	// Schedule renvoie la date de départ et la date cible, ou nil si la BOM n'en a pas (ADR 0023).
+	Schedule(ctx context.Context, bomID int64) (*Schedule, error)
+	// SetSchedule enregistre (ou remplace) le planning ; ErrBOMNotFound si la BOM n'existe pas.
+	SetSchedule(ctx context.Context, bomID int64, s Schedule) (Schedule, error)
+	DeleteSchedule(ctx context.Context, bomID int64) error
 }

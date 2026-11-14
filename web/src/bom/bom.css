@@ -56,6 +56,14 @@
   color: var(--over);
 }
 
+.bom-space .ok {
+  color: var(--ok);
+}
+
+/* Pièce au coût anormal (ADR 0027) : rouge = dépassé (AGENTS §5). */
+.bom-space .tree-row.anomaly { box-shadow: inset 3px 0 0 var(--over); }
+.bom-space .badge.over { color: var(--over); border-color: var(--over); margin-left: 0.4rem; font-size: 0.7rem; }
+
 .bom-space .row {
   display: flex;
   gap: 0.5rem;
@@ -359,3 +367,13 @@
     height: 60vh;
   }
 }
+
+/* Tableaux compacts des détails à la demande (ETP par sous-système…). */
+.bom-space table.compact { border-collapse: collapse; margin-top: 0.25rem; }
+.bom-space table.compact th,
+.bom-space table.compact td { padding: 0.15rem 0.5rem; text-align: left; }
+.bom-space table.compact td:not(:first-child),
+.bom-space table.compact th:not(:first-child) { text-align: right; }
+
+/* Pièce couverte par le stock de la BOM (ADR 0022) : vert = dans l'objectif (AGENTS §5). */
+.bom-space .badge.ok { color: var(--ok); border-color: var(--ok); margin-left: 0.4rem; font-size: 0.7rem; }

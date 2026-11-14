@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -41,6 +42,8 @@ const (
 	fkSnapshotBOM = "bom_snapshots_bom_id_fkey"
 	fkNodeParent  = "bom_nodes_bom_id_parent_id_fkey"
 	checkNodeKind = "bom_nodes_kind"
+	fkStockBOM    = "bom_part_stock_bom_id_fkey"
+	fkScheduleBOM = "bom_schedule_bom_id_fkey"
 )
 
 func (s *Store) inTx(ctx context.Context, fn func(q *bomdb.Queries) error) error {
@@ -65,6 +68,7 @@ func (s *Store) CreateBOM(ctx context.Context, b bom.NewBOM) (bom.BOM, error) {
 	err := s.inTx(ctx, func(q *bomdb.Queries) error {
 		row, err := q.CreateBOM(ctx, bomdb.CreateBOMParams{
 			Name: b.Name, Currency: b.Currency, Volume: b.Volume, SourceSnapshotID: optInt8(b.SourceSnapshotID),
+			AnnualHours: annualHours(b.AnnualHours), DestinationCountry: optText(b.DestinationCountry),
 		})
 		if err != nil {
 			return err
@@ -114,6 +118,133 @@ func (s *Store) UpdateSettings(ctx context.Context, id int64, currency string, v
 		ID: id, Currency: currency, Volume: volume,
 	})
 	return bomOrErr(row, err, fmt.Sprintf("update settings of bom %d", id))
+}
+
+// Stock renvoie le stock de la BOM, trié par pièce (ADR 0022).
+func (s *Store) Stock(ctx context.Context, bomID int64) ([]bom.PartStock, error) {
+	rows, err := s.q.ListPartStock(ctx, bomID)
+	if err != nil {
+		return nil, fmt.Errorf("stock of bom %d: %w", bomID, err)
+	}
+	out := make([]bom.PartStock, len(rows))
+	for i, r := range rows {
+		out[i] = bom.PartStock{PartID: r.PartID, Quantity: r.Quantity}
+	}
+	return out, nil
+}
+
+// SetStock enregistre le stock d'une pièce ; une BOM absente (FK) devient bom.ErrBOMNotFound.
+func (s *Store) SetStock(ctx context.Context, bomID int64, st bom.PartStock) (bom.PartStock, error) {
+	row, err := s.q.UpsertPartStock(ctx, bomdb.UpsertPartStockParams{BomID: bomID, PartID: st.PartID, Quantity: st.Quantity})
+	if isConstraint(err, fkStockBOM) {
+		err = bom.ErrBOMNotFound
+	}
+	if err != nil {
+		return bom.PartStock{}, fmt.Errorf("set stock of part %d in bom %d: %w", st.PartID, bomID, err)
+	}
+	return bom.PartStock{PartID: row.PartID, Quantity: row.Quantity}, nil
+}
+
+// DeleteStock retire le stock d'une pièce.
+func (s *Store) DeleteStock(ctx context.Context, bomID, partID int64) error {
+	if _, err := s.q.DeletePartStock(ctx, bomdb.DeletePartStockParams{BomID: bomID, PartID: partID}); err != nil {
+		return fmt.Errorf("delete stock of part %d in bom %d: %w", partID, bomID, err)
+	}
+	return nil
+}
+
+// Schedule renvoie le planning de la BOM, ou nil s'il n'y en a pas (ADR 0023).
+func (s *Store) Schedule(ctx context.Context, bomID int64) (*bom.Schedule, error) {
+	row, err := s.q.GetSchedule(ctx, bomID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("schedule of bom %d: %w", bomID, err)
+	}
+	out := toSchedule(row.StartOn, row.TargetOn)
+	return &out, nil
+}
+
+// SetSchedule enregistre le planning ; une BOM absente (FK) devient bom.ErrBOMNotFound.
+func (s *Store) SetSchedule(ctx context.Context, bomID int64, sch bom.Schedule) (bom.Schedule, error) {
+	row, err := s.q.UpsertSchedule(ctx, bomdb.UpsertScheduleParams{
+		BomID: bomID, StartOn: optDate(&sch.StartOn), TargetOn: optDate(sch.TargetOn),
+	})
+	if isConstraint(err, fkScheduleBOM) {
+		err = bom.ErrBOMNotFound
+	}
+	if err != nil {
+		return bom.Schedule{}, fmt.Errorf("set schedule of bom %d: %w", bomID, err)
+	}
+	return toSchedule(row.StartOn, row.TargetOn), nil
+}
+
+// DeleteSchedule retire le planning de la BOM.
+func (s *Store) DeleteSchedule(ctx context.Context, bomID int64) error {
+	if _, err := s.q.DeleteSchedule(ctx, bomID); err != nil {
+		return fmt.Errorf("delete schedule of bom %d: %w", bomID, err)
+	}
+	return nil
+}
+
+// optDate convertit une date calendaire (nil → NULL).
+func optDate(t *time.Time) pgtype.Date {
+	if t == nil {
+		return pgtype.Date{}
+	}
+	return pgtype.Date{Time: *t, Valid: true}
+}
+
+// ptrDate relit une date (NULL → nil) en minuit UTC.
+func ptrDate(d pgtype.Date) *time.Time {
+	if !d.Valid {
+		return nil
+	}
+	t := time.Date(d.Time.Year(), d.Time.Month(), d.Time.Day(), 0, 0, 0, 0, time.UTC)
+	return &t
+}
+
+func toSchedule(start, target pgtype.Date) bom.Schedule {
+	return bom.Schedule{StartOn: *ptrDate(start), TargetOn: ptrDate(target)}
+}
+
+// SetDestination fixe (ou efface) le pays de destination (ADR 0025).
+func (s *Store) SetDestination(ctx context.Context, id int64, country *string) (bom.BOM, error) {
+	var c pgtype.Text
+	if country != nil {
+		c = pgtype.Text{String: *country, Valid: true}
+	}
+	row, err := s.q.SetBOMDestination(ctx, bomdb.SetBOMDestinationParams{ID: id, DestinationCountry: c})
+	return bomOrErr(row, err, fmt.Sprintf("set destination of bom %d", id))
+}
+
+func optText(s *string) pgtype.Text {
+	if s == nil {
+		return pgtype.Text{}
+	}
+	return pgtype.Text{String: *s, Valid: true}
+}
+
+func ptrText(t pgtype.Text) *string {
+	if !t.Valid {
+		return nil
+	}
+	return &t.String
+}
+
+// SetAnnualHours change la base horaire annuelle d'un ETP (ADR 0024).
+func (s *Store) SetAnnualHours(ctx context.Context, id int64, hours decimal.Decimal) (bom.BOM, error) {
+	row, err := s.q.SetBOMAnnualHours(ctx, bomdb.SetBOMAnnualHoursParams{ID: id, AnnualHours: hours})
+	return bomOrErr(row, err, fmt.Sprintf("set annual hours of bom %d", id))
+}
+
+// annualHours : le service fixe toujours la base ; nil (appel direct du store) → défaut du domaine.
+func annualHours(h *decimal.Decimal) decimal.Decimal {
+	if h == nil {
+		return bom.DefaultAnnualHours
+	}
+	return *h
 }
 
 // SetPriceSnapshot fige les prix (snapshotID non nil) ou les remet en direct (nil).
@@ -300,13 +431,15 @@ func ptrInt64(v pgtype.Int8) *int64 {
 
 func toBOM(r bomdb.Bom) bom.BOM {
 	return bom.BOM{
-		ID:               r.ID,
-		Name:             r.Name,
-		Currency:         r.Currency,
-		Volume:           r.Volume,
-		PriceSnapshotID:  ptrInt64(r.PriceSnapshotID),
-		SourceSnapshotID: ptrInt64(r.SourceSnapshotID),
-		CreatedAt:        r.CreatedAt,
+		ID:                 r.ID,
+		Name:               r.Name,
+		Currency:           r.Currency,
+		Volume:             r.Volume,
+		AnnualHours:        r.AnnualHours,
+		DestinationCountry: ptrText(r.DestinationCountry),
+		PriceSnapshotID:    ptrInt64(r.PriceSnapshotID),
+		SourceSnapshotID:   ptrInt64(r.SourceSnapshotID),
+		CreatedAt:          r.CreatedAt,
 	}
 }
 
@@ -320,5 +453,37 @@ func toNode(r bomdb.BomNode) bom.Node {
 		OfferID:        ptrInt64(r.OfferID),
 		Quantity:       r.Quantity,
 		ProductionDays: r.ProductionDays,
+		Strategy:       ptrStrategy(r.Strategy),
 	}
+}
+
+func ptrStrategy(t pgtype.Text) *bom.Strategy {
+	if !t.Valid {
+		return nil
+	}
+	s := bom.Strategy(t.String)
+	return &s
+}
+
+// SetNodeStrategy attache (ou retire) la stratégie du nœud (ADR 0028).
+func (s *Store) SetNodeStrategy(ctx context.Context, bomID, nodeID int64, st *bom.Strategy) (bom.Node, error) {
+	var v pgtype.Text
+	if st != nil {
+		v = pgtype.Text{String: string(*st), Valid: true}
+	}
+	row, err := s.q.SetNodeStrategy(ctx, bomdb.SetNodeStrategyParams{BomID: bomID, ID: nodeID, Strategy: v})
+	return nodeOrErr(row, err, fmt.Sprintf("set strategy of node %d in bom %d", nodeID, bomID))
+}
+
+// SetNodePart remplace la pièce et l'offre d'un nœud pièce ; un sous-ensemble (aucune ligne) → ErrNotAPart
+// s'il existe, ErrNodeNotFound sinon.
+func (s *Store) SetNodePart(ctx context.Context, bomID, nodeID, partID, offerID int64) (bom.Node, error) {
+	row, err := s.q.SetNodePart(ctx, bomdb.SetNodePartParams{BomID: bomID, ID: nodeID, PartID: pgtype.Int8{Int64: partID, Valid: true},
+		OfferID: pgtype.Int8{Int64: offerID, Valid: true}})
+	if errors.Is(err, pgx.ErrNoRows) {
+		if _, getErr := s.q.GetNode(ctx, bomdb.GetNodeParams{BomID: bomID, ID: nodeID}); getErr == nil {
+			err = bom.ErrNotAPart
+		}
+	}
+	return nodeOrErr(row, err, fmt.Sprintf("set part of node %d in bom %d", nodeID, bomID))
 }
