@@ -17,7 +17,7 @@ concurrency:
 
 jobs:
   go:
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.CNP_CI_RUNS_ON || '["self-hosted","Linux","X64"]') }}
     # Base réelle pour les migrations et les tests d'intégration (identifiants de test, cf. compose.yaml).
     services:
       postgres:
@@ -72,7 +72,7 @@ jobs:
           retention-days: 14
 
   web:
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.CNP_CI_RUNS_ON || '["self-hosted","Linux","X64"]') }}
     defaults:
       run:
         working-directory: web
@@ -103,7 +103,7 @@ jobs:
         run: npm audit --omit=dev --audit-level=high
 
   web-live:
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.CNP_CI_RUNS_ON || '["self-hosted","Linux","X64"]') }}
     timeout-minutes: 15
     services:
       postgres:
@@ -147,7 +147,7 @@ jobs:
           retention-days: 7
 
   security:
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.CNP_CI_RUNS_ON || '["self-hosted","Linux","X64"]') }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
@@ -159,7 +159,7 @@ jobs:
   # Smoke test de la stack complète (voir ADR 0005) : tout démarre, /healthz répond via nginx et
   # depuis le conteneur de l'API de prix.
   compose:
-    runs-on: ubuntu-latest
+    runs-on: ${{ fromJSON(vars.CNP_CI_RUNS_ON || '["self-hosted","Linux","X64"]') }}
     steps:
       - uses: actions/checkout@v4
       - name: Démarrer la stack
