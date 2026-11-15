@@ -41,6 +41,12 @@ func fixture() ([]bom.Node, map[int64]catalog.Part, map[int64]string) {
 		node(15, ptr(int64(3)), ptr(int64(105)), "1"),  // pièce absente du catalogue
 		node(16, ptr(int64(1)), ptr(int64(106)), "2"),  // portière, carrosserie
 		node(17, ptr(int64(3)), ptr(int64(107)), "6"),  // disque de frein ×6 (plus que de coins)
+		{ID: 4, BOMID: 1, ParentID: ptr(int64(3)), Name: "Roue avant gauche", Quantity: dec("1")},
+		node(18, ptr(int64(4)), ptr(int64(108)), "1"), // jante alu ×1 dans « Roue avant gauche »
+		{ID: 5, BOMID: 1, ParentID: ptr(int64(1)), Name: "Porte avant droite", Quantity: dec("1")},
+		node(19, ptr(int64(5)), ptr(int64(106)), "1"), // portière dans « Porte avant droite »
+		{ID: 6, BOMID: 1, ParentID: ptr(int64(2)), Name: "Point de fixation 001", Quantity: dec("1")},
+		node(20, ptr(int64(6)), ptr(int64(104)), "8"), // vis sous un point de fixation du GMP
 	}
 	parts := map[int64]catalog.Part{
 		100: part(100, "Bloc moteur", "Moteur", "Compartiment moteur", ptr(dec("120"))),
@@ -50,6 +56,7 @@ func fixture() ([]bom.Node, map[int64]catalog.Part, map[int64]string) {
 		104: part(104, "Vis M8", "Visserie", "Toutes zones", ptr(dec("0.01"))),
 		106: part(106, "Portière avant", "Ouvrants", "Carrosserie", ptr(dec("30"))),
 		107: part(107, "Disque de frein", "Freinage", "Liaison au sol", ptr(dec("7"))),
+		108: part(108, "Jante alu 16\"", "Roues", "Liaison au sol", ptr(dec("8"))),
 	}
 	return nodes, parts, map[int64]string{105: "pièce absente du catalogue"}
 }
@@ -77,7 +84,7 @@ func TestBuild(t *testing.T) {
 				ids = append(ids, p.NodeID)
 			}
 			slices.Sort(ids)
-			want := []int64{10, 11, 12, 13, 14, 16, 17}
+			want := []int64{10, 11, 12, 13, 14, 16, 17, 18, 19, 20}
 			if !reflect.DeepEqual(ids, want) {
 				t.Fatalf("nœuds placés %v, attendu %v", ids, want)
 			}
@@ -110,24 +117,46 @@ func TestBuild(t *testing.T) {
 		}},
 		{"SI une pièce de coin a plus de 4 exemplaires ALORS 4 sont montrés et une note le dit", func(t *testing.T) {
 			p := find(t, a, 17)
-			if len(p.Instances) != 4 || !slices.Contains(p.Notes, "6 exemplaires, 4 représentés aux roues") {
+			if len(p.Instances) != 4 || !slices.Contains(p.Notes, "6 exemplaires, 4 représenté(s) aux roues") {
 				t.Fatalf("disques : %d instances, notes %v", len(p.Instances), p.Notes)
 			}
 			if p.Quantity != "6" {
 				t.Fatalf("quantité %q", p.Quantity)
 			}
 		}},
-		{"SI la zone est inconnue ALORS la pièce est posée hors du véhicule, confiance basse, zone non connue", func(t *testing.T) {
-			p := find(t, a, 14)
-			if p.Instances[0].Position[0] > -2.5 {
-				t.Fatalf("vis posée dans le véhicule : %v", p.Instances[0].Position)
+		{"QUAND la zone d'une pièce est inconnue ALORS elle hérite de la zone majoritaire de son sous-ensemble", func(t *testing.T) {
+			screw := find(t, a, 20) // vis « Toutes zones » sous un point de fixation du groupe motopropulseur
+			if screw.Zone != "Compartiment moteur" || screw.Confidence != "0.10" {
+				t.Fatalf("vis : zone %q confiance %q", screw.Zone, screw.Confidence)
 			}
-			if p.Confidence != "0.05" || len(p.Notes) == 0 {
-				t.Fatalf("confiance %q notes %v", p.Confidence, p.Notes)
+			if !slices.Contains(screw.Notes, "zone « Toutes zones » : placée avec « Groupe motopropulseur » (Compartiment moteur)") {
+				t.Fatalf("notes %v", screw.Notes)
 			}
-			i := slices.IndexFunc(a.Zones, func(z ZoneSummary) bool { return z.Zone == "Toutes zones" })
-			if i < 0 || a.Zones[i].Known || a.Zones[i].Count != 1 {
-				t.Fatalf("résumé de zone : %+v", a.Zones)
+			if x := screw.Instances[0].Position[0]; x < 0.7 || x > 2.0 {
+				t.Fatalf("vis hors du compartiment moteur : %v", screw.Instances[0].Position)
+			}
+			if slices.ContainsFunc(a.Zones, func(z ZoneSummary) bool { return z.Zone == "Toutes zones" }) {
+				t.Fatalf("la zone du catalogue ne doit pas apparaître comme zone de la scène : %+v", a.Zones)
+			}
+		}},
+		{"QUAND une roue est seule dans « Roue avant gauche » ALORS elle va au coin avant gauche", func(t *testing.T) {
+			p := find(t, a, 18)
+			if len(p.Instances) != 1 || p.Instances[0].Position[0] <= 0 || p.Instances[0].Position[2] >= 0 {
+				t.Fatalf("jante : %+v", p.Instances)
+			}
+			if !slices.Contains(p.Notes, "côté d'après « Roue avant gauche »") {
+				t.Fatalf("notes %v", p.Notes)
+			}
+		}},
+		{"QUAND une portière est dans « Porte avant droite » ALORS elle est à l'avant droit de la carrosserie", func(t *testing.T) {
+			p := find(t, a, 19)
+			pos := p.Instances[0].Position
+			if pos[0] <= 0 || pos[2] <= 0 {
+				t.Fatalf("portière avant droite placée en %v", pos)
+			}
+			left := find(t, a, 16).Instances[0].Position // portière sans côté dit : au centre de la région
+			if left[2] != 0 {
+				t.Fatalf("portière sans côté : z = %v, attendu 0", left[2])
 			}
 		}},
 		{"SI la masse est inconnue ALORS taille par défaut, note et confiance réduite", func(t *testing.T) {
@@ -194,6 +223,22 @@ func TestBuildIsDeterministic(t *testing.T) {
 	}
 }
 
+func TestBuildUnknownZoneShelf(t *testing.T) {
+	nodes := []bom.Node{node(1, nil, nil, "1"), node(2, ptr(int64(1)), ptr(int64(50)), "3")}
+	parts := map[int64]catalog.Part{50: part(50, "Kit", "Divers", "Toutes zones", nil)}
+	a := Build(1, nodes, parts, nil)
+	p := find(t, a, 2)
+	if p.Instances[0].Position[0] > -2.5 {
+		t.Fatalf("SI aucune zone n'est connue ALORS la pièce est posée à côté du véhicule : %v", p.Instances[0].Position)
+	}
+	if p.Confidence != "0.05" || p.Zone != "Toutes zones" {
+		t.Fatalf("confiance %q zone %q", p.Confidence, p.Zone)
+	}
+	if len(a.Zones) != 1 || a.Zones[0].Known {
+		t.Fatalf("résumé de zone : %+v", a.Zones)
+	}
+}
+
 func TestBuildEmptyTree(t *testing.T) {
 	a := Build(9, []bom.Node{node(1, nil, nil, "1")}, nil, nil)
 	if len(a.Placements) != 0 || len(a.Missing) != 0 || len(a.Zones) != 0 {
@@ -201,6 +246,32 @@ func TestBuildEmptyTree(t *testing.T) {
 	}
 	if a.Placements == nil || a.Zones == nil || a.Missing == nil {
 		t.Fatal("les listes vides doivent être des tableaux JSON, pas null")
+	}
+}
+
+func TestShapeFor(t *testing.T) {
+	tests := []struct {
+		category, name string
+		wantKind       string
+		fixed, corner  bool
+	}{
+		{"Roues", "Pneumatique 195/60 R15", "wheel", true, true},
+		{"Roues", "Jante tôle 6J×15", "wheel", true, true},
+		{"Roues", "Roue de secours galette", "wheel", true, true},
+		{"Roues", "Vis de roue M12×1,25", "cylinder", false, true}, // pas une roue entière
+		{"Roues", "Enjoliveur 15\"", "cylinder", false, true},
+		{"Freinage", "Disque de frein", "cylinder", false, true},
+		{"Moteur", "Bloc moteur", "box", false, false},
+		{"Visserie", "Vis H M6", "sphere", false, false},
+		{"Divers", "Chose", "box", false, false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := shapeFor(tt.category, tt.name)
+			if got.kind != tt.wantKind || got.fixed != tt.fixed || got.corner != tt.corner {
+				t.Fatalf("shapeFor(%q, %q) = %+v", tt.category, tt.name, got)
+			}
+		})
 	}
 }
 
@@ -260,7 +331,7 @@ func TestServiceAssembly(t *testing.T) {
 		{"SI le catalogue est en panne ALORS l'erreur remonte, pas une scène partielle", fakeTrees{nodes: nodes}, fakeParts{err: dbDown}, dbDown, nil},
 		{"QUAND une pièce manque au catalogue ALORS la scène est construite et la pièce signalée", fakeTrees{nodes: nodes}, fakeParts{parts: parts}, nil,
 			func(t *testing.T, a Assembly) {
-				if len(a.Placements) != 7 || len(a.Missing) != 1 || a.Missing[0].NodeID != 15 {
+				if len(a.Placements) != 10 || len(a.Missing) != 1 || a.Missing[0].NodeID != 15 {
 					t.Fatalf("placements %d, missing %+v", len(a.Placements), a.Missing)
 				}
 			}},
