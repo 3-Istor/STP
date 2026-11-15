@@ -257,3 +257,9 @@ legend { color: #415e7c; font-size: .79rem; padding: 0 6px; font-weight: 650; }
 .offer-dialog fieldset { margin: 16px 0 0; }
 .money-field { display: grid; grid-template-columns: minmax(0, 1fr) 90px; gap: 6px; }
 @media (max-width: 720px) { .pick-meta { white-space: normal; text-align: right; } }
+
+/* Fenêtres de confirmation et de saisie (AppDialog.tsx) ; rouge = action destructrice (AGENTS §5). */
+.app-dialog { width: min(460px, calc(100% - 28px)); }
+.app-dialog-message { color: #3f5877; font-size: .9rem; margin: -8px 0 0; }
+.danger-button { background: var(--over); }
+.danger-button:hover:not(:disabled) { background: #9a2533; }

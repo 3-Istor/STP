@@ -4,6 +4,7 @@ import type { Catalog } from '../catalog.ts'
 import { CurrencySelect } from '../CurrencySelect.tsx'
 import { formatMoney } from '../money.ts'
 import { loadOfferPrices, noOfferPrices, withOfferPrices, type OfferPrices } from '../offerPrices.ts'
+import { useAppDialog } from '../useAppDialog.tsx'
 import { AnomalySettings } from './Anomalies.tsx'
 import { BomTree } from './BomTree.tsx'
 import { NodePanel } from './NodePanel.tsx'
@@ -27,6 +28,7 @@ export function BomView({ bomID, catalog, onBOMChanged, onOpenSnapshot }: Props)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [published, setPublished] = useState<Snapshot | null>(null)
+  const dialogs = useAppDialog()
   // Prix lus pour un price_snapshot_id donné : ceux d'une autre source ne sont jamais affichés.
   const [loadedPrices, setLoadedPrices] = useState<{ snapshotID: number | null; prices: OfferPrices } | null>(null)
 
@@ -131,6 +133,7 @@ export function BomView({ bomID, catalog, onBOMChanged, onOpenSnapshot }: Props)
 
   return (
     <section className="view" aria-busy={busy}>
+      {dialogs.element}
       <header className="view-head">
         <div>
           <h1>
@@ -139,8 +142,11 @@ export function BomView({ bomID, catalog, onBOMChanged, onOpenSnapshot }: Props)
               type="button"
               className="link small"
               onClick={() => {
-                const name = window.prompt('Nouveau nom de la BOM', bom.name)
-                if (name && name.trim() !== bom.name) void run(() => api.renameBOM(bom.id, name.trim()), { bomChanged: true })
+                void dialogs
+                  .prompt({ title: 'Renommer la BOM', label: 'Nouveau nom', initial: bom.name, confirmLabel: 'Renommer' })
+                  .then((name) => {
+                    if (name && name !== bom.name) void run(() => api.renameBOM(bom.id, name), { bomChanged: true })
+                  })
               }}
             >
               renommer
@@ -277,9 +283,18 @@ export function BomView({ bomID, catalog, onBOMChanged, onOpenSnapshot }: Props)
             onSetStock={(partID, q) => run(() => api.setPartStock(bom.id, partID, q))}
             onStartMove={() => setMoving(selected.id)}
             onDelete={() => {
-              if (!window.confirm('Supprimer ce nœud et tout son sous-arbre ?')) return
-              setSelectedID(selected.parent_id)
-              void run(() => api.deleteNode(bom.id, selected.id))
+              void dialogs
+                .confirm({
+                  title: 'Supprimer ce nœud ?',
+                  message: 'Le nœud et tout son sous-arbre sont retirés du brouillon.',
+                  confirmLabel: 'Supprimer',
+                  danger: true,
+                })
+                .then((ok) => {
+                  if (!ok) return
+                  setSelectedID(selected.parent_id)
+                  void run(() => api.deleteNode(bom.id, selected.id))
+                })
             }}
           />
         ) : (

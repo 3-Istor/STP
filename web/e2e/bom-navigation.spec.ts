@@ -36,6 +36,11 @@ const parts = [
 async function mockAPI(page: Page, added: unknown[] = []) {
   await page.route('**/api/**', async (route) => {
     const path = new URL(route.request().url()).pathname
+    if (['DELETE', 'PATCH'].includes(route.request().method()) && path === '/api/v1/boms/1') {
+      added.push({ method: route.request().method(), body: route.request().postDataJSON() })
+      await route.fulfill(route.request().method() === 'DELETE' ? { status: 204 } : { json: { ...bom, name: 'Multipla 2' } })
+      return
+    }
     if (route.request().method() === 'POST' && path === '/api/v1/boms/1/nodes') {
       added.push(route.request().postDataJSON())
       await route.fulfill({ status: 201, json: { id: 99 } })
@@ -137,4 +142,31 @@ test('aucune devise saisie au clavier : toujours une liste', async ({ page }) =>
   await page.getByRole('treeitem').filter({ hasText: 'Châssis' }).click()
   await expect(page.getByRole('combobox', { name: 'Devise de référence' })).toBeVisible()
   await expect(page.getByRole('textbox', { name: /devise/i })).toHaveCount(0)
+})
+
+test('suppression et renommage d’une BOM dans les fenêtres de l’app, jamais celles du navigateur', async ({ page }) => {
+  const calls: unknown[] = []
+  page.on('dialog', (d) => { throw new Error(`fenêtre native ouverte : ${d.type()} ${d.message()}`) })
+  await mockAPI(page, calls)
+  await page.goto('/#boms')
+  await page.getByRole('button', { name: 'Supprimer Fiat Multipla' }).click()
+  const confirm = page.getByRole('dialog', { name: 'Supprimer la BOM « Fiat Multipla » ?' })
+  await expect(confirm).toBeVisible()
+  // Le bouton sûr a le focus : Entrée ne supprime pas par mégarde.
+  await expect(confirm.getByRole('button', { name: 'Annuler' })).toBeFocused()
+  await confirm.getByRole('button', { name: 'Annuler' }).click()
+  await expect(confirm).toHaveCount(0)
+  expect(calls).toEqual([])
+
+  await page.getByRole('button', { name: 'Fiat Multipla', exact: true }).click()
+  await page.getByRole('button', { name: 'renommer' }).click()
+  const rename = page.getByRole('dialog', { name: 'Renommer la BOM' })
+  await expect(rename.getByRole('textbox', { name: 'Nouveau nom' })).toHaveValue('Fiat Multipla')
+  await rename.getByRole('textbox', { name: 'Nouveau nom' }).fill('  Multipla 2 ')
+  await rename.getByRole('button', { name: 'Renommer' }).click()
+  await expect(rename).toHaveCount(0)
+
+  await page.getByRole('button', { name: 'Supprimer Fiat Multipla' }).click()
+  await page.getByRole('dialog', { name: 'Supprimer la BOM « Fiat Multipla » ?' }).getByRole('button', { name: 'Supprimer' }).click()
+  await expect.poll(() => calls).toEqual([{ method: 'PATCH', body: { name: 'Multipla 2' } }, { method: 'DELETE', body: null }])
 })

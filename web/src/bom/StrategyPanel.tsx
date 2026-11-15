@@ -3,6 +3,7 @@ import { api, errorMessage, type NodePatch, type Strategy, type Suggestions, typ
 import { partName, type Catalog } from '../catalog.ts'
 import { formatDecimal, formatMoney } from '../money.ts'
 import { strategyLabels } from './strategy.ts'
+import { useAppDialog } from '../useAppDialog.tsx'
 
 type Props = {
   bomID: number
@@ -45,6 +46,7 @@ export function StrategyPanel({ bomID, node, catalog, readOnly, onPatch }: Props
 function SuggestionList({ bomID, node, catalog, onPatch }: Omit<Props, 'readOnly'>) {
   const [data, setData] = useState<Suggestions | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const dialogs = useAppDialog()
   const load = () => {
     setError(null)
     api
@@ -57,6 +59,8 @@ function SuggestionList({ bomID, node, catalog, onPatch }: Omit<Props, 'readOnly
     return `${partName(catalog, partID)} · ${o ? o.supplier : `offre #${offerID}`}`
   }
   return (
+    <>
+    {dialogs.element}
     <details
       onToggle={(e) => {
         if ((e.currentTarget as HTMLDetailsElement).open && data === null) load()
@@ -110,10 +114,11 @@ function SuggestionList({ bomID, node, catalog, onPatch }: Omit<Props, 'readOnly
                         type="button"
                         className="link"
                         onClick={() => {
-                          if (!window.confirm(`Remplacer par ${offerLabel(c.part_id, c.offer_id)} dans le brouillon ?`)) return
-                          void onPatch(
-                            c.part_id === node.part_id ? { offer_id: c.offer_id } : { part_id: c.part_id, offer_id: c.offer_id },
-                          )
+                          void dialogs
+                            .confirm({ title: `Remplacer par ${offerLabel(c.part_id, c.offer_id)} ?`, message: 'Le remplacement s’applique au brouillon.', confirmLabel: 'Remplacer' })
+                            .then((ok) => {
+                              if (ok) void onPatch(c.part_id === node.part_id ? { offer_id: c.offer_id } : { part_id: c.part_id, offer_id: c.offer_id })
+                            })
                         }}
                       >
                         appliquer
@@ -136,5 +141,6 @@ function SuggestionList({ bomID, node, catalog, onPatch }: Omit<Props, 'readOnly
         </>
       )}
     </details>
+    </>
   )
 }

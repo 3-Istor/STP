@@ -465,15 +465,20 @@
   margin: 0;
 }
 
-/* Fenêtre d'ajout d'un nœud (AddNodeDialog.tsx). Les sélecteurs .bom-space .add-dialog l'emportent sur
-   les contrôles compacts de l'espace BOM : la fenêtre reprend le style des dialogues fournisseurs. */
+/* Fenêtres de l'espace BOM (AddNodeDialog, AppDialog). Les sélecteurs .bom-space dialog l'emportent sur
+   les contrôles compacts de l'espace BOM : les fenêtres reprennent le style des dialogues fournisseurs. */
 .bom-space .add-dialog { width: min(640px, calc(100% - 28px)); }
 .bom-space .add-dialog form label { flex-direction: column; align-items: stretch; gap: 6px; }
 .bom-space .add-dialog input:not([type='radio']),
 .bom-space .add-dialog select { width: 100%; padding: 9px 11px; }
-.bom-space .add-dialog .primary-button { background: var(--primary); color: #fff; border: 0; padding: 10px 16px; }
-.bom-space .add-dialog .primary-button:hover:not(:disabled) { background: #184eaf; }
-.bom-space .add-dialog .primary-button:disabled { cursor: not-allowed; opacity: .5; }
+.bom-space dialog .primary-button { background: var(--primary); color: #fff; border: 0; padding: 10px 16px; }
+.bom-space dialog .primary-button:hover:not(:disabled) { background: #184eaf; }
+.bom-space dialog .primary-button:disabled { cursor: not-allowed; opacity: .5; }
+.bom-space dialog .danger-button { background: var(--over); }
+.bom-space dialog .danger-button:hover:not(:disabled) { background: #9a2533; }
+.bom-space dialog .secondary-button { padding: 10px 16px; }
+.bom-space dialog form label { flex-direction: column; align-items: stretch; gap: 6px; }
+.bom-space dialog input:not([type='radio']) { width: 100%; padding: 9px 11px; }
 .bom-space .add-dialog .icon-button { border: 0; padding: 0; }
 .bom-space .segmented button { border: 0; background: transparent; }
 .bom-space .segmented button[aria-checked='true'] { background: #fff; }
