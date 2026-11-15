@@ -47,7 +47,8 @@ make test     # tests Go
 make lint     # go vet + golangci-lint + oxlint
 ```
 
-`DATABASE_URL` et `PORT` se surchargent par variable d'environnement.
+`DATABASE_URL` et `PORT` se surchargent par variable d'environnement. `MODELS_DIR` (défaut `./data/models`) est le
+répertoire des fichiers GLB de la vue 3D (ADR 0031) : jamais en base, ignoré par git.
 
 ## Catalogue et fournisseurs
 

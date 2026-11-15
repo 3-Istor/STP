@@ -65,32 +65,36 @@ export function BomView({ bomID, catalog, onBOMChanged, onOpenSnapshot }: Props)
   // Vue BOM / Vue 3D (ADR 0031) : deux rendus de la même donnée. La sélection (selectedID) est partagée ;
   // la scène est lue à la première bascule puis relue seulement si l'arbre a changé (version).
   const [view, setView] = useState<'tree' | '3d'>('tree')
-  const [scene, setScene] = useState<{ data: Assembly | null; error: string | null; version: number }>({ data: null, error: null, version: -1 })
+  const [scene, setScene] = useState<{ data: Assembly | null; error: string | null; version: string }>({ data: null, error: null, version: '' })
   const [reveal, setReveal] = useState(0)
-  // sceneRequest : version de l'arbre dont la lecture est en cours ou faite (une seule requête par version).
-  const sceneRequest = useRef(-1)
+  // modelsVersion : change quand les modèles persistés ont changé (génération finie, GLB téléversé) :
+  // la scène est relue sans toucher à l'arbre ni aux panneaux.
+  const [modelsVersion, setModelsVersion] = useState(0)
+  const sceneVersion = `${version}:${modelsVersion}`
+  // sceneRequest : version (arbre + modèles) dont la lecture est en cours ou faite (une seule requête par version).
+  const sceneRequest = useRef('')
   useEffect(() => {
-    if (view !== '3d' || sceneRequest.current === version) return
-    sceneRequest.current = version
+    if (view !== '3d' || sceneRequest.current === sceneVersion) return
+    sceneRequest.current = sceneVersion
     let cancelled = false
     let done = false
     api
       .assembly(bomID)
       .then((data) => {
         done = true
-        if (!cancelled) setScene({ data, error: null, version })
+        if (!cancelled) setScene({ data, error: null, version: sceneVersion })
       })
       .catch((e: unknown) => {
         done = true
-        if (!cancelled) setScene((s) => ({ ...s, error: errorMessage(e), version }))
+        if (!cancelled) setScene((s) => ({ ...s, error: errorMessage(e), version: sceneVersion }))
       })
     return () => {
       // Quitter la vue 3D n'oublie qu'une lecture encore en vol : une scène déjà lue n'est pas relue au retour.
       cancelled = true
-      if (!done && sceneRequest.current === version) sceneRequest.current = -1
+      if (!done && sceneRequest.current === sceneVersion) sceneRequest.current = ''
     }
-  }, [view, version, bomID])
-  const sceneLoading = view === '3d' && scene.version !== version
+  }, [view, sceneVersion, bomID])
+  const sceneLoading = view === '3d' && scene.version !== sceneVersion
   const reload = useCallback(async () => {
     const t = await api.tree(bomID)
     setTree(t)
@@ -321,6 +325,7 @@ export function BomView({ bomID, catalog, onBOMChanged, onOpenSnapshot }: Props)
                 setView('tree')
                 setReveal((r) => r + 1)
               }}
+              onModelsChanged={() => setModelsVersion((v) => v + 1)}
             />
           </Suspense>
         )}
