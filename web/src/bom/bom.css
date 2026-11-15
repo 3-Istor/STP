@@ -464,6 +464,8 @@
   border-radius: 8px;
 }
 .bom-space .viz3d-note { display: block; }
+.bom-space .viz3d-generation { display: inline-flex; align-items: center; gap: 0.4rem; }
+.bom-space .viz3d-generation progress { width: 7rem; height: 0.6rem; accent-color: var(--primary); }
 .bom-space .viz3d-missing { margin: 0.3rem 0 0; padding-left: 1rem; }
 
 @media (max-width: 900px) {
@@ -490,6 +492,7 @@
 .bom-space table.compact th:not(:first-child) { text-align: right; }
 
 /* Pièce couverte par le stock de la BOM (ADR 0022) : vert = dans l'objectif (AGENTS §5). */
+.bom-space .badge.warn { color: var(--warn); border-color: var(--warn); font-size: 0.7rem; }
 .bom-space .badge.ok { color: var(--ok); border-color: var(--ok); margin-left: 0.4rem; font-size: 0.7rem; }
 
 /* Recherche + en-tête de colonnes de l'arbre (BomTree.tsx). */

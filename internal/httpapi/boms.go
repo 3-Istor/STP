@@ -19,6 +19,7 @@ import (
 	"bomstudio/internal/money"
 	"bomstudio/internal/pricing"
 	"bomstudio/internal/snapshot"
+	"bomstudio/internal/viz3d"
 )
 
 // BOMService est ce que l'API attend du domaine bom ; *bom.Service la satisfait.
@@ -723,19 +724,25 @@ func statusOf(err error) int {
 		return false
 	}
 	switch {
-	case is(bom.ErrBOMNotFound, bom.ErrNodeNotFound, snapshot.ErrSnapshotNotFound, pricing.ErrUnknownOffer):
+	case is(bom.ErrBOMNotFound, bom.ErrNodeNotFound, snapshot.ErrSnapshotNotFound, pricing.ErrUnknownOffer,
+		viz3d.ErrModelNotFound, viz3d.ErrBlobNotFound, viz3d.ErrNoModel):
 		return http.StatusNotFound
 	case is(bom.ErrCycle, bom.ErrHasSnapshots, bom.ErrRootNode, pricing.ErrNoQuote, pricing.ErrNoRate,
-		catalog.ErrMissingAttribute):
+		catalog.ErrMissingAttribute, viz3d.ErrGenerationRunning):
 		return http.StatusConflict
 	case is(errBadRequest, bom.ErrInvalidInput, pricing.ErrInvalidThreshold, bom.ErrOfferNotForPart, bom.ErrNotAPart,
-		catalog.ErrPartNotFound, catalog.ErrOfferNotFound, money.ErrUnknownCurrency):
+		catalog.ErrPartNotFound, catalog.ErrOfferNotFound, money.ErrUnknownCurrency, viz3d.ErrInvalidModel):
 		return http.StatusBadRequest
-	case is(bom.ErrSuggestionsUnavailable, bom.ErrLogisticsUnavailable):
+	case is(bom.ErrSuggestionsUnavailable, bom.ErrLogisticsUnavailable, viz3d.ErrModelsUnavailable):
 		return http.StatusServiceUnavailable
 	default:
 		return http.StatusInternalServerError
 	}
+}
+
+// writeErrorLog journalise une erreur survenue après l'envoi des en-têtes (réponse déjà entamée).
+func writeErrorLog(r *http.Request, err error) {
+	slog.ErrorContext(r.Context(), "request failed after headers were sent", "method", r.Method, "path", r.URL.Path, "err", err)
 }
 
 // writeError écrit {"error": "..."} ; le détail d'une erreur serveur est journalisé, pas renvoyé.

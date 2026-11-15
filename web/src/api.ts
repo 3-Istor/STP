@@ -193,7 +193,33 @@ export type Placement = {
   shape: { kind: 'box' | 'cylinder' | 'wheel' | 'sphere'; size: Vec3 }
   instances: { position: Vec3; rotation: Vec3 }[]
   explode: Vec3 // déplacement à éclatement complet ; position + explode × niveau
+  model_id: number | null // modèle persisté (tranche 2) ; null sans modèle
+  model_url: string | null // fichier GLB à charger ; null pour une primitive (on dessine shape)
 }
+// État de la génération des modèles d'une BOM : stale = finie mais l'arbre a changé depuis ; none = jamais lancée.
+export type GenerationStatus = 'none' | 'queued' | 'running' | 'done' | 'failed' | 'stale'
+export type Generation = {
+  bom_id: number
+  status: GenerationStatus
+  done: number
+  total: number
+  error: string
+  result: { finder: string; exact: number; similar: number; generated: number; failed: { part_id: number; reason: string }[] } | null
+  updated_at: string | null
+}
+export type Model3D = {
+  id: number
+  name: string
+  source: string
+  source_url: string
+  format: 'glb' | 'primitive'
+  license: string
+  dimensions: { x: string; y: string; z: string } | null
+  confidence: string
+  url: string // vide pour une primitive
+  created_at: string
+}
+export type PartModel = { part_id: number; model: Model3D | null; match_type?: MatchType; confidence?: string }
 export type Assembly = {
   bom_id: number
   source: 'generated'
@@ -201,6 +227,7 @@ export type Assembly = {
   zones: { zone: string; count: number; known: boolean }[]
   placements: Placement[]
   missing: { node_id: number; part_id: number; reason: string }[] // pièces sans modèle, gardées dans la BOM
+  generation: Generation | null // null : serveur sans stockage de modèles
 }
 
 export type Snapshot = {
@@ -249,6 +276,14 @@ async function call<T>(method: string, path: string, body?: unknown): Promise<T>
     headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
     body: body === undefined ? undefined : JSON.stringify(body),
   })
+  return decodeResponse<T>(res)
+}
+
+async function callForm<T>(method: string, path: string, form: FormData): Promise<T> {
+  return decodeResponse<T>(await fetch(`/api/v1${path}`, { method, body: form }))
+}
+
+async function decodeResponse<T>(res: Response): Promise<T> {
   if (!res.ok) {
     let msg = `${res.status} ${res.statusText}`
     try {
@@ -291,6 +326,17 @@ export const api = {
   deleteBOM: (id: number) => call<void>('DELETE', `/boms/${id}`),
   tree: (id: number) => call<Tree>('GET', `/boms/${id}/tree`),
   assembly: (id: number) => call<Assembly>('GET', `/boms/${id}/3d`),
+  generationStatus: (id: number) => call<Generation>('GET', `/boms/${id}/3d/status`),
+  generateModels: (id: number) => call<Generation>('POST', `/boms/${id}/3d/generate`),
+  partModel: (partID: number) => call<PartModel>('GET', `/parts/${partID}/3d`),
+  // Téléversement d'un GLB : multipart, le navigateur pose le Content-Type (frontière) lui-même.
+  uploadPartModel: (partID: number, file: File, matchType: MatchType, confidence?: string) => {
+    const form = new FormData()
+    form.set('file', file, file.name)
+    form.set('match_type', matchType)
+    if (confidence !== undefined) form.set('confidence', confidence)
+    return callForm<PartModel>('PUT', `/parts/${partID}/3d`, form)
+  },
   addNode: (bomID: number, n: NewNode) => call<TreeNode>('POST', `/boms/${bomID}/nodes`, n),
   // Un seul champ par PATCH (contrat T8) : le type NodePatch l'impose.
   patchNode: (bomID: number, nodeID: number, p: NodePatch) =>

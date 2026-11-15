@@ -34,3 +34,6 @@ go.work.sum
 
 # Projet
 /bin/
+
+# Fichiers GLB des modèles 3D (MODELS_DIR, ADR 0031)
+/data/

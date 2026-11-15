@@ -61,6 +61,10 @@ type Placement struct {
 	Instances []Instance `json:"instances"`
 	// Explode : déplacement à éclatement complet (mètres) ; le front applique position + explode × niveau.
 	Explode Vec3 `json:"explode"`
+	// ModelID / ModelURL : modèle persisté de la pièce (tranche 2) ; nil sans modèle persisté ou pour une
+	// primitive (pas de fichier). Le front charge le GLB à l'URL, sinon dessine Shape.
+	ModelID  *int64  `json:"model_id"`
+	ModelURL *string `json:"model_url"`
 }
 
 // MissingModel : pièce de la BOM qui n'a pas de modèle, gardée dans la BOM et signalée dans la vue 3D.
@@ -92,6 +96,8 @@ type Assembly struct {
 	Zones      []ZoneSummary  `json:"zones"`
 	Placements []Placement    `json:"placements"`
 	Missing    []MissingModel `json:"missing"`
+	// Generation : état de la génération des modèles (nil si le service tourne sans stockage de modèles).
+	Generation *GenerationView `json:"generation"`
 }
 
 // Trees lit l'arbre d'une BOM ; *bom.Service la satisfait.
@@ -105,13 +111,39 @@ type Parts interface {
 }
 
 // Service assemble une BOM. Il ne connaît la BOM et le catalogue qu'à travers leurs interfaces (AGENTS §2).
+// Sans WithModels, il rend la scène générée de la tranche 1 ; avec, il l'enrichit des modèles persistés
+// et lance les générations.
 type Service struct {
 	trees Trees
 	parts Parts
+
+	store  Store
+	blobs  BlobStore
+	finder ModelFinder
+	// modelURL donne l'URL publique du fichier d'un modèle ; fournie par le câblage, le domaine ne connaît
+	// pas les routes.
+	modelURL func(modelID int64) string
+	// launch exécute un travail de fond (génération) ; le câblage décide du contexte et de l'attente à l'arrêt.
+	launch func(job func(ctx context.Context))
 }
 
 // NewService câble le service sur l'arbre des BOM et le catalogue.
-func NewService(t Trees, p Parts) *Service { return &Service{trees: t, parts: p} }
+func NewService(t Trees, p Parts) *Service {
+	return &Service{trees: t, parts: p, launch: func(job func(ctx context.Context)) { go job(context.Background()) }}
+}
+
+// WithModels active la tranche 2 : modèles persistés, fichiers, chercheur, et URL des fichiers.
+func (s *Service) WithModels(store Store, blobs BlobStore, finder ModelFinder, modelURL func(modelID int64) string) *Service {
+	s.store, s.blobs, s.finder, s.modelURL = store, blobs, finder, modelURL
+	return s
+}
+
+// WithLauncher remplace l'exécution de fond (par défaut : une goroutine sur un contexte de fond).
+// cmd/server y attache le contexte du serveur et un WaitGroup ; les tests y mettent un appel synchrone.
+func (s *Service) WithLauncher(launch func(job func(ctx context.Context))) *Service {
+	s.launch = launch
+	return s
+}
 
 // Assembly lit l'arbre et les pièces, puis construit la scène. Une pièce illisible au catalogue n'est pas
 // une erreur : elle figure dans Missing. ErrBOMNotFound si la BOM n'existe pas.
@@ -133,7 +165,14 @@ func (s *Service) Assembly(ctx context.Context, bomID int64) (Assembly, error) {
 			return Assembly{}, fmt.Errorf("assembly of bom %d: part %d: %w", bomID, id, err)
 		}
 	}
-	return Build(bomID, nodes, parts, missing), nil
+	a := Build(bomID, nodes, parts, missing)
+	if s.store == nil {
+		return a, nil
+	}
+	if err := s.enrich(ctx, &a, nodes); err != nil {
+		return Assembly{}, fmt.Errorf("assembly of bom %d: %w", bomID, err)
+	}
+	return a, nil
 }
 
 // distinctPartIDs : identifiants de pièce de l'arbre, sans doublon, triés (ordre de lecture stable).
