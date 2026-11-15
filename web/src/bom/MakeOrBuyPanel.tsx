@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { CurrencySelect } from '../CurrencySelect.tsx'
 import { api, errorMessage, type CostLine, type MakeOrBuyResult } from '../api.ts'
 import { decimalInput, formatMoney, type Money } from '../money.ts'
 
@@ -42,7 +43,7 @@ export function MakeOrBuyPanel({ bomID, nodeID, currency }: { bomID: number; nod
     const req = ++request.current
     setError(null)
     setResult(null)
-    const norm = (m: Money): Money => ({ amount: decimalInput(m.amount), currency: m.currency.trim().toUpperCase() })
+    const norm = (m: Money): Money => ({ amount: decimalInput(m.amount), currency: m.currency })
     api
       .makeOrBuy(bomID, nodeID, {
         fixed_costs: norm(values.fixed_costs),
@@ -73,7 +74,7 @@ export function MakeOrBuyPanel({ bomID, nodeID, currency }: { bomID: number; nod
           <label key={f.key} className="row">
             {f.label}{' '}
             <input aria-label={f.label} inputMode="decimal" size={8} required value={values[f.key].amount} onChange={(e) => set(f.key, { amount: e.target.value })} />
-            <input aria-label={`Devise ${f.label}`} size={3} value={values[f.key].currency} onChange={(e) => set(f.key, { currency: e.target.value })} />
+            <CurrencySelect aria-label={`Devise ${f.label}`} value={values[f.key].currency} onChange={(currency) => set(f.key, { currency })} />
           </label>
         ))}
         <label className="row">

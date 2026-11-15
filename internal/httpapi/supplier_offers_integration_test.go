@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 
@@ -81,5 +82,13 @@ func TestSupplierOffersHTTPStatistics(t *testing.T) {
 		}
 	}
 	apiCall(t, h, http.MethodGet, fmt.Sprintf("/api/v1/suppliers/%d/offers?as_of=invalide", offer.SupplierID), "", http.StatusBadRequest)
+	// ADR 0030 : devise d'affichage validée ; sans source de taux, la conversion est refusée, pas ignorée.
+	apiCall(t, h, http.MethodGet, fmt.Sprintf("/api/v1/suppliers/%d/offers?currency=euro", offer.SupplierID), "", http.StatusBadRequest)
+	apiCall(t, h, http.MethodGet, fmt.Sprintf("/api/v1/suppliers/%d/offers?currency=EUR&currency=USD", offer.SupplierID), "", http.StatusBadRequest)
+	apiCall(t, h, http.MethodGet, fmt.Sprintf("/api/v1/suppliers/%d/offers?currency=EUR", offer.SupplierID), "", http.StatusBadRequest)
+	// Sans le paramètre, le contrat reste celui d'avant : aucune clé converted.
+	if strings.Contains(rec.Body.String(), `"converted"`) {
+		t.Fatalf("converted présent sans ?currency : %s", rec.Body.String())
+	}
 	apiCall(t, h, http.MethodGet, "/api/v1/suppliers/9223372036854775807/offers", "", http.StatusNotFound)
 }

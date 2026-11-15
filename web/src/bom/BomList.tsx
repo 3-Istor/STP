@@ -1,5 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import type { BOM } from '../api.ts'
+import { CurrencySelect } from '../CurrencySelect.tsx'
+import { byName } from '../text.ts'
 
 type Props = {
   boms: BOM[]
@@ -14,10 +16,11 @@ export function BomList({ boms, selectedID, onSelect, onCreate, onDelete }: Prop
   const [name, setName] = useState('')
   const [currency, setCurrency] = useState('EUR')
   const [volume, setVolume] = useState('1000')
+  const sorted = [...boms].sort((a, b) => byName.compare(a.name, b.name) || a.id - b.id)
 
   async function submit(e: FormEvent) {
     e.preventDefault()
-    await onCreate({ name: name.trim(), currency: currency.trim().toUpperCase(), volume: Number.parseInt(volume, 10) })
+    await onCreate({ name: name.trim(), currency, volume: Number.parseInt(volume, 10) })
     setName('')
   }
 
@@ -25,9 +28,17 @@ export function BomList({ boms, selectedID, onSelect, onCreate, onDelete }: Prop
     <nav className="bom-list" aria-label="BOM">
       <h2>BOM</h2>
       <ul>
-        {boms.map((b) => (
-          <li key={b.id} className={b.id === selectedID ? 'selected' : undefined}>
-            <button type="button" className="link" onClick={() => onSelect(b.id)}>
+        {sorted.map((b) => (
+          // Toute la ligne ouvre la BOM ; le bouton du nom reste la cible clavier et lecteur d'écran.
+          <li key={b.id} className={b.id === selectedID ? 'selected' : undefined} onClick={() => onSelect(b.id)}>
+            <button
+              type="button"
+              className="link"
+              onClick={(e) => {
+                e.stopPropagation()
+                onSelect(b.id)
+              }}
+            >
               {b.name}
             </button>
             <span className="muted">
@@ -38,7 +49,10 @@ export function BomList({ boms, selectedID, onSelect, onCreate, onDelete }: Prop
               className="icon"
               title="Supprimer la BOM"
               aria-label={`Supprimer ${b.name}`}
-              onClick={() => void onDelete(b)}
+              onClick={(e) => {
+                e.stopPropagation()
+                void onDelete(b)
+              }}
             >
               ×
             </button>
@@ -49,14 +63,7 @@ export function BomList({ boms, selectedID, onSelect, onCreate, onDelete }: Prop
       <form onSubmit={(e) => void submit(e)} className="stack">
         <input required placeholder="Nom de la BOM" value={name} onChange={(e) => setName(e.target.value)} />
         <div className="row">
-          <input
-            required
-            aria-label="Devise"
-            pattern="[A-Za-z]{3}"
-            size={4}
-            value={currency}
-            onChange={(e) => setCurrency(e.target.value)}
-          />
+          <CurrencySelect required aria-label="Devise" value={currency} onChange={setCurrency} />
           <input
             required
             aria-label="Volume"

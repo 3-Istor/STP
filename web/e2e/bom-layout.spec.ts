@@ -5,7 +5,7 @@ import type { Locator, Page } from '@playwright/test'
 // réduisait la colonne de l'arbre BOM à ~2 px (arbre invisible, non cliquable).
 
 const bom = {
-  id: 1, name: 'Fiat Multipla', currency: 'EUR', volume: 1000,
+  id: 1, name: 'Fiat Multipla', currency: 'EUR', volume: 1000, annual_hours: '1607', destination_country: null,
   price_snapshot_id: null, source_snapshot_id: 7, created_at: '2026-11-04T12:00:00Z',
 }
 const nodes = [
@@ -20,7 +20,7 @@ async function mockBomAPI(page: Page) {
     const path = new URL(route.request().url()).pathname
     const json = {
       '/api/v1/boms': [bom],
-      '/api/v1/boms/1/tree': { bom, nodes, explanation },
+      '/api/v1/boms/1/tree': { bom, nodes, explanation, stock: [], planning: { schedule: null, lead_time_days: 0, available_on: null, critical: [], allowed_days: null, target_met: null, late: [] } },
       '/api/v1/snapshots/7': {
         snapshot: { id: 7, bom_id: 1, price_snapshot_id: 3, name: 'Fiat Multipla', currency: 'EUR', volume: 1000, published_at: '2026-11-04T12:00:00Z' },
         nodes,
@@ -28,6 +28,7 @@ async function mockBomAPI(page: Page) {
       },
       '/api/v1/parts': [],
       '/api/v1/suppliers': [],
+      '/api/v1/fx': { rates: [] },
     }[path]
     if (json === undefined) await route.fulfill({ status: 404, json: { error: `Fixture API absente : ${path}` } })
     else await route.fulfill({ json })

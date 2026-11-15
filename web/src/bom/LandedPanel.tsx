@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import { CurrencySelect } from '../CurrencySelect.tsx'
 import { api, errorMessage, type LandedComparison, type LandedComponent, type OfferLanded, type TreeNode } from '../api.ts'
 import { type Catalog } from '../catalog.ts'
 import { decimalInput, formatMoney } from '../money.ts'
@@ -161,7 +162,7 @@ function Cell({
   const submit = () => {
     const v = decimalInput(value)
     if (v === '') return
-    const money = { amount: v, currency: currency.trim().toUpperCase() }
+    const money = { amount: v, currency }
     if (component.error_code === 'no_customs_duty') onFill(() => api.setCustomsDuty(offer.origin_country, dest!, v))
     else if (component.error_code === 'no_freight_rate') onFill(() => api.setFreightRate(offer.origin_country, dest!, money))
     else onFill(() => api.setPackaging(offer.offer_id, money))
@@ -180,7 +181,7 @@ function Cell({
         <span>%</span>
       ) : (
         <>
-          <input aria-label="Devise" size={3} value={currency} onChange={(e) => setCurrency(e.target.value)} />
+          <CurrencySelect aria-label="Devise" value={currency} onChange={setCurrency} />
           {component.error_code === 'no_freight_rate' && <span>/kg</span>}
         </>
       )}

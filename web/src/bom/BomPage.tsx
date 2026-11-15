@@ -1,9 +1,11 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { api, errorMessage, type BOM } from '../api.ts'
+import { useAppDialog } from '../useAppDialog.tsx'
 import { BomList } from './BomList.tsx'
 import { BomView } from './BomView.tsx'
 import { SnapshotView } from './SnapshotView.tsx'
 import { emptyCatalog, loadCatalog, type Catalog } from '../catalog.ts'
+import { CurrenciesContext, currencyChoices, loadCurrencies } from '../currencies.ts'
 import './bom.css'
 
 type Open = { kind: 'bom'; id: number } | { kind: 'snapshot'; id: number } | null
@@ -13,6 +15,8 @@ export default function BomPage() {
   const [catalog, setCatalog] = useState<Catalog>(emptyCatalog)
   const [open, setOpen] = useState<Open>(null)
   const [error, setError] = useState<string | null>(null)
+  const [fxCurrencies, setFxCurrencies] = useState<string[]>([])
+  const dialogs = useAppDialog()
 
   const refresh = useCallback(() => {
     api
@@ -26,7 +30,13 @@ export default function BomPage() {
     loadCatalog()
       .then(setCatalog)
       .catch((e: unknown) => setError(errorMessage(e)))
+    // Taux illisibles : le choix se limite aux devises des BOM existantes, l'erreur est montrée.
+    loadCurrencies()
+      .then(setFxCurrencies)
+      .catch((e: unknown) => setError(errorMessage(e)))
   }, [refresh])
+
+  const currencies = useMemo(() => currencyChoices(fxCurrencies, boms.map((b) => b.currency)), [fxCurrencies, boms])
 
   async function create(b: { name: string; currency: string; volume: number }) {
     setError(null)
@@ -40,7 +50,13 @@ export default function BomPage() {
   }
 
   async function remove(b: BOM) {
-    if (!window.confirm(`Supprimer la BOM « ${b.name} » ?`)) return
+    const ok = await dialogs.confirm({
+      title: `Supprimer la BOM « ${b.name} » ?`,
+      message: 'Le brouillon et toute son arborescence seront supprimés définitivement.',
+      confirmLabel: 'Supprimer',
+      danger: true,
+    })
+    if (!ok) return
     setError(null)
     try {
       await api.deleteBOM(b.id)
@@ -57,6 +73,7 @@ export default function BomPage() {
   }
 
   return (
+    <CurrenciesContext value={currencies}>
     <div className="bom-space">
     <div className="app">
       <BomList
@@ -91,7 +108,9 @@ export default function BomPage() {
         )}
         {open === null && <p className="muted">Choisissez ou créez une BOM.</p>}
       </main>
+    {dialogs.element}
     </div>
     </div>
+    </CurrenciesContext>
   )
 }

@@ -1,16 +1,14 @@
 /* Styles de l'espace BOM (NLPF-69), limités à .bom-space pour ne pas toucher l'espace fournisseurs.
-   Les couleurs d'objectif --ok, --warn, --over viennent de index.css (une seule palette, AGENTS §5). */
+   Même direction artistique que l'espace fournisseurs : les jetons ci-dessous reprennent la palette
+   de index.css (--primary, --muted, --border) ; --ok, --warn, --over y sont définis (AGENTS §5). */
 .bom-space {
-  font-family: system-ui, sans-serif;
   font-size: 14px;
-  color-scheme: light dark;
-  --bg: light-dark(#ffffff, #18181b);
-  --fg: light-dark(#18181b, #e4e4e7);
-  --muted: light-dark(#71717a, #a1a1aa);
-  --line: light-dark(#e4e4e7, #3f3f46);
-  --hover: light-dark(#f4f4f5, #27272a);
-  --accent: light-dark(#2563eb, #60a5fa);
-  --accent-bg: light-dark(#dbeafe, #1e3a8a);
+  --bg: #fff;
+  --fg: #183047;
+  --line: var(--border);
+  --hover: #eef3fa;
+  --accent: var(--primary);
+  --accent-bg: #e7eefc;
 }
 
 .bom-space * {
@@ -19,14 +17,42 @@
 
 .bom-space {
   margin: 0;
-  background: var(--bg);
+  background: #f4f7fb;
   color: var(--fg);
 }
 
-.bom-space button,
+/* Contrôles compacts : les styles de formulaire de index.css (labels en colonne, champs pleine largeur)
+   sont pensés pour les dialogues fournisseurs, pas pour les réglages en ligne de la BOM. */
 .bom-space input,
 .bom-space select {
-  font: inherit;
+  width: auto;
+  padding: 0.3rem 0.5rem;
+  border-radius: 6px;
+  color: var(--fg);
+}
+
+.bom-space form label {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0;
+  font-size: inherit;
+  font-weight: 550;
+  color: #304a68;
+}
+
+.bom-space button {
+  border: 1px solid var(--border);
+  background: #fff;
+  color: #3f5877;
+  border-radius: 7px;
+  padding: 0.35rem 0.8rem;
+  font-weight: 600;
+}
+
+.bom-space button:hover:not(:disabled) {
+  background: #f0f5fc;
+  border-color: #b7c9e5;
 }
 
 .bom-space h1 {
@@ -81,6 +107,7 @@
   background: none;
   border: none;
   padding: 0;
+  font-weight: inherit;
   color: var(--accent);
   cursor: pointer;
   text-align: left;
@@ -89,6 +116,7 @@
 .bom-space button.icon {
   background: none;
   border: none;
+  padding: 0 0.3rem;
   color: var(--muted);
   cursor: pointer;
 }
@@ -97,8 +125,10 @@
   background: var(--accent);
   color: #fff;
   border: 1px solid var(--accent);
-  border-radius: 4px;
-  padding: 0.3rem 0.8rem;
+}
+
+.bom-space button.primary:hover:not(:disabled) {
+  background: #184eaf;
 }
 
 .bom-space button.danger {
@@ -130,7 +160,7 @@
 .bom-space .app {
   display: grid;
   grid-template-columns: 240px 1fr;
-  height: calc(100vh - 44px); /* sous .space-nav */
+  height: calc(100vh - var(--header-height)); /* sous .app-header */
 }
 
 .bom-space .app > main {
@@ -143,6 +173,7 @@
 
 .bom-space .bom-list {
   border-right: 1px solid var(--line);
+  background: #fff;
   padding: 1rem;
   overflow-y: auto;
 }
@@ -156,8 +187,8 @@
 .bom-space .bom-list li {
   display: grid;
   grid-template-columns: 1fr auto;
-  padding: 0.3rem 0.4rem;
-  border-radius: 4px;
+  padding: 0.4rem 0.5rem;
+  border-radius: 8px;
 }
 
 .bom-space .bom-list li .muted {
@@ -168,6 +199,11 @@
 .bom-space .bom-list li .icon {
   grid-row: 1 / span 2;
   grid-column: 2;
+}
+
+.bom-space .bom-list li:hover {
+  background: var(--hover);
+  cursor: pointer;
 }
 
 .bom-space .bom-list li.selected {
@@ -237,8 +273,9 @@
 
 .bom-space .tree {
   overflow-y: auto;
+  background: var(--bg);
   border: 1px solid var(--line);
-  border-radius: 4px;
+  border-radius: 10px;
   min-height: 0;
 }
 
@@ -313,8 +350,9 @@
 }
 
 .bom-space .panel {
+  background: var(--bg);
   border: 1px solid var(--line);
-  border-radius: 4px;
+  border-radius: 10px;
   padding: 0.8rem;
   overflow-y: auto;
   min-height: 0;
@@ -377,3 +415,95 @@
 
 /* Pièce couverte par le stock de la BOM (ADR 0022) : vert = dans l'objectif (AGENTS §5). */
 .bom-space .badge.ok { color: var(--ok); border-color: var(--ok); margin-left: 0.4rem; font-size: 0.7rem; }
+
+/* Recherche + en-tête de colonnes de l'arbre (BomTree.tsx). */
+.bom-space .tree-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 0;
+  min-height: 0;
+}
+
+.bom-space .tree-pane .tree {
+  flex: 1;
+}
+
+.bom-space .tree-search {
+  width: 100%;
+  padding: 0.5rem 0.7rem;
+}
+
+.bom-space .tree-head {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  /* même retrait que les lignes : 8 px + bouton de dépliage (1.2rem) + écart */
+  padding: 0 0.5rem 0 calc(8px + 1.7rem);
+  background: #f5f8fc;
+  border-bottom: 1px solid var(--line);
+  color: #304a68;
+  font-size: 0.75rem;
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.bom-space .tree-head .name { flex: 1; min-width: 0; }
+.bom-space .tree-head .qty { width: 4rem; text-align: right; }
+.bom-space .tree-head .offer { width: 16rem; overflow: hidden; text-overflow: ellipsis; }
+.bom-space .tree-head .cost { width: 8rem; text-align: right; }
+.bom-space .tree-head .lead { width: 3rem; text-align: right; }
+.bom-space .tree-head [title] { cursor: help; }
+
+.bom-space .tree-empty {
+  padding: 0.8rem;
+  margin: 0;
+}
+
+/* Fenêtres de l'espace BOM (AddNodeDialog, AppDialog). Les sélecteurs .bom-space dialog l'emportent sur
+   les contrôles compacts de l'espace BOM : les fenêtres reprennent le style des dialogues fournisseurs. */
+.bom-space .add-dialog { width: min(640px, calc(100% - 28px)); }
+.bom-space .add-dialog form label { flex-direction: column; align-items: stretch; gap: 6px; }
+.bom-space .add-dialog input:not([type='radio']),
+.bom-space .add-dialog select { width: 100%; padding: 9px 11px; }
+.bom-space dialog .primary-button { background: var(--primary); color: #fff; border: 0; padding: 10px 16px; }
+.bom-space dialog .primary-button:hover:not(:disabled) { background: #184eaf; }
+.bom-space dialog .primary-button:disabled { cursor: not-allowed; opacity: .5; }
+.bom-space dialog .danger-button { background: var(--over); }
+.bom-space dialog .danger-button:hover:not(:disabled) { background: #9a2533; }
+.bom-space dialog .secondary-button { padding: 10px 16px; }
+.bom-space dialog form label { flex-direction: column; align-items: stretch; gap: 6px; }
+.bom-space dialog input:not([type='radio']) { width: 100%; padding: 9px 11px; }
+.bom-space .add-dialog .icon-button { border: 0; padding: 0; }
+.bom-space .segmented button { border: 0; background: transparent; }
+.bom-space .segmented button[aria-checked='true'] { background: #fff; }
+.bom-space .add-filters { display: grid; grid-template-columns: minmax(0, 1fr) 200px; gap: 8px; margin-bottom: 8px; }
+.bom-space .pick-list button { border: 0; background: transparent; padding: 8px 10px; font-weight: 500; }
+.bom-space .pick-list li[aria-selected='true'] button { background: var(--accent-bg); }
+.bom-space .pick-list button:hover:not(:disabled) { background: var(--hover); }
+.bom-space .add-dialog fieldset { margin: 16px 0 0; }
+.bom-space .add-dialog .offer-choice { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; gap: 10px; flex-direction: row; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; font-weight: 450; color: var(--fg); }
+.bom-space .add-dialog .offer-choice:has(input:checked) { border-color: var(--primary); background: #f3f7fd; }
+.bom-space .add-group { display: grid; gap: 12px; }
+.bom-space .add-dialog .form-actions { align-items: flex-end; }
+.bom-space .add-dialog .qty-field { margin-right: auto; width: 120px; }
+@media (max-width: 720px) {
+  .bom-space .add-filters { grid-template-columns: 1fr; }
+  .bom-space .add-dialog .offer-choice { grid-template-columns: auto minmax(0, 1fr); }
+}
+
+/* Arbre étroit (petit écran, panneau latéral ouvert) : les colonnes gardent leur largeur et l'arbre
+   défile horizontalement, plutôt que d'écraser le nom ou de masquer le sélecteur d'offre (changement
+   d'offre en un geste, spec BOM). */
+.bom-space .tree-pane { container-type: inline-size; }
+.bom-space .tree-row .name,
+.bom-space .tree-head .name { min-width: 9rem; }
+.bom-space .tree-pane .tree { overflow: auto; }
+@container (max-width: 680px) {
+  .bom-space .tree-pane .tree > * { min-width: 680px; }
+}

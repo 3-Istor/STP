@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"bomstudio/internal/catalog"
+	"bomstudio/internal/money"
 	"bomstudio/internal/pricing"
 	"bomstudio/internal/supplier"
 )
@@ -17,7 +18,9 @@ type offerView struct {
 	Offer      catalog.Offer       `json:"offer"`
 	Part       catalog.Part        `json:"part"`
 	Statistics *pricing.Statistics `json:"statistics"`
-	Error      string              `json:"error,omitempty"`
+	// Converted : statistiques dans la devise demandée par ?currency= (ADR 0030), absent sinon.
+	Converted *pricing.ConvertedStatistics `json:"converted,omitempty"`
+	Error     string                       `json:"error,omitempty"`
 }
 
 type supplierOffersPage struct {
@@ -35,8 +38,11 @@ type supplierOffersReader struct {
 	prices    *pricing.ReadService
 }
 
-func (s supplierOffersReader) page(ctx context.Context, supplierID int64, requested *time.Time) (supplierOffersPage, error) {
+func (s supplierOffersReader) page(ctx context.Context, supplierID int64, requested *time.Time, display *money.Currency) (supplierOffersPage, error) {
 	page := supplierOffersPage{Offers: []offerView{}}
+	if display != nil && s.prices == nil {
+		return page, fmt.Errorf("display currency without fx rates: %w", pricing.ErrInvalidReadRequest)
+	}
 	if _, err := s.suppliers.Supplier(ctx, supplierID); err != nil {
 		return page, err
 	}
@@ -105,6 +111,13 @@ func (s supplierOffersReader) page(ctx context.Context, supplierID int64, reques
 				return page, fmt.Errorf("supplier offer %d statistics: %w", offer.ID, err)
 			}
 		}
+		if display != nil && view.Statistics != nil {
+			converted, err := s.prices.ConvertedStatistics(ctx, *view.Statistics, *display)
+			if err != nil {
+				return page, fmt.Errorf("supplier offer %d converted statistics: %w", offer.ID, err)
+			}
+			view.Converted = &converted
+		}
 		page.Offers = append(page.Offers, view)
 	}
 	return page, nil
@@ -135,7 +148,20 @@ func (s supplierOffersReader) register(mux *http.ServeMux) {
 			instant = instant.UTC()
 			requested = &instant
 		}
-		page, err := s.page(r.Context(), id, requested)
+		var display *money.Currency
+		if raw, present := r.URL.Query()["currency"]; present {
+			if len(raw) != 1 {
+				badRequest(w, errors.New("currency doit apparaître une seule fois"))
+				return
+			}
+			c, err := money.ParseCurrency(raw[0])
+			if err != nil {
+				badRequest(w, errors.New("currency doit être un code ISO 4217 (ex. EUR)"))
+				return
+			}
+			display = &c
+		}
+		page, err := s.page(r.Context(), id, requested, display)
 		if err != nil {
 			switch {
 			case errors.Is(err, supplier.ErrSupplierNotFound):

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { NodeAnomaly, TreeNode } from '../api.ts'
 import { partName, type Catalog } from '../catalog.ts'
 import { formatDecimal, formatMoney } from '../money.ts'
-import { flatten } from './flatten.ts'
+import { flatten, initiallyCollapsed } from './flatten.ts'
 import { describeAnomaly } from './anomaly.ts'
 import { strategyLabels } from './strategy.ts'
 
@@ -10,6 +10,8 @@ import { strategyLabels } from './strategy.ts'
 // hauteur fixe et seules les lignes visibles (plus une marge) sont dans le DOM, quel que soit le nombre de nœuds.
 export const ROW_HEIGHT = 30
 const OVERSCAN = 8
+// Niveaux dépliés à l'ouverture (racine, sous-systèmes, ensembles) : le détail s'ouvre à la demande.
+const OPEN_DEPTH = 2
 
 type Props = {
   nodes: TreeNode[]
@@ -26,8 +28,12 @@ type Props = {
 }
 
 export function BomTree({ nodes, catalog, readOnly, selectedID, onSelect, onChangeOffer, moving, onPickParent, anomalies }: Props) {
-  const [collapsed, setCollapsed] = useState<ReadonlySet<number>>(() => new Set())
-  const rows = useMemo(() => flatten(nodes, collapsed), [nodes, collapsed])
+  const [collapsed, setCollapsed] = useState<ReadonlySet<number>>(() => initiallyCollapsed(nodes, OPEN_DEPTH))
+  const [query, setQuery] = useState('')
+  const rows = useMemo(
+    () => flatten(nodes, collapsed, (n) => (n.part_id !== null ? partName(catalog, n.part_id) : n.name), query),
+    [nodes, collapsed, catalog, query],
+  )
 
   const viewport = useRef<HTMLDivElement>(null)
   const [scrollTop, setScrollTop] = useState(0)
@@ -40,7 +46,8 @@ export function BomTree({ nodes, catalog, readOnly, selectedID, onSelect, onChan
     return () => ro.disconnect()
   }, [])
 
-  const first = Math.max(0, Math.floor(scrollTop / ROW_HEIGHT) - OVERSCAN)
+  // L'en-tête de colonnes (une ligne, collant) précède les lignes de l'arbre dans la zone défilante.
+  const first = Math.max(0, Math.floor((scrollTop - ROW_HEIGHT) / ROW_HEIGHT) - OVERSCAN)
   const last = Math.min(rows.length, Math.ceil((scrollTop + height) / ROW_HEIGHT) + OVERSCAN)
 
   function toggle(id: number) {
@@ -52,6 +59,15 @@ export function BomTree({ nodes, catalog, readOnly, selectedID, onSelect, onChan
   }
 
   return (
+    <div className="tree-pane">
+    <input
+      type="search"
+      className="tree-search"
+      placeholder="Rechercher une pièce ou un ensemble…"
+      aria-label="Rechercher dans la BOM"
+      value={query}
+      onChange={(e) => setQuery(e.target.value)}
+    />
     <div
       ref={viewport}
       className={moving !== null ? 'tree moving' : 'tree'}
@@ -59,6 +75,14 @@ export function BomTree({ nodes, catalog, readOnly, selectedID, onSelect, onChan
       aria-label="Arbre de la BOM"
       onScroll={(e) => setScrollTop(e.currentTarget.scrollTop)}
     >
+      <div className="tree-head" aria-hidden="true" style={{ height: ROW_HEIGHT }}>
+        <span className="name">Ensemble / pièce</span>
+        <span className="qty" title="Quantité par parent">Qté</span>
+        <span className="offer" title="Offre retenue : fournisseur · prix unitaire · délai de livraison">Offre</span>
+        <span className="cost" title="Coût par véhicule du sous-arbre, quantités comprises">Coût / véhicule</span>
+        <span className="lead" title="Délai du sous-arbre en jours : le plus long des enfants plus le délai propre (livraison ou production)">Délai</span>
+      </div>
+      {query !== '' && rows.length === 0 && <p className="muted tree-empty">Aucun résultat pour « {query} ».</p>}
       <div style={{ height: rows.length * ROW_HEIGHT, position: 'relative' }}>
         {rows.slice(first, last).map((r, i) => {
           const n = r.node
@@ -76,7 +100,7 @@ export function BomTree({ nodes, catalog, readOnly, selectedID, onSelect, onChan
               role="treeitem"
               aria-level={r.depth + 1}
               aria-selected={n.id === selectedID}
-              aria-expanded={r.hasChildren ? !collapsed.has(n.id) : undefined}
+              aria-expanded={r.hasChildren ? r.expanded : undefined}
               className={classes.join(' ')}
               style={{ top: (first + i) * ROW_HEIGHT, height: ROW_HEIGHT, paddingLeft: 8 + r.depth * 16 }}
               onClick={() => (moving !== null ? onPickParent(n.id) : onSelect(n.id))}
@@ -92,7 +116,7 @@ export function BomTree({ nodes, catalog, readOnly, selectedID, onSelect, onChan
                   toggle(n.id)
                 }}
               >
-                {collapsed.has(n.id) ? '▸' : '▾'}
+                {r.expanded ? '▾' : '▸'}
               </button>
               <span className="name" title={isPart ? partName(catalog, n.part_id!) : n.name}>
                 {isPart ? partName(catalog, n.part_id!) : n.name}
@@ -130,13 +154,14 @@ export function BomTree({ nodes, catalog, readOnly, selectedID, onSelect, onChan
                 </span>
               )}
               <span className="cost" title={t?.cost_error ?? undefined}>
-                {t?.cost ? formatMoney(t.cost) : t?.cost_error_code ? 'prix manquant' : '—'}
+                {t?.cost ? formatMoney(t.cost) : t?.cost_error_code ? 'prix manquant' : 'n/d'}
               </span>
               <span className="lead">{t ? `${t.lead_time_days} j` : ''}</span>
             </div>
           )
         })}
       </div>
+    </div>
     </div>
   )
 }

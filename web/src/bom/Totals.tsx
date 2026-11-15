@@ -24,7 +24,7 @@ export function Totals({ totals, explanation }: { totals: NodeTotals; explanatio
       </div>
       <div title={totals.labor_error ?? (totals.labor_hours ? `${formatDecimal(totals.labor_hours, 2)} h par véhicule` : undefined)}>
         <span className="muted small">ETP</span>
-        <strong className={totals.labor_error ? 'over' : undefined}>{totals.fte ? formatDecimal(totals.fte, 2) : '—'}</strong>
+        <strong className={totals.labor_error ? 'over' : undefined}>{totals.fte ? formatDecimal(totals.fte, 2) : 'n/d'}</strong>
       </div>
       <p className="muted small">
         {explanation.currency}, {source}

@@ -28,3 +28,7 @@ export function formatUTC(value: string | null | undefined): string {
   return new Intl.DateTimeFormat('fr-FR', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'UTC' }).format(new Date(value)) + ' UTC'
 }
 export function formatDay(value: string): string { return value.split('-').reverse().join('/') }
+// formatRate affiche un taux de change (chaîne décimale exacte) à 4 décimales, pour la lecture seulement.
+export function formatRate(value: string): string {
+  return exactFormat(new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 4, roundingMode: 'halfEven' } as Intl.NumberFormatOptions), value)
+}
