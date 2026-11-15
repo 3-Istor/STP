@@ -27,6 +27,7 @@ import (
 	"bomstudio/internal/snapshot/snapshotstore"
 	"bomstudio/internal/supplier"
 	"bomstudio/internal/supplier/supplierstore"
+	"bomstudio/internal/viz3d"
 )
 
 func main() {
@@ -86,11 +87,13 @@ func run() error {
 	boms := bom.NewService(bomstore.New(pool), catalogService, prices).
 		WithCatalogListing(catalogService).WithLogistics(logistics.Store())
 	bomSnapshots := snapshot.NewService(snapshotstore.New(pool), boms, catalogService, prices)
+	// Vue 3D (ADR 0031) : scène générée à la lecture depuis l'arbre et le catalogue, rien de stocké.
+	assemblies := viz3d.NewService(boms, catalogService)
 
 	handler := httpapi.NewRouter(httpapi.Services{
 		Catalog: catalogService, Supplier: supplierService, History: historyService,
 		Pricing: reads, PriceSnapshots: snapshots, PricingSignals: signals,
-		BOMs: boms, Snapshots: bomSnapshots, Logistics: logistics,
+		BOMs: boms, Snapshots: bomSnapshots, Logistics: logistics, Assemblies: assemblies,
 	})
 	addr := ":" + envOr("PORT", "8080")
 	srv := &http.Server{

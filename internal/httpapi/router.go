@@ -28,6 +28,8 @@ type Services struct {
 	Snapshots SnapshotService
 	// Logistics : tables de douane, de transport et emballage (coût total rendu, ADR 0025).
 	Logistics *pricing.LogisticsService
+	// Assemblies : scène 3D générée d'une BOM (ADR 0031), route GET /api/v1/boms/{id}/3d.
+	Assemblies AssemblyService
 	// Now donne l'instant d'un gel de prix ou d'une publication (le domaine n'a pas d'horloge) ;
 	// time.Now si nil.
 	Now func() time.Time
@@ -61,6 +63,9 @@ func NewRouter(services ...Services) http.Handler {
 	}
 	if s.Logistics != nil {
 		logisticsHandler{service: s.Logistics}.register(mux)
+	}
+	if s.Assemblies != nil {
+		viz3dHandler{service: s.Assemblies}.register(mux)
 	}
 	if s.BOMs != nil && s.Snapshots != nil {
 		now := s.Now
