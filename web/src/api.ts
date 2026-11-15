@@ -176,6 +176,33 @@ export type Explanation = { currency: string; price_snapshot_id: number | null; 
 
 export type Tree = { bom: BOM; nodes: TreeNode[]; explanation: Explanation; stock: StockLine[]; planning: Planning }
 
+// Scène 3D d'une BOM (ADR 0031) : coordonnées de scène en mètres (longueurs, pas des montants).
+export type Vec3 = [number, number, number]
+export type MatchType = 'exact' | 'similar' | 'generated'
+export type Placement = {
+  node_id: number
+  parent_id: number | null
+  part_id: number
+  zone: string
+  category: string
+  quantity: string
+  match_type: MatchType
+  confidence: string // 0–1, chaîne décimale ; un modèle généré reste sous 0,25
+  estimated: boolean // position déduite de la zone et de la catégorie, pas d'une géométrie connue
+  notes: string[] // approximations faites (zone inconnue, masse absente…)
+  shape: { kind: 'box' | 'cylinder' | 'wheel' | 'sphere'; size: Vec3 }
+  instances: { position: Vec3; rotation: Vec3 }[]
+  explode: Vec3 // déplacement à éclatement complet ; position + explode × niveau
+}
+export type Assembly = {
+  bom_id: number
+  source: 'generated'
+  vehicle: { length: number; height: number; width: number }
+  zones: { zone: string; count: number; known: boolean }[]
+  placements: Placement[]
+  missing: { node_id: number; part_id: number; reason: string }[] // pièces sans modèle, gardées dans la BOM
+}
+
 export type Snapshot = {
   id: number
   bom_id: number
@@ -263,6 +290,7 @@ export const api = {
     call<MakeOrBuyResult>('POST', `/boms/${bomID}/nodes/${nodeID}/make-or-buy`, req),
   deleteBOM: (id: number) => call<void>('DELETE', `/boms/${id}`),
   tree: (id: number) => call<Tree>('GET', `/boms/${id}/tree`),
+  assembly: (id: number) => call<Assembly>('GET', `/boms/${id}/3d`),
   addNode: (bomID: number, n: NewNode) => call<TreeNode>('POST', `/boms/${bomID}/nodes`, n),
   // Un seul champ par PATCH (contrat T8) : le type NodePatch l'impose.
   patchNode: (bomID: number, nodeID: number, p: NodePatch) =>

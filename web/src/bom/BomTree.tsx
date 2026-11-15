@@ -25,9 +25,12 @@ type Props = {
   onPickParent: (parentID: number) => void
   // Anomalies de coût par nœud (ADR 0027) : surbrillance des pièces suspectes, raison au survol.
   anomalies?: ReadonlyMap<number, NodeAnomaly>
+  // reveal : compteur ; à chaque changement, les ancêtres du nœud sélectionné sont dépliés et la ligne
+  // est amenée à l'écran (retour depuis la vue 3D, ADR 0031).
+  reveal?: number
 }
 
-export function BomTree({ nodes, catalog, readOnly, selectedID, onSelect, onChangeOffer, moving, onPickParent, anomalies }: Props) {
+export function BomTree({ nodes, catalog, readOnly, selectedID, onSelect, onChangeOffer, moving, onPickParent, anomalies, reveal = 0 }: Props) {
   const [collapsed, setCollapsed] = useState<ReadonlySet<number>>(() => initiallyCollapsed(nodes, OPEN_DEPTH))
   const [query, setQuery] = useState('')
   const rows = useMemo(
@@ -49,6 +52,29 @@ export function BomTree({ nodes, catalog, readOnly, selectedID, onSelect, onChan
   // L'en-tête de colonnes (une ligne, collant) précède les lignes de l'arbre dans la zone défilante.
   const first = Math.max(0, Math.floor((scrollTop - ROW_HEIGHT) / ROW_HEIGHT) - OVERSCAN)
   const last = Math.min(rows.length, Math.ceil((scrollTop + height) / ROW_HEIGHT) + OVERSCAN)
+
+  // Retour depuis la vue 3D : les ancêtres du nœud sélectionné sont dépliés pendant le rendu (état dérivé
+  // de la prop reveal), puis la ligne est amenée à l'écran une fois les lignes recalculées.
+  // seenReveal part à 0, pas à reveal : l'arbre est remonté à chaque retour depuis la vue 3D (état replié
+  // réinitialisé), et doit alors déplier le chemin de la sélection même si le compteur n'a pas bougé.
+  const [seenReveal, setSeenReveal] = useState(0)
+  if (reveal !== seenReveal) {
+    setSeenReveal(reveal)
+    if (selectedID !== null) {
+      const parents = new Map(nodes.map((n) => [n.id, n.parent_id]))
+      const next = new Set(collapsed)
+      for (let p = parents.get(selectedID) ?? null; p !== null; p = parents.get(p) ?? null) next.delete(p)
+      setCollapsed(next)
+    }
+  }
+  const scrolledFor = useRef(0)
+  useEffect(() => {
+    if (scrolledFor.current === reveal || selectedID === null) return
+    const i = rows.findIndex((r) => r.node.id === selectedID)
+    if (i < 0 || !viewport.current) return
+    viewport.current.scrollTop = Math.max(0, (i + 1) * ROW_HEIGHT - height / 2)
+    scrolledFor.current = reveal
+  }, [rows, height, reveal, selectedID])
 
   function toggle(id: number) {
     setCollapsed((prev) => {

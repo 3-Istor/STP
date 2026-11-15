@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { api, errorMessage, type CostAnomalies, type NewNode, type NodePatch, type Snapshot, type Tree } from '../api.ts'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { api, errorMessage, type Assembly, type CostAnomalies, type NewNode, type NodePatch, type Snapshot, type Tree } from '../api.ts'
 import type { Catalog } from '../catalog.ts'
 import { CurrencySelect } from '../CurrencySelect.tsx'
 import { formatMoney } from '../money.ts'
@@ -11,6 +11,9 @@ import { NodePanel } from './NodePanel.tsx'
 import { Totals } from './Totals.tsx'
 import { PlanningPanel } from './PlanningPanel.tsx'
 import { Workforce } from './Workforce.tsx'
+
+// La vue 3D (Three.js) n'est téléchargée qu'à la première bascule : l'arbre ne paie pas son poids.
+const Bom3DView = lazy(() => import('./Bom3DView.tsx'))
 
 type Props = {
   bomID: number
@@ -58,6 +61,36 @@ export function BomView({ bomID, catalog, onBOMChanged, onOpenSnapshot }: Props)
   // version : change à chaque relecture de l'arbre ; les panneaux qui ont des données dérivées (suggestions)
   // se remontent, une stratégie héritée ou une quantité d'ancêtre ayant pu changer.
   const [version, setVersion] = useState(0)
+
+  // Vue BOM / Vue 3D (ADR 0031) : deux rendus de la même donnée. La sélection (selectedID) est partagée ;
+  // la scène est lue à la première bascule puis relue seulement si l'arbre a changé (version).
+  const [view, setView] = useState<'tree' | '3d'>('tree')
+  const [scene, setScene] = useState<{ data: Assembly | null; error: string | null; version: number }>({ data: null, error: null, version: -1 })
+  const [reveal, setReveal] = useState(0)
+  // sceneRequest : version de l'arbre dont la lecture est en cours ou faite (une seule requête par version).
+  const sceneRequest = useRef(-1)
+  useEffect(() => {
+    if (view !== '3d' || sceneRequest.current === version) return
+    sceneRequest.current = version
+    let cancelled = false
+    let done = false
+    api
+      .assembly(bomID)
+      .then((data) => {
+        done = true
+        if (!cancelled) setScene({ data, error: null, version })
+      })
+      .catch((e: unknown) => {
+        done = true
+        if (!cancelled) setScene((s) => ({ ...s, error: errorMessage(e), version }))
+      })
+    return () => {
+      // Quitter la vue 3D n'oublie qu'une lecture encore en vol : une scène déjà lue n'est pas relue au retour.
+      cancelled = true
+      if (!done && sceneRequest.current === version) sceneRequest.current = -1
+    }
+  }, [view, version, bomID])
+  const sceneLoading = view === '3d' && scene.version !== version
   const reload = useCallback(async () => {
     const t = await api.tree(bomID)
     setTree(t)
@@ -248,22 +281,49 @@ export function BomView({ bomID, catalog, onBOMChanged, onOpenSnapshot }: Props)
         </p>
       )}
 
+      <div className="view-switch" role="group" aria-label="Mode de visualisation">
+        <button type="button" aria-pressed={view === 'tree'} onClick={() => setView('tree')}>
+          Vue BOM
+        </button>
+        <button type="button" aria-pressed={view === '3d'} onClick={() => setView('3d')}>
+          Vue 3D
+        </button>
+      </div>
       <div className="bom-workspace">
-        <BomTree
-          nodes={tree.nodes}
-          catalog={pricedCatalog}
-          readOnly={false}
-          selectedID={selectedID}
-          onSelect={setSelectedID}
-          anomalies={anomalyByNode}
-          onChangeOffer={(nodeID, offerID) => void run(() => api.patchNode(bom.id, nodeID, { offer_id: offerID }))}
-          moving={moving}
-          onPickParent={(parentID) => {
-            const nodeID = moving!
-            setMoving(null)
-            void run(() => api.patchNode(bom.id, nodeID, { parent_id: parentID }))
-          }}
-        />
+        {view === 'tree' ? (
+          <BomTree
+            nodes={tree.nodes}
+            catalog={pricedCatalog}
+            readOnly={false}
+            selectedID={selectedID}
+            onSelect={setSelectedID}
+            anomalies={anomalyByNode}
+            onChangeOffer={(nodeID, offerID) => void run(() => api.patchNode(bom.id, nodeID, { offer_id: offerID }))}
+            moving={moving}
+            onPickParent={(parentID) => {
+              const nodeID = moving!
+              setMoving(null)
+              void run(() => api.patchNode(bom.id, nodeID, { parent_id: parentID }))
+            }}
+            reveal={reveal}
+          />
+        ) : (
+          <Suspense fallback={<div className="viz3d"><p className="muted viz3d-message">Chargement de la vue 3D…</p></div>}>
+            <Bom3DView
+              assembly={scene.data}
+              loading={sceneLoading}
+              error={scene.error}
+              nodes={tree.nodes}
+              catalog={pricedCatalog}
+              selectedID={selectedID}
+              onSelect={setSelectedID}
+              onShowInTree={() => {
+                setView('tree')
+                setReveal((r) => r + 1)
+              }}
+            />
+          </Suspense>
+        )}
         {selected ? (
           <NodePanel
             key={selected.id}

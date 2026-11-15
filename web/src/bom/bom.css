@@ -393,7 +393,83 @@
   padding-top: 0.4rem;
 }
 
+/* Vue BOM / Vue 3D (ADR 0031) : deux rendus de la même BOM, sélecteur au-dessus de l'espace de travail. */
+.bom-space .view-switch {
+  display: inline-flex;
+  gap: 0;
+  margin-bottom: 0.5rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+  align-self: flex-start;
+}
+.bom-space .view-switch button {
+  border: 0;
+  border-radius: 0;
+  padding: 0.35rem 0.9rem;
+}
+.bom-space .view-switch button[aria-pressed='true'] {
+  background: var(--primary);
+  color: #fff;
+}
+.bom-space .viz3d {
+  position: relative;
+  min-height: 0;
+  height: 100%;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+  background: #f4f7fb;
+  display: flex;
+  flex-direction: column;
+}
+.bom-space .viz3d canvas { display: block; touch-action: none; }
+.bom-space .viz3d-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.8rem;
+  padding: 0.45rem 0.6rem;
+  border-bottom: 1px solid var(--line);
+  background: #fff;
+  font-size: 0.85rem;
+}
+.bom-space .viz3d-slider input[type='range'] { width: 9rem; vertical-align: middle; }
+.bom-space .viz3d-zones { display: inline-flex; flex-wrap: wrap; gap: 0.3rem 0.7rem; }
+.bom-space .viz3d-zone { display: inline-flex; align-items: center; gap: 0.3rem; cursor: pointer; }
+.bom-space .viz3d-swatch { width: 0.75rem; height: 0.75rem; border-radius: 3px; display: inline-block; }
+.bom-space .viz3d-message { padding: 1rem; margin: 0; }
+.bom-space .viz3d-hover {
+  position: absolute;
+  left: 0.6rem;
+  bottom: 0.6rem;
+  margin: 0;
+  padding: 0.2rem 0.5rem;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  pointer-events: none;
+}
+.bom-space .viz3d-legend {
+  position: absolute;
+  right: 0.6rem;
+  bottom: 0.6rem;
+  max-width: min(22rem, 70%);
+  max-height: 45%;
+  overflow-y: auto;
+  padding: 0.5rem 0.7rem;
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.bom-space .viz3d-note { display: block; }
+.bom-space .viz3d-missing { margin: 0.3rem 0 0; padding-left: 1rem; }
+
 @media (max-width: 900px) {
+  .bom-space .viz3d {
+    height: 60vh;
+  }
   .bom-space .app {
     grid-template-columns: 1fr;
     height: auto;
