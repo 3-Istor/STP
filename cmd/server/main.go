@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 
@@ -28,6 +29,8 @@ import (
 	"bomstudio/internal/supplier"
 	"bomstudio/internal/supplier/supplierstore"
 	"bomstudio/internal/viz3d"
+	"bomstudio/internal/viz3d/fsblob"
+	"bomstudio/internal/viz3d/viz3dstore"
 )
 
 func main() {
@@ -87,8 +90,24 @@ func run() error {
 	boms := bom.NewService(bomstore.New(pool), catalogService, prices).
 		WithCatalogListing(catalogService).WithLogistics(logistics.Store())
 	bomSnapshots := snapshot.NewService(snapshotstore.New(pool), boms, catalogService, prices)
-	// Vue 3D (ADR 0031) : scène générée à la lecture depuis l'arbre et le catalogue, rien de stocké.
-	assemblies := viz3d.NewService(boms, catalogService)
+	// Vue 3D (ADR 0031) : scène générée à la lecture depuis l'arbre et le catalogue ; modèles persistés en
+	// base, fichiers GLB sur disque sous MODELS_DIR, génération en goroutine attendue à l'arrêt et reprise
+	// au démarrage (tranche 2).
+	blobs, err := fsblob.New(envOr("MODELS_DIR", "./data/models"))
+	if err != nil {
+		return fmt.Errorf("configure models storage: %w", err)
+	}
+	var jobs sync.WaitGroup
+	assemblies := viz3d.NewService(boms, catalogService).
+		WithModels(viz3dstore.New(pool), blobs, viz3d.GeneratedFinder{}, httpapi.ModelFileURL).
+		WithLauncher(func(job func(ctx context.Context)) {
+			jobs.Go(func() { job(ctx) })
+		})
+	// Les générations en cours finissent (ou s'interrompent proprement) avant pool.Close.
+	defer jobs.Wait()
+	if err := assemblies.ResumeGenerations(ctx); err != nil {
+		return fmt.Errorf("resume 3d generations: %w", err)
+	}
 
 	handler := httpapi.NewRouter(httpapi.Services{
 		Catalog: catalogService, Supplier: supplierService, History: historyService,

@@ -23,6 +23,18 @@ type Bom struct {
 	DestinationCountry pgtype.Text
 }
 
+type BomAssembly struct {
+	BomID           int64
+	Status          string
+	Done            int32
+	Total           int32
+	Error           string
+	TreeFingerprint string
+	Result          []byte
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
+}
+
 type BomNode struct {
 	ID             int64
 	BomID          int64
@@ -127,6 +139,21 @@ type FxQuote struct {
 	RecordedAt    time.Time
 }
 
+type Models3d struct {
+	ID          int64
+	Name        string
+	Source      string
+	SourceUrl   string
+	StoragePath string
+	Format      string
+	License     string
+	DimX        decimal.NullDecimal
+	DimY        decimal.NullDecimal
+	DimZ        decimal.NullDecimal
+	Confidence  decimal.Decimal
+	CreatedAt   time.Time
+}
+
 type Offer struct {
 	ID                int64
 	PartID            int64
@@ -165,6 +192,14 @@ type Part struct {
 type PartAlternative struct {
 	PartLowID  int64
 	PartHighID int64
+}
+
+type PartModel struct {
+	PartID     int64
+	ModelID    int64
+	MatchType  string
+	Confidence decimal.Decimal
+	CreatedAt  time.Time
 }
 
 type PriceQuote struct {

@@ -55,3 +55,12 @@ sql:
         <<: *go
         package: snapshotdb
         out: internal/snapshot/snapshotdb
+  # viz3d : viz3ddb n'est importé que par viz3d/viz3dstore (même découpage que bom, ADR 0031).
+  - engine: postgresql
+    schema: migrations
+    queries: internal/viz3d/queries.sql
+    gen:
+      go:
+        <<: *go
+        package: viz3ddb
+        out: internal/viz3d/viz3ddb
