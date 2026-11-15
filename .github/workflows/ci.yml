@@ -37,7 +37,7 @@ jobs:
       DATABASE_URL: postgres://bom:bom@localhost:5432/bomstudio?sslmode=disable
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
       - name: go mod tidy à jour
@@ -124,7 +124,7 @@ jobs:
       NLPF68_BROWSER_MODE: native
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
       - uses: actions/setup-node@v7
@@ -150,7 +150,7 @@ jobs:
     runs-on: ${{ fromJSON(vars.CNP_CI_RUNS_ON || '["self-hosted","Linux","X64"]') }}
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
       - name: govulncheck
