@@ -52,6 +52,7 @@ async function mockAPI(page: Page, added: unknown[] = []) {
       '/api/v1/boms/1/anomalies': { threshold: '3', currency: 'EUR', price_snapshot_id: null, rates: [], nodes: [] },
       '/api/v1/parts': parts,
       '/api/v1/suppliers': [{ id: 1, name: 'Atlas' }, { id: 2, name: 'Boréal' }],
+      '/api/v1/price-snapshots': [],
       '/api/v1/fx': { rates: [{ base_currency: 'USD', quote_currency: 'EUR' }, { base_currency: 'EUR', quote_currency: 'USD' }] },
     }[path]
     if (json === undefined) await route.fulfill({ status: 404, json: { error: `Fixture API absente : ${path}` } })

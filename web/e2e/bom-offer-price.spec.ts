@@ -35,6 +35,7 @@ async function mockAPI(page: Page, priceSnapshotID: number | null) {
       '/api/v1/boms/1/tree': { bom, nodes, explanation: { currency: 'EUR', price_snapshot_id: priceSnapshotID, rates: [] }, stock: [], planning: { schedule: null, lead_time_days: 0, available_on: null, critical: [], allowed_days: null, target_met: null, late: [] } },
       '/api/v1/parts': [part],
       '/api/v1/suppliers': [{ id: 1, name: 'Atlas' }, { id: 2, name: 'Boréal' }],
+      '/api/v1/price-snapshots': [],
       '/api/v1/fx': { rates: [] },
       // En direct : 101 et 102 cotées, 103 en erreur de cotation.
       '/api/v1/quotes': {

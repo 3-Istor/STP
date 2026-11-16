@@ -174,6 +174,14 @@ export type Suggestions = {
 
 export type Explanation = { currency: string; price_snapshot_id: number | null; rates: Rate[] }
 
+// En-tête d'un snapshot de prix (GET /api/v1/price-snapshots) : périmètre et instant figé.
+export type PriceSnapshotRef = {
+  id: number
+  scope: 'offer' | 'supplier' | 'bom' | 'catalog'
+  scope_id?: number // absent pour le catalogue entier
+  taken_at: string
+}
+
 export type Tree = { bom: BOM; nodes: TreeNode[]; explanation: Explanation; stock: StockLine[]; planning: Planning }
 
 export type Snapshot = {
@@ -269,6 +277,10 @@ export const api = {
     call<TreeNode>('PATCH', `/boms/${bomID}/nodes/${nodeID}`, p),
   deleteNode: (bomID: number, nodeID: number) => call<void>('DELETE', `/boms/${bomID}/nodes/${nodeID}`),
   freezePrices: (id: number) => call<BOM>('POST', `/boms/${id}/freeze-prices`),
+  // Attache un snapshot de prix existant ; 409 avec les offres manquantes s'il ne couvre pas la BOM.
+  usePriceSnapshot: (id: number, snapshotID: number) =>
+    call<BOM>('PUT', `/boms/${id}/freeze-prices`, { price_snapshot_id: snapshotID }),
+  listPriceSnapshots: () => call<PriceSnapshotRef[]>('GET', '/price-snapshots'),
   unfreezePrices: (id: number) => call<BOM>('DELETE', `/boms/${id}/freeze-prices`),
   publish: (id: number) => call<Snapshot>('POST', `/boms/${id}/publish`),
   snapshot: (id: number) => call<Published>('GET', `/snapshots/${id}`),

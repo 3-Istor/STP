@@ -10,6 +10,7 @@ import { BomTree } from './BomTree.tsx'
 import { NodePanel } from './NodePanel.tsx'
 import { Totals } from './Totals.tsx'
 import { PlanningPanel } from './PlanningPanel.tsx'
+import { PriceSource } from './PriceSource.tsx'
 import { Workforce } from './Workforce.tsx'
 
 type Props = {
@@ -129,7 +130,6 @@ export function BomView({ bomID, catalog, onBOMChanged, onOpenSnapshot }: Props)
   const { bom } = tree
   const root = tree.nodes.find((n) => n.parent_id === null)
   const selected = tree.nodes.find((n) => n.id === selectedID) ?? null
-  const frozen = bom.price_snapshot_id !== null
 
   return (
     <section className="view" aria-busy={busy}>
@@ -203,15 +203,11 @@ export function BomView({ bomID, catalog, onBOMChanged, onOpenSnapshot }: Props)
         </div>
         {root?.totals && <Totals totals={root.totals} explanation={tree.explanation} />}
         <div className="actions">
-          {frozen ? (
-            <button type="button" onClick={() => void run(() => api.unfreezePrices(bom.id), { bomChanged: true })}>
-              Repasser en prix en direct
-            </button>
-          ) : (
-            <button type="button" onClick={() => void run(() => api.freezePrices(bom.id), { bomChanged: true })}>
-              Figer les prix
-            </button>
-          )}
+          <PriceSource
+            bomID={bom.id}
+            priceSnapshotID={bom.price_snapshot_id}
+            onChange={(action) => void run(action, { bomChanged: true })}
+          />
           <button
             type="button"
             className="primary"
