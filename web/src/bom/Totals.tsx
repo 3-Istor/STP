@@ -2,12 +2,22 @@ import type { Explanation, Totals as NodeTotals } from '../api.ts'
 import { formatDate, formatDecimal, formatMoney } from '../money.ts'
 
 // Totals : coût, CO2 et délai de la racine, avec la source des prix en une ligne (détail au survol).
-export function Totals({ totals, explanation }: { totals: NodeTotals; explanation: Explanation }) {
+// recalculating : une action (stratégie, offre, quantité…) est en cours et les totaux affichés sont ceux
+// d'avant ; ils sont grisés et le dit, plutôt que de passer pour le résultat de l'action.
+export function Totals({
+  totals,
+  explanation,
+  recalculating = false,
+}: {
+  totals: NodeTotals
+  explanation: Explanation
+  recalculating?: boolean
+}) {
   const source =
     explanation.price_snapshot_id === null ? 'prix en direct' : `prix figés (snapshot de prix #${explanation.price_snapshot_id})`
   const rates = explanation.rates.map((r) => `1 ${r.from} = ${r.rate} ${r.to} (${r.source}, ${formatDate(r.quoted_at)})`).join('\n')
   return (
-    <div className="totals" title={rates || undefined}>
+    <div className="totals" title={rates || undefined} aria-busy={recalculating}>
       <div>
         <span className="muted small">Coût / véhicule</span>
         <strong className={totals.cost_error_code ? 'over' : undefined}>
@@ -27,8 +37,16 @@ export function Totals({ totals, explanation }: { totals: NodeTotals; explanatio
         <strong className={totals.labor_error ? 'over' : undefined}>{totals.fte ? formatDecimal(totals.fte, 2) : 'n/d'}</strong>
       </div>
       <p className="muted small">
-        {explanation.currency}, {source}
-        {totals.missing_cost.length > 0 && <span className="over"> · {totals.missing_cost.length} nœud(s) sans prix</span>}
+        {recalculating ? (
+          <span role="status" className="recalc">
+            Recalcul en cours…
+          </span>
+        ) : (
+          <>
+            {explanation.currency}, {source}
+            {totals.missing_cost.length > 0 && <span className="over"> · {totals.missing_cost.length} nœud(s) sans prix</span>}
+          </>
+        )}
       </p>
     </div>
   )

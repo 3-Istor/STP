@@ -201,7 +201,7 @@ export function BomView({ bomID, catalog, onBOMChanged, onOpenSnapshot }: Props)
             </p>
           )}
         </div>
-        {root?.totals && <Totals totals={root.totals} explanation={tree.explanation} />}
+        {root?.totals && <Totals totals={root.totals} explanation={tree.explanation} recalculating={busy} />}
         <div className="actions">
           <PriceSource
             bomID={bom.id}

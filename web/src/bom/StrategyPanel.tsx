@@ -15,8 +15,13 @@ type Props = {
 
 // StrategyPanel : stratégie du nœud (ADR 0028) et, pour une pièce, les alternatives triées selon la stratégie
 // héritée. Les suggestions viennent de l'API ; une suggestion ne s'applique qu'au brouillon, après confirmation.
+// Un changement de stratégie relit tout l'arbre (totaux, anomalies) : tant que la relecture n'est pas
+// revenue, le choix reste affiché, le sélecteur est verrouillé et « Recalcul en cours… » le dit. Le panneau
+// est remonté par NodePanel (clé treeVersion) une fois l'arbre relu ; en cas d'échec, il reprend la valeur du nœud.
 export function StrategyPanel({ bomID, node, catalog, readOnly, onPatch }: Props) {
   const isPart = node.part_id !== null
+  // pending : valeur choisie dont le calcul est en cours ; null quand rien n'est en cours.
+  const [pending, setPending] = useState<string | null>(null)
   return (
     <div className="stack">
       {!readOnly ? (
@@ -24,8 +29,13 @@ export function StrategyPanel({ bomID, node, catalog, readOnly, onPatch }: Props
           Stratégie{' '}
           <select
             aria-label="Stratégie du nœud"
-            value={node.strategy ?? ''}
-            onChange={(e) => void onPatch({ strategy: e.target.value === '' ? null : (e.target.value as Strategy) })}
+            value={pending ?? node.strategy ?? ''}
+            disabled={pending !== null}
+            onChange={(e) => {
+              const value = e.target.value
+              setPending(value)
+              void onPatch({ strategy: value === '' ? null : (value as Strategy) }).finally(() => setPending(null))
+            }}
           >
             <option value="">héritée</option>
             {(Object.keys(strategyLabels) as Strategy[]).map((s) => (
@@ -34,6 +44,11 @@ export function StrategyPanel({ bomID, node, catalog, readOnly, onPatch }: Props
               </option>
             ))}
           </select>
+          {pending !== null && (
+            <span role="status" className="muted small recalc">
+              Recalcul en cours…
+            </span>
+          )}
         </label>
       ) : (
         node.strategy && <p className="muted">Stratégie : {strategyLabels[node.strategy]}</p>
