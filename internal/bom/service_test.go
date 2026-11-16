@@ -494,3 +494,106 @@ func TestServiceTotalsReadPricesInOneBatch(t *testing.T) {
 		t.Fatalf("%d lectures unitaires, %d par lot ; want 0 et 2 (prix, puis taux)", counted.single, counted.batch)
 	}
 }
+
+// Attacher un snapshot de prix existant : il doit couvrir toutes les offres et tous les taux de la BOM
+// (features.md, bom-draft-and-snapshots) ; sinon refus qui liste ce qui manque, et la BOM reste comme elle était.
+func TestServiceUsePriceSnapshot(t *testing.T) {
+	f := newFixture(t)
+	// A : écrou seul (EUR) ; son snapshot ne couvre ni l'offre 11 ni USD→EUR.
+	bomA, rootA := f.newBOM(t)
+	f.addPart(t, bomA, rootA, 2, 20, "5")
+	a, err := f.svc.FreezePrices(t.Context(), bomA, t0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	snapA := *a.PriceSnapshotID
+	// B : roue en USD + écrou ; son snapshot couvre 11, 20 et USD→EUR.
+	bomB, rootB := f.newBOM(t)
+	f.addPart(t, bomB, rootB, 1, 11, "4")
+	f.addPart(t, bomB, rootB, 2, 20, "5")
+	b, err := f.svc.FreezePrices(t.Context(), bomB, t0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	snapB := *b.PriceSnapshotID
+	// C : roue en USD, BOM en USD ; son snapshot n'a aucun taux. Repassée en EUR, il lui manque USD→EUR.
+	c, err := f.svc.CreateBOM(t.Context(), NewBOM{Name: "Pick-up", Currency: "USD", Volume: 10})
+	if err != nil {
+		t.Fatal(err)
+	}
+	nodesC, _ := f.store.Tree(t.Context(), c.ID)
+	f.addPart(t, c.ID, nodesC[0].ID, 1, 11, "1")
+	c, err = f.svc.FreezePrices(t.Context(), c.ID, t0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	snapC := *c.PriceSnapshotID
+	if _, err := f.svc.UpdateSettings(t.Context(), c.ID, "EUR", 10); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.svc.UnfreezePrices(t.Context(), c.ID); err != nil {
+		t.Fatal(err)
+	}
+
+	// Après le gel, les cotations bougent : la BOM A sur le snapshot B doit lire les prix figés de B.
+	later := t0.Add(time.Hour)
+	newPrice, _ := money.Parse("200", "USD")
+	f.prices.AddQuote(pricing.Quote{OfferID: 11, Price: newPrice, Source: "sim", QuotedAt: later})
+	f.prices.AddQuote(pricing.Quote{OfferID: 20, Price: mustMoney(t, "9", "EUR"), Source: "sim", QuotedAt: later})
+
+	tests := []struct {
+		name     string
+		bomID    int64
+		snapshot int64
+		wantErr  error
+		wantIn   string // fragment attendu du message d'erreur
+	}{
+		{"snapshot inconnu", bomA, 999, pricing.ErrPriceSnapshotNotFound, ""},
+		{"identifiant invalide", bomA, 0, ErrInvalidInput, ""},
+		{"offre non couverte : refus qui liste l'offre", bomB, snapA, pricing.ErrNoQuote, "offers [11]"},
+		{"taux non couvert : refus qui liste la paire", c.ID, snapC, pricing.ErrNoRate, "pairs [USD->EUR]"},
+		{"snapshot couvrant : attaché", bomA, snapB, nil, ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			before, _ := f.svc.GetBOM(t.Context(), tt.bomID)
+			got, err := f.svc.UsePriceSnapshot(t.Context(), tt.bomID, tt.snapshot)
+			if tt.wantErr != nil {
+				if !errors.Is(err, tt.wantErr) {
+					t.Fatalf("err = %v, want %v", err, tt.wantErr)
+				}
+				if tt.wantIn != "" && !strings.Contains(err.Error(), tt.wantIn) {
+					t.Fatalf("err = %q, want it to contain %q", err, tt.wantIn)
+				}
+				after, _ := f.svc.GetBOM(t.Context(), tt.bomID)
+				if (after.PriceSnapshotID == nil) != (before.PriceSnapshotID == nil) || (after.PriceSnapshotID != nil && *after.PriceSnapshotID != *before.PriceSnapshotID) {
+					t.Fatalf("BOM modifiée malgré le refus : %v → %v", before.PriceSnapshotID, after.PriceSnapshotID)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got.PriceSnapshotID == nil || *got.PriceSnapshotID != tt.snapshot {
+				t.Fatalf("price snapshot = %v, want %d", got.PriceSnapshotID, tt.snapshot)
+			}
+			tot := f.totals(t, tt.bomID)
+			// 5 écrous à 1 € (prix figé), pas 9 € (cotation arrivée après le gel).
+			if cst := costOf(t, tot, rootA); cst != "5.00 EUR" {
+				t.Fatalf("root = %s, want 5.00 EUR (prix du snapshot)", cst)
+			}
+			if ex := tot.Totals.Explanation; ex.PriceSnapshotID == nil || *ex.PriceSnapshotID != tt.snapshot {
+				t.Fatalf("explanation = %+v, want snapshot %d", ex, tt.snapshot)
+			}
+		})
+	}
+}
+
+func mustMoney(t *testing.T, amount, cur string) money.Money {
+	t.Helper()
+	v, err := money.Parse(amount, cur)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return v
+}

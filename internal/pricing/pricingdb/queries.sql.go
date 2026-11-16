@@ -493,6 +493,44 @@ func (q *Queries) ListFreightRates(ctx context.Context) ([]FreightRate, error) {
 	return items, nil
 }
 
+const listPriceSnapshots = `-- name: ListPriceSnapshots :many
+SELECT id,scope,scope_id,taken_at,created_at FROM price_snapshots ORDER BY taken_at DESC,id DESC
+`
+
+type ListPriceSnapshotsRow struct {
+	ID        int64
+	Scope     string
+	ScopeID   pgtype.Int8
+	TakenAt   time.Time
+	CreatedAt time.Time
+}
+
+func (q *Queries) ListPriceSnapshots(ctx context.Context) ([]ListPriceSnapshotsRow, error) {
+	rows, err := q.db.Query(ctx, listPriceSnapshots)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListPriceSnapshotsRow
+	for rows.Next() {
+		var i ListPriceSnapshotsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Scope,
+			&i.ScopeID,
+			&i.TakenAt,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listPricingOffers = `-- name: ListPricingOffers :many
 SELECT o.id, o.supplier_id, o.currency, o.price_min, o.price_max FROM offers o
 JOIN parts p ON p.id = o.part_id

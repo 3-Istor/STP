@@ -99,6 +99,7 @@ cotations déjà ingérées et leur contexte. Les routes catalogue/fournisseur d
 | GET /fx/{base}/{quote}/history?from=…&to=… | historique brut de la paire exacte |
 | GET /pricing/status | dernier tick/as_of validés, état de la source et diagnostic |
 | POST /price-snapshots | créer un snapshot immuable complet, 201 + Location |
+| GET /price-snapshots | en-têtes de tous les snapshots (id, périmètre, `taken_at`), du plus récent au plus ancien |
 | GET /price-snapshots/{id} | en-tête, cotations liées et couverture |
 | POST /conversions | montant converti en sortie et provenance du calcul |
 | GET /quotes/stream | signal SSE, sans prix dans l'événement |
@@ -227,6 +228,15 @@ Tests prévus : Source en httptest avec erreurs et timeout ; génération identi
 batches et reprise ; 365 lignes exactes deux fois/concurremment ; faux temps aux bornes ; repli
 snapshot ou erreur ; refus SQL de mutation/ajout ; inverse périodique avant somme ; budgets/volume
 et vrai SSE navigateur. Aucun de ces nouveaux comportements n'est présenté comme implémenté ici.
+
+### Choisir un snapshot existant pour un brouillon
+
+`GET /api/v1/price-snapshots` liste les en-têtes ; le front nomme chaque snapshot par son
+`taken_at` **à la seconde près**, son périmètre et son numéro. `PUT /api/v1/boms/{id}/freeze-prices`
+avec `{"price_snapshot_id": N}` attache ce snapshot au brouillon après contrôle de couverture
+(toutes les offres de la BOM et les taux vers sa devise) : 409 qui liste les offres et paires
+manquantes sinon, 404 si le snapshot n'existe pas ; la BOM ne bouge pas en cas de refus.
+`POST` (figer maintenant) et `DELETE` (repasser en direct) sont inchangés.
 
 ### État de livraison : gel autonome (T6)
 

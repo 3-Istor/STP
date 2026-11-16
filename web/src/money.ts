@@ -36,6 +36,13 @@ export function formatDate(iso: string): string {
   return `${dateFormat.format(new Date(iso))} UTC`
 }
 
+const dateTimeFormat = new Intl.DateTimeFormat('fr-FR', { dateStyle: 'short', timeStyle: 'medium', timeZone: 'UTC' })
+
+// formatDateTime : date et heure à la seconde près (nom d'un snapshot de prix).
+export function formatDateTime(iso: string): string {
+  return `${dateTimeFormat.format(new Date(iso))} UTC`
+}
+
 // multiplyDecimal multiplie une chaîne décimale par un entier, exactement (BigInt).
 export function multiplyDecimal(value: string, factor: number): string {
   const neg = value.startsWith('-')

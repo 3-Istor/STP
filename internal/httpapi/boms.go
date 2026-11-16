@@ -36,6 +36,7 @@ type BOMService interface {
 	MoveNode(ctx context.Context, bomID, nodeID, newParentID int64) (bom.Node, error)
 	DeleteNode(ctx context.Context, bomID, nodeID int64) error
 	FreezePrices(ctx context.Context, bomID int64, at time.Time) (bom.BOM, error)
+	UsePriceSnapshot(ctx context.Context, bomID, snapshotID int64) (bom.BOM, error)
 	UnfreezePrices(ctx context.Context, bomID int64) (bom.BOM, error)
 	Totals(ctx context.Context, bomID int64) (bom.TreeTotals, error)
 	Stock(ctx context.Context, bomID int64) ([]bom.PartStock, error)
@@ -92,6 +93,7 @@ func (a *api) routes(mux *http.ServeMux) {
 	mux.HandleFunc("PUT /api/v1/boms/{id}/schedule", a.putSchedule)
 	mux.HandleFunc("DELETE /api/v1/boms/{id}/schedule", a.deleteSchedule)
 	mux.HandleFunc("POST /api/v1/boms/{id}/freeze-prices", a.freezePrices)
+	mux.HandleFunc("PUT /api/v1/boms/{id}/freeze-prices", a.usePriceSnapshot)
 	mux.HandleFunc("DELETE /api/v1/boms/{id}/freeze-prices", a.unfreezePrices)
 	mux.HandleFunc("POST /api/v1/boms/{id}/publish", a.publish)
 	mux.HandleFunc("GET /api/v1/snapshots/{id}", a.getSnapshot)
@@ -616,6 +618,33 @@ func (a *api) freezePrices(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, toBOMJSON(b))
 }
 
+// usePriceSnapshot attache un snapshot de prix existant au brouillon : {"price_snapshot_id": N}.
+// Couverture incomplète → 409 avec les offres et paires manquantes ; snapshot inconnu → 404.
+func (a *api) usePriceSnapshot(w http.ResponseWriter, r *http.Request) {
+	id, err := bomPathID(r, "id")
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	var req struct {
+		PriceSnapshotID *int64 `json:"price_snapshot_id"`
+	}
+	if err := readBody(w, r, &req, false); err != nil {
+		writeError(w, r, err)
+		return
+	}
+	if req.PriceSnapshotID == nil || *req.PriceSnapshotID <= 0 {
+		writeError(w, r, fmt.Errorf("price_snapshot_id is required and must be a positive integer: %w", errBadRequest))
+		return
+	}
+	b, err := a.boms.UsePriceSnapshot(r.Context(), id, *req.PriceSnapshotID)
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, toBOMJSON(b))
+}
+
 func (a *api) unfreezePrices(w http.ResponseWriter, r *http.Request) {
 	id, err := bomPathID(r, "id")
 	if err != nil {
@@ -723,7 +752,8 @@ func statusOf(err error) int {
 		return false
 	}
 	switch {
-	case is(bom.ErrBOMNotFound, bom.ErrNodeNotFound, snapshot.ErrSnapshotNotFound, pricing.ErrUnknownOffer):
+	case is(bom.ErrBOMNotFound, bom.ErrNodeNotFound, snapshot.ErrSnapshotNotFound, pricing.ErrUnknownOffer,
+		pricing.ErrPriceSnapshotNotFound):
 		return http.StatusNotFound
 	case is(bom.ErrCycle, bom.ErrHasSnapshots, bom.ErrRootNode, pricing.ErrNoQuote, pricing.ErrNoRate,
 		catalog.ErrMissingAttribute):

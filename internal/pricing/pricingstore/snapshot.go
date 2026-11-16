@@ -134,6 +134,17 @@ func (u snapshotUnit) Candidates(ctx context.Context, at time.Time) ([]pricing.P
 func (u snapshotUnit) ReadSnapshot(ctx context.Context, id int64) (pricing.PriceSnapshotData, error) {
 	return readSnapshot(ctx, u.q, id)
 }
+func (s *SnapshotStore) ListSnapshots(ctx context.Context) ([]pricing.PriceSnapshotRef, error) {
+	rows, err := pricingdb.New(s.pool).ListPriceSnapshots(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]pricing.PriceSnapshotRef, 0, len(rows))
+	for _, r := range rows {
+		out = append(out, snapshotRef(r.ID, r.Scope, r.ScopeID, r.TakenAt))
+	}
+	return out, nil
+}
 func (u snapshotUnit) Save(ctx context.Context, req pricing.SnapshotRequest, data pricing.PriceSnapshotData) (pricing.PriceSnapshotData, error) {
 	scopeID := pgtype.Int8{}
 	if req.ScopeID != nil {
