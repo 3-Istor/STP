@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"sort"
 	"time"
 
@@ -32,6 +33,7 @@ type OfferRef struct {
 }
 type PriceScope struct {
 	OfferID, SupplierID int64
+	OfferIDs            []int64 // lot d'offres (lecture par lot) ; exclusif des autres champs
 	FX                  bool
 }
 type FXPair struct{ Base, Quote money.Currency }
@@ -109,6 +111,9 @@ func (s *ReadService) frame(ctx context.Context, scope PriceScope, at *time.Time
 	if scope.OfferID < 0 || scope.SupplierID < 0 || (scope.OfferID > 0 && scope.SupplierID > 0) || (scope.FX && (scope.OfferID != 0 || scope.SupplierID != 0)) {
 		return MarketFrame{}, ErrInvalidReadRequest
 	}
+	if len(scope.OfferIDs) > 0 && (scope.OfferID != 0 || scope.SupplierID != 0 || scope.FX) {
+		return MarketFrame{}, ErrInvalidReadRequest
+	}
 	frame, err := s.store.Market(ctx, s.config.DatasetVersion, scope, at)
 	if err != nil {
 		return frame, err
@@ -164,19 +169,33 @@ func (s *ReadService) Prices(ctx context.Context, scope PriceScope, at *time.Tim
 }
 
 func (s *ReadService) Rates(ctx context.Context, pair *FXPair, at *time.Time) (FXPage, error) {
+	var want []FXPair
 	if pair != nil {
 		if err := validPair(*pair); err != nil {
 			return FXPage{}, err
 		}
+		want = []FXPair{*pair}
 	}
+	page, err := s.pairRates(ctx, want, at)
+	if err != nil {
+		return FXPage{}, err
+	}
+	if pair != nil && len(page.Rates) == 0 {
+		return page, ErrNoRate
+	}
+	return page, nil
+}
+
+// pairRates lit le cadre FX une seule fois et rend les taux des paires voulues (toutes si want est vide).
+// En repli sur un snapshot, celui-ci doit couvrir exactement les paires voulues, pas tout le marché.
+func (s *ReadService) pairRates(ctx context.Context, want []FXPair, at *time.Time) (FXPage, error) {
 	f, err := s.frame(ctx, PriceScope{FX: true}, at)
 	if err != nil {
 		return FXPage{}, err
 	}
-	need := []FXPair{}
-	if pair != nil {
-		need = append(need, *pair)
-	} else {
+	need := slices.Clone(want)
+	if need == nil {
+		need = []FXPair{}
 		for _, r := range f.Rates {
 			need = append(need, FXPair{r.BaseCurrency, r.QuoteCurrency})
 		}
@@ -193,12 +212,9 @@ func (s *ReadService) Rates(ctx context.Context, pair *FXPair, at *time.Time) (F
 	}
 	page := FXPage{Context: context, Rates: []FXQuote{}}
 	for _, r := range rates {
-		if pair == nil || (r.BaseCurrency == pair.Base && r.QuoteCurrency == pair.Quote) {
+		if len(want) == 0 || slices.Contains(want, FXPair{r.BaseCurrency, r.QuoteCurrency}) {
 			page.Rates = append(page.Rates, r)
 		}
-	}
-	if pair != nil && len(page.Rates) == 0 {
-		return page, ErrNoRate
 	}
 	return page, nil
 }
@@ -282,26 +298,99 @@ func (s *ReadService) OfferPrice(ctx context.Context, id int64) (Quote, error) {
 	if err != nil {
 		return Quote{}, err
 	}
-	if len(page.Quotes) != 1 || page.Quotes[0].Quote == nil {
-		if len(page.Quotes) == 1 && page.Quotes[0].Error == ErrInvalidHistoryData.Error() {
+	if len(page.Quotes) != 1 {
+		return Quote{}, ErrNoQuote
+	}
+	return quoteOfEntry(page.Quotes[0], &page.Context)
+}
+
+// quoteOfEntry traduit une entrée de page en cotation ou en erreur nommée (même règle qu'OfferPrice).
+func quoteOfEntry(e PriceEntry, context *PriceContext) (Quote, error) {
+	if e.Quote == nil {
+		if e.Error == ErrInvalidHistoryData.Error() {
 			return Quote{}, ErrInvalidHistoryData
 		}
 		return Quote{}, ErrNoQuote
 	}
-	q := page.Quotes[0].Quote
-	return Quote{ID: q.ID, OfferID: q.OfferID, Price: q.Price, Source: q.Source, QuotedAt: q.QuotedAt, Context: &page.Context}, nil
+	q := e.Quote
+	return Quote{ID: q.ID, OfferID: q.OfferID, Price: q.Price, Source: q.Source, QuotedAt: q.QuotedAt, Context: context}, nil
 }
+
+// OfferPrices lit le marché une seule fois pour tout le lot (scope OfferIDs). Une offre inconnue de la
+// source n'est pas dans le cadre : ErrPriceEntityNotFound sur son entrée, comme OfferPrice la renverrait.
+func (s *ReadService) OfferPrices(ctx context.Context, offerIDs []int64) (map[int64]QuoteResult, error) {
+	ids := slices.Clone(offerIDs)
+	slices.Sort(ids)
+	ids = slices.Compact(ids)
+	out := make(map[int64]QuoteResult, len(ids))
+	if len(ids) == 0 {
+		return out, nil
+	}
+	for _, id := range ids {
+		if id <= 0 {
+			return nil, ErrInvalidReadRequest
+		}
+	}
+	page, err := s.Prices(ctx, PriceScope{OfferIDs: ids}, nil)
+	if err != nil {
+		return nil, err
+	}
+	for _, e := range page.Quotes {
+		q, err := quoteOfEntry(e, &page.Context)
+		out[e.OfferID] = QuoteResult{Quote: q, Err: err}
+	}
+	for _, id := range ids {
+		if _, ok := out[id]; !ok {
+			out[id] = QuoteResult{Err: ErrPriceEntityNotFound}
+		}
+	}
+	return out, nil
+}
+
 func (s *ReadService) Rate(ctx context.Context, from, to money.Currency) (Rate, error) {
 	page, err := s.Rates(ctx, &FXPair{from, to}, nil)
 	if err != nil {
 		return Rate{}, err
 	}
-	q := page.Rates[0]
+	return rateOfQuote(page.Rates[0], &page.Context)
+}
+
+func rateOfQuote(q FXQuote, context *PriceContext) (Rate, error) {
 	d, err := decimal.NewFromString(q.Rate)
 	if err != nil {
 		return Rate{}, ErrInvalidHistoryData
 	}
-	return Rate{ID: q.ID, From: q.BaseCurrency, To: q.QuoteCurrency, Rate: d, Source: q.Source, QuotedAt: q.QuotedAt, Context: &page.Context}, nil
+	return Rate{ID: q.ID, From: q.BaseCurrency, To: q.QuoteCurrency, Rate: d, Source: q.Source, QuotedAt: q.QuotedAt, Context: context}, nil
+}
+
+// PairRates lit le cadre FX une seule fois pour toutes les paires. Une paire invalide (devise inconnue,
+// base = quote) porte son erreur sur son entrée, comme Rate la renverrait.
+func (s *ReadService) PairRates(ctx context.Context, pairs []FXPair) (map[FXPair]RateResult, error) {
+	out := make(map[FXPair]RateResult, len(pairs))
+	var want []FXPair
+	for _, p := range pairs {
+		if _, seen := out[p]; seen {
+			continue
+		}
+		if err := validPair(p); err != nil {
+			out[p] = RateResult{Err: err}
+			continue
+		}
+		out[p] = RateResult{Err: ErrNoRate}
+		want = append(want, p)
+	}
+	if len(want) == 0 {
+		return out, nil
+	}
+	page, err := s.pairRates(ctx, want, nil)
+	if err != nil {
+		return nil, err
+	}
+	for _, q := range page.Rates {
+		r, err := rateOfQuote(q, &page.Context)
+		out[FXPair{q.BaseCurrency, q.QuoteCurrency}] = RateResult{Rate: r, Err: err}
+	}
+	return out, nil
 }
 func (s *ReadService) historyRange(ctx context.Context, from, to time.Time) error {
 	if from.IsZero() || to.IsZero() || from.After(to) {

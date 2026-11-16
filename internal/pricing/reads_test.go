@@ -3,6 +3,7 @@ package pricing
 import (
 	"context"
 	"errors"
+	"slices"
 	"testing"
 	"time"
 
@@ -23,12 +24,15 @@ func (f *readFixture) Market(_ context.Context, _ string, scope PriceScope, at *
 	if at != nil {
 		v.At = *at
 	}
-	if scope.OfferID > 0 {
+	if scope.OfferID > 0 || len(scope.OfferIDs) > 0 {
 		v.Offers = nil
 		for _, o := range f.frame.Offers {
-			if o.ID == scope.OfferID {
+			if o.ID == scope.OfferID || slices.Contains(scope.OfferIDs, o.ID) {
 				v.Offers = append(v.Offers, o)
 			}
+		}
+		if scope.OfferID > 0 { // comme le store : une offre inconnue n'existe pas dans la portée
+			v.ScopeExists = len(v.Offers) > 0
 		}
 	}
 	return v, nil
@@ -156,4 +160,100 @@ func TestStatisticsForSnapshotQuoteKeepsChosenID(t *testing.T) {
 	if err != nil || s.CurrentQuote.ID != 2 || s.VariationPercent == nil || *s.VariationPercent != "5.0" {
 		t.Fatalf("frozen stats=%+v %v", s, err)
 	}
+}
+
+// Lecture par lot : même réponse que les lectures unitaires (cotation, ErrNoQuote, offre inconnue,
+// ErrNoRate, paire invalide), en direct comme en repli sur un snapshot. Seul le nombre de lectures change.
+func TestOfferPricesAndPairRatesMatchSingleReads(t *testing.T) {
+	tests := []struct {
+		name   string
+		change func(*readFixture)
+		mode   string
+	}{
+		{"live", func(*readFixture) {}, "live"},
+		{"fallback on snapshot", func(f *readFixture) { f.frame.State.Status = "unavailable"; f.frame.State.Error = "timeout" }, "snapshot_fallback"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s, f := readData(t)
+			tt.change(f)
+			f.frame.Offers = append(f.frame.Offers, OfferRef{3, "USD"}) // offre 3 : connue, jamais cotée
+			if f.frame.State.Status != "ready" {
+				// En repli, le snapshot doit couvrir tout le lot : l'offre 3 (jamais cotée) le fait échouer en
+				// bloc, comme sa lecture unitaire échouait déjà (et faisait échouer les totaux de la BOM).
+				if _, err := s.OfferPrices(t.Context(), []int64{1, 3}); !errors.Is(err, ErrNoUsableSnapshot) {
+					t.Fatalf("fallback with an uncovered offer: %v, want ErrNoUsableSnapshot", err)
+				}
+				f.frame.Offers = f.frame.Offers[:2]
+			}
+
+			ids := []int64{2, 1, 3, 99, 2}
+			batch, err := s.OfferPrices(t.Context(), ids)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(batch) != 4 {
+				t.Fatalf("batch has %d entries, want 4 (doublon ignoré) : %v", len(batch), batch)
+			}
+			for _, id := range []int64{1, 2, 3, 99} {
+				single, serr := s.OfferPrice(t.Context(), id)
+				got := batch[id]
+				if (serr == nil) != (got.Err == nil) || (serr != nil && !errors.Is(got.Err, rootError(serr))) {
+					t.Fatalf("offer %d: batch err %v, single err %v", id, got.Err, serr)
+				}
+				if serr == nil && (got.Quote.ID != single.ID || got.Quote.Price.String() != single.Price.String() || got.Quote.Context == nil || got.Quote.Context.Mode != tt.mode) {
+					t.Fatalf("offer %d: batch %+v, single %+v", id, got.Quote, single)
+				}
+			}
+			if !errors.Is(batch[99].Err, ErrPriceEntityNotFound) {
+				t.Fatalf("unknown offer 99: %v, want ErrPriceEntityNotFound", batch[99].Err)
+			}
+			if want := map[string]error{"live": ErrNoQuote, "snapshot_fallback": ErrPriceEntityNotFound}[tt.mode]; !errors.Is(batch[3].Err, want) {
+				t.Fatalf("offer 3: %v, want %v", batch[3].Err, want)
+			}
+
+			pairs := []FXPair{{"USD", "EUR"}, {"EUR", "USD"}, {"EUR", "EUR"}, {"USD", "EUR"}}
+			wantRates := 3
+			if tt.mode == "snapshot_fallback" {
+				// Même règle que pour les prix : une paire non couverte par le snapshot fait échouer le lot.
+				if _, err := s.PairRates(t.Context(), pairs); !errors.Is(err, ErrNoUsableSnapshot) {
+					t.Fatalf("fallback with an uncovered pair: %v, want ErrNoUsableSnapshot", err)
+				}
+				pairs, wantRates = []FXPair{{"USD", "EUR"}, {"EUR", "EUR"}, {"USD", "EUR"}}, 2
+			}
+			rates, err := s.PairRates(t.Context(), pairs)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(rates) != wantRates {
+				t.Fatalf("rates has %d entries, want %d : %v", len(rates), wantRates, rates)
+			}
+			for _, p := range pairs {
+				single, serr := s.Rate(t.Context(), p.Base, p.Quote)
+				got := rates[p]
+				if (serr == nil) != (got.Err == nil) || (serr != nil && !errors.Is(got.Err, rootError(serr))) {
+					t.Fatalf("pair %v: batch err %v, single err %v", p, got.Err, serr)
+				}
+				if serr == nil && (got.Rate.ID != single.ID || !got.Rate.Rate.Equal(single.Rate) || got.Rate.Context.Mode != tt.mode) {
+					t.Fatalf("pair %v: batch %+v, single %+v", p, got.Rate, single)
+				}
+			}
+			if tt.mode == "live" && !errors.Is(rates[FXPair{"EUR", "USD"}].Err, ErrNoRate) {
+				t.Fatalf("missing pair: %v, want ErrNoRate", rates[FXPair{"EUR", "USD"}].Err)
+			}
+			if !errors.Is(rates[FXPair{"EUR", "EUR"}].Err, ErrInvalidReadRequest) {
+				t.Fatalf("invalid pair: %v, want ErrInvalidReadRequest", rates[FXPair{"EUR", "EUR"}].Err)
+			}
+		})
+	}
+}
+
+// rootError : la sentinelle attendue derrière une erreur de lecture unitaire.
+func rootError(err error) error {
+	for _, s := range []error{ErrNoQuote, ErrNoRate, ErrPriceEntityNotFound, ErrInvalidHistoryData, ErrInvalidReadRequest} {
+		if errors.Is(err, s) {
+			return s
+		}
+	}
+	return err
 }

@@ -79,23 +79,35 @@ func (s *ReadStore) Market(ctx context.Context, dataset string, scope pricing.Pr
 		f.At = requested.UTC()
 	}
 	if !scope.FX {
-		offers, err := q.ReadScopeOffers(ctx, pricingdb.ReadScopeOffersParams{OfferID: scope.OfferID, SupplierID: scope.SupplierID})
-		if err != nil {
-			return f, err
-		}
-		if scope.OfferID > 0 {
-			f.ScopeExists = len(offers) > 0
-		}
-		if scope.SupplierID > 0 {
-			f.ScopeExists, err = q.PricingSupplierExists(ctx, scope.SupplierID)
+		var ids []int64
+		if len(scope.OfferIDs) > 0 {
+			// Lot d'offres : une offre inconnue est simplement absente du cadre (le lot existe toujours).
+			offers, err := q.ReadOffersByIDs(ctx, scope.OfferIDs)
 			if err != nil {
 				return f, err
 			}
-		}
-		ids := make([]int64, 0, len(offers))
-		for _, v := range offers {
-			ids = append(ids, v.ID)
-			f.Offers = append(f.Offers, pricing.OfferRef{ID: v.ID, Currency: money.Currency(v.Currency)})
+			for _, v := range offers {
+				ids = append(ids, v.ID)
+				f.Offers = append(f.Offers, pricing.OfferRef{ID: v.ID, Currency: money.Currency(v.Currency)})
+			}
+		} else {
+			offers, err := q.ReadScopeOffers(ctx, pricingdb.ReadScopeOffersParams{OfferID: scope.OfferID, SupplierID: scope.SupplierID})
+			if err != nil {
+				return f, err
+			}
+			if scope.OfferID > 0 {
+				f.ScopeExists = len(offers) > 0
+			}
+			if scope.SupplierID > 0 {
+				f.ScopeExists, err = q.PricingSupplierExists(ctx, scope.SupplierID)
+				if err != nil {
+					return f, err
+				}
+			}
+			for _, v := range offers {
+				ids = append(ids, v.ID)
+				f.Offers = append(f.Offers, pricing.OfferRef{ID: v.ID, Currency: money.Currency(v.Currency)})
+			}
 		}
 		prices, err := q.ReadCurrentPrices(ctx, pricingdb.ReadCurrentPricesParams{OfferIds: ids, AsOf: f.At})
 		if err != nil {

@@ -27,6 +27,18 @@ type Quote struct {
 	QuotedAt time.Time // horodatage de la source (temps simulé pour le simulateur)
 }
 
+// QuoteResult est le résultat d'une lecture de prix par lot : la cotation, ou l'erreur nommée de l'offre.
+type QuoteResult struct {
+	Quote Quote
+	Err   error
+}
+
+// RateResult est le résultat d'une lecture de taux par lot : le taux, ou l'erreur nommée de la paire.
+type RateResult struct {
+	Rate Rate
+	Err  error
+}
+
 // Rate est une cotation de taux : 1 From = Rate To.
 type Rate struct {
 	ID       int64         `json:"-"`
@@ -46,6 +58,16 @@ type Pricing interface {
 	// Rate renvoie la dernière cotation de la paire exacte from → to, ou ErrNoRate.
 	// L'inversion d'un taux relève de multi-currency-costing, pas de cette interface.
 	Rate(ctx context.Context, from, to money.Currency) (Rate, error)
+	// OfferPrices renvoie, en une seule lecture de la source, la dernière cotation de chaque offre de
+	// offerIDs (doublons ignorés). Chaque offre demandée a son entrée : une cotation, ou l'erreur nommée qui
+	// l'a empêchée (ErrNoQuote, ErrInvalidHistoryData, ErrPriceEntityNotFound). Une panne de la source
+	// est l'erreur de l'appel. Même résultat que OfferPrice appelée offre par offre : ne diffère que le coût.
+	// Source en panne (repli sur un snapshot de prix) : le snapshot doit couvrir tout le lot, sinon l'appel
+	// échoue (ErrNoUsableSnapshot), comme la lecture unitaire de l'offre non couverte échouait.
+	OfferPrices(ctx context.Context, offerIDs []int64) (map[int64]QuoteResult, error)
+	// PairRates renvoie, en une seule lecture, le dernier taux de chaque paire exacte de pairs
+	// (ErrNoRate par paire absente). Même résultat que Rate appelée paire par paire.
+	PairRates(ctx context.Context, pairs []FXPair) (map[FXPair]RateResult, error)
 
 	// FreezePrices crée un snapshot de prix immuable (ADR 0002) des offres de la BOM bomID et renvoie son
 	// identifiant. Il fige la dernière cotation de chaque offre de offerIDs (les offres de la BOM) et, pour
