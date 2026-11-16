@@ -1,0 +1,223 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<style>html,body{margin:0;background:#eef0f3;overflow:hidden}</style>
+<script type="importmap">{"imports":{"three":"./three/build/three.module.js","three/addons/":"./three/examples/jsm/"}}</script>
+</head><body>
+<script type="module">
+// Spike jetable : voiture procédurale, un objet par sous-ensemble de BOM.
+import * as THREE from 'three';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+
+const q = new URLSearchParams(location.search);
+const EXPLODE = parseFloat(q.get('explode') || '0');
+const MODE = q.get('mode') || 'budget';      // budget | system
+const FOCUS = q.get('focus') || '';          // ex. door_fl
+const CAM = q.get('cam') || 'iso';
+const W = +(q.get('w') || 1400), H = +(q.get('h') || 820);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setSize(W, H); renderer.setPixelRatio(1);
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05;
+document.body.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xeef0f3);
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+const sun = new THREE.DirectionalLight(0xffffff, 1.6);
+sun.position.set(-4, 9, 6); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
+Object.assign(sun.shadow.camera, { left: -7, right: 7, top: 7, bottom: -7 }); sun.shadow.radius = 6;
+scene.add(sun, new THREE.HemisphereLight(0xffffff, 0x9aa3ad, 0.6));
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(60, 60), new THREE.ShadowMaterial({ opacity: 0.16 }));
+ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
+
+// Statut budgétaire par système (comme le cockpit) : over / warn / ok
+const SYSTEMS = {
+  caisse:   { status: 'ok',   sys: 0x8a96a8 },
+  ouvrants: { status: 'over', sys: 0x6f8fbf },
+  gmp:      { status: 'warn', sys: 0xb08a4f },
+  sol:      { status: 'ok',   sys: 0x7a9a7e },
+  habitacle:{ status: 'ok',   sys: 0x9a7fb0 },
+  elec:     { status: 'ok',   sys: 0x6aa5a6 },
+};
+const STATUS = { ok: 0xd3d7dd, warn: 0xe08a1e, over: 0xc8322b };
+// statut au niveau sous-ensemble (c'est le niveau où se posent les budgets)
+const BY_ID = { door_fl: 'over', door_fr: 'over', door_rl: 'warn', door_rr: 'warn', capot: 'warn', moteur: 'over' };
+let CURRENT = '';
+function mat(system, opts = {}) {
+  const st = BY_ID[CURRENT];
+  let color = MODE === 'budget' ? (opts.color ?? STATUS.ok) : SYSTEMS[system].sys;
+  if (MODE === 'budget' && st) color = STATUS[st];
+  if (MODE === 'budget' && !st && opts.color === undefined) color = 0xc9ced6;
+  return new THREE.MeshStandardMaterial({ color, metalness: opts.metal ?? 0.35, roughness: opts.rough ?? 0.45,
+    transparent: !!opts.glass, opacity: opts.glass ? 0.35 : 1 });
+}
+const parts = [];
+function add(id, system, mesh, dir, extra = 1) {
+  const g = mesh.isGroup ? mesh : new THREE.Group().add(mesh);
+  const st = BY_ID[id];
+  if (MODE === 'budget' && st) g.traverse(o => { if (o.isMesh && !o.material.transparent) { o.material = o.material.clone(); o.material.color.setHex(STATUS[st]); } });
+  g.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+  g.userData = { id, system, base: g.position.clone(), dir: new THREE.Vector3(...dir).multiplyScalar(extra) };
+  scene.add(g); parts.push(g); return g;
+}
+function extrudeProfile(points, depth, bevel = 0.04) {
+  const s = new THREE.Shape(); s.moveTo(points[0][0], points[0][1]);
+  for (const p of points.slice(1)) s.lineTo(p[0], p[1]);
+  const geo = new THREE.ExtrudeGeometry(s, { depth, bevelEnabled: true, bevelThickness: bevel, bevelSize: bevel, bevelSegments: 4, steps: 1 });
+  geo.translate(0, 0, -depth / 2); return geo;
+}
+// Caisse (structure) : profil latéral extrudé, arches de roue découpées
+const WB = 1.36, R = 0.36, ARCH = 0.43, BASE = 0.32;
+function bodyShape() {
+  const s = new THREE.Shape();
+  s.moveTo(-2.0, BASE); s.lineTo(-WB - ARCH, BASE);
+  s.absarc(-WB, BASE, ARCH, Math.PI, 0, true); s.lineTo(WB - ARCH, BASE);
+  s.absarc(WB, BASE, ARCH, Math.PI, 0, true); s.lineTo(2.0, BASE);
+  s.lineTo(2.03, 0.62); s.lineTo(1.98, 1.25); s.lineTo(1.78, 1.62); s.lineTo(-0.35, 1.64);
+  s.lineTo(-0.95, 1.05); s.lineTo(-1.95, 0.92); s.lineTo(-2.08, 0.62); s.lineTo(-2.0, BASE);
+  return s;
+}
+{ // structure "caisse en blanc" : longerons + piliers
+  const g = new THREE.Group(); const m = mat('caisse', { color: 0xd6dae0, metal: 0.55, rough: 0.35 });
+  const box = (w, h, d, x, y, z) => { const b = new THREE.Mesh(new RoundedBoxGeometry(w, h, d, 2, 0.02), m); b.position.set(x, y, z); g.add(b); };
+  box(3.9, 0.08, 1.62, 0, 0.36, 0);                       // plancher
+  for (const z of [-0.8, 0.8]) {
+    box(3.9, 0.12, 0.08, 0, 0.42, z);                      // bas de caisse
+    box(2.2, 0.06, 0.06, 0.7, 1.6, z);                     // pavillon
+    const pa = new THREE.Mesh(new RoundedBoxGeometry(0.07, 0.75, 0.07, 2, 0.02), m); pa.position.set(-0.65, 1.33, z); pa.rotation.z = -0.83; g.add(pa);
+    box(0.08, 1.15, 0.07, 0.35, 1.0, z); box(0.08, 1.2, 0.07, 1.82, 0.98, z);
+  }
+  box(0.08, 0.06, 1.62, -0.38, 1.62, 0); box(0.08, 0.06, 1.62, 1.75, 1.6, 0);
+  add('caisse', 'caisse', g, [0, 0, 0]);
+}
+{ // peau latérale fixe (ailes arrière) + toit
+  const roof = new THREE.Mesh(new RoundedBoxGeometry(2.1, 0.05, 1.66, 3, 0.02), mat('ouvrants', { color: 0xdfe3e8 }));
+  roof.position.set(0.72, 1.665, 0); add('toit', 'ouvrants', roof, [0, 2.4, 0]);
+  const hood = new THREE.Mesh(extrudeProfile([[-1.98, 0], [-0.98, 0.14], [-0.98, 0.16], [-1.98, 0.02]], 1.5, 0.03), mat('ouvrants', { color: 0xdfe3e8 }));
+  hood.position.set(0, 0.9, 0); add('capot', 'ouvrants', hood, [-0.4, 1.4, 0]);
+  for (const [z, side] of [[-0.86, 'g'], [0.86, 'd']]) {
+    // ailes avant
+    const wing = new THREE.Mesh(extrudeProfile([[-2.0, 0.5], [-1.78, 0.5], [-1.75, 0.78], [-1.3, 0.8], [-0.95, 0.75], [-0.95, 1.02], [-1.95, 0.92], [-2.07, 0.62]], 0.04, 0.02), mat('ouvrants', { color: 0xdfe3e8 }));
+    wing.position.z = z; add('aile_' + side, 'ouvrants', wing, [-0.4, 0, Math.sign(z) * 1.4]);
+    // portes
+    const dF = new THREE.Mesh(extrudeProfile([[-0.92, 0.42], [0.32, 0.42], [0.32, 1.22], [-0.38, 1.24], [-0.92, 1.0]], 0.05, 0.02), mat('ouvrants', { color: 0xdfe3e8 }));
+    dF.position.z = z; add('door_f' + (side === 'g' ? 'l' : 'r'), 'ouvrants', dF, [0, 0.0, Math.sign(z) * 1.1]);
+    const dR = new THREE.Mesh(extrudeProfile([[0.38, 0.42], [WB - ARCH - 0.02, 0.42], [WB - 0.2, 0.75], [1.8, 0.78], [1.8, 1.22], [0.38, 1.22]], 0.05, 0.02), mat('ouvrants', { color: 0xdfe3e8 }));
+    dR.position.z = z; add('door_r' + (side === 'g' ? 'l' : 'r'), 'ouvrants', dR, [0.3, 0.15, Math.sign(z) * 1.6]);
+    // vitres latérales (Multipla : double rangée)
+    const glass = new THREE.Mesh(extrudeProfile([[-0.36, 1.28], [1.76, 1.28], [1.74, 1.56], [-0.3, 1.58]], 0.02, 0.01), mat('elec', { color: 0x9db4c8, glass: true, metal: 0.1, rough: 0.05 }));
+    glass.position.z = z * 0.99; add('vitre_' + side, 'ouvrants', glass, [0, 0.6, Math.sign(z) * 1.3]);
+  }
+  const wsg = new THREE.BufferGeometry().setFromPoints([
+    new THREE.Vector3(-0.95, 1.05, -0.8), new THREE.Vector3(-0.35, 1.62, -0.8), new THREE.Vector3(-0.35, 1.62, 0.8),
+    new THREE.Vector3(-0.95, 1.05, -0.8), new THREE.Vector3(-0.35, 1.62, 0.8), new THREE.Vector3(-0.95, 1.05, 0.8)]);
+  wsg.computeVertexNormals();
+  const ws = new THREE.Mesh(wsg, mat('elec', { color: 0x9db4c8, glass: true, metal: 0.1, rough: 0.05 })); ws.material.side = THREE.DoubleSide;
+  add('pare_brise', 'ouvrants', ws, [-1.0, 0.8, 0]);
+  const tail = new THREE.Mesh(new RoundedBoxGeometry(0.06, 1.0, 1.6, 2, 0.02), mat('ouvrants', { color: 0xdfe3e8 }));
+  tail.position.set(1.98, 1.05, 0); tail.rotation.z = 0.12; add('hayon', 'ouvrants', tail, [1.5, 0.3, 0]);
+  for (const [x, id, d] of [[-2.08, 'bouclier_av', -1], [2.05, 'bouclier_ar', 1]]) {
+    const b = new THREE.Mesh(new RoundedBoxGeometry(0.22, 0.32, 1.78, 3, 0.08), mat('ouvrants', { color: 0x4a5059, metal: 0.1, rough: 0.7 }));
+    b.position.set(x, 0.5, 0); add(id, 'ouvrants', b, [d * 1.4, -0.1, 0]);
+  }
+}
+{ // groupe motopropulseur
+  const g = new THREE.Group(); const m = mat('gmp', { color: 0x8d939b, metal: 0.7, rough: 0.35 });
+  const block = new THREE.Mesh(new RoundedBoxGeometry(0.55, 0.45, 0.62, 3, 0.05), m); block.position.set(-1.45, 0.72, 0);
+  const head = new THREE.Mesh(new RoundedBoxGeometry(0.5, 0.12, 0.66, 3, 0.04), mat('gmp', { color: 0x2c2f35, metal: 0.4, rough: 0.5 })); head.position.set(-1.45, 0.99, 0);
+  g.add(block, head); add('moteur', 'gmp', g, [-1.1, 0.5, 0]);
+  const gb = new THREE.Mesh(new RoundedBoxGeometry(0.35, 0.3, 0.45, 3, 0.06), m); gb.position.set(-1.45, 0.62, 0.55);
+  add('boite', 'gmp', gb, [-0.6, 0.6, 0.9]);
+  const rad = new THREE.Mesh(new RoundedBoxGeometry(0.06, 0.42, 1.25, 2, 0.02), mat('gmp', { color: 0x6c737c, metal: 0.6 }));
+  rad.position.set(-1.92, 0.66, 0); add('radiateur', 'gmp', rad, [-1.8, 0.2, 0]);
+  const tank = new THREE.Mesh(new RoundedBoxGeometry(0.6, 0.18, 0.75, 3, 0.06), mat('gmp', { color: 0x3b4048, metal: 0.2, rough: 0.6 }));
+  tank.position.set(1.0, 0.3, 0); add('reservoir', 'gmp', tank, [0.4, -0.0, 0]);
+  const pipe = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 3.2, 12), mat('gmp', { color: 0x9aa0a6, metal: 0.8, rough: 0.3 }));
+  pipe.rotation.z = Math.PI / 2; pipe.position.set(0.25, 0.24, -0.45);
+  const muffler = new THREE.Mesh(new RoundedBoxGeometry(0.5, 0.18, 0.28, 3, 0.08), pipe.material); muffler.position.set(1.65, 0.26, -0.45);
+  const ex = new THREE.Group().add(pipe, muffler); add('echappement', 'gmp', ex, [0, -0.15, -0.9]);
+}
+{ // liaison au sol : roues, freins, ressorts
+  const tireGeo = new THREE.TorusGeometry(0.27, 0.1, 18, 48);
+  const rimGeo = new THREE.CylinderGeometry(0.22, 0.22, 0.16, 32);
+  const discGeo = new THREE.CylinderGeometry(0.17, 0.17, 0.025, 32);
+  for (const [x, xs] of [[-WB, 'av'], [WB, 'ar']]) for (const z of [-0.74, 0.74]) {
+    const s = Math.sign(z), id = `${xs}${s < 0 ? 'g' : 'd'}`;
+    const tire = new THREE.Mesh(tireGeo, mat('sol', { color: 0x24272b, metal: 0, rough: 0.85 }));
+    tire.scale.set(1, 1, 1.6); tire.position.set(x, R, z);
+    const rim = new THREE.Mesh(rimGeo, mat('sol', { color: 0xc4c9cf, metal: 0.9, rough: 0.25 }));
+    rim.rotation.x = Math.PI / 2; rim.position.set(x, R, z);
+    add('roue_' + id, 'sol', new THREE.Group().add(tire, rim), [0, 0, s * 2.4]);
+    const disc = new THREE.Mesh(discGeo, mat('sol', { color: 0x9097a0, metal: 0.9, rough: 0.3 }));
+    disc.rotation.x = Math.PI / 2; disc.position.set(x, R, z - s * 0.14);
+    const cal = new THREE.Mesh(new RoundedBoxGeometry(0.12, 0.16, 0.08, 2, 0.03), mat('sol', { color: 0xc8322b, metal: 0.3, rough: 0.4 }));
+    cal.position.set(x + 0.15, R + 0.08, z - s * 0.14);
+    add('frein_' + id, 'sol', new THREE.Group().add(disc, cal), [0, 0, s * 1.5]);
+    const pts = []; for (let i = 0; i <= 200; i++) { const a = i / 200 * Math.PI * 2 * 6; pts.push(new THREE.Vector3(Math.cos(a) * 0.09, i / 200 * 0.42, Math.sin(a) * 0.09)); }
+    const spring = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 400, 0.018, 8), mat('sol', { color: 0xc8322b, metal: 0.4, rough: 0.4 }));
+    spring.position.set(x, R + 0.12, z - s * 0.28);
+    add('ressort_' + id, 'sol', spring, [0, 0.9, s * 0.9]);
+  }
+}
+{ // habitacle : 2 rangées de 3 sièges (Multipla), planche de bord, volant
+  const sm = mat('habitacle', { color: 0x3a3f47, metal: 0, rough: 0.8 });
+  for (const [x, row] of [[-0.25, 1], [0.95, 2]]) for (const z of [-0.5, 0, 0.5]) {
+    const seat = new THREE.Group();
+    const cush = new THREE.Mesh(new RoundedBoxGeometry(0.45, 0.12, 0.42, 3, 0.05), sm); cush.position.set(x, 0.6, z);
+    const back = new THREE.Mesh(new RoundedBoxGeometry(0.1, 0.55, 0.42, 3, 0.05), sm); back.position.set(x + 0.24, 0.9, z); back.rotation.z = -0.15;
+    seat.add(cush, back); add(`siege_${row}_${z}`, 'habitacle', seat, [row === 1 ? 0 : 0.3, 1.1, z * 0.6]);
+  }
+  const dash = new THREE.Mesh(new RoundedBoxGeometry(0.4, 0.28, 1.5, 3, 0.08), mat('habitacle', { color: 0x2b2f35, metal: 0.05, rough: 0.7 }));
+  dash.position.set(-0.85, 0.95, 0); add('planche', 'habitacle', dash, [-0.3, 1.1, 0]);
+  const sw = new THREE.Mesh(new THREE.TorusGeometry(0.15, 0.02, 10, 32), dash.material);
+  sw.position.set(-0.62, 1.05, -0.4); sw.rotation.y = Math.PI / 2; sw.rotateX(0.5);
+  add('volant', 'habitacle', sw, [-0.1, 1.3, -0.2]);
+}
+{ // électricité : batterie, faisceau, optiques
+  const bat = new THREE.Mesh(new RoundedBoxGeometry(0.22, 0.18, 0.3, 2, 0.03), mat('elec', { color: 0x2c3138, metal: 0.1 }));
+  bat.position.set(-1.6, 0.95, -0.55); add('batterie', 'elec', bat, [-0.6, 1.5, -0.6]);
+  for (const z of [-0.6, 0.6]) {
+    const l = new THREE.Mesh(new RoundedBoxGeometry(0.06, 0.12, 0.3, 2, 0.04), mat('elec', { color: 0xf3f4f6, metal: 0.2, rough: 0.1 }));
+    l.position.set(-2.05, 0.86, z); add('optique_' + z, 'elec', l, [-1.6, 0.4, z * 0.8]);
+    const r = new THREE.Mesh(new RoundedBoxGeometry(0.05, 0.3, 0.12, 2, 0.03), mat('elec', { color: 0xb22a2a, metal: 0.2, rough: 0.2 }));
+    r.position.set(2.0, 1.15, z * 1.2); add('feu_' + z, 'elec', r, [1.7, 0.3, z * 0.8]);
+  }
+}
+// Éclaté + focus
+for (const p of parts) {
+  const k = FOCUS ? (p.userData.id === FOCUS ? 1 : 0) : EXPLODE;
+  p.position.copy(p.userData.base).addScaledVector(p.userData.dir, k);
+  if (FOCUS && p.userData.id !== FOCUS) p.traverse(o => { if (o.isMesh) { o.material = o.material.clone(); o.material.transparent = true; o.material.opacity = 0.12; o.castShadow = false; o.material.depthWrite = false; } });
+  if (FOCUS && p.userData.id === FOCUS) p.traverse(o => { if (o.isMesh) { o.material = o.material.clone(); o.material.emissive = new THREE.Color(0x2f5d9e); o.material.emissiveIntensity = 0.25; } });
+}
+// Focus : sous-pièces de la porte éclatées (sous-ensemble ⇒ ses pièces)
+if (FOCUS) {
+  const z0 = -3.5, items = [
+    ['Garniture', 0x3a3f47, new RoundedBoxGeometry(0.9, 0.55, 0.05, 2, 0.02), [-2.55, 0.95, z0 + 0.5]],
+    ['Lève-vitre', 0x8d939b, new RoundedBoxGeometry(0.45, 0.4, 0.04, 2, 0.01), [-1.5, 1.15, z0]],
+    ['Vitre', 0x9db4c8, new THREE.PlaneGeometry(0.7, 0.4), [-0.6, 1.25, z0]],
+    ['Serrure', 0x6c737c, new RoundedBoxGeometry(0.12, 0.16, 0.1, 2, 0.02), [0.25, 1.05, z0]],
+    ['Charnière', 0x6c737c, new RoundedBoxGeometry(0.08, 0.14, 0.08, 2, 0.02), [0.75, 1.15, z0]],
+    ['Charnière', 0x6c737c, new RoundedBoxGeometry(0.08, 0.14, 0.08, 2, 0.02), [0.75, 0.9, z0]],
+    ['Joint', 0x24272b, new THREE.TorusGeometry(0.28, 0.015, 6, 60), [1.35, 1.05, z0]],
+  ];
+  for (const [, c, geo, pos] of items) {
+    const m = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: c, metalness: 0.4, roughness: 0.45, side: THREE.DoubleSide, transparent: c === 0x9db4c8, opacity: c === 0x9db4c8 ? 0.5 : 1 }));
+    m.position.set(...pos); m.castShadow = true; scene.add(m);
+  }
+  // vis instanciées
+  const screws = new THREE.InstancedMesh(new THREE.CylinderGeometry(0.012, 0.012, 0.05, 8), new THREE.MeshStandardMaterial({ color: 0xa0a6ad, metalness: 0.9, roughness: 0.3 }), 12);
+  const d = new THREE.Object3D();
+  for (let i = 0; i < 12; i++) { d.position.set(-1.6 + (i % 6) * 0.14, 0.62 + Math.floor(i / 6) * 0.1, z0); d.rotation.x = Math.PI / 2; d.updateMatrix(); screws.setMatrixAt(i, d.matrix); }
+  scene.add(screws);
+}
+const cam = new THREE.PerspectiveCamera(32, W / H, 0.1, 100);
+const POS = { iso: [-6.2, 4.2, -7.4], exploded: [-7.5, 6.0, -9.5], focus: [-0.9, 3.2, -9.6] };
+cam.position.set(...POS[CAM]);
+const target = FOCUS ? new THREE.Vector3(-0.6, 0.9, -2.4) : new THREE.Vector3(0, 0.8, 0);
+cam.lookAt(target);
+renderer.render(scene, cam);
+window.__done = true;
+</script></body></html>
