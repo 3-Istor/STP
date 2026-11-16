@@ -708,9 +708,14 @@ func (q *Queries) ReadCurrentFX(ctx context.Context, asOf time.Time) ([]ReadCurr
 }
 
 const readCurrentPrices = `-- name: ReadCurrentPrices :many
-SELECT DISTINCT ON (offer_id) id,offer_id,amount::text AS amount_text,currency,source,quoted_at
-FROM price_quotes WHERE offer_id=ANY($1::bigint[]) AND quoted_at<=$2::timestamptz
-ORDER BY offer_id,quoted_at DESC,id DESC
+SELECT q.id,q.offer_id,q.amount::text AS amount_text,q.currency,q.source,q.quoted_at
+FROM (SELECT DISTINCT unnest($1::bigint[]) AS offer_id) o
+CROSS JOIN LATERAL (
+    SELECT p.id,p.offer_id,p.amount,p.currency,p.source,p.quoted_at FROM price_quotes p
+    WHERE p.offer_id=o.offer_id AND p.quoted_at<=$2::timestamptz
+    ORDER BY p.quoted_at DESC,p.id DESC LIMIT 1
+) q
+ORDER BY q.offer_id
 `
 
 type ReadCurrentPricesParams struct {
@@ -727,6 +732,9 @@ type ReadCurrentPricesRow struct {
 	QuotedAt   time.Time
 }
 
+// Dernière cotation de chaque offre : une sous-requête LATERAL par offre descend l'index
+// (offer_id, quoted_at DESC) et s'arrête à la première ligne. Un DISTINCT ON lirait tout l'historique de
+// chaque offre avant de trier (plusieurs secondes dès quelques milliers de cotations par offre).
 func (q *Queries) ReadCurrentPrices(ctx context.Context, arg ReadCurrentPricesParams) ([]ReadCurrentPricesRow, error) {
 	rows, err := q.db.Query(ctx, readCurrentPrices, arg.OfferIds, arg.AsOf)
 	if err != nil {
@@ -835,6 +843,38 @@ func (q *Queries) ReadFallbackSnapshots(ctx context.Context, takenAt time.Time) 
 			&i.TakenAt,
 			&i.CreatedAt,
 		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const readOffersByIDs = `-- name: ReadOffersByIDs :many
+SELECT o.id, o.currency FROM offers o
+WHERE o.id=ANY($1::bigint[])
+ORDER BY o.id
+`
+
+type ReadOffersByIDsRow struct {
+	ID       int64
+	Currency string
+}
+
+// Offres d'un lot d'identifiants (lecture par lot des prix d'une BOM) ; une offre inconnue est absente.
+func (q *Queries) ReadOffersByIDs(ctx context.Context, offerIds []int64) ([]ReadOffersByIDsRow, error) {
+	rows, err := q.db.Query(ctx, readOffersByIDs, offerIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ReadOffersByIDsRow
+	for rows.Next() {
+		var i ReadOffersByIDsRow
+		if err := rows.Scan(&i.ID, &i.Currency); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

@@ -98,6 +98,36 @@ func (s *Stub) Rate(_ context.Context, from, to money.Currency) (Rate, error) {
 	return r, nil
 }
 
+// OfferPrices implémente Pricing : même réponse qu'OfferPrice offre par offre (ErrNoQuote par offre absente).
+func (s *Stub) OfferPrices(_ context.Context, offerIDs []int64) (map[int64]QuoteResult, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	out := make(map[int64]QuoteResult, len(offerIDs))
+	for _, id := range offerIDs {
+		if q, ok := s.quotes[id]; ok {
+			out[id] = QuoteResult{Quote: q}
+		} else {
+			out[id] = QuoteResult{Err: fmt.Errorf("price of offer %d: %w", id, ErrNoQuote)}
+		}
+	}
+	return out, nil
+}
+
+// PairRates implémente Pricing : même réponse que Rate paire par paire (ErrNoRate par paire absente).
+func (s *Stub) PairRates(_ context.Context, pairs []FXPair) (map[FXPair]RateResult, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	out := make(map[FXPair]RateResult, len(pairs))
+	for _, p := range pairs {
+		if r, ok := s.rates[pair{p.Base, p.Quote}]; ok {
+			out[p] = RateResult{Rate: r}
+		} else {
+			out[p] = RateResult{Err: fmt.Errorf("rate %s->%s: %w", p.Base, p.Quote, ErrNoRate)}
+		}
+	}
+	return out, nil
+}
+
 // FreezePrices implémente Pricing : copie les cotations courantes (le stub ne garde pas d'historique,
 // l'instant du snapshot n'est donc pas utilisé). Les offres et paires manquantes sont listées dans
 // l'ordre croissant (message déterministe).

@@ -691,56 +691,100 @@ func (s *Service) totalsInput(ctx context.Context, b BOM, nodes []Node, stock []
 	}, nil
 }
 
-// LoadPrices lit, une seule fois chacun, le prix de chaque offre de offerIDs et le taux de chaque devise
-// d'offre vers currency : en direct si priceSnapshotID est nil, sinon dans ce snapshot de prix. Un prix ou un
-// taux absent (pricing.ErrNoQuote / ErrNoRate) est rendu dans le résultat, pour devenir une erreur nommée sur
-// le nœud ; toute autre erreur (snapshot de prix introuvable, panne) est renvoyée. Partagé par les totaux d'un
-// brouillon et ceux d'un snapshot de BOM (domaine snapshot) : même lecture des prix, même calcul.
+// LoadPrices lit le prix de chaque offre de offerIDs et le taux de chaque devise d'offre vers currency :
+// en direct en une seule lecture par lot (Pricing.OfferPrices / PairRates) si priceSnapshotID est nil, sinon
+// dans ce snapshot de prix (déjà en mémoire chez l'adapter). Un prix ou un taux absent (pricing.ErrNoQuote /
+// ErrNoRate) est rendu dans le résultat, pour devenir une erreur nommée sur le nœud ; toute autre erreur
+// (snapshot de prix introuvable, offre inconnue de la source, panne) est renvoyée. Partagé par les totaux
+// d'un brouillon et ceux d'un snapshot de BOM (domaine snapshot) : même lecture des prix, même calcul.
 func LoadPrices(ctx context.Context, p pricing.Pricing, priceSnapshotID *int64, offerIDs []int64, currency money.Currency) (
 	map[int64]PriceResult, map[money.Currency]RateResult, error,
 ) {
-	prices := make(map[int64]PriceResult, len(offerIDs))
+	ids := slices.Clone(offerIDs)
+	slices.Sort(ids)
+	ids = slices.Compact(ids)
+	prices, err := loadOfferPrices(ctx, p, priceSnapshotID, ids)
+	if err != nil {
+		return nil, nil, err
+	}
 	var fromCurrencies []money.Currency
-	for _, id := range offerIDs {
-		q, err := loadOfferPrice(ctx, p, priceSnapshotID, id)
+	for _, id := range ids {
+		r := prices[id]
 		switch {
-		case errors.Is(err, pricing.ErrNoQuote):
-			prices[id] = PriceResult{Err: err}
-		case err != nil:
-			return nil, nil, err
+		case errors.Is(r.Err, pricing.ErrNoQuote):
+			prices[id] = PriceResult{Err: r.Err}
+		case r.Err != nil:
+			return nil, nil, r.Err
 		default:
-			prices[id] = PriceResult{Quote: q}
-			if c := q.Price.Currency(); c != currency {
+			if c := r.Quote.Price.Currency(); c != currency {
 				fromCurrencies = append(fromCurrencies, c)
 			}
 		}
 	}
 	slices.Sort(fromCurrencies)
-	rates := make(map[money.Currency]RateResult)
-	for _, from := range slices.Compact(fromCurrencies) {
-		r, err := loadRate(ctx, p, priceSnapshotID, from, currency)
+	fromCurrencies = slices.Compact(fromCurrencies)
+	found, err := loadRates(ctx, p, priceSnapshotID, fromCurrencies, currency)
+	if err != nil {
+		return nil, nil, err
+	}
+	rates := make(map[money.Currency]RateResult, len(fromCurrencies))
+	for _, from := range fromCurrencies {
+		r := found[from]
 		switch {
-		case errors.Is(err, pricing.ErrNoRate):
-			rates[from] = RateResult{Err: err}
-		case err != nil:
-			return nil, nil, err
+		case errors.Is(r.Err, pricing.ErrNoRate):
+			rates[from] = RateResult{Err: r.Err}
+		case r.Err != nil:
+			return nil, nil, r.Err
 		default:
-			rates[from] = RateResult{Rate: r}
+			rates[from] = RateResult{Rate: r.Rate}
 		}
 	}
 	return prices, rates, nil
 }
 
-func loadOfferPrice(ctx context.Context, p pricing.Pricing, snapID *int64, offerID int64) (pricing.Quote, error) {
+// loadOfferPrices : une entrée par offre de ids. En direct, une seule lecture pour tout le lot.
+func loadOfferPrices(ctx context.Context, p pricing.Pricing, snapID *int64, ids []int64) (map[int64]PriceResult, error) {
 	if snapID == nil {
-		return p.OfferPrice(ctx, offerID)
+		return p.OfferPrices(ctx, ids)
 	}
-	return p.SnapshotOfferPrice(ctx, *snapID, offerID)
+	out := make(map[int64]PriceResult, len(ids))
+	for _, id := range ids {
+		q, err := p.SnapshotOfferPrice(ctx, *snapID, id)
+		out[id] = PriceResult{Quote: q, Err: err}
+	}
+	return out, nil
 }
 
-func loadRate(ctx context.Context, p pricing.Pricing, snapID *int64, from, to money.Currency) (pricing.Rate, error) {
+// loadRates : une entrée par devise d'origine. En direct, une seule lecture du cadre FX.
+func loadRates(ctx context.Context, p pricing.Pricing, snapID *int64, from []money.Currency, to money.Currency) (map[money.Currency]RateResult, error) {
+	out := make(map[money.Currency]RateResult, len(from))
 	if snapID == nil {
-		return p.Rate(ctx, from, to)
+		pairs := make([]pricing.FXPair, 0, len(from))
+		for _, c := range from {
+			pairs = append(pairs, pricing.FXPair{Base: c, Quote: to})
+		}
+		found, err := p.PairRates(ctx, pairs)
+		if err != nil {
+			return nil, err
+		}
+		for _, c := range from {
+			out[c] = found[pricing.FXPair{Base: c, Quote: to}]
+		}
+		return out, nil
 	}
-	return p.SnapshotRate(ctx, *snapID, from, to)
+	for _, c := range from {
+		r, err := p.SnapshotRate(ctx, *snapID, c, to)
+		out[c] = RateResult{Rate: r, Err: err}
+	}
+	return out, nil
+}
+
+// loadRate lit un seul taux (coût rendu, à la demande) : en direct ou dans le snapshot de prix.
+func loadRate(ctx context.Context, p pricing.Pricing, snapID *int64, from, to money.Currency) (pricing.Rate, error) {
+	found, err := loadRates(ctx, p, snapID, []money.Currency{from}, to)
+	if err != nil {
+		return pricing.Rate{}, err
+	}
+	r := found[from]
+	return r.Rate, r.Err
 }

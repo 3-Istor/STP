@@ -44,6 +44,16 @@ func (p *BOMPricing) Rate(ctx context.Context, from, to money.Currency) (Rate, e
 	return p.reads.Rate(ctx, from, to)
 }
 
+// OfferPrices implémente Pricing : une seule lecture du marché pour tout le lot.
+func (p *BOMPricing) OfferPrices(ctx context.Context, offerIDs []int64) (map[int64]QuoteResult, error) {
+	return p.reads.OfferPrices(ctx, offerIDs)
+}
+
+// PairRates implémente Pricing : une seule lecture du cadre FX pour toutes les paires.
+func (p *BOMPricing) PairRates(ctx context.Context, pairs []FXPair) (map[FXPair]RateResult, error) {
+	return p.reads.PairRates(ctx, pairs)
+}
+
 // FreezePrices implémente Pricing : un snapshot de prix de scope « bom » est créé à l'instant courant de
 // la source (temps simulé) ; at, en temps réel, n'est pas utilisé. Une couverture incomplète est traduite
 // en ErrNoQuote / ErrNoRate qui listent les offres et les paires manquantes.

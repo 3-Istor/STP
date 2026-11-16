@@ -117,10 +117,24 @@ WHERE (sqlc.arg(offer_id)::bigint > 0 AND o.id=sqlc.arg(offer_id)::bigint)
             OR (sqlc.arg(supplier_id)::bigint = 0 AND EXISTS(SELECT 1 FROM bom_nodes n WHERE n.offer_id=o.id))))
 ORDER BY o.id;
 
+-- Dernière cotation de chaque offre : une sous-requête LATERAL par offre descend l'index
+-- (offer_id, quoted_at DESC) et s'arrête à la première ligne. Un DISTINCT ON lirait tout l'historique de
+-- chaque offre avant de trier (plusieurs secondes dès quelques milliers de cotations par offre).
 -- name: ReadCurrentPrices :many
-SELECT DISTINCT ON (offer_id) id,offer_id,amount::text AS amount_text,currency,source,quoted_at
-FROM price_quotes WHERE offer_id=ANY(sqlc.arg(offer_ids)::bigint[]) AND quoted_at<=sqlc.arg(as_of)::timestamptz
-ORDER BY offer_id,quoted_at DESC,id DESC;
+SELECT q.id,q.offer_id,q.amount::text AS amount_text,q.currency,q.source,q.quoted_at
+FROM (SELECT DISTINCT unnest(sqlc.arg(offer_ids)::bigint[]) AS offer_id) o
+CROSS JOIN LATERAL (
+    SELECT p.id,p.offer_id,p.amount,p.currency,p.source,p.quoted_at FROM price_quotes p
+    WHERE p.offer_id=o.offer_id AND p.quoted_at<=sqlc.arg(as_of)::timestamptz
+    ORDER BY p.quoted_at DESC,p.id DESC LIMIT 1
+) q
+ORDER BY q.offer_id;
+
+-- Offres d'un lot d'identifiants (lecture par lot des prix d'une BOM) ; une offre inconnue est absente.
+-- name: ReadOffersByIDs :many
+SELECT o.id, o.currency FROM offers o
+WHERE o.id=ANY(sqlc.arg(offer_ids)::bigint[])
+ORDER BY o.id;
 
 -- name: ReadCurrentFX :many
 SELECT DISTINCT ON (base_currency,quote_currency) id,base_currency,quote_currency,rate::text AS rate_text,source,quoted_at

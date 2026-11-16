@@ -59,55 +59,60 @@ func (s *Service) CostAnomalies(ctx context.Context, bomID int64, threshold deci
 		return CostAnomalies{}, fmt.Errorf("cost anomalies of bom %d: %w", bomID, err)
 	}
 
-	// Prix en direct de chaque offre, un par un : une offre illisible (sans cotation, données invalides,
-	// entité inconnue côté prix) écarte seulement sa pièce de la médiane, avec la raison ; une panne échoue.
-	quotes := map[int64]PriceResult{}
-	var fromCurrencies []money.Currency
-	readOffer := func(id int64) error {
-		if _, done := quotes[id]; done {
-			return nil
-		}
-		q, err := s.pricing.OfferPrice(ctx, id)
-		switch {
-		case errors.Is(err, pricing.ErrNoQuote), errors.Is(err, pricing.ErrInvalidHistoryData),
-			errors.Is(err, pricing.ErrPriceEntityNotFound), errors.Is(err, pricing.ErrInvalidSourceData):
-			quotes[id] = PriceResult{Err: err}
-		case err != nil:
-			return err
-		default:
-			quotes[id] = PriceResult{Quote: q}
-			if c := q.Price.Currency(); c != currency {
-				fromCurrencies = append(fromCurrencies, c)
-			}
-		}
-		return nil
-	}
+	// Prix en direct de toutes les offres actives du catalogue et de celles de la BOM, en une seule lecture :
+	// une offre illisible (sans cotation, données invalides, entité inconnue côté prix) écarte seulement sa
+	// pièce de la médiane, avec la raison ; une panne échoue.
+	var ids []int64
 	for _, p := range all {
 		for _, o := range p.Offers {
 			if o.ArchivedAt == nil {
-				if err := readOffer(o.ID); err != nil {
-					return CostAnomalies{}, fmt.Errorf("cost anomalies of bom %d: %w", bomID, err)
-				}
+				ids = append(ids, o.ID)
 			}
 		}
 	}
-	for _, id := range offerIDs(nodes) {
-		if err := readOffer(id); err != nil {
-			return CostAnomalies{}, fmt.Errorf("cost anomalies of bom %d: %w", bomID, err)
+	ids = append(ids, offerIDs(nodes)...)
+	slices.Sort(ids)
+	ids = slices.Compact(ids)
+	quotes, err := s.pricing.OfferPrices(ctx, ids)
+	if err != nil {
+		return CostAnomalies{}, fmt.Errorf("cost anomalies of bom %d: %w", bomID, err)
+	}
+	var fromCurrencies []money.Currency
+	for _, id := range ids {
+		q := quotes[id]
+		switch {
+		case q.Err == nil:
+			if c := q.Quote.Price.Currency(); c != currency {
+				fromCurrencies = append(fromCurrencies, c)
+			}
+		case errors.Is(q.Err, pricing.ErrNoQuote), errors.Is(q.Err, pricing.ErrInvalidHistoryData),
+			errors.Is(q.Err, pricing.ErrPriceEntityNotFound), errors.Is(q.Err, pricing.ErrInvalidSourceData):
+			quotes[id] = PriceResult{Err: q.Err}
+		default:
+			return CostAnomalies{}, fmt.Errorf("cost anomalies of bom %d: offer %d: %w", bomID, id, q.Err)
 		}
 	}
 	slices.Sort(fromCurrencies)
+	fromCurrencies = slices.Compact(fromCurrencies)
+	pairs := make([]pricing.FXPair, 0, len(fromCurrencies))
+	for _, from := range fromCurrencies {
+		pairs = append(pairs, pricing.FXPair{Base: from, Quote: currency})
+	}
+	found, err := s.pricing.PairRates(ctx, pairs)
+	if err != nil {
+		return CostAnomalies{}, fmt.Errorf("cost anomalies of bom %d: %w", bomID, err)
+	}
 	rates := map[money.Currency]RateResult{}
-	for _, from := range slices.Compact(fromCurrencies) {
-		r, err := s.pricing.Rate(ctx, from, currency)
+	for _, from := range fromCurrencies {
+		r := found[pricing.FXPair{Base: from, Quote: currency}]
 		switch {
-		case errors.Is(err, pricing.ErrNoRate):
-			rates[from] = RateResult{Err: err}
-		case err != nil:
-			return CostAnomalies{}, fmt.Errorf("cost anomalies of bom %d: %w", bomID, err)
+		case errors.Is(r.Err, pricing.ErrNoRate):
+			rates[from] = RateResult{Err: r.Err}
+		case r.Err != nil:
+			return CostAnomalies{}, fmt.Errorf("cost anomalies of bom %d: %w", bomID, r.Err)
 		default:
-			rates[from] = RateResult{Rate: r}
-			out.Rates = append(out.Rates, r)
+			rates[from] = RateResult{Rate: r.Rate}
+			out.Rates = append(out.Rates, r.Rate)
 		}
 	}
 	one := decimal.NewFromInt(1)

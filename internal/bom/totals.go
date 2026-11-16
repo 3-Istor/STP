@@ -51,16 +51,10 @@ type PartFacts struct {
 }
 
 // PriceResult est le prix d'une offre, ou l'erreur qui explique son absence (ex. pricing.ErrNoQuote).
-type PriceResult struct {
-	Quote pricing.Quote
-	Err   error
-}
+type PriceResult = pricing.QuoteResult
 
 // RateResult est le taux d'une devise vers la devise de la BOM, ou l'erreur qui explique son absence.
-type RateResult struct {
-	Rate pricing.Rate
-	Err  error
-}
+type RateResult = pricing.RateResult
 
 // TotalsInput rassemble tout ce dont dépend le calcul : rien d'autre (ni heure, ni réseau, ni base).
 type TotalsInput struct {
