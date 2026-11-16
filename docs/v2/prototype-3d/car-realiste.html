@@ -1,0 +1,150 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<style>html,body{margin:0;background:#f1f3f5;overflow:hidden}</style>
+<script type="importmap">{"imports":{"three":"./three/build/three.module.js","three/addons/":"./three/examples/jsm/"}}</script>
+</head><body>
+<script type="module">
+// Spike jetable n°3 : modèle réaliste sous licence (Khronos « Car Concept », CC-BY 4.0, Eric Chadwick / DGG)
+// relié aux sous-ensembles de BOM par une table de correspondance nom de nœud → sous-ensemble.
+// Éclatement calculé automatiquement depuis les boîtes englobantes (aucun vecteur saisi à la main).
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+
+const q = new URLSearchParams(location.search);
+const EXPLODE = parseFloat(q.get('explode') || '0');
+const MODE = q.get('mode') || 'paint';          // paint | xray
+const HEAT = q.get('heat') !== '0';
+const FOCUS = q.get('focus') || '';
+const CAM = q.get('cam') || 'iso';
+const W = +(q.get('w') || 1600), H = +(q.get('h') || 900);
+
+// Table de correspondance : sous-ensemble de BOM → motifs de noms de nœuds du modèle (versionnée avec le modèle)
+const MAP = [
+  ['porte_avg', /^(BodyDoorL|InteriorDoorL)/], ['porte_avd', /^(BodyDoorR|InteriorDoorR)/],
+  ['capot', /^BodyHood/], ['pavillon', /^BodyRoofPanel/], ['hayon', /^(InteriorRearHatch|BodyRearwindow|BodyRearPanels)/],
+  ['frein_avg', /^WheelFrontLBrake/], ['frein_avd', /^WheelFrontRBrake/], ['frein_arg', /^WheelRearLBrake/], ['frein_ard', /^WheelRearRBrake/],
+  ['jante_avg', /^WheelFrontLRim/], ['jante_avd', /^WheelFrontRRim/], ['jante_arg', /^WheelRearLRim/], ['jante_ard', /^WheelRearRRim/],
+  ['pneu_avg', /^WheelFrontL$/], ['pneu_avd', /^WheelFrontR$/], ['pneu_arg', /^WheelRearL$/], ['pneu_ard', /^WheelRearR$/],
+  ['sieges', /^InteriorSeats/], ['planche', /^(InteriorDash|InteriorSteering|InteriorPedal)/],
+  ['moteur', /^(Engine|Axles)/], ['vitrages', /^(BodyWindshield|BodyWindowsRearSides)/],
+  ['optiques', /^(BodyHeadlights|BodyTaillights|BodyTurnsignals)/],
+  ['caisse', /^(BodyUnderside|BodyPillars|BodyPanels|InteriorCage|InteriorFloor|InteriorMid|InteriorPillar|InteriorRearPanels)/],
+];
+const HIDE = /^(License Plate|InteriorSteeringEmblem)$/;      // logos et marques : jamais affichés
+const BUDGET = { porte_avg: 'over', porte_avd: 'over', moteur: 'over', frein_avg: 'warn', frein_avd: 'warn', capot: 'warn' };
+const COLORS = { over: 0xc8262b, warn: 0xe08a12 };
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setSize(W, H); renderer.setPixelRatio(1);
+renderer.shadowMap.enabled = true; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.0;
+document.body.appendChild(renderer.domElement);
+const scene = new THREE.Scene(); scene.background = new THREE.Color(0xf1f3f5);
+scene.environment = new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(), 0.03).texture;
+const sun = new THREE.DirectionalLight(0xffffff, 2.0); sun.position.set(-3, 10, 4); sun.castShadow = true; sun.shadow.mapSize.set(4096, 4096);
+Object.assign(sun.shadow.camera, { left: -6, right: 6, top: 6, bottom: -6, near: 1, far: 30 }); sun.shadow.bias = -0.0004;
+scene.add(sun, new THREE.HemisphereLight(0xffffff, 0x8e959e, 0.4));
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(80, 80), new THREE.ShadowMaterial({ opacity: 0.2 })); ground.rotation.x = -Math.PI / 2; ground.receiveShadow = true; scene.add(ground);
+
+const gltf = await new GLTFLoader().loadAsync('./CarConcept.glb');
+const car = gltf.scene;
+// Variante de peinture neutre (KHR_materials_variants : Carmine → Pearl) pour que seul le statut budget colore
+const pearl = { 'Paint 1 Carmine': 22, 'Paint 2 Carmine': 24, 'Interior 3 Carmine': 27 };
+const swap = {}; for (const [k, i] of Object.entries(pearl)) swap[k] = await gltf.parser.getDependency('material', i);
+car.traverse(o => { if (!o.isMesh) return;
+  if (swap[o.material.name]) { const m = swap[o.material.name].clone(); m.iridescence = 0; m.sheen = 0;
+    if (/Paint/.test(o.material.name)) { m.color.setHex(0xc3c8cf); m.metalness = 0.65; m.roughness = 0.28; m.clearcoat = 1; m.clearcoatRoughness = 0.06; m.map = null; }
+    else { m.color.setHex(0x3b3f46); m.map = null; }
+    o.material = m; }
+  if (/^Interior [12]$/.test(o.material.name)) { o.material = o.material.clone(); o.material.color.setHex(0x4a4e55); }
+  if (o.material.name === 'License') o.visible = false;                     // plaque avec logo : masquée
+  if (o.material.name === 'Tireside') { o.material = o.material.clone(); o.material.map = null; o.material.color.setHex(0x1b1c1e); } // flanc avec logo : texture retirée
+});
+// Normalisation : longueur sur x, posée au sol, centrée
+let box = new THREE.Box3().setFromObject(car); let size = box.getSize(new THREE.Vector3());
+if (size.z > size.x) car.rotation.y = Math.PI / 2;
+car.updateMatrixWorld(true); box = new THREE.Box3().setFromObject(car); const c = box.getCenter(new THREE.Vector3());
+car.position.set(-c.x, -box.min.y, -c.z); scene.add(car); car.updateMatrixWorld(true);
+box = new THREE.Box3().setFromObject(car); size = box.getSize(new THREE.Vector3()); const center = box.getCenter(new THREE.Vector3());
+
+// Regroupement des nœuds par sous-ensemble
+const groups = {};
+car.traverse(o => {
+  if (!o.name) return;
+  if (HIDE.test(o.name)) { o.visible = false; return; }
+  const hit = MAP.find(([, re]) => re.test(o.name)); if (!hit) return;
+  // ne garder que le nœud le plus haut de chaque sous-ensemble (ex. WheelFrontL porte ses enfants)
+  let p = o.parent, inherited = false; while (p) { const h = MAP.find(([, re]) => re.test(p.name || '')); if (h && h[0] === hit[0]) { inherited = true; break; } p = p.parent; }
+  if (!inherited) (groups[hit[0]] ||= []).push(o);
+});
+// Les enfants de BodyUnderside appartiennent à d'autres groupes : on éclate chaque nœud, pas la racine
+const items = [];
+for (const [id, nodes] of Object.entries(groups)) for (const n of nodes) {
+  if (id === 'caisse' && n.name === 'BodyUnderside') { // racine : seulement ses maillages propres
+    items.push({ id, node: n, own: true }); continue;
+  }
+  items.push({ id, node: n });
+}
+// Couleur budget / radiographie
+car.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+function paintGroup(id, fn) { for (const it of items.filter(i => i.id === id)) (it.own ? it.node.children.filter(ch => ch.isMesh).concat(it.node.isMesh ? [it.node] : []) : [it.node]).forEach(n => n.traverse(m => { if (m.isMesh) fn(m); })); }
+if (MODE === 'xray') car.traverse(o => {
+  if (!o.isMesh) return; const nm = (o.name || '') + (o.parent?.name || '');
+  if (/^(Body|InteriorCage|InteriorPillar)/.test(o.name) || /^(Body)/.test(o.parent?.name || '') && !/Wheel/.test(nm)) {
+    o.material = o.material.clone(); o.material.transparent = true; o.material.opacity = 0.09; o.material.depthWrite = false; o.castShadow = false;
+    if (o.material.transmission) o.material.transmission = 0;
+  }
+});
+if (HEAT) for (const [id, st] of Object.entries(BUDGET)) paintGroup(id, m => {
+  m.material = m.material.clone(); m.material.color?.setHex(COLORS[st]); if (m.material.map && !/Brake/.test(m.name)) m.material.map = null;
+  if (/Disc/.test(m.name) || m.material.name === 'Disc') { m.material.color.setHex(0xa9afb6); }
+  m.material.opacity = MODE === 'xray' ? Math.max(m.material.opacity, 0.55) : m.material.opacity;
+});
+
+// Éclatement automatique : direction = centre du nœud − centre véhicule, normalisée, latérale renforcée
+const corner = FOCUS === 'coin_avg';
+const CORNER_ORDER = { frein_avg: 0.5, jante_avg: 1.0, pneu_avg: 1.55 };
+const targets = [];
+const wfl = new THREE.Box3().setFromObject(groups.pneu_avg[0]).getCenter(new THREE.Vector3());
+for (const it of items) {
+  const b = new THREE.Box3().setFromObject(it.node); if (b.isEmpty()) continue;
+  const cc = b.getCenter(new THREE.Vector3()); const d = cc.clone().sub(center); d.y = Math.max(d.y, 0) + 0.15;
+  d.x *= 0.6; d.z *= 1.6; if (/^(pavillon|sieges)/.test(it.id)) d.y += 0.9; if (it.id === 'moteur') { d.y += 0.7; d.x *= 1.4; }
+  if (it.id === 'caisse') d.set(0, 0, 0);
+  let off = d.multiplyScalar(EXPLODE * 0.55);
+  if (corner) {
+    const k = CORNER_ORDER[it.id];
+    off = k !== undefined ? new THREE.Vector3(0, 0, Math.sign(cc.z - center.z) * k) : new THREE.Vector3();
+    const targets = it.own ? it.node.children.filter(ch => ch.isMesh) : [it.node];
+    if (k === undefined) targets.forEach(t => t.traverse(m => { if (m.isMesh) { m.material = m.material.clone(); m.material.transparent = true; m.material.opacity = 0.1; m.material.depthWrite = false; m.castShadow = false; } }));
+  }
+  if (!it.own) targets.push({ node: it.node, world: it.node.getWorldPosition(new THREE.Vector3()).add(off) });
+}
+// application parent → enfant : chaque nœud reçoit sa position monde cible, sans cumuler celle de ses ancêtres
+const depth = n => { let d = 0; while (n.parent) { d++; n = n.parent; } return d; };
+targets.sort((a, b) => depth(a.node) - depth(b.node)).forEach(t => {
+  t.node.parent.updateMatrixWorld(true);
+  t.node.position.copy(t.world.clone().applyMatrix4(new THREE.Matrix4().copy(t.node.parent.matrixWorld).invert()));
+  t.node.updateMatrixWorld(true);
+});
+window.__groups = Object.fromEntries(Object.entries(groups).map(([k, v]) => [k, v.map(n => n.name)]));
+window.__size = size.toArray();
+
+const cam = new THREE.PerspectiveCamera(28, W / H, 0.1, 100);
+const L = size.x;
+const V = {
+  iso: { p: [L * 1.1, L * 0.5, L * 1.05], t: [0, size.y * 0.42, 0] },
+  exploded: { p: [L * 1.45, L * 0.95, L * 1.5], t: [0, size.y * 0.6, 0] },
+  corner: { p: [-L * 0.9, L * 0.3, L * 1.1], t: [-L * 0.3, size.y * 0.3, size.z * 0.55] },
+};
+V.corner = { p: [wfl.x + 2.4, wfl.y + 0.85, wfl.z + Math.sign(wfl.z) * 3.9], t: [wfl.x - 0.15, wfl.y + 0.05, wfl.z + Math.sign(wfl.z) * 0.85] };
+const v = V[CAM]; cam.position.set(...v.p); cam.lookAt(...v.t);
+const composer = new EffectComposer(renderer); composer.addPass(new RenderPass(scene, cam));
+const ao = new GTAOPass(scene, cam, W, H); ao.blendIntensity = 0.9; composer.addPass(ao); composer.addPass(new OutputPass());
+composer.render();
+window.__done = true;
+</script></body></html>

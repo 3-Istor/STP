@@ -1,239 +1,230 @@
 # BOM Studio V2 : diagnostic, vision cible et trajectoire
 
-Statut : **Proposé** (à valider par l'équipe). Date : 2026-11-16. Rédigé avec Claude.
-**Relu par un agent à contexte vierge** : ses corrections factuelles sont intégrées (voir §9).
-Sources : `docs/features.md`, `docs/feature_implemented.md`, `docs/critère_evaluation.md`, `docs/pivot.md`,
-les ADR, le PDF du cours STP, la V1 (`3-Istor/NLPF`), la revue de Brian du 14/11, la discussion d'équipe du 16/11,
-l'application lancée en local (captures `avant-*.png`), et un prototype 3D jetable (`prototype-3d-*.png`).
+Statut : **Proposé** (à valider par l'équipe). Dates : 2026-11-16 → 2026-11-17. Rédigé avec Claude.
+**Deux relectures indépendantes intégrées** : une vérification factuelle du code (§11) et un audit métier joué par un
+agent « cost engineer automobile » (§2). Maquettes : artefact Design « BOM Studio V2 — maquettes cibles ».
+Prototypes 3D : `prototype-3d/`.
 
 ---
 
 ## 1. Diagnostic
 
-### Ce qui est solide (et qu'il faut **montrer**)
+**Solide, à montrer** : backend Go modulaire (~15 000 lignes écrites à la main), montants décimaux avec devise,
+snapshots immuables protégés en base, 30 ADR, `AGENTS.md` multi-IA, `.specs/`, CI DevSecOps, arbre de **29 977 nœuds**
+déjà virtualisé.
 
-| Domaine | Preuve |
+**Ce qui ne va pas :**
+1. **La valeur ne se voit pas** : les features P2 sont rangées dans des menus texte (`avant-bom.png`).
+2. **Pas de parcours de décision** : on consulte, on n'arbitre pas.
+3. **Le coût n'est pas une décision fiable.** Le total vaut dernière cotation × quantité × taux. Il n'inclut ni les
+   remises de contrat, ni le coût rendu, ni l'outillage. Les tables de douane ne sont pas figées dans le snapshot.
+4. **Deux langages visuels** (`avant-fournisseurs.png`), alors que la V1 « logiciel d'entreprise » avait plu au prof.
+5. **Front sans structure** : pas de routeur ni de cache de données.
+6. **La 3D de la branche** affiche un cube par pièce feuille, donc un nuage illisible (`avant-3d-branche.png`).
+7. **Pas de budgets dans les données de démo** : aucun cockpit rouge/orange/vert n'est possible.
+
+---
+
+## 2. Audit métier : ce qu'un cost engineer en dirait
+
+Un agent a joué un expert achats / cost engineering automobile et jugé chaque feature face à un simple Excel.
+Ses conclusions les plus importantes :
+
+**Le défaut de fond.** En automobile, le prix d'une pièce ne fluctue pas chaque jour. C'est un **prix contractuel**
+fixé à la nomination du fournisseur, avec une baisse annuelle négociée, et il ne bouge qu'à travers des **clauses
+d'indexation** (matières, change), en général chaque trimestre. Le flux de prix « en direct » est un artefact du
+simulateur.
+→ Le cours impose une API de prix simulée avec snapshots : on la garde, mais on la **présente comme une source de
+cotations et d'indices**, pas comme un cours de bourse. On chiffre au **taux budget** de l'année, et le taux courant
+(BCE) sert à mesurer l'écart.
+
+| Feature | Valeur face à Excel | Verdict |
+|---|---|---|
+| Snapshots immuables et rejouables | **forte** : c'est le gel de BOM d'un jalon | garder, mettre au centre |
+| Target costing (budget par sous-système) | **forte** : cœur du métier | garder, seeder des budgets |
+| Pont de coût entre deux versions | **forte** : livrable des revues de programme | **priorité 1** |
+| Contrôles avant publication | **forte** : revue de jalon | garder |
+| Import de l'Excel avec rapport ligne par ligne | **forte** : vrai point d'entrée de l'utilisateur | garder |
+| Contrats à paliers, coût rendu | forte en théorie, nulle aujourd'hui (hors totaux) | **refaire** : dans les totaux et le snapshot |
+| Multi-devise | moyenne | refaire : taux budget + taux courant |
+| Exposition au change | moyenne, peu coûteuse | garder |
+| Anomalies (3 × médiane de catégorie) | faible : une catégorie mélange des masses | refaire en **€/kg par famille** |
+| Optimiseur par alternatives | moyenne, naïf | refaire : proposition chiffrée **avec coût de changement** |
+| Délais, make-or-buy | moyenne | garder, discret |
+| Stock, ETP, stratégies par nœud | faible ou gadget | **couper de la démo** |
+| Fourchette min/max des offres | trompeuse : toutes les pièces au maxi en même temps n'arrive jamais | couper ; garder le classement des pièces influentes |
+| Indice HHI | faible | remplacer par mono-source et poids des 5 premiers |
+| Deux sources de change avec quarantaine | gadget métier | couper |
+| Facteurs carbone ADEME | hors sujet coût | couper (CO₂ reste affiché) |
+| Vue 3D | gadget métier, effet démo | **bonus**, jamais dans le chemin critique |
+
+**Ce qui manque**, et que l'on ajoute :
+1. **Outillage et frais non récurrents amortis** sur le volume du programme (coût pièce = prix + outillage ÷ volume).
+   Sans ça, comparer deux offres est faux.
+2. **Suivi des pistes de réduction** : gain estimé, responsable, statut, coût de changement, lien vers le brouillon
+   qui la chiffre. Fermer l'écart à la cible, c'est ça le target costing réel.
+3. **€/kg par famille** pour les anomalies (should-cost paramétrique minimal).
+4. **Pièces mono-source** et pays d'origine.
+5. **Export** du snapshot et du pont de coût (PDF, Excel) : la direction lit des tableaux.
+
+> **La phrase de la soutenance :** « Excel vous donne un chiffre. BOM Studio vous dit d'où il vient, ce qui a changé
+> depuis la dernière version, et le refait à l'identique six mois plus tard. »
+
+---
+
+## 3. Parcours de démonstration (5 minutes)
+
+1. **Importer** l'Excel de la Multipla : le rapport ligne par ligne signale les lignes sans offre, une devise inconnue,
+   un cycle. Le reste est importé. (45 s)
+2. **Cockpit** : la carrosserie dépasse son budget de 11 %, elle est en rouge. Écart à la cible : 826 €. (30 s)
+3. **« Pourquoi ce coût ? »** : prix contractuel → remise de palier → change au taux budget → douane et transport →
+   outillage amorti. (60 s)
+4. **Brouillon** : on chiffre une piste (jante alu → tôle, offre vers l'UE). (45 s)
+5. **Pont de coût V1 → brouillon**, décomposé en effet change, effet prix, changements d'offres, outillage. (60 s)
+6. **Publier** : un contrôle bloque sur un contrat expiré. On corrige, on justifie, on publie. (45 s)
+7. **Rejouer** : on modifie les tables de douane, on rouvre la V1, le chiffre est identique au centime. (15 s)
+
+Bonus si le temps le permet : un clic sur la porte rouge en 3D ouvre la BOM au bon nœud.
+
+---
+
+## 4. Navigation : un parcours en 5 étapes, à la Lightroom
+
+Lightroom sépare Bibliothèque, Développement, Export… en gardant la même photo sélectionnée. Ici, le métier a la même
+forme. Ce n'est **pas un assistant linéaire** : on va et vient librement, l'ordre sert de repère.
+
+| Étape | Question | Contenu |
+|---|---|---|
+| **1 Structurer** | De quoi est faite la voiture ? | Arbre, 3D, import Excel, cas d'emploi |
+| **2 Chiffrer** | Combien, et pourquoi ? | Coût expliqué, budgets, sensibilité change et matières, anomalies €/kg |
+| **3 Sourcer** | Chez qui, à quelles conditions ? | Pays, mono-source, poids des 5 premiers, contrats, taux budget et courant |
+| **4 Arbitrer** | Que garder ? | Pistes de réduction, brouillons, pont de coût, comparaison |
+| **5 Publier** | Est-ce prêt ? | Contrôles, note de décision, traçabilité, export |
+
+Éléments communs à toutes les étapes :
+- en haut, les 5 étapes avec un badge d'état (ex. « Publier 5/7 ») ;
+- à gauche, le **navigateur BOM**, avec la même sélection partout ;
+- en bas, la **bande des sous-systèmes** colorée par budget, comme le film de Lightroom ;
+- en bas à gauche, le **bouton thème clair / sombre**, enregistré par navigateur.
+
+Cette barre remplace le rail d'icônes à gauche de la première proposition, qui découpait par objet (BOM,
+fournisseurs…) et non par étape de travail.
+
+---
+
+## 5. Périmètre
+
+| Niveau | Contenu |
 |---|---|
-| Backend Go modulaire | ~15 000 lignes écrites à la main (hors sqlc et tests). Domaines `bom`, `catalog`, `pricing`, `snapshot`, `supplier`, `money`. Handlers fins |
-| Invariants métier | Montants décimaux avec devise, snapshots immuables (trigger SQL), reproductibilité, erreurs nommées |
-| Décisions tracées | 30 ADR, `docs/pivot.md` qui chiffre le coût du pivot |
-| Usine logicielle | `AGENTS.md` multi-IA, `.specs/`, DoR/DoD, CI DevSecOps (gosec, govulncheck, race, e2e Playwright) |
-| Fonctions métier P1 et P2 | Catalogue, arbre, prix en direct (SSE), multi-devise, contrats, budgets cibles, stock, chemin critique, ETP, coût rendu par pièce, make-or-buy, anomalies, stratégies par nœud |
-| Volumétrie | Multipla : **29 977 nœuds** (6 systèmes → 56 sous-ensembles → …), arbre **déjà virtualisé à la main** (`BomTree.tsx`) |
-
-### Ce qui ne va pas
-
-1. **La valeur ne se voit pas.** Les features P2 sont rangées dans des `▸ details` en texte (« Anomalies de coût : 558 »,
-   « Disponibilité : 58 j »). Un jury voit un arbre et quatre chiffres (`avant-bom.png`). C'est le « pas de waow »
-   dont parle l'équipe.
-2. **Pas de parcours de décision.** On peut *consulter* une BOM, pas *arbitrer*. Aucune comparaison, aucun aperçu de
-   l'effet d'un changement, aucune trace du pourquoi. C'est la question du prof : « quelle valeur par rapport à un Excel ? »
-3. **Le coût n'est pas encore une « décision fiable » de bout en bout.** Les totaux de BOM n'appliquent ni les remises
-   de contrat (elles ne sont que dans `internal/supplier`) ni le coût rendu (qui n'existe que par pièce,
-   `/parts/{id}/landed-cost`). Les tables de douane et de transport sont lues en direct et **ne sont pas figées dans le
-   snapshot** (`internal/bom/landed.go`). Un snapshot ne reproduit donc pas un coût rendu. C'est le défaut le plus
-   important au regard du cours.
-4. **Deux langages visuels.** `feature_implemented.md` parle de « même identité visuelle », mais les captures
-   montrent une table dense côté BOM et de grandes cartes « SaaS » côté Fournisseurs (`avant-fournisseurs.png`).
-   La V1 avait une identité « logiciel d'entreprise » que le prof avait appréciée.
-5. **Front sans structure.** 3 766 lignes, sans routeur (impossible de partager un lien vers « Porte avant gauche de la
-   Multipla ») ni cache de données, avec un état local dispersé.
-6. **Bruit plutôt que signal.** Les anomalies ne sont pas classées par impact en euros. Elles deviennent non évaluables
-   dès que les prix sont figés (`internal/bom/anomalies.go`), donc inutilisables pour comparer des snapshots.
-7. **La 3D de la branche n'est pas montrable** (`avant-3d-branche.png`) : une primitive par pièce feuille donne un
-   nuage de cubes illisible. Le backend (`viz3d`, génération asynchrone, `BlobStore`) est bon. C'est le
-   **niveau de représentation** qui ne va pas.
-8. **Données de démo incomplètes.** Aucun budget n'est seedé, alors qu'un cockpit vert/orange/rouge en a besoin.
-   Le seul budget est sur le coût (ADR 0018), le délai a une date cible, et il n'existe **aucune cible CO₂ ni de masse**.
-
-### Ce que le cours note
-
-Le PDF et la grille disent la même chose : **« Montrez-moi la preuve »**, et le produit final est
-**« une décision de coût fiable, pas un formulaire »**. Le critère démo dit **« périmètre réduit qui fonctionne
-parfaitement de bout en bout, plutôt qu'une usine à gaz »**. On ne gagne donc pas en ajoutant quinze écrans, mais avec
-**un parcours de décision complet et fiable**, chaque chiffre explicable, et une 3D qui sert ce parcours.
+| **Socle** (doit marcher parfaitement) | Coût complet et figé (remises, coût rendu, outillage amorti, taux budget) avec cascade explicative · budgets seedés et cockpit · contrôles avant publication · pont de coût entre deux versions · import Excel avec rapport · navigation en 5 étapes, DA unique, thème clair/sombre |
+| **Différenciant** | Pistes de réduction · sensibilité change et matières · mono-source et poids des 5 premiers · anomalies €/kg · export PDF/Excel |
+| **Bonus** | Vue 3D (voir §6) · optimiseur avec coût de changement |
+| **Coupé** | Stock, ETP et stratégies par nœud dans la démo · fourchette min/max · HHI · double source de change · ADEME · IA |
 
 ---
 
-## 2. Vision cible
+## 6. La vue 3D : trois niveaux de rendu
 
-> **BOM Studio est le cockpit de décision du chef de projet véhicule. Il voit où sa voiture dépasse, comprend
-> pourquoi, compare des options et publie une décision tracée.**
+Les trois partagent la même correspondance avec la BOM (sélection, coloration, éclaté). Voir `Rendus3D` dans les maquettes.
 
-| Excel de 300 Mo | BOM Studio |
-|---|---|
-| Un chiffre sans histoire | Chaque coût se **décompose** (prix, change, remise, douane, transport) avec ses sources datées, **figées dans le snapshot** |
-| Une seule version, écrasée | Versions immuables **comparées côte à côte**, décision publiée avec sa justification |
-| « Et si… » = copier l'onglet | Un brouillon copié, modifié, puis comparé (bonus : optimiseur qui propose les remplacements) |
-| On cherche la ligne 18 432 | **Vue 3D** : on clique la porte et on arrive dans la BOM, la voiture se colore là où le budget dépasse |
-| Formules cassables | Calcul côté serveur, testé, reproductible. L'IA (bonus) ne fait que **proposer** |
-
-### Parcours de démonstration
-
-**Socle (doit marcher parfaitement, sans 3D ni IA) :**
-
-1. **Cockpit.** On ouvre la Multipla. Les KPI apparaissent face aux cibles qui existent : coût par rapport au budget,
-   date de disponibilité par rapport à la date cible. CO₂ et masse sont affichés comme valeurs, sans cible.
-   Les sous-systèmes sont en vert, orange ou rouge, et les anomalies sont classées par impact en euros.
-2. **Comprendre.** « Pourquoi ce coût ? » sur un nœud ouvre une cascade : prix de l'offre (cotation datée, snapshot),
-   conversion (taux daté), remise du palier de contrat, droits de douane, transport, puis coût rendu.
-   **Le même calcul est rejoué depuis un snapshot publié.**
-3. **Comparer et décider.** On crée un brouillon depuis le snapshot V1, on change deux offres (par exemple jante tôle →
-   jante alu, déjà défendable dans le jeu de démo), puis on compare V1 et le brouillon : KPI, écarts par sous-système,
-   pièces modifiées. On publie V2 avec une note de décision.
-
-**Ce qui fait l'effet « waow » (prévu, mais le socle doit tenir sans) :**
-
-4. **Localiser en 3D.** La voiture est colorée par écart au budget, par sous-ensemble. Un clic sur la porte positionne
-   la BOM sur « Porte avant gauche ». Un clic dans l'arbre cadre la 3D, et le sous-ensemble s'éclate.
-5. **Optimiser un sous-arbre.** On applique la stratégie « coût minimum » sur *Carrosserie et ouvrants*. On obtient la
-   liste des remplacements possibles par des alternatives déclarées, avec un aperçu du delta, et on l'applique à un
-   brouillon en un geste.
-6. **Copilote.** « Réduis le CO₂ de l'habitacle sans dépasser +200 € » appelle le même optimiseur et rend une proposition
-   que l'humain applique ou non. C'est la règle du cours dans le produit : **l'IA propose, l'humain garantit**.
-
----
-
-## 3. Features retenues
-
-| # | Feature | Valeur | Base existante | Ce qu'il faut construire | Effort |
-|---|---|---|---|---|---|
-| F0 | **Socle UI** : une DA, un shell (rail, barre de contexte, inspecteur), un routeur avec URL profondes, les quick wins de la revue | Lisibilité, crédibilité « entreprise » | V1 (palette, densité), arbre virtualisé | Tokens, shell, routes, refonte Fournisseurs en table | M |
-| F1 | **Coût fiable et expliqué** : remises et coût rendu intégrés aux totaux, tables douane/transport figées au snapshot, cascade par nœud | Cœur du cours | `supplier` (remises), `landed` (par pièce), conversion datée | Intégration aux totaux, migration snapshot, endpoint d'explication, UI cascade | **M–L** |
-| F2 | **Cockpit** : KPI face aux cibles existantes, statut des sous-systèmes, anomalies classées par impact € | Voir où ça dépasse en 5 s | target-costing, planning, anomalies | Budgets seedés, classement, mise en page | S–M |
-| F3 | **Page Décision** : comparer deux versions (snapshot ou brouillon), diff des pièces, note de décision à la publication | « BOM compare » demandé par l'équipe | snapshots, brouillon depuis snapshot | Diff, endpoint de comparaison, note (colonne posée à la publication, avant le trigger) | M |
-| F4 | **Vue 3D cockpit** (refonte de la branche) | Localiser, effet démo | `viz3d`, ADR 0031/0032 | Voiture par sous-ensemble, focus, coloration budget | L |
-| F5 | **Optimiseur de sous-arbre** (changeset) | Agir à l'échelle d'un ensemble | `suggest.go` (un seul nœud pièce), `strategy.go` (notation) | Parcours du sous-arbre, aperçu du delta, application en une transaction | M |
-| F6 | **Copilote IA** derrière un port Go | IA maîtrisée | règles AGENTS §3 | Adapter LLM (clé en variable d'env), outils = F1/F5 ; désactivé sans clé | M |
-
-**Coupé volontairement**, à dire en soutenance comme un choix et non un oubli : stress tests de change ou de douane,
-carbone versionné, contrat OpenAPI, palette `Ctrl+K`, génération de BOM par IA, recherche Sketchfab automatique.
-
-### Le modèle « scénario », et ses limites
-
-Il n'y a pas d'objet « scénario » dans le code. Un scénario, c'est **un brouillon créé depuis un snapshot**
-(`POST /snapshots/{id}/drafts`), c'est-à-dire une copie de toute la BOM. Les limites sont connues :
-
-- on ne peut pas créer un brouillon depuis un autre brouillon ;
-- la copie de 30 000 nœuds n'est **pas transactionnelle** (en cas d'échec, une suppression de rattrapage, `snapshot.go`) ;
-- comparer A et B suppose donc de publier A d'abord.
-
-On garde ce modèle pour la V2, puisqu'il marche et qu'il est simple. La copie transactionnelle est à corriger dans F3
-(test qui coupe la base au milieu de la copie).
-
-### F4 en détail : une 3D au service de la décision
-
-Le problème est le **niveau de détail**. 30 000 nœuds ne peuvent pas devenir 30 000 objets lisibles.
-
-- **Niveau véhicule (par défaut)** : une voiture procédurale avec **un élément par sous-ensemble** (56). Chaque élément
-  porte l'identifiant du nœud de BOM. On obtient moins de 100 appels de rendu, et c'est lisible. Le prototype
-  (`prototype-3d-assemble.png`) montre que c'est faisable avec `three` seul, en environ 300 lignes.
-- **Niveau focus** : quand on sélectionne un sous-ensemble, le reste passe en fantôme, et **seulement alors** ses pièces
-  apparaissent, éclatées et instanciées par forme (`prototype-3d-focus.png`).
-- **Coloration** : par système, ou par écart au budget du sous-ensemble.
-- **Honnêteté** : formes `GÉNÉRÉ`, positions estimées (ADR 0032), affichés dans l'interface.
-- **Risque** : il faut écrire la correspondance entre les 56 sous-ensembles et leurs emplacements. Elle tient dans une
-  table de données, sans logique. Repli : 6 systèmes seulement.
-
----
-
-## 4. Direction artistique cible
-
-**« Outil d'ingénieur, pas landing page »**, dans l'esprit des PLM et ERP denses, en reprenant la palette de la V1.
-
-- Une seule feuille de tokens. Neutres froids, un accent bleu acier `#2f5d9e` (V1). Couleurs **sémantiques uniquement**
-  (`--ok`, `--warn`, `--over`) ; le CO₂ et la 3D restent neutres sauf pour un statut.
-- IBM Plex Sans avec **chiffres tabulaires**, 13 px de base, lignes de 28 à 30 px.
-- Rail de navigation, barre de contexte (BOM, version, source de prix et fraîcheur), zone de travail,
-  **inspecteur à droite** (détail à la demande, AGENTS §5).
-- Ni grandes cartes, ni dégradés, ni ombres. Bordures de 1 px, rayons de 4 px. Fournisseurs passent en table dense
-  avec une sparkline en colonne.
-
-Les maquettes sont dans l'artefact Design associé.
-
----
-
-## 5. Architecture
-
-**Backend : on garde et on formalise.** C'est un monolithe modulaire, hexagonal léger par domaine. On le **prouve**
-avec un test d'architecture (`internal/archtest`) : aucun domaine n'importe `net/http`, `pgx` n'apparaît que dans les
-`*store`, et il n'y a pas de cycle entre domaines. La V1 avait ce test en Python (`test_layer_dependencies.py`).
-Seul nouveau domaine : `viz3d` (repris de la branche). F3, F5 et F6 vivent dans `bom` et `snapshot`, plus un port
-`Advisor` pour F6.
-
-**Front : on structure, avec le minimum de dépendances.**
-`web/src/app` (shell, routes), `web/src/ui` (tokens et composants), `web/src/features/<…>`.
-Deux dépendances proposées (une ADR chacune) : un routeur (URL profondes, sélection partagée entre BOM et 3D via
-`?node=`) et `three` (déjà proposé dans l'ADR 0031 ; `@react-three/fiber` reste optionnel, le prototype s'en passe).
-
-**ADR à rédiger** (statut Proposé, acceptation humaine) : coût rendu et remises dans les totaux et le snapshot ·
-DA et tokens · routeur · comparaison et note de décision · niveau de représentation 3D · copilote derrière un port.
-
----
-
-## 6. Trajectoire
-
-| Lot | Contenu | Preuve attendue (test qui le met en défaut) | Coût estimé |
+| Niveau | Principe | Coût | Rendu |
 |---|---|---|---|
-| **L0** Socle | F0, test d'architecture, lot de données de démo (budgets seedés, paire d'alternatives défendable) | archtest échoue si un domaine importe `net/http` ; e2e de navigation par URL | 1 j |
-| **L1** Coût fiable | F1 | même snapshot + tables de douane modifiées après publication = même coût rendu ; remise de palier appliquée au total | 1,5–2 j |
-| **L2** Cockpit + Décision | F2 + F3 | diff de deux snapshots connus ; publication avec note refusée sur un snapshot existant (trigger) | 1,5 j |
-| **L3** 3D | F4 (en parallèle de L1–L2, autre personne ou autre agent) | sélection 3D ↔ arbre (e2e) ; pas de régression de la vue BOM | 2 j |
-| **L4** Optimiseur | F5 | changeset appliqué en une transaction ; aucune pièce sans alternative déclarée n'est remplacée | 1 j |
-| **L5** Copilote | F6 | sans clé : fonctionnalité masquée ; avec clé : la proposition n'est jamais appliquée sans confirmation | 1 j |
+| **Simple** | un objet généré par sous-ensemble (56) | faible, aucune licence | `prototype-3d-assemble.png` |
+| **Technique** | châssis roulant procédural détaillé, carrosserie en radiographie | moyen | `prototype-3d-technique-eclate.png` |
+| **Réaliste** | modèle sous licence + **table de correspondance** nœud 3D → sous-ensemble ; éclaté calculé automatiquement depuis les boîtes englobantes | faible en code, moyen en données | `prototype-3d-realiste*.png` |
 
-**Ligne de coupe** : L0 à L2 forment un parcours complet, et c'est le minimum à présenter. L3 est le plus gros risque
-technique : il passe en parallèle et ne bloque jamais la démo. L4 et L5 sont du bonus.
+Le modèle réaliste vient des exemples Khronos (« Car Concept », Eric Chadwick / DGG, **CC-BY 4.0**). Il a 101 nœuds
+nommés, et 23 sous-ensembles y sont reliés par une table. Il est marqué **SIMILAIRE** (ce n'est pas une Multipla), les
+logos sont masqués, l'attribution est affichée. Le focus « roue avant gauche » (`prototype-3d-realiste-focus-roue.png`)
+éclate frein, jante et pneu dans l'axe, comme sur les vues éclatées de référence.
 
-**Post-mortem au fil de l'eau** : un fichier `docs/v2/journal.md` tenu à chaque lot (obstacle, hypothèse, mesure,
-décision). On ne le reconstitue pas à la fin.
-
----
-
-## 7. Comment on produit (l'usine logicielle à montrer en soutenance)
-
-Le processus existant (`.specs/`, DoR/DoD, ADR, CI) est bon : on ne le remplace pas, on y ajoute des **portes de
-vérification** et on les **mesure**.
-
-```
-vision (ce document) ─► .specs/<lot>/spec.md (critères EARS, DoR)
-  ─► plan en tâches courtes, TDD (test rouge, puis code)
-  ─► implémentation par agents (un worktree par lot, lots indépendants en parallèle)
-  ─► revue 1 : conformité à la spec (agent à contexte vierge)
-  ─► revue 2 : qualité et sécurité (agent à contexte vierge, grille AGENTS §4)
-  ─► vérification : make lint test, e2e, captures avant/après jointes à la PR
-  ─► humain : accepte les ADR, relit, merge
-```
-
-**Ce document est lui-même passé par cette boucle** : un agent sans contexte l'a relu et a trouvé huit affirmations
-fausses ou inventées dans la première version (§9). C'est exactement le type de preuve que demande le critère
-« usine logicielle à l'ère de l'IA ».
-
-Preuves à collecter : défauts trouvés par les revues avant merge, exemples de code IA refusé et pourquoi, temps réel
-par lot comparé à l'estimation, captures avant/après.
+**Recommandation** : Simple par défaut, Réaliste en option. Technique seulement s'il reste du temps. L'audit métier
+classe la 3D en gadget : elle ne remplace aucune étape du socle, elle sert à **localiser** (clic sur la pièce → BOM)
+et à donner l'effet de démo.
 
 ---
 
-## 8. Questions ouvertes pour l'équipe
+## 7. Ce que change « Internet autorisé » (sans IA)
 
-1. **Date de la soutenance** et personnes disponibles : cela fixe la ligne de coupe.
-2. Qui porte quel lot ? Les branches 3D d'Arthur sont-elles reprises (le backend `viz3d` vaut la peine) ?
-3. Avez-vous une clé API LLM pour F6 ? Sinon F6 sort du périmètre.
-4. Validez-vous l'ajout d'un routeur côté front (une ADR) ?
+| Source | Usage | Statut |
+|---|---|---|
+| **API BCE** (publique, sans clé) | taux courant, comparé au taux budget figé | retenu, adapter derrière l'interface Go existante |
+| **Banque mondiale, prix mensuels des matières** | 3 indices (aluminium, acier, cuivre) pour les clauses d'indexation, en fichier daté | retenu, léger |
+| **Modèles 3D CC-BY** (Khronos, Sketchfab) | rendu Réaliste | retenu, fichier téléchargé et compressé, licence tracée |
+| ADEME Base Empreinte | facteurs carbone versionnés | coupé (hors sujet coût) |
+| Comptes en ligne, OIDC | voir §8 | à décider |
+
+Règle inchangée : le domaine ne dépend pas du réseau. Chaque source passe par un adapter qui valide et date. Un snapshot
+se rejoue sans réseau.
 
 ---
 
-## 9. Ce que la relecture a corrigé
+## 8. Comptes utilisateurs et revue : décision à prendre
 
-La première version de ce document, écrite par l'IA, contenait ces erreurs, trouvées par la relecture indépendante :
+`docs/features.md` dit aujourd'hui « outil mono-utilisateur » et « Won't : partage ou droits d'accès ». Changer cela est
+une décision d'équipe (AGENTS §11), et c'est coûteux.
 
-- 44 880 nœuds : c'était Multipla + Valhalla. La Multipla seule fait 29 977 nœuds, avec 56 sous-ensembles et non 59.
-- Le document proposait TanStack Virtual, alors que l'arbre est déjà virtualisé.
-- Le parcours citait des chiffres inventés (« 14 remplacements, −1 240 € ») pour un optimiseur qui n'existe pas :
-  les suggestions ne portent que sur un seul nœud pièce.
-- Le document supposait des cibles CO₂ et masse, qui n'existent pas. Aucun budget n'est seedé non plus.
-- L'explication d'un coût était estimée « petite », alors que remises et coût rendu ne sont pas dans les totaux et que
-  les tables de douane ne sont pas figées : c'est devenu le lot central L1.
-- Il manquait la non-transactionnalité de la copie de brouillon et le fait que les anomalies ne s'évaluent pas sur
-  prix figés.
-- Le périmètre était trop large (9 features, 4 domaines, 4 dépendances, OpenAPI) au regard du critère « usine à gaz ».
+| Option | Ce que ça donne | Coût | Avis |
+|---|---|---|---|
+| **A. Mono-utilisateur + traçabilité** | à la publication : « proposé par », « validé par » (noms saisis), note et justifications conservées dans le snapshot | faible | **recommandé** (même avis que l'audit métier) |
+| B. Profils sans mot de passe | sélecteur de profil, brouillons par personne, demande de revue | moyen | possible si l'équipe tient au multi-utilisateur |
+| C. Vrais comptes, rôles, revue | authentification, droits, workflow d'approbation | élevé | « usine à gaz » au sens de la grille |
+
+L'audit rappelle qu'un circuit ECR/ECO gère un changement technique, pas une décision de coût : la revue type
+« pull request » est séduisante mais pas réaliste ici. L'option A apporte la traçabilité sans authentification.
+
+---
+
+## 9. Architecture et trajectoire
+
+**Backend** : monolithe modulaire, hexagonal léger, **prouvé par un test d'architecture** (aucun domaine n'importe
+`net/http`, `pgx` seulement dans les `*store`). Nouveaux adapters : BCE, indices matières. `viz3d` repris de la branche
+d'Arthur, avec un niveau de représentation par sous-ensemble.
+**Front** : `app/` (shell, 5 étapes, routes), `ui/` (tokens, thème clair/sombre), `features/<étape>`. Un routeur
+(ADR) ; `three` (ADR 0031).
+
+| Lot | Contenu | Preuve (test qui le met en défaut) |
+|---|---|---|
+| L0 Socle | shell 5 étapes, DA, thème, test d'architecture, budgets seedés | e2e navigation par URL ; archtest |
+| L1 Coût complet | remises, coût rendu, outillage amorti, taux budget, tables figées au snapshot, cascade | tables modifiées après publication → même coût au centime |
+| L2 Versions | contrôles avant publication, pont de coût, comparaison, note et traçabilité | ordre de décomposition du pont testé ; publication bloquée par un contrôle |
+| L3 Import | import Excel avec rapport | fichier piégé (cycle, devise inconnue, `#REF!`) → lignes refusées, aucune importée en silence |
+| L4 Différenciant | pistes de réduction, sensibilité, mono-source, €/kg, export | — |
+| L5 Bonus 3D | Simple puis Réaliste | sélection 3D ↔ arbre (e2e) |
+
+**Ligne de coupe** : L0 à L2 forment un parcours complet. L3 est fortement recommandé, c'est le fil rouge du cours
+(« remplacer l'Excel de 300 Mo »). L5 ne bloque jamais la démo.
+
+---
+
+## 10. L'usine logicielle, avec preuves
+
+Processus existant conservé (`.specs/`, DoR/DoD, ADR, CI), avec des **portes de vérification par agents à contexte
+vierge**. Ce document en est le premier exemple :
+- la **relecture factuelle** a trouvé 8 affirmations fausses dans la version 1 (§11) ;
+- l'**audit métier** a fait couper 6 idées pourtant séduisantes et en a fait ajouter 5 plus réalistes (§2).
+
+À tenir pendant le développement : un `journal.md` (obstacle → hypothèse → mesure → décision) pour le post-mortem,
+le nombre de défauts trouvés par les revues avant merge, et des captures avant/après.
+
+---
+
+## 11. Corrections apportées par les relectures
+
+**Version 1 → 2 (relecture factuelle)** : 29 977 nœuds et non 44 880 · arbre déjà virtualisé · chiffres d'optimiseur
+inventés retirés · pas de cible CO₂ ni de masse · pas de budgets seedés · remises et coût rendu hors totaux · copie de
+brouillon non transactionnelle · périmètre trop large.
+
+**Version 2 → 3 (audit métier)** : prix contractuels et indexation au lieu d'un cours en direct · taux budget · outillage
+amorti · pistes de réduction · fourchette min/max, HHI, double source de change et ADEME coupés · stock, ETP et
+stratégies retirés de la démo · 3D en bonus · comptes : option A recommandée.
+
+---
+
+## 12. Questions pour l'équipe
+
+1. Comptes : option A, B ou C (§8) ?
+2. Validez-vous le périmètre §5 (socle / différenciant / bonus / coupé), et en particulier le retrait de stock, ETP et
+   stratégies de la démo ?
+3. 3D : Simple + Réaliste, et on reprend le backend `viz3d` d'Arthur ?
+4. Validez-vous l'ajout d'un routeur côté front (ADR) ?
