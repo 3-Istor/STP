@@ -585,6 +585,58 @@ func (s *Service) UnfreezePrices(ctx context.Context, bomID int64) (BOM, error) 
 	return out, nil
 }
 
+// UsePriceSnapshot fige le brouillon sur un snapshot de prix existant (features.md, bom-draft-and-snapshots :
+// « soit sur un snapshot de prix choisi »). Le snapshot doit couvrir toutes les offres de la BOM et les taux
+// de chaque devise d'offre vers la devise de la BOM ; sinon le système refuse et liste les offres (ErrNoQuote)
+// et les paires (ErrNoRate) manquantes, et la BOM reste comme elle était. Un snapshot introuvable est une
+// erreur nommée (pricing.ErrPriceSnapshotNotFound), jamais un prix caché.
+func (s *Service) UsePriceSnapshot(ctx context.Context, bomID, snapshotID int64) (BOM, error) {
+	if snapshotID <= 0 {
+		return BOM{}, fmt.Errorf("use price snapshot %d for bom %d: %w", snapshotID, bomID, ErrInvalidInput)
+	}
+	b, err := s.store.GetBOM(ctx, bomID)
+	if err != nil {
+		return BOM{}, fmt.Errorf("use price snapshot %d for bom %d: %w", snapshotID, bomID, err)
+	}
+	nodes, err := s.store.Tree(ctx, bomID)
+	if err != nil {
+		return BOM{}, fmt.Errorf("use price snapshot %d for bom %d: %w", snapshotID, bomID, err)
+	}
+	ids := offerIDs(nodes)
+	prices, rates, err := LoadPrices(ctx, s.pricing, &snapshotID, ids, money.Currency(b.Currency))
+	if err != nil {
+		return BOM{}, fmt.Errorf("use price snapshot %d for bom %d: %w", snapshotID, bomID, err)
+	}
+	var missingOffers []int64
+	for _, id := range ids { // ids est trié : message déterministe
+		if prices[id].Err != nil {
+			missingOffers = append(missingOffers, id)
+		}
+	}
+	var missingPairs []string
+	for from, r := range rates {
+		if r.Err != nil {
+			missingPairs = append(missingPairs, string(from)+"->"+b.Currency)
+		}
+	}
+	slices.Sort(missingPairs)
+	var errs []error
+	if len(missingOffers) > 0 {
+		errs = append(errs, fmt.Errorf("offers %v: %w", missingOffers, pricing.ErrNoQuote))
+	}
+	if len(missingPairs) > 0 {
+		errs = append(errs, fmt.Errorf("pairs %v: %w", missingPairs, pricing.ErrNoRate))
+	}
+	if len(errs) > 0 {
+		return BOM{}, fmt.Errorf("use price snapshot %d for bom %d: snapshot does not cover the bom: %w", snapshotID, bomID, errors.Join(errs...))
+	}
+	out, err := s.store.SetPriceSnapshot(ctx, bomID, &snapshotID)
+	if err != nil {
+		return BOM{}, fmt.Errorf("use price snapshot %d for bom %d: %w", snapshotID, bomID, err)
+	}
+	return out, nil
+}
+
 // offerIDs renvoie les offres distinctes de l'arbre, triées (entrée déterministe).
 func offerIDs(nodes []Node) []int64 {
 	var ids []int64

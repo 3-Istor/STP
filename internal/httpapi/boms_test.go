@@ -171,6 +171,17 @@ func (f *fakeBOMs) FreezePrices(_ context.Context, id int64, at time.Time) (bom.
 	b.PriceSnapshotID = ptr(int64(5))
 	return b, f.record("FreezePrices %d %s", id, at.Format(time.RFC3339))
 }
+func (f *fakeBOMs) UsePriceSnapshot(_ context.Context, id, snapshotID int64) (bom.BOM, error) {
+	if snapshotID == 404 {
+		return bom.BOM{}, fmt.Errorf("use price snapshot %d: %w", snapshotID, pricing.ErrPriceSnapshotNotFound)
+	}
+	if snapshotID == 409 {
+		return bom.BOM{}, fmt.Errorf("use price snapshot %d: offers [11]: %w", snapshotID, pricing.ErrNoQuote)
+	}
+	b := draft
+	b.PriceSnapshotID = ptr(snapshotID)
+	return b, f.record("UsePriceSnapshot %d %d", id, snapshotID)
+}
 func (f *fakeBOMs) UnfreezePrices(_ context.Context, id int64) (bom.BOM, error) {
 	return draft, f.record("UnfreezePrices %d", id)
 }
@@ -299,6 +310,11 @@ func TestRoutes(t *testing.T) {
 		{"clear schedule", "DELETE", "/api/v1/boms/7/schedule", "", 204, "ClearSchedule 7", ""},
 		{"freeze prices", "POST", "/api/v1/boms/7/freeze-prices", "", 200, "FreezePrices 7 " + at, `"price_snapshot_id":5`},
 		{"unfreeze prices", "DELETE", "/api/v1/boms/7/freeze-prices", "", 200, "UnfreezePrices 7", `"price_snapshot_id":null`},
+		{"use existing price snapshot", "PUT", "/api/v1/boms/7/freeze-prices", `{"price_snapshot_id":12}`, 200, "UsePriceSnapshot 7 12", `"price_snapshot_id":12`},
+		{"use price snapshot without id", "PUT", "/api/v1/boms/7/freeze-prices", `{}`, 400, "", `price_snapshot_id is required`},
+		{"use price snapshot zero id", "PUT", "/api/v1/boms/7/freeze-prices", `{"price_snapshot_id":0}`, 400, "", `positive integer`},
+		{"use unknown price snapshot", "PUT", "/api/v1/boms/7/freeze-prices", `{"price_snapshot_id":404}`, 404, "", `price snapshot not found`},
+		{"use price snapshot not covering the bom", "PUT", "/api/v1/boms/7/freeze-prices", `{"price_snapshot_id":409}`, 409, "", `offers [11]`},
 		{"publish", "POST", "/api/v1/boms/7/publish", "", 201, "Publish 7 " + at, `"published_at":"` + at + `"`},
 		{"get snapshot", "GET", "/api/v1/snapshots/4", "", 200, "Get 4", `"snapshot":`},
 		{"new draft from snapshot", "POST", "/api/v1/snapshots/4/drafts", "", 201, "NewDraft 4", `"id":7`},

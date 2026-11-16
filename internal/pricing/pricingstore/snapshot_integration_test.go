@@ -158,6 +158,28 @@ func TestSnapshotHTTPAndConcurrentCreation(t *testing.T) {
 	if n := runtimeCount(t, pool, "SELECT count(*) FROM price_snapshots"); n != 5 {
 		t.Fatal("concurrent snapshots", n)
 	}
+	// La liste renvoie les cinq en-têtes, du plus récent au plus ancien (taken_at puis id décroissants).
+	list := httptest.NewRecorder()
+	router.ServeHTTP(list, httptest.NewRequest(http.MethodGet, "/api/v1/price-snapshots", nil))
+	if list.Code != 200 {
+		t.Fatal(list.Code, list.Body.String())
+	}
+	var refs []pricing.PriceSnapshotRef
+	if err := json.Unmarshal(list.Body.Bytes(), &refs); err != nil {
+		t.Fatal(err)
+	}
+	if len(refs) != 5 {
+		t.Fatal("listed snapshots", len(refs), list.Body.String())
+	}
+	for i := 1; i < len(refs); i++ {
+		prev, cur := refs[i-1], refs[i]
+		if cur.TakenAt.After(prev.TakenAt) || (cur.TakenAt.Equal(prev.TakenAt) && cur.ID > prev.ID) {
+			t.Fatal("list not ordered newest first", refs)
+		}
+	}
+	if refs[len(refs)-1].Scope != "offer" || refs[len(refs)-1].ScopeID == nil {
+		t.Fatal("oldest snapshot should be the offer one", refs[len(refs)-1])
+	}
 }
 
 func TestSnapshotTransactionClosure(t *testing.T) {

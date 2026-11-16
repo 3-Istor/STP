@@ -155,6 +155,9 @@ SELECT id,scope,scope_id,taken_at,created_at FROM price_snapshots WHERE taken_at
 -- name: ReadPriceSnapshot :one
 SELECT id,scope,scope_id,taken_at,created_at FROM price_snapshots WHERE id=$1;
 
+-- name: ListPriceSnapshots :many
+SELECT id,scope,scope_id,taken_at,created_at FROM price_snapshots ORDER BY taken_at DESC,id DESC;
+
 -- name: ReadSnapshotPrices :many
 SELECT q.id,q.offer_id,q.amount::text AS amount_text,q.currency,q.source,q.quoted_at
 FROM price_snapshot_quotes l JOIN price_quotes q ON q.id=l.price_quote_id

@@ -30,6 +30,16 @@ func (h pricingSnapshotsHandler) register(mux *http.ServeMux) {
 		w.Header().Set("Location", fmt.Sprintf("/api/v1/price-snapshots/%d", result.ID))
 		writeJSON(w, http.StatusCreated, result)
 	})
+	// Liste des snapshots de prix (en-têtes seulement), du plus récent au plus ancien : ce que l'utilisateur
+	// choisit pour attacher un snapshot existant à un brouillon (PUT /api/v1/boms/{id}/freeze-prices).
+	mux.HandleFunc("GET /api/v1/price-snapshots", func(w http.ResponseWriter, r *http.Request) {
+		refs, err := h.service.List(r.Context())
+		if err != nil {
+			pricingError(w, r, err)
+			return
+		}
+		writeJSON(w, http.StatusOK, refs)
+	})
 	mux.HandleFunc("GET /api/v1/price-snapshots/{id}", func(w http.ResponseWriter, r *http.Request) {
 		id, err := pathID(r, "id")
 		if err != nil {

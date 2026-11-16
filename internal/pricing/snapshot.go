@@ -46,6 +46,8 @@ type SnapshotUnit interface {
 type SnapshotRepository interface {
 	WithSnapshotTransaction(context.Context, func(SnapshotUnit) error) error
 	ReadSnapshot(context.Context, int64) (PriceSnapshotData, error)
+	// ListSnapshots renvoie l'en-tête de tous les snapshots de prix, du plus récent (taken_at) au plus ancien.
+	ListSnapshots(context.Context) ([]PriceSnapshotRef, error)
 }
 type SnapshotResult struct {
 	PriceSnapshotData
@@ -151,6 +153,21 @@ func (s *SnapshotService) Create(ctx context.Context, req SnapshotRequest) (Snap
 		return nil
 	})
 	return result, err
+}
+
+// List renvoie les en-têtes des snapshots de prix existants, du plus récent au plus ancien (ordre stable :
+// taken_at puis id décroissants). Un snapshot ne se nomme que par son instant figé (à la seconde) et son
+// périmètre : c'est ce que l'utilisateur choisit pour figer un brouillon sur des prix déjà figés.
+func (s *SnapshotService) List(ctx context.Context) ([]PriceSnapshotRef, error) {
+	refs, err := s.store.ListSnapshots(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("list price snapshots: %w", err)
+	}
+	sortSnapshotRefs(refs)
+	if refs == nil {
+		refs = []PriceSnapshotRef{}
+	}
+	return refs, nil
 }
 func (s *SnapshotService) Get(ctx context.Context, id int64) (SnapshotResult, error) {
 	if id <= 0 {
