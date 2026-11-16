@@ -136,9 +136,13 @@ type brokenOffer struct {
 	err     error
 }
 
-func (b *brokenOffer) OfferPrice(ctx context.Context, id int64) (pricing.Quote, error) {
-	if id == b.offerID {
-		return pricing.Quote{}, b.err
+func (b *brokenOffer) OfferPrices(ctx context.Context, ids []int64) (map[int64]pricing.QuoteResult, error) {
+	out, err := b.Pricing.OfferPrices(ctx, ids)
+	if err != nil {
+		return nil, err
 	}
-	return b.Pricing.OfferPrice(ctx, id)
+	if _, asked := out[b.offerID]; asked {
+		out[b.offerID] = pricing.QuoteResult{Err: b.err}
+	}
+	return out, nil
 }

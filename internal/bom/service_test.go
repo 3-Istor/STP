@@ -1,6 +1,7 @@
 package bom
 
 import (
+	"context"
 	"errors"
 	"os/exec"
 	"strings"
@@ -447,3 +448,49 @@ func TestServiceDeleteBOM(t *testing.T) {
 
 // ref renvoie un pointeur vers v (attributs optionnels de catalog.Part).
 func ref[T any](v T) *T { return &v }
+
+// countingPricing compte les lectures : les totaux d'un brouillon en direct lisent les prix et les taux
+// par lot (une lecture chacun), jamais offre par offre (c'est ce qui rendait l'ouverture d'une BOM lente).
+type countingPricing struct {
+	pricing.Pricing
+	single, batch int
+}
+
+func (c *countingPricing) OfferPrice(ctx context.Context, id int64) (pricing.Quote, error) {
+	c.single++
+	return c.Pricing.OfferPrice(ctx, id)
+}
+
+func (c *countingPricing) Rate(ctx context.Context, from, to money.Currency) (pricing.Rate, error) {
+	c.single++
+	return c.Pricing.Rate(ctx, from, to)
+}
+
+func (c *countingPricing) OfferPrices(ctx context.Context, ids []int64) (map[int64]pricing.QuoteResult, error) {
+	c.batch++
+	return c.Pricing.OfferPrices(ctx, ids)
+}
+
+func (c *countingPricing) PairRates(ctx context.Context, pairs []pricing.FXPair) (map[pricing.FXPair]pricing.RateResult, error) {
+	c.batch++
+	return c.Pricing.PairRates(ctx, pairs)
+}
+
+func TestServiceTotalsReadPricesInOneBatch(t *testing.T) {
+	f := newFixture(t)
+	counted := &countingPricing{Pricing: f.prices}
+	f.svc.pricing = counted
+	bomID, root := f.newBOM(t)
+	f.addPart(t, bomID, root, 1, 11, "4") // USD : un taux à lire
+	f.addPart(t, bomID, root, 2, 20, "5")
+	f.addPart(t, bomID, root, 2, 20, "1") // même offre : lue une fois
+	f.addPart(t, bomID, root, 3, 30, "1") // sans cotation : erreur nommée, pas d'échec
+
+	got := f.totals(t, bomID)
+	if n, _ := got.Totals.Node(root); n.Cost != nil || !errors.Is(n.CostErr, ErrMissingCost) {
+		t.Fatalf("root cost %v err %v, want ErrMissingCost", n.Cost, n.CostErr)
+	}
+	if counted.single != 0 || counted.batch != 2 {
+		t.Fatalf("%d lectures unitaires, %d par lot ; want 0 et 2 (prix, puis taux)", counted.single, counted.batch)
+	}
+}
