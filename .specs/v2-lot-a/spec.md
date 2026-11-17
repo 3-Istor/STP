@@ -4,7 +4,7 @@ title: V2 lot A — coût complet (remises, coût rendu, outillage amorti, taux 
 source: manual
 source_ref: docs/v2/plan-implementation.md (lot A)
 created: 2026-11-17
-status: in-progress
+status: review
 priority: P1
 depends_on: []
 branch: v2-lot-a
@@ -80,35 +80,35 @@ volume programme) et le taux budget de l'année (trésorerie), le dernier taux s
   - **Files**: `.specs/v2-lot-a/spec.md`, `.specs/v2-lot-a/state.md`, `docs/adr/0031-methode-de-calcul-du-cout.md`
   - **Approach**: options, décision, ordre, arrondi, gel au snapshot.
   - **Done when**: ADR au statut Proposé, tâches listées.
-- [ ] T2: Migration 00012 et requêtes sqlc
+- [x] T2: Migration 00012 et requêtes sqlc
   - **Files**: `migrations/00012_cost_method.sql`, `internal/*/queries.sql`, code `*db` régénéré
   - **Approach**: colonnes boms/offers/bom_snapshots, tables budget_rates, bom_target_budgets,
     bom_snapshot_budget_rates, bom_snapshot_offer_costs (immuables).
   - **Done when**: `goose up/down/up` passe, `sqlc generate` à jour, tests existants verts.
-- [ ] T3: Calcul pur selon la méthode
+- [x] T3: Calcul pur selon la méthode
   - **Files**: `internal/bom/costmethod.go`, `internal/bom/totals.go`, tests table-driven
   - **Approach**: `strategyFor` (un seul endroit), composantes par pièce, agrégation par `kind`.
   - **Done when**: tests par méthode et par ligne (contrat expiré, taux budget absent, outillage ÷ volume,
     arrondi) verts ; tests existants inchangés et verts.
-- [ ] T4: Lecture des faits pour un brouillon et stockage de la méthode
+- [x] T4: Lecture des faits pour un brouillon et stockage de la méthode
   - **Files**: `internal/bom/service.go`, `internal/bom/costfacts.go`, `bomstore`, `pricingstore`, `cmd/server`
   - **Approach**: méthode et budgets dans bomstore ; outillage, emballage, taux budget dans pricingstore ;
     contrats via `supplier.Service.ListContracts`.
   - **Done when**: `Service.Totals` suit la méthode ; tests de service verts.
-- [ ] T5: Gel et relecture au snapshot
+- [x] T5: Gel et relecture au snapshot
   - **Files**: `internal/snapshot/*`, `snapshotstore`
   - **Approach**: publier fige les faits utilisés ; relire reconstruit le calcul sans lire les tables vivantes.
   - **Done when**: test d'intégration de reproductibilité (tables douane/transport et taux budget modifiés après
     publication → même coût au centime).
-- [ ] T6: API
+- [x] T6: API
   - **Files**: `internal/httpapi/boms*.go`, `cost_method.go`, tests d'intégration
   - **Approach**: handlers fins, codes d'erreur nommés, `cost_method` dans l'explication.
   - **Done when**: tests HTTP des nouvelles routes verts.
-- [ ] T7: Données de démo Multipla
+- [x] T7: Données de démo Multipla
   - **Files**: `internal/sampledata/*`, `seedstore/store.go`, `Makefile`, `compose.yaml`, `README.md`
   - **Approach**: nouvelles données générées, chargées dans la même transaction, version `demo-v4`.
   - **Done when**: seed deux fois idempotent ; Multipla full/budget a un total.
-- [ ] T8: Vérification et livrable §9
+- [x] T8: Vérification et livrable §9
   - **Files**: `.specs/v2-lot-a/state.md`
   - **Done when**: vet, lint, tests, front (`npm ci`, `tsc -b`) verts et reportés.
 
@@ -123,8 +123,8 @@ volume programme) et le taux budget de l'année (trésorerie), le dernier taux s
   purchase/latest vs full/budget.
 
 ### Acceptance Criteria
-- [ ] AC1 (R1, R2) : la méthode change les totaux ; défaut = totaux historiques.
-- [ ] AC2 (R3, R4) : contrat expiré non appliqué ; taux budget absent et outillage NULL → erreurs nommées.
-- [ ] AC3 (R5) : breakdown d'une pièce et d'un sous-ensemble ; Σ lignes = total.
-- [ ] AC4 (R6) : snapshot reproductible au centime après modification des tables.
-- [ ] AC5 (R7) : seed idempotent, Multipla chiffrée en full/budget.
+- [x] AC1 (R1, R2) : la méthode change les totaux ; défaut = totaux historiques.
+- [x] AC2 (R3, R4) : contrat expiré non appliqué ; taux budget absent et outillage NULL → erreurs nommées.
+- [x] AC3 (R5) : breakdown d'une pièce et d'un sous-ensemble ; Σ lignes = total.
+- [x] AC4 (R6) : snapshot reproductible au centime après modification des tables.
+- [x] AC5 (R7) : seed idempotent, Multipla chiffrée en full/budget.
