@@ -272,3 +272,16 @@ validation fonctionnelle et visuelle sur les assets réellement accessibles.
 - Accord ADR 0041 reçu et consigné ; statut documentaire laissé à l'humain. Aucun backend modifié.
 - Prochaine action : source statique/import JSON, chargeur GLB avec contrôle d'empreinte, réutilisation
   et libération des ressources ; puis liaison au mode Composants, variantes et classification hybride.
+
+## Incrément — chargement des assets liés
+
+- `manifestSource.ts` fournit l'adapter de source statique, remplaçable sans changer le résolveur.
+- `boundModel.ts` contrôle SHA-256 et GLB autonome, sélectionne les sous-arbres explicites, conserve
+  les transformations source et les matériaux PBR, partage géométries/textures entre occurrences,
+  clone les matériaux modifiables et libère les ressources au dernier propriétaire.
+- Aucun mesh n'est substitué à une ressource absente, corrompue ou ambiguë. Le diagnostic conserve
+  les IDs des occurrences concernées et la couverture physique réelle.
+- Tests du chargeur : occurrences répétées, transformations parentales, matériaux indépendants,
+  cache et libération, empreinte incorrecte, HTTP 404, chemin de mesh absent et URI externe refusée.
+  Tests unitaires : 12 fichiers PASS ; build TypeScript/Vite PASS (avertissement de taille Three.js).
+- Raccordement au viewer et aux commandes en cours, validation navigateur à suivre.

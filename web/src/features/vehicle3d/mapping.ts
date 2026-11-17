@@ -1,5 +1,6 @@
 // Correspondance BOM ↔ objets 3D (ADR 0035). Logique pure, sans `three` : testée par `node --test`.
 import type { BudgetStatus, Vehicle3DNode } from './types.ts'
+import type { ComponentSystem } from './manifest.ts'
 
 export type ExplodeOptions = { fixed?: boolean; lift?: number; xScale?: number }
 export type SlotDef = { slot: string; match: string; focusWith?: string[]; explode?: ExplodeOptions }
@@ -17,9 +18,12 @@ export type VehicleObject = {
   systemName: string
   systemIndex: number // rang du système (niveau 1) dans l'ordre des ids : couleur par système
   budgetStatus: BudgetStatus | null
+  componentSystem?: ComponentSystem
+  positionStatus?: 'verified' | 'approximation'
 }
 
 export type VehicleIndex = {
+  representation?: 'manifest'
   rootId: number | null
   objects: VehicleObject[]
   byKey: Map<string, VehicleObject>
