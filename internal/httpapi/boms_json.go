@@ -78,7 +78,11 @@ type candidateJSON struct {
 	CostScore    *string      `json:"cost_score"`
 	LeadScore    *string      `json:"lead_time_score"`
 	CO2Score     *string      `json:"co2_score"`
-	Excluded     *string      `json:"excluded"` // raison de l'exclusion (prix, taux ou attribut manquant)
+	MassScore    *string      `json:"mass_score"`    // profil de véhicule (ADR 0036)
+	QualityScore *string      `json:"quality_score"` // idem ; 0 quand le critère ne pèse pas
+	MassKg       *string      `json:"mass_kg"`
+	Quality      *string      `json:"quality"`
+	Excluded     *string      `json:"excluded"` // raison de l'exclusion (prix, taux, attribut ou note qualité manquant)
 }
 
 // suggestionsJSON : strategy null = aucune stratégie dans la lignée (ordre par offre).
@@ -91,6 +95,10 @@ type suggestionsJSON struct {
 	PriceSnapshotID *int64          `json:"price_snapshot_id"`
 	Candidates      []candidateJSON `json:"candidates"`
 	Excluded        []candidateJSON `json:"excluded"`
+	// Profile : profil de véhicule qui classe quand aucune stratégie de nœud ne s'applique (ADR 0036) ;
+	// weights : poids appliqués (stratégie, profil, ou tous nuls).
+	Profile *profileJSON `json:"profile"`
+	Weights *weightsJSON `json:"weights"`
 }
 
 func toSuggestionsJSON(s bom.Suggestions) suggestionsJSON {
@@ -98,7 +106,11 @@ func toSuggestionsJSON(s bom.Suggestions) suggestionsJSON {
 	out := suggestionsJSON{
 		NodeID: s.NodeID, RealQuantity: s.RealQuantity.String(), Currency: string(s.Currency),
 		PriceSnapshotID: s.PriceSnapshotID, Candidates: make([]candidateJSON, len(s.Ranked)),
-		Excluded: make([]candidateJSON, len(s.Excluded)),
+		Excluded: make([]candidateJSON, len(s.Excluded)), Weights: toWeightsJSON(s.Weights),
+	}
+	if s.Profile != nil {
+		p := toProfileJSON(s.Profile)
+		out.Profile = &p
 	}
 	if s.Strategy != "" {
 		st, from := string(s.Strategy), s.StrategyFrom
@@ -107,6 +119,7 @@ func toSuggestionsJSON(s bom.Suggestions) suggestionsJSON {
 	for i, r := range s.Ranked {
 		c := toCandidateJSON(r.Candidate)
 		c.Score, c.CostScore, c.LeadScore, c.CO2Score = score(r.Score), score(r.CostScore), score(r.LeadScore), score(r.CO2Score)
+		c.MassScore, c.QualityScore = score(r.MassScore), score(r.QualityScore)
 		out.Candidates[i] = c
 	}
 	for i, c := range s.Excluded {
@@ -118,8 +131,12 @@ func toSuggestionsJSON(s bom.Suggestions) suggestionsJSON {
 func toCandidateJSON(c bom.Candidate) candidateJSON {
 	out := candidateJSON{PartID: c.PartID, OfferID: c.OfferID, Current: c.Current, Cost: c.Cost}
 	if c.HasFacts {
-		lead, co2 := c.LeadDays, c.CO2Kg.String()
-		out.LeadTimeDays, out.CO2Kg = &lead, &co2
+		lead, co2, mass := c.LeadDays, c.CO2Kg.String(), c.MassKg.String()
+		out.LeadTimeDays, out.CO2Kg, out.MassKg = &lead, &co2, &mass
+	}
+	if c.Quality != nil {
+		q := c.Quality.String()
+		out.Quality = &q
 	}
 	if q := c.Quote; q != nil {
 		out.Quote = &quoteJSON{OfferID: q.OfferID, Price: q.Price, Source: q.Source, QuotedAt: q.QuotedAt}
@@ -562,12 +579,17 @@ type snapshotJSON struct {
 	AnnualHours     *string   `json:"annual_hours"` // null : snapshot publié avant ADR 0024
 	Destination     *string   `json:"destination_country"`
 	PublishedAt     time.Time `json:"published_at"`
+	// Trace de la publication (ADR 0033) ; null si non saisie ou publiée avant.
+	Note        *string `json:"note"`
+	ProposedBy  *string `json:"proposed_by"`
+	ValidatedBy *string `json:"validated_by"`
 }
 
 func toSnapshotJSON(s snapshot.Snapshot) snapshotJSON {
 	out := snapshotJSON{
 		ID: s.ID, BOMID: s.BOMID, PriceSnapshotID: s.PriceSnapshotID, Name: s.Name,
 		Currency: s.Currency, Volume: s.Volume, PublishedAt: s.PublishedAt, Destination: s.DestinationCountry,
+		Note: s.Note, ProposedBy: s.ProposedBy, ValidatedBy: s.ValidatedBy,
 	}
 	if h := s.AnnualHours; h != nil {
 		v := h.String()
@@ -583,4 +605,22 @@ type publishedJSON struct {
 	Explanation explanationJSON `json:"explanation"`
 	Stock       []stockJSON     `json:"stock"`
 	Planning    planningJSON    `json:"planning"`
+	// Checks : contrôles avant publication figés, avec la justification de chaque avertissement (ADR 0033).
+	Checks []frozenCheckJSON `json:"checks"`
+}
+
+type frozenCheckJSON struct {
+	Code          string  `json:"code"`
+	Level         string  `json:"level"`
+	Title         string  `json:"title"`
+	Detail        string  `json:"detail"`
+	Justification *string `json:"justification"`
+}
+
+func toFrozenChecksJSON(cs []snapshot.FrozenCheck) []frozenCheckJSON {
+	out := make([]frozenCheckJSON, len(cs))
+	for i, c := range cs {
+		out[i] = frozenCheckJSON{Code: c.Code, Level: c.Level, Title: c.Title, Detail: c.Detail, Justification: c.Justification}
+	}
+	return out
 }

@@ -16,9 +16,10 @@ import (
 const createSnapshot = `-- name: CreateSnapshot :one
 
 INSERT INTO bom_snapshots (bom_id, price_snapshot_id, name, currency, volume, published_at, annual_hours,
-    start_on, target_on, destination_country, cost_basis, fx_policy, program_volume, cost_as_of)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
-RETURNING id, bom_id, price_snapshot_id, name, currency, volume, published_at, annual_hours, start_on, target_on, destination_country, cost_basis, fx_policy, program_volume, cost_as_of
+    start_on, target_on, destination_country, cost_basis, fx_policy, program_volume, cost_as_of,
+    note, proposed_by, validated_by)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+RETURNING id, bom_id, price_snapshot_id, name, currency, volume, published_at, annual_hours, start_on, target_on, destination_country, cost_basis, fx_policy, program_volume, cost_as_of, note, proposed_by, validated_by
 `
 
 type CreateSnapshotParams struct {
@@ -36,6 +37,9 @@ type CreateSnapshotParams struct {
 	FxPolicy           pgtype.Text
 	ProgramVolume      pgtype.Int4
 	CostAsOf           pgtype.Timestamptz
+	Note               pgtype.Text
+	ProposedBy         pgtype.Text
+	ValidatedBy        pgtype.Text
 }
 
 // Requêtes du domaine snapshot (sqlc → internal/snapshot/snapshotdb). Voir ADR 0006.
@@ -56,6 +60,9 @@ func (q *Queries) CreateSnapshot(ctx context.Context, arg CreateSnapshotParams) 
 		arg.FxPolicy,
 		arg.ProgramVolume,
 		arg.CostAsOf,
+		arg.Note,
+		arg.ProposedBy,
+		arg.ValidatedBy,
 	)
 	var i BomSnapshot
 	err := row.Scan(
@@ -74,12 +81,15 @@ func (q *Queries) CreateSnapshot(ctx context.Context, arg CreateSnapshotParams) 
 		&i.FxPolicy,
 		&i.ProgramVolume,
 		&i.CostAsOf,
+		&i.Note,
+		&i.ProposedBy,
+		&i.ValidatedBy,
 	)
 	return i, err
 }
 
 const getSnapshot = `-- name: GetSnapshot :one
-SELECT id, bom_id, price_snapshot_id, name, currency, volume, published_at, annual_hours, start_on, target_on, destination_country, cost_basis, fx_policy, program_volume, cost_as_of FROM bom_snapshots WHERE id = $1
+SELECT id, bom_id, price_snapshot_id, name, currency, volume, published_at, annual_hours, start_on, target_on, destination_country, cost_basis, fx_policy, program_volume, cost_as_of, note, proposed_by, validated_by FROM bom_snapshots WHERE id = $1
 `
 
 func (q *Queries) GetSnapshot(ctx context.Context, id int64) (BomSnapshot, error) {
@@ -101,6 +111,37 @@ func (q *Queries) GetSnapshot(ctx context.Context, id int64) (BomSnapshot, error
 		&i.FxPolicy,
 		&i.ProgramVolume,
 		&i.CostAsOf,
+		&i.Note,
+		&i.ProposedBy,
+		&i.ValidatedBy,
+	)
+	return i, err
+}
+
+const getSnapshotVehicleProfile = `-- name: GetSnapshotVehicleProfile :one
+SELECT preset, weight_cost, weight_co2, weight_lead_time, weight_mass, weight_quality
+FROM bom_snapshot_vehicle_profiles WHERE snapshot_id = $1
+`
+
+type GetSnapshotVehicleProfileRow struct {
+	Preset         string
+	WeightCost     int16
+	WeightCo2      int16
+	WeightLeadTime int16
+	WeightMass     int16
+	WeightQuality  int16
+}
+
+func (q *Queries) GetSnapshotVehicleProfile(ctx context.Context, snapshotID int64) (GetSnapshotVehicleProfileRow, error) {
+	row := q.db.QueryRow(ctx, getSnapshotVehicleProfile, snapshotID)
+	var i GetSnapshotVehicleProfileRow
+	err := row.Scan(
+		&i.Preset,
+		&i.WeightCost,
+		&i.WeightCo2,
+		&i.WeightLeadTime,
+		&i.WeightMass,
+		&i.WeightQuality,
 	)
 	return i, err
 }
@@ -111,6 +152,16 @@ type InsertSnapshotBudgetRatesParams struct {
 	FromCurrency string
 	ToCurrency   string
 	Rate         decimal.Decimal
+}
+
+type InsertSnapshotChecksParams struct {
+	SnapshotID    int64
+	Position      int32
+	Code          string
+	Level         string
+	Title         string
+	Detail        string
+	Justification pgtype.Text
 }
 
 type InsertSnapshotNodesParams struct {
@@ -152,6 +203,36 @@ type InsertSnapshotStockParams struct {
 	Quantity   decimal.Decimal
 }
 
+const insertSnapshotVehicleProfile = `-- name: InsertSnapshotVehicleProfile :exec
+INSERT INTO bom_snapshot_vehicle_profiles
+    (snapshot_id, preset, weight_cost, weight_co2, weight_lead_time, weight_mass, weight_quality)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
+`
+
+type InsertSnapshotVehicleProfileParams struct {
+	SnapshotID     int64
+	Preset         string
+	WeightCost     int16
+	WeightCo2      int16
+	WeightLeadTime int16
+	WeightMass     int16
+	WeightQuality  int16
+}
+
+// Profil de véhicule figé (ADR 0036).
+func (q *Queries) InsertSnapshotVehicleProfile(ctx context.Context, arg InsertSnapshotVehicleProfileParams) error {
+	_, err := q.db.Exec(ctx, insertSnapshotVehicleProfile,
+		arg.SnapshotID,
+		arg.Preset,
+		arg.WeightCost,
+		arg.WeightCo2,
+		arg.WeightLeadTime,
+		arg.WeightMass,
+		arg.WeightQuality,
+	)
+	return err
+}
+
 const listSnapshotBudgetRates = `-- name: ListSnapshotBudgetRates :many
 SELECT snapshot_id, year, from_currency, to_currency, rate FROM bom_snapshot_budget_rates WHERE snapshot_id = $1 ORDER BY year, from_currency, to_currency
 `
@@ -171,6 +252,38 @@ func (q *Queries) ListSnapshotBudgetRates(ctx context.Context, snapshotID int64)
 			&i.FromCurrency,
 			&i.ToCurrency,
 			&i.Rate,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listSnapshotChecks = `-- name: ListSnapshotChecks :many
+SELECT snapshot_id, position, code, level, title, detail, justification FROM bom_snapshot_checks WHERE snapshot_id = $1 ORDER BY position
+`
+
+func (q *Queries) ListSnapshotChecks(ctx context.Context, snapshotID int64) ([]BomSnapshotCheck, error) {
+	rows, err := q.db.Query(ctx, listSnapshotChecks, snapshotID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []BomSnapshotCheck
+	for rows.Next() {
+		var i BomSnapshotCheck
+		if err := rows.Scan(
+			&i.SnapshotID,
+			&i.Position,
+			&i.Code,
+			&i.Level,
+			&i.Title,
+			&i.Detail,
+			&i.Justification,
 		); err != nil {
 			return nil, err
 		}
@@ -273,6 +386,50 @@ func (q *Queries) ListSnapshotStock(ctx context.Context, snapshotID int64) ([]Bo
 	for rows.Next() {
 		var i BomSnapshotPartStock
 		if err := rows.Scan(&i.SnapshotID, &i.PartID, &i.Quantity); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listSnapshots = `-- name: ListSnapshots :many
+SELECT id, bom_id, price_snapshot_id, name, currency, volume, published_at, annual_hours, start_on, target_on, destination_country, cost_basis, fx_policy, program_volume, cost_as_of, note, proposed_by, validated_by FROM bom_snapshots ORDER BY id
+`
+
+// En-têtes de tous les snapshots (versions d'une famille de BOM), par id.
+func (q *Queries) ListSnapshots(ctx context.Context) ([]BomSnapshot, error) {
+	rows, err := q.db.Query(ctx, listSnapshots)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []BomSnapshot
+	for rows.Next() {
+		var i BomSnapshot
+		if err := rows.Scan(
+			&i.ID,
+			&i.BomID,
+			&i.PriceSnapshotID,
+			&i.Name,
+			&i.Currency,
+			&i.Volume,
+			&i.PublishedAt,
+			&i.AnnualHours,
+			&i.StartOn,
+			&i.TargetOn,
+			&i.DestinationCountry,
+			&i.CostBasis,
+			&i.FxPolicy,
+			&i.ProgramVolume,
+			&i.CostAsOf,
+			&i.Note,
+			&i.ProposedBy,
+			&i.ValidatedBy,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

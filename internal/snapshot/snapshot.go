@@ -38,8 +38,21 @@ type Snapshot struct {
 	// CostMethod : méthode de calcul figée (ADR 0031) ; nil pour un snapshot publié avant (purchase + latest).
 	CostMethod *bom.CostMethod
 	// CostAsOf : date de calcul figée (contrats, année du taux budget) ; nil avec la méthode par défaut.
-	CostAsOf    *time.Time
+	CostAsOf *time.Time
+	// Profile : profil de véhicule figé (ADR 0036) ; nil si la BOM n'en avait pas (ou publié avant).
+	Profile     *bom.VehicleProfile
 	PublishedAt time.Time
+	// Trace de la décision (ADR 0033) : nil pour un snapshot publié avant, ou champ non saisi.
+	Note        *string
+	ProposedBy  *string
+	ValidatedBy *string
+}
+
+// FrozenCheck : contrôle avant publication tel qu'évalué au moment de publier (ADR 0033) ; Justification
+// porte le texte saisi pour un avertissement.
+type FrozenCheck struct {
+	Code, Level, Title, Detail string
+	Justification              *string
 }
 
 // BudgetRate : taux budget figé, 1 From = Rate To pour l'année Year.
@@ -91,7 +104,11 @@ type Part struct {
 type Store interface {
 	// Create insère l'en-tête, tous les nœuds, le stock et les faits de coût figés dans une même transaction ;
 	// s.ID est ignoré.
-	Create(ctx context.Context, s Snapshot, nodes []Node, stock []bom.PartStock, cost FrozenCost) (Snapshot, error)
+	Create(ctx context.Context, s Snapshot, nodes []Node, stock []bom.PartStock, cost FrozenCost, checks []FrozenCheck) (Snapshot, error)
+	// Checks renvoie les contrôles figés à la publication (ADR 0033), vides pour un snapshot publié avant.
+	Checks(ctx context.Context, id int64) ([]FrozenCheck, error)
+	// List renvoie l'en-tête de tous les snapshots, par id (versions d'une famille de BOM).
+	List(ctx context.Context) ([]Snapshot, error)
 	// CostFacts renvoie les faits de coût figés (ADR 0031), vides pour un snapshot publié avant.
 	CostFacts(ctx context.Context, id int64) (FrozenCost, error)
 	// Get renvoie l'en-tête, ou ErrSnapshotNotFound.
@@ -109,6 +126,8 @@ type Service struct {
 	boms    *bom.Service
 	catalog catalog.Catalog
 	pricing pricing.Pricing
+	// suppliers : noms des fournisseurs pour les explications de la comparaison ; nil → « fournisseur <id> ».
+	suppliers bom.SupplierNames
 }
 
 // NewService câble le service. pricing doit être la même source que celle de boms.
@@ -123,6 +142,9 @@ type Published struct {
 	Stock    []bom.PartStock
 	Totals   bom.Totals
 	Planning bom.Planning
+	Checks   []FrozenCheck
+	// Input : entrée du calcul (pont de coût, ADR 0032).
+	Input bom.TotalsInput
 }
 
 // Publish fige le brouillon bomID (R10) : structure, quantités, offres, attributs des pièces (CO2, masse,
@@ -130,7 +152,23 @@ type Published struct {
 // du brouillon s'il est figé, sinon un snapshot de prix est créé à l'instant at (fourni par l'appelant,
 // pas d'horloge dans le domaine). S'il manque un prix ou un taux, rien n'est publié : l'erreur liste tout
 // ce qui manque (pricing.ErrNoQuote / ErrNoRate), pour ne pas graver un trou dans un snapshot immuable.
-func (s *Service) Publish(ctx context.Context, bomID int64, at time.Time) (Snapshot, error) {
+//
+// Avant tout, les contrôles avant publication sont recalculés (ADR 0033) : un contrôle block refuse
+// (ErrPublicationBlocked), un warn sans justification refuse (ErrJustificationRequired). Note, noms saisis,
+// contrôles et justifications sont copiés dans le snapshot.
+func (s *Service) Publish(ctx context.Context, bomID int64, at time.Time, req PublishRequest) (Snapshot, error) {
+	trace, err := req.normalize()
+	if err != nil {
+		return Snapshot{}, fmt.Errorf("publish bom %d: %w", bomID, err)
+	}
+	checks, err := s.boms.PublicationChecks(ctx, bomID)
+	if err != nil {
+		return Snapshot{}, fmt.Errorf("publish bom %d: %w", bomID, err)
+	}
+	frozenChecks, err := gate(checks, trace.Justifications)
+	if err != nil {
+		return Snapshot{}, fmt.Errorf("publish bom %d: %w", bomID, err)
+	}
 	b, draft, err := s.boms.Tree(ctx, bomID)
 	if err != nil {
 		return Snapshot{}, fmt.Errorf("publish bom %d: %w", bomID, err)
@@ -166,12 +204,16 @@ func (s *Service) Publish(ctx context.Context, bomID int64, at time.Time) (Snaps
 	header := Snapshot{
 		BOMID: b.ID, PriceSnapshotID: priceSnapID, Name: b.Name, Currency: b.Currency, Volume: b.Volume,
 		AnnualHours: &b.AnnualHours, Schedule: sch, DestinationCountry: b.DestinationCountry, PublishedAt: at,
+		Note: trace.Note, ProposedBy: trace.ProposedBy, ValidatedBy: trace.ValidatedBy,
 	}
 	frozen, err := s.freezeCost(ctx, bomID, priceSnapID, &header)
 	if err != nil {
 		return Snapshot{}, fmt.Errorf("publish bom %d: %w", bomID, err)
 	}
-	out, err := s.store.Create(ctx, header, nodes, stock, frozen)
+	if header.Profile, err = s.boms.VehicleProfile(ctx, bomID); err != nil && !errors.Is(err, bom.ErrProfilesUnavailable) {
+		return Snapshot{}, fmt.Errorf("publish bom %d: %w", bomID, err)
+	}
+	out, err := s.store.Create(ctx, header, nodes, stock, frozen, frozenChecks)
 	if err != nil {
 		return Snapshot{}, fmt.Errorf("publish bom %d: %w", bomID, err)
 	}
@@ -363,12 +405,13 @@ func (s *Service) Get(ctx context.Context, id int64) (Published, error) {
 	if err := bom.AddFactRates(ctx, s.pricing, &h.PriceSnapshotID, ci, currency, rates); err != nil {
 		return Published{}, fmt.Errorf("get snapshot %d: %w", id, err)
 	}
-	t, err := bom.ComputeTotals(bom.TotalsInput{
+	in := bom.TotalsInput{
 		Nodes: calc, Currency: currency, Prices: prices, Rates: rates, PriceSnapshotID: &h.PriceSnapshotID,
 		Volume: h.Volume, AnnualHours: h.AnnualHours, Stock: bom.StockMap(stock),
 		LaborNotFrozen: h.AnnualHours == nil, // publié avant ADR 0024 : heures non figées
 		Cost:           ci,
-	})
+	}
+	t, err := bom.ComputeTotals(in)
 	if err != nil {
 		return Published{}, fmt.Errorf("get snapshot %d: %w", id, err)
 	}
@@ -376,7 +419,11 @@ func (s *Service) Get(ctx context.Context, id int64) (Published, error) {
 	if err != nil {
 		return Published{}, fmt.Errorf("get snapshot %d: %w", id, err)
 	}
-	return Published{Snapshot: h, Nodes: nodes, Stock: stock, Totals: t, Planning: plan}, nil
+	checks, err := s.store.Checks(ctx, id)
+	if err != nil {
+		return Published{}, fmt.Errorf("get snapshot %d: %w", id, err)
+	}
+	return Published{Snapshot: h, Nodes: nodes, Stock: stock, Totals: t, Planning: plan, Checks: checks, Input: in}, nil
 }
 
 // frozenCostInput reconstruit l'entrée de la méthode depuis les seules copies du snapshot (ADR 0031) : ni
@@ -464,7 +511,17 @@ func (s *Service) NewDraft(ctx context.Context, id int64) (bom.BOM, error) {
 		}
 		b = withMethod
 	}
-	if err := s.copyDraft(ctx, b.ID, nodes, stock, h.Schedule); err != nil {
+	if p := h.Profile; p != nil { // le brouillon garde le profil figé (ADR 0036)
+		w := p.Weights
+		if _, err := s.boms.SetVehicleProfile(ctx, b.ID, string(p.Preset), &w); err != nil {
+			err = fmt.Errorf("copy vehicle profile: %w", err)
+			if delErr := s.boms.DeleteBOM(ctx, b.ID); delErr != nil {
+				err = errors.Join(err, delErr)
+			}
+			return bom.BOM{}, fmt.Errorf("new draft from snapshot %d: %w", id, err)
+		}
+	}
+	if err := s.copyDraft(ctx, b.ID, h.BOMID, nodes, stock, h.Schedule); err != nil {
 		if delErr := s.boms.DeleteBOM(ctx, b.ID); delErr != nil {
 			err = errors.Join(err, fmt.Errorf("remove partial draft %d: %w", b.ID, delErr))
 		}
@@ -473,10 +530,27 @@ func (s *Service) NewDraft(ctx context.Context, id int64) (bom.BOM, error) {
 	return b, nil
 }
 
-// copyDraft recopie l'arbre, le stock (ADR 0022) et le planning (ADR 0023) figés dans le brouillon bomID.
-func (s *Service) copyDraft(ctx context.Context, bomID int64, nodes []Node, stock []bom.PartStock, sch *bom.Schedule) error {
-	if err := s.copyTree(ctx, bomID, nodes); err != nil {
+// copyDraft recopie l'arbre, le stock (ADR 0022) et le planning (ADR 0023) figés dans le brouillon bomID, puis
+// les budgets cibles de la BOM source (non figés au snapshot : ceux d'aujourd'hui) des nœuds présents dans le
+// snapshot, pour que le brouillon se compare à la même cible.
+func (s *Service) copyDraft(ctx context.Context, bomID, sourceBOM int64, nodes []Node, stock []bom.PartStock, sch *bom.Schedule) error {
+	newIDs, err := s.copyTree(ctx, bomID, nodes)
+	if err != nil {
 		return err
+	}
+	budgets, err := s.boms.TargetBudgetList(ctx, sourceBOM)
+	if err != nil {
+		return err
+	}
+	for _, b := range budgets {
+		id, ok := newIDs[b.NodeID]
+		if !ok {
+			continue
+		}
+		b.NodeID = id
+		if err := s.boms.SetTargetBudget(ctx, bomID, b); err != nil {
+			return fmt.Errorf("copy budget: %w", err)
+		}
 	}
 	for _, st := range stock {
 		if _, err := s.boms.SetPartStock(ctx, bomID, st.PartID, st.Quantity); err != nil {
@@ -492,14 +566,14 @@ func (s *Service) copyDraft(ctx context.Context, bomID int64, nodes []Node, stoc
 }
 
 // copyTree recopie l'arbre figé sous la racine du brouillon bomID, parents avant enfants, par Key croissante
-// parmi les nœuds prêts (ordre déterministe des nouveaux ids).
-func (s *Service) copyTree(ctx context.Context, bomID int64, nodes []Node) error {
+// parmi les nœuds prêts (ordre déterministe des nouveaux ids). Rend la correspondance clé figée → nouvel id.
+func (s *Service) copyTree(ctx context.Context, bomID int64, nodes []Node) (map[int64]int64, error) {
 	_, draft, err := s.boms.Tree(ctx, bomID)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if len(draft) != 1 {
-		return fmt.Errorf("new bom %d has %d nodes, want only its root", bomID, len(draft))
+		return nil, fmt.Errorf("new bom %d has %d nodes, want only its root", bomID, len(draft))
 	}
 	draftRoot := draft[0]
 
@@ -514,21 +588,22 @@ func (s *Service) copyTree(ctx context.Context, bomID int64, nodes []Node) error
 		children[*n.ParentKey] = append(children[*n.ParentKey], n)
 	}
 	if root == nil {
-		return errors.New("snapshot has no root")
+		return nil, errors.New("snapshot has no root")
 	}
+	newIDs := map[int64]int64{root.Key: draftRoot.ID}
 	if !root.Quantity.Equal(draftRoot.Quantity) {
 		if _, err := s.boms.SetNodeQuantity(ctx, bomID, draftRoot.ID, root.Quantity); err != nil {
-			return fmt.Errorf("root: %w", err)
+			return nil, fmt.Errorf("root: %w", err)
 		}
 	}
 	if root.Part == nil && root.ProductionDays != draftRoot.ProductionDays {
 		if _, err := s.boms.SetNodeProductionDays(ctx, bomID, draftRoot.ID, root.ProductionDays); err != nil {
-			return fmt.Errorf("root: %w", err)
+			return nil, fmt.Errorf("root: %w", err)
 		}
 	}
 	if root.Strategy != nil {
 		if _, err := s.boms.SetNodeStrategy(ctx, bomID, draftRoot.ID, root.Strategy); err != nil {
-			return fmt.Errorf("root: %w", err)
+			return nil, fmt.Errorf("root: %w", err)
 		}
 	}
 
@@ -553,16 +628,17 @@ func (s *Service) copyTree(ctx context.Context, bomID int64, nodes []Node) error
 		}
 		added, err := s.boms.AddNode(ctx, bomID, nn)
 		if err != nil {
-			return fmt.Errorf("copy node %d: %w", c.Key, err)
+			return nil, fmt.Errorf("copy node %d: %w", c.Key, err)
 		}
+		newIDs[c.Key] = added.ID
 		if c.Strategy != nil {
 			if _, err := s.boms.SetNodeStrategy(ctx, bomID, added.ID, c.Strategy); err != nil {
-				return fmt.Errorf("copy strategy of node %d: %w", c.Key, err)
+				return nil, fmt.Errorf("copy strategy of node %d: %w", c.Key, err)
 			}
 		}
 		push(c.Key, added.ID)
 	}
-	return nil
+	return newIDs, nil
 }
 
 // readyNode : nœud figé dont le parent est déjà recréé sous newParent.

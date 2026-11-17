@@ -41,7 +41,9 @@ func New(db DB) *Store {
 
 // Create insère l'en-tête puis tous les nœuds (un COPY) dans une même transaction : un snapshot est
 // publié en entier ou pas du tout. Les contraintes différées (parent présent) sont vérifiées au commit.
-func (s *Store) Create(ctx context.Context, h snapshot.Snapshot, nodes []snapshot.Node, stock []bom.PartStock, cost snapshot.FrozenCost) (snapshot.Snapshot, error) {
+func (s *Store) Create(ctx context.Context, h snapshot.Snapshot, nodes []snapshot.Node, stock []bom.PartStock, cost snapshot.FrozenCost,
+	checks []snapshot.FrozenCheck,
+) (snapshot.Snapshot, error) {
 	tx, err := s.db.Begin(ctx)
 	if err != nil {
 		return snapshot.Snapshot{}, fmt.Errorf("create snapshot of bom %d: begin: %w", h.BOMID, err)
@@ -55,7 +57,7 @@ func (s *Store) Create(ctx context.Context, h snapshot.Snapshot, nodes []snapsho
 		Currency: h.Currency, Volume: h.Volume, PublishedAt: h.PublishedAt, AnnualHours: optDecimal(h.AnnualHours),
 		StartOn: startOn(h.Schedule), TargetOn: targetOn(h.Schedule), DestinationCountry: optText(h.DestinationCountry),
 		CostBasis: methodText(h.CostMethod, true), FxPolicy: methodText(h.CostMethod, false), ProgramVolume: programVolume(h.CostMethod),
-		CostAsOf: optTime(h.CostAsOf),
+		CostAsOf: optTime(h.CostAsOf), Note: optText(h.Note), ProposedBy: optText(h.ProposedBy), ValidatedBy: optText(h.ValidatedBy),
 	})
 	if err != nil {
 		return snapshot.Snapshot{}, fmt.Errorf("create snapshot of bom %d: %w", h.BOMID, err)
@@ -79,10 +81,25 @@ func (s *Store) Create(ctx context.Context, h snapshot.Snapshot, nodes []snapsho
 	if err := insertCost(ctx, q, row.ID, cost); err != nil {
 		return snapshot.Snapshot{}, fmt.Errorf("create snapshot of bom %d: %w", h.BOMID, err)
 	}
+	if len(checks) > 0 {
+		rows := make([]snapshotdb.InsertSnapshotChecksParams, len(checks))
+		for i, c := range checks {
+			rows[i] = snapshotdb.InsertSnapshotChecksParams{SnapshotID: row.ID, Position: int32(i), Code: c.Code, Level: c.Level, // #nosec G115 -- une dizaine de contrôles
+				Title: c.Title, Detail: c.Detail, Justification: optText(c.Justification)}
+		}
+		if _, err := q.InsertSnapshotChecks(ctx, rows); err != nil {
+			return snapshot.Snapshot{}, fmt.Errorf("create snapshot of bom %d: checks: %w", h.BOMID, err)
+		}
+	}
+	if err := insertProfile(ctx, q, row.ID, h.Profile); err != nil {
+		return snapshot.Snapshot{}, fmt.Errorf("create snapshot of bom %d: %w", h.BOMID, err)
+	}
 	if err := tx.Commit(ctx); err != nil {
 		return snapshot.Snapshot{}, fmt.Errorf("create snapshot of bom %d: commit: %w", h.BOMID, err)
 	}
-	return toSnapshot(row), nil
+	out := toSnapshot(row)
+	out.Profile = h.Profile
+	return out, nil
 }
 
 // insertCost copie les taux budget et les faits de coût par offre (ADR 0031), chacun en un COPY.
@@ -210,7 +227,11 @@ func (s *Store) Get(ctx context.Context, id int64) (snapshot.Snapshot, error) {
 	if err != nil {
 		return snapshot.Snapshot{}, fmt.Errorf("get snapshot %d: %w", id, err)
 	}
-	return toSnapshot(row), nil
+	out := toSnapshot(row)
+	if out.Profile, err = s.profile(ctx, id); err != nil {
+		return snapshot.Snapshot{}, fmt.Errorf("get snapshot %d: %w", id, err)
+	}
+	return out, nil
 }
 
 // Nodes renvoie tous les nœuds du snapshot en une requête, triés par clé ; ErrSnapshotNotFound si aucun
@@ -306,7 +327,34 @@ func toSnapshot(r snapshotdb.BomSnapshot) snapshot.Snapshot {
 		Currency: r.Currency, Volume: r.Volume, PublishedAt: r.PublishedAt, AnnualHours: ptrDecimal(r.AnnualHours),
 		Schedule: toSchedule(r.StartOn, r.TargetOn), DestinationCountry: ptrText(r.DestinationCountry),
 		CostMethod: toMethod(r), CostAsOf: ptrTime(r.CostAsOf),
+		Note: ptrText(r.Note), ProposedBy: ptrText(r.ProposedBy), ValidatedBy: ptrText(r.ValidatedBy),
 	}
+}
+
+// Checks relit les contrôles figés à la publication (ADR 0033), dans leur ordre.
+func (s *Store) Checks(ctx context.Context, id int64) ([]snapshot.FrozenCheck, error) {
+	rows, err := s.q.ListSnapshotChecks(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("checks of snapshot %d: %w", id, err)
+	}
+	out := make([]snapshot.FrozenCheck, len(rows))
+	for i, r := range rows {
+		out[i] = snapshot.FrozenCheck{Code: r.Code, Level: r.Level, Title: r.Title, Detail: r.Detail, Justification: ptrText(r.Justification)}
+	}
+	return out, nil
+}
+
+// List renvoie l'en-tête de tous les snapshots, par id.
+func (s *Store) List(ctx context.Context) ([]snapshot.Snapshot, error) {
+	rows, err := s.q.ListSnapshots(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("list snapshots: %w", err)
+	}
+	out := make([]snapshot.Snapshot, len(rows))
+	for i, r := range rows {
+		out[i] = toSnapshot(r)
+	}
+	return out, nil
 }
 
 func toMethod(r snapshotdb.BomSnapshot) *bom.CostMethod {

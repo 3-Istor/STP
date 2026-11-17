@@ -174,3 +174,37 @@ SELECT node_id, amount, currency FROM bom_target_budgets WHERE bom_id = $1 ORDER
 INSERT INTO bom_target_budgets (bom_id, node_id, amount, currency) VALUES ($1, $2, $3, $4)
 ON CONFLICT (bom_id, node_id) DO UPDATE SET amount = EXCLUDED.amount, currency = EXCLUDED.currency
 RETURNING node_id, amount, currency;
+
+-- Pistes de réduction (vision V2 §2).
+-- name: ListReductionIdeas :many
+SELECT * FROM bom_reduction_ideas WHERE bom_id = $1 ORDER BY id;
+
+-- name: CreateReductionIdea :one
+INSERT INTO bom_reduction_ideas (bom_id, title, owner, gain_amount, gain_currency, status, draft_bom_id)
+VALUES ($1, $2, $3, $4, $5, $6, sqlc.narg(draft_bom_id))
+RETURNING *;
+
+-- name: UpdateReductionIdea :one
+UPDATE bom_reduction_ideas
+SET title = $3, owner = $4, gain_amount = $5, gain_currency = $6, status = $7, draft_bom_id = sqlc.narg(draft_bom_id)
+WHERE bom_id = $1 AND id = $2
+RETURNING *;
+
+-- name: GetReductionIdea :one
+SELECT * FROM bom_reduction_ideas WHERE bom_id = $1 AND id = $2;
+
+-- name: DeleteReductionIdea :execrows
+DELETE FROM bom_reduction_ideas WHERE bom_id = $1 AND id = $2;
+
+-- Profil de véhicule (ADR 0036) : pondérations du classement des alternatives.
+-- name: GetVehicleProfile :one
+SELECT preset, weight_cost, weight_co2, weight_lead_time, weight_mass, weight_quality
+FROM bom_vehicle_profiles WHERE bom_id = $1;
+
+-- name: UpsertVehicleProfile :one
+INSERT INTO bom_vehicle_profiles (bom_id, preset, weight_cost, weight_co2, weight_lead_time, weight_mass, weight_quality)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
+ON CONFLICT (bom_id) DO UPDATE SET preset = EXCLUDED.preset, weight_cost = EXCLUDED.weight_cost,
+    weight_co2 = EXCLUDED.weight_co2, weight_lead_time = EXCLUDED.weight_lead_time,
+    weight_mass = EXCLUDED.weight_mass, weight_quality = EXCLUDED.weight_quality
+RETURNING preset, weight_cost, weight_co2, weight_lead_time, weight_mass, weight_quality;

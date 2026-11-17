@@ -102,6 +102,47 @@ func (q *Queries) CreateBOM(ctx context.Context, arg CreateBOMParams) (Bom, erro
 	return i, err
 }
 
+const createReductionIdea = `-- name: CreateReductionIdea :one
+INSERT INTO bom_reduction_ideas (bom_id, title, owner, gain_amount, gain_currency, status, draft_bom_id)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
+RETURNING id, bom_id, title, owner, gain_amount, gain_currency, status, draft_bom_id, created_at
+`
+
+type CreateReductionIdeaParams struct {
+	BomID        int64
+	Title        string
+	Owner        string
+	GainAmount   decimal.Decimal
+	GainCurrency string
+	Status       string
+	DraftBomID   pgtype.Int8
+}
+
+func (q *Queries) CreateReductionIdea(ctx context.Context, arg CreateReductionIdeaParams) (BomReductionIdea, error) {
+	row := q.db.QueryRow(ctx, createReductionIdea,
+		arg.BomID,
+		arg.Title,
+		arg.Owner,
+		arg.GainAmount,
+		arg.GainCurrency,
+		arg.Status,
+		arg.DraftBomID,
+	)
+	var i BomReductionIdea
+	err := row.Scan(
+		&i.ID,
+		&i.BomID,
+		&i.Title,
+		&i.Owner,
+		&i.GainAmount,
+		&i.GainCurrency,
+		&i.Status,
+		&i.DraftBomID,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const createRootNode = `-- name: CreateRootNode :one
 INSERT INTO bom_nodes (bom_id, name)
 VALUES ($1, $2)
@@ -180,6 +221,23 @@ func (q *Queries) DeletePartStock(ctx context.Context, arg DeletePartStockParams
 	return result.RowsAffected(), nil
 }
 
+const deleteReductionIdea = `-- name: DeleteReductionIdea :execrows
+DELETE FROM bom_reduction_ideas WHERE bom_id = $1 AND id = $2
+`
+
+type DeleteReductionIdeaParams struct {
+	BomID int64
+	ID    int64
+}
+
+func (q *Queries) DeleteReductionIdea(ctx context.Context, arg DeleteReductionIdeaParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteReductionIdea, arg.BomID, arg.ID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const deleteSchedule = `-- name: DeleteSchedule :execrows
 DELETE FROM bom_schedule
 WHERE bom_id = $1
@@ -245,6 +303,32 @@ func (q *Queries) GetNode(ctx context.Context, arg GetNodeParams) (BomNode, erro
 	return i, err
 }
 
+const getReductionIdea = `-- name: GetReductionIdea :one
+SELECT id, bom_id, title, owner, gain_amount, gain_currency, status, draft_bom_id, created_at FROM bom_reduction_ideas WHERE bom_id = $1 AND id = $2
+`
+
+type GetReductionIdeaParams struct {
+	BomID int64
+	ID    int64
+}
+
+func (q *Queries) GetReductionIdea(ctx context.Context, arg GetReductionIdeaParams) (BomReductionIdea, error) {
+	row := q.db.QueryRow(ctx, getReductionIdea, arg.BomID, arg.ID)
+	var i BomReductionIdea
+	err := row.Scan(
+		&i.ID,
+		&i.BomID,
+		&i.Title,
+		&i.Owner,
+		&i.GainAmount,
+		&i.GainCurrency,
+		&i.Status,
+		&i.DraftBomID,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const getSchedule = `-- name: GetSchedule :one
 SELECT bom_id, start_on, target_on FROM bom_schedule
 WHERE bom_id = $1
@@ -255,6 +339,35 @@ func (q *Queries) GetSchedule(ctx context.Context, bomID int64) (BomSchedule, er
 	row := q.db.QueryRow(ctx, getSchedule, bomID)
 	var i BomSchedule
 	err := row.Scan(&i.BomID, &i.StartOn, &i.TargetOn)
+	return i, err
+}
+
+const getVehicleProfile = `-- name: GetVehicleProfile :one
+SELECT preset, weight_cost, weight_co2, weight_lead_time, weight_mass, weight_quality
+FROM bom_vehicle_profiles WHERE bom_id = $1
+`
+
+type GetVehicleProfileRow struct {
+	Preset         string
+	WeightCost     int16
+	WeightCo2      int16
+	WeightLeadTime int16
+	WeightMass     int16
+	WeightQuality  int16
+}
+
+// Profil de véhicule (ADR 0036) : pondérations du classement des alternatives.
+func (q *Queries) GetVehicleProfile(ctx context.Context, bomID int64) (GetVehicleProfileRow, error) {
+	row := q.db.QueryRow(ctx, getVehicleProfile, bomID)
+	var i GetVehicleProfileRow
+	err := row.Scan(
+		&i.Preset,
+		&i.WeightCost,
+		&i.WeightCo2,
+		&i.WeightLeadTime,
+		&i.WeightMass,
+		&i.WeightQuality,
+	)
 	return i, err
 }
 
@@ -378,6 +491,41 @@ func (q *Queries) ListPartStock(ctx context.Context, bomID int64) ([]BomPartStoc
 	for rows.Next() {
 		var i BomPartStock
 		if err := rows.Scan(&i.BomID, &i.PartID, &i.Quantity); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listReductionIdeas = `-- name: ListReductionIdeas :many
+SELECT id, bom_id, title, owner, gain_amount, gain_currency, status, draft_bom_id, created_at FROM bom_reduction_ideas WHERE bom_id = $1 ORDER BY id
+`
+
+// Pistes de réduction (vision V2 §2).
+func (q *Queries) ListReductionIdeas(ctx context.Context, bomID int64) ([]BomReductionIdea, error) {
+	rows, err := q.db.Query(ctx, listReductionIdeas, bomID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []BomReductionIdea
+	for rows.Next() {
+		var i BomReductionIdea
+		if err := rows.Scan(
+			&i.ID,
+			&i.BomID,
+			&i.Title,
+			&i.Owner,
+			&i.GainAmount,
+			&i.GainCurrency,
+			&i.Status,
+			&i.DraftBomID,
+			&i.CreatedAt,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -815,6 +963,50 @@ func (q *Queries) UpdateBOMSettings(ctx context.Context, arg UpdateBOMSettingsPa
 	return i, err
 }
 
+const updateReductionIdea = `-- name: UpdateReductionIdea :one
+UPDATE bom_reduction_ideas
+SET title = $3, owner = $4, gain_amount = $5, gain_currency = $6, status = $7, draft_bom_id = $8
+WHERE bom_id = $1 AND id = $2
+RETURNING id, bom_id, title, owner, gain_amount, gain_currency, status, draft_bom_id, created_at
+`
+
+type UpdateReductionIdeaParams struct {
+	BomID        int64
+	ID           int64
+	Title        string
+	Owner        string
+	GainAmount   decimal.Decimal
+	GainCurrency string
+	Status       string
+	DraftBomID   pgtype.Int8
+}
+
+func (q *Queries) UpdateReductionIdea(ctx context.Context, arg UpdateReductionIdeaParams) (BomReductionIdea, error) {
+	row := q.db.QueryRow(ctx, updateReductionIdea,
+		arg.BomID,
+		arg.ID,
+		arg.Title,
+		arg.Owner,
+		arg.GainAmount,
+		arg.GainCurrency,
+		arg.Status,
+		arg.DraftBomID,
+	)
+	var i BomReductionIdea
+	err := row.Scan(
+		&i.ID,
+		&i.BomID,
+		&i.Title,
+		&i.Owner,
+		&i.GainAmount,
+		&i.GainCurrency,
+		&i.Status,
+		&i.DraftBomID,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const upsertPartStock = `-- name: UpsertPartStock :one
 INSERT INTO bom_part_stock (bom_id, part_id, quantity)
 VALUES ($1, $2, $3)
@@ -883,5 +1075,55 @@ func (q *Queries) UpsertTargetBudget(ctx context.Context, arg UpsertTargetBudget
 	)
 	var i UpsertTargetBudgetRow
 	err := row.Scan(&i.NodeID, &i.Amount, &i.Currency)
+	return i, err
+}
+
+const upsertVehicleProfile = `-- name: UpsertVehicleProfile :one
+INSERT INTO bom_vehicle_profiles (bom_id, preset, weight_cost, weight_co2, weight_lead_time, weight_mass, weight_quality)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
+ON CONFLICT (bom_id) DO UPDATE SET preset = EXCLUDED.preset, weight_cost = EXCLUDED.weight_cost,
+    weight_co2 = EXCLUDED.weight_co2, weight_lead_time = EXCLUDED.weight_lead_time,
+    weight_mass = EXCLUDED.weight_mass, weight_quality = EXCLUDED.weight_quality
+RETURNING preset, weight_cost, weight_co2, weight_lead_time, weight_mass, weight_quality
+`
+
+type UpsertVehicleProfileParams struct {
+	BomID          int64
+	Preset         string
+	WeightCost     int16
+	WeightCo2      int16
+	WeightLeadTime int16
+	WeightMass     int16
+	WeightQuality  int16
+}
+
+type UpsertVehicleProfileRow struct {
+	Preset         string
+	WeightCost     int16
+	WeightCo2      int16
+	WeightLeadTime int16
+	WeightMass     int16
+	WeightQuality  int16
+}
+
+func (q *Queries) UpsertVehicleProfile(ctx context.Context, arg UpsertVehicleProfileParams) (UpsertVehicleProfileRow, error) {
+	row := q.db.QueryRow(ctx, upsertVehicleProfile,
+		arg.BomID,
+		arg.Preset,
+		arg.WeightCost,
+		arg.WeightCo2,
+		arg.WeightLeadTime,
+		arg.WeightMass,
+		arg.WeightQuality,
+	)
+	var i UpsertVehicleProfileRow
+	err := row.Scan(
+		&i.Preset,
+		&i.WeightCost,
+		&i.WeightCo2,
+		&i.WeightLeadTime,
+		&i.WeightMass,
+		&i.WeightQuality,
+	)
 	return i, err
 }

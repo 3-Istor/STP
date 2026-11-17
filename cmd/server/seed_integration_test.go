@@ -11,6 +11,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/shopspring/decimal"
 
 	"bomstudio/internal/bom"
 	"bomstudio/internal/bom/bomstore"
@@ -18,6 +19,7 @@ import (
 	"bomstudio/internal/catalog/catalogstore"
 	"bomstudio/internal/pricing"
 	"bomstudio/internal/pricing/pricingstore"
+	"bomstudio/internal/snapshot"
 	"bomstudio/internal/supplier"
 	"bomstudio/internal/supplier/supplierstore"
 )
@@ -87,7 +89,8 @@ func seedCounts(t *testing.T, pool *pgxpool.Pool) map[string]int {
 	t.Helper()
 	out := map[string]int{}
 	for _, table := range []string{"suppliers", "parts", "offers", "boms", "bom_nodes", "price_quotes", "fx_quotes",
-		"pricing_runs", "seed_loads", "customs_duties", "freight_rates", "budget_rates", "bom_target_budgets", "bom_schedule"} {
+		"pricing_runs", "seed_loads", "customs_duties", "freight_rates", "budget_rates", "bom_target_budgets", "bom_schedule", "bom_vehicle_profiles",
+		"bom_snapshots", "bom_snapshot_checks", "bom_reduction_ideas", "seed_demo_steps", "price_snapshots"} {
 		var n int
 		if err := pool.QueryRow(t.Context(), "SELECT count(*) FROM "+table).Scan(&n); err != nil {
 			t.Fatal(err)
@@ -106,7 +109,13 @@ func TestRunSeedTwiceWithSameParametersAddsNothing(t *testing.T) {
 	t.Setenv("SIM_SEED", "42")
 	t.Setenv("SIM_AS_OF", "2026-01-01T00:00:00Z")
 	t.Setenv("SIM_YEAR_DURATION", "40m")
-	t.Setenv("SIM_FX_PAIRS", `[{"series_key":"fx:USD:EUR","base_currency":"USD","quote_currency":"EUR","reference":"0.92","band_percent":"5"}]`)
+	// Paires directes vers EUR et GBP : la publication de V1 (versions de démo) fige un taux par devise d'offre.
+	t.Setenv("SIM_FX_PAIRS", `[{"series_key":"fx:GBP:EUR","base_currency":"GBP","quote_currency":"EUR","reference":"1.17","band_percent":"5"},`+
+		`{"series_key":"fx:JPY:EUR","base_currency":"JPY","quote_currency":"EUR","reference":"0.0062","band_percent":"5"},`+
+		`{"series_key":"fx:USD:EUR","base_currency":"USD","quote_currency":"EUR","reference":"0.92","band_percent":"5"},`+
+		`{"series_key":"fx:EUR:GBP","base_currency":"EUR","quote_currency":"GBP","reference":"0.855","band_percent":"5"},`+
+		`{"series_key":"fx:JPY:GBP","base_currency":"JPY","quote_currency":"GBP","reference":"0.0053","band_percent":"5"},`+
+		`{"series_key":"fx:USD:GBP","base_currency":"USD","quote_currency":"GBP","reference":"0.787","band_percent":"5"}]`)
 
 	if err := runSeed(t.Context(), pool); err != nil {
 		t.Fatal("first seed:", err)
@@ -117,11 +126,33 @@ func TestRunSeedTwiceWithSameParametersAddsNothing(t *testing.T) {
 			t.Fatalf("first seed left %s empty: %v", table, first)
 		}
 	}
-	if first["boms"] != 2 || first["seed_loads"] != 1 || first["bom_target_budgets"] != 10 || first["bom_schedule"] != 1 ||
-		first["budget_rates"] != 6 || first["customs_duties"] != 24 {
-		t.Fatalf("first seed: %v, want 2 BOM, 1 seed_load, 10 budgets, 1 schedule, 6 budget rates, 24 customs duties", first)
+	// 2 BOM du jeu + le brouillon B (versions de démo), qui reprend budgets et planning de la Multipla.
+	if first["boms"] != 3 || first["seed_loads"] != 1 || first["bom_target_budgets"] != 20 || first["bom_schedule"] != 2 ||
+		first["budget_rates"] != 6 || first["customs_duties"] != 24 || first["bom_snapshots"] != 1 || first["bom_snapshot_checks"] != 7 ||
+		first["bom_reduction_ideas"] != 5 || first["seed_demo_steps"] != 3 {
+		t.Fatalf("first seed: %v, want 3 BOM, 1 seed_load, 20 budgets, 2 schedules, 6 budget rates, 24 customs duties, "+
+			"1 snapshot with 7 checks, 5 ideas, 3 demo steps", first)
 	}
 	checkMultiplaPilot(t, pool)
+	checkDemoVersions(t, pool)
+	// ADR 0036 : la Multipla seedée est en profil familiale ; son brouillon B, créé depuis le snapshot V1
+	// (versions de démo, ADR 0033), hérite du profil figé. Aucune autre BOM n'a de profil.
+	rows, err := pool.Query(t.Context(), `SELECT b.name, p.preset FROM bom_vehicle_profiles p JOIN boms b ON b.id = p.bom_id ORDER BY b.id`)
+	if err != nil {
+		t.Fatal("profiles:", err)
+	}
+	var profiles []string
+	for rows.Next() {
+		var name, preset string
+		if err := rows.Scan(&name, &preset); err != nil {
+			t.Fatal("scan profile:", err)
+		}
+		profiles = append(profiles, name+"="+preset)
+	}
+	rows.Close()
+	if want := "[Fiat Multipla 1.6 16V=family Fiat Multipla 1.6 16V=family]"; fmt.Sprint(profiles) != want {
+		t.Fatalf("profiles %v; want %s (Multipla and its draft B)", profiles, want)
+	}
 
 	if err := runSeed(t.Context(), pool); err != nil {
 		t.Fatal("second seed:", err)
@@ -159,5 +190,42 @@ func checkMultiplaPilot(t *testing.T, pool *pgxpool.Pool) {
 	if err := pool.QueryRow(ctx, `SELECT c.ends_on::text FROM contracts c JOIN suppliers s ON s.id = c.supplier_id
 		WHERE s.name = 'Arden Composites'`).Scan(&arden); err != nil || arden != "2026-03-31" {
 		t.Errorf("Arden contract ends on %q (%v), want 2026-03-31", arden, err)
+	}
+}
+
+// checkDemoVersions : V1 publiée avec sa trace, B créé depuis V1, et la comparaison V1 → B explique l'écart par
+// des causes non vides dont la somme vaut l'écart (ADR 0032).
+func checkDemoVersions(t *testing.T, pool *pgxpool.Pool) {
+	t.Helper()
+	ctx := t.Context()
+	cfg, _, _, err := pricingConfigFromEnv()
+	if err != nil {
+		t.Fatal(err)
+	}
+	prices := pricing.NewBOMPricing(pricing.NewReadService(pricingstore.NewReadStore(pool), cfg),
+		pricing.NewSnapshotService(pricingstore.NewSnapshotStore(pool), cfg))
+	_, snaps := domainServices(pool, catalog.NewService(catalogstore.New(pool), time.Now), supplier.NewService(supplierstore.New(pool)), prices)
+	var v1, b int64
+	var proposed, validated, note string
+	if err := pool.QueryRow(ctx, `SELECT s.id, s.proposed_by, s.validated_by, s.note, d.id FROM bom_snapshots s
+		JOIN boms d ON d.source_snapshot_id = s.id`).Scan(&v1, &proposed, &validated, &note, &b); err != nil {
+		t.Fatal(err)
+	}
+	if proposed != "Arthur P." || validated != "Joe" || note != "Jalon de lancement" {
+		t.Errorf("V1 trace = %q %q %q", proposed, validated, note)
+	}
+	c, err := snaps.Compare(ctx, snapshot.Ref{Kind: snapshot.RefSnapshot, ID: v1}, snapshot.Ref{Kind: snapshot.RefBOM, ID: b})
+	if err != nil {
+		t.Fatal(err)
+	}
+	kinds := map[bom.CauseKind]bool{}
+	sum := decimal.Zero
+	for _, k := range c.Causes {
+		kinds[k.Kind] = true
+		sum = sum.Add(k.Amount.Amount())
+	}
+	if !kinds[bom.CauseStructure] || !kinds[bom.CauseOfferChange] || !sum.Equal(c.Delta.Cost.Amount()) || len(c.ChangedParts) != 6 {
+		t.Errorf("compare V1 → B: causes %+v (Σ %s, delta %s), %d changed parts; want structure and offer_change, 6 parts",
+			c.Causes, sum, c.Delta.Cost, len(c.ChangedParts))
 	}
 }

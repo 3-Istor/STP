@@ -23,6 +23,10 @@ type Suggestions struct {
 	NodeID       int64
 	Strategy     Strategy // "" : aucune stratégie dans la lignée, ordre par offre
 	StrategyFrom int64    // nœud qui porte la stratégie (le nœud lui-même ou un ancêtre) ; 0 sans stratégie
+	// Profile : profil de véhicule de la BOM qui classe, quand aucune stratégie de nœud ne s'applique (ADR 0036).
+	Profile *VehicleProfile
+	// Weights : poids effectivement appliqués (stratégie, profil, ou tous nuls).
+	Weights      Weights
 	RealQuantity decimal.Decimal
 	Currency     money.Currency
 	// PriceSnapshotID : nil = prix en direct ; sinon les prix figés du brouillon (mêmes que ses totaux).
@@ -56,11 +60,21 @@ func (s *Service) Suggestions(ctx context.Context, bomID, nodeID int64) (Suggest
 	if err != nil {
 		return Suggestions{}, fmt.Errorf("suggestions for node %d in bom %d: %w", nodeID, bomID, err)
 	}
-	ranked, excluded := Rank(strategy, cands)
-	return Suggestions{
+	out := Suggestions{
 		NodeID: nodeID, Strategy: strategy, StrategyFrom: from, RealQuantity: qty, Currency: currency,
-		PriceSnapshotID: b.PriceSnapshotID, Ranked: ranked, Excluded: excluded,
-	}, nil
+		PriceSnapshotID: b.PriceSnapshotID, Weights: strategyWeights(strategy),
+	}
+	if strategy == "" && s.profiles != nil { // priorité : stratégie de nœud > profil de la BOM > aucun (ADR 0036)
+		p, err := s.profiles.VehicleProfile(ctx, bomID)
+		if err != nil {
+			return Suggestions{}, fmt.Errorf("suggestions for node %d in bom %d: %w", nodeID, bomID, err)
+		}
+		if p != nil {
+			out.Profile, out.Weights = p, p.Weights
+		}
+	}
+	out.Ranked, out.Excluded = RankWeighted(out.Weights, cands)
+	return out, nil
 }
 
 // realQuantity : produit des quantités de la racine au nœud (ADR 0007 règle 1), borné contre un cycle.
@@ -167,7 +181,8 @@ func evaluate(t pendingCandidate, qty decimal.Decimal, currency money.Currency, 
 		return c
 	}
 	lead, co2 := t.offer.LeadTimeDays+attrs.ProductionDays, attrs.CO2KGPerUnit.Mul(qty)
-	c.LeadDays, c.CO2Kg, c.HasFacts = lead, co2, true
+	c.LeadDays, c.CO2Kg, c.MassKg, c.HasFacts = lead, co2, attrs.MassKG.Mul(qty), true
+	c.Quality = t.offer.QualityScore
 	if pr := prices[t.offer.ID]; pr.Err == nil {
 		q := pr.Quote
 		c.Quote = &q

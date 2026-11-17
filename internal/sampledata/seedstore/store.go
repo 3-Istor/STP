@@ -87,6 +87,9 @@ func Load(ctx context.Context, db DB, ds sampledata.Dataset, p Params, prices Pr
 	if err := verify(ctx, tx, p.DatasetVersion, ds); err != nil {
 		return Result{}, fmt.Errorf("seed %s: %w", p.DatasetVersion, err)
 	}
+	if err := insertProfiles(ctx, tx, p.DatasetVersion, sampledata.DemoProfiles); err != nil { // lot E, ADR 0036
+		return Result{}, fmt.Errorf("seed %s: %w", p.DatasetVersion, err)
+	}
 	rows, err := tx.Query(ctx, `SELECT entity_id FROM seed_entities WHERE dataset_version = $1 AND entity_kind = 'offer' ORDER BY entity_id`,
 		p.DatasetVersion)
 	if err != nil {
