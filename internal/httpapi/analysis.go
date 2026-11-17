@@ -409,6 +409,8 @@ type partAnomalyJSON struct {
 	Peers         int          `json:"peers"`
 	Missing       int          `json:"missing"`
 	Reason        *string      `json:"reason"`
+	// Family : famille de comparaison de la méthode « material » (catégorie · matière) ; null sinon.
+	Family *string `json:"family"`
 }
 
 type partAnomaliesJSON struct {
@@ -421,7 +423,7 @@ type partAnomaliesJSON struct {
 	Parts           []partAnomalyJSON `json:"parts"`
 }
 
-// anomalies : ?method=per_kg|median (défaut per_kg) & threshold (décimal > 1, défaut de la méthode).
+// anomalies : ?method=per_kg|median|offers|history|material (défaut per_kg, ADR 0037 et 0039) & threshold (décimal > 1, défaut de la méthode).
 func (h analysisHandler) anomalies(w http.ResponseWriter, r *http.Request) {
 	id, err := bomPathID(r, "id")
 	method := bom.AnomalyMethod(r.URL.Query().Get("method"))
@@ -450,6 +452,10 @@ func (h analysisHandler) anomalies(w http.ResponseWriter, r *http.Request) {
 		j := partAnomalyJSON{PartID: p.PartID, Name: p.Name, Category: p.Category, OfferID: p.OfferID, NodeIDs: p.NodeIDs,
 			Quantity: p.Quantity.String(), Status: string(p.Status), UnitCost: p.Cost, PerKg: p.PerKg, MedianPerKg: p.MedianPerKg,
 			ReferenceCost: p.Median, Excess: p.Excess, Impact: p.Impact, Peers: p.Peers, Missing: p.Missing, Reason: errPtr(p.Err)}
+		if p.Family != "" {
+			f := p.Family
+			j.Family = &f
+		}
 		if p.Ratio != nil {
 			v := p.Ratio.Truncate(2).StringFixed(2) // tronqué : jamais arrondi au-dessus du seuil (ADR 0027)
 			j.Ratio = &v

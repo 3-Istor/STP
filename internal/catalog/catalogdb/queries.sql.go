@@ -50,7 +50,7 @@ func (q *Queries) ArchiveOffer(ctx context.Context, arg ArchiveOfferParams) (Off
 const archivePart = `-- name: ArchivePart :one
 UPDATE parts SET archived_at = COALESCE(archived_at, $1::timestamptz)
 WHERE id = $2
-RETURNING id, name, category, zone, created_at, mass_kg, co2_kg_per_unit, recycled_percent, recyclability_percent, manufacturing_amount, manufacturing_currency, production_days, labor_hours, hourly_amount, hourly_currency, archived_at
+RETURNING id, name, category, zone, created_at, mass_kg, co2_kg_per_unit, recycled_percent, recyclability_percent, manufacturing_amount, manufacturing_currency, production_days, labor_hours, hourly_amount, hourly_currency, archived_at, material
 `
 
 type ArchivePartParams struct {
@@ -78,6 +78,7 @@ func (q *Queries) ArchivePart(ctx context.Context, arg ArchivePartParams) (Part,
 		&i.HourlyAmount,
 		&i.HourlyCurrency,
 		&i.ArchivedAt,
+		&i.Material,
 	)
 	return i, err
 }
@@ -92,7 +93,7 @@ INSERT INTO parts (
     $9, $10, $11,
     $12, $13
 )
-RETURNING id, name, category, zone, created_at, mass_kg, co2_kg_per_unit, recycled_percent, recyclability_percent, manufacturing_amount, manufacturing_currency, production_days, labor_hours, hourly_amount, hourly_currency, archived_at
+RETURNING id, name, category, zone, created_at, mass_kg, co2_kg_per_unit, recycled_percent, recyclability_percent, manufacturing_amount, manufacturing_currency, production_days, labor_hours, hourly_amount, hourly_currency, archived_at, material
 `
 
 type CreateDetailedPartParams struct {
@@ -145,6 +146,7 @@ func (q *Queries) CreateDetailedPart(ctx context.Context, arg CreateDetailedPart
 		&i.HourlyAmount,
 		&i.HourlyCurrency,
 		&i.ArchivedAt,
+		&i.Material,
 	)
 	return i, err
 }
@@ -206,7 +208,7 @@ const createPart = `-- name: CreatePart :one
 
 INSERT INTO parts (name, category, zone)
 VALUES ($1, $2, $3)
-RETURNING id, name, category, zone, created_at, mass_kg, co2_kg_per_unit, recycled_percent, recyclability_percent, manufacturing_amount, manufacturing_currency, production_days, labor_hours, hourly_amount, hourly_currency, archived_at
+RETURNING id, name, category, zone, created_at, mass_kg, co2_kg_per_unit, recycled_percent, recyclability_percent, manufacturing_amount, manufacturing_currency, production_days, labor_hours, hourly_amount, hourly_currency, archived_at, material
 `
 
 type CreatePartParams struct {
@@ -236,6 +238,7 @@ func (q *Queries) CreatePart(ctx context.Context, arg CreatePartParams) (Part, e
 		&i.HourlyAmount,
 		&i.HourlyCurrency,
 		&i.ArchivedAt,
+		&i.Material,
 	)
 	return i, err
 }
@@ -286,7 +289,7 @@ func (q *Queries) GetOffer(ctx context.Context, id int64) (Offer, error) {
 }
 
 const getPart = `-- name: GetPart :one
-SELECT id, name, category, zone, created_at, mass_kg, co2_kg_per_unit, recycled_percent, recyclability_percent, manufacturing_amount, manufacturing_currency, production_days, labor_hours, hourly_amount, hourly_currency, archived_at FROM parts
+SELECT id, name, category, zone, created_at, mass_kg, co2_kg_per_unit, recycled_percent, recyclability_percent, manufacturing_amount, manufacturing_currency, production_days, labor_hours, hourly_amount, hourly_currency, archived_at, material FROM parts
 WHERE id = $1
 `
 
@@ -310,6 +313,7 @@ func (q *Queries) GetPart(ctx context.Context, id int64) (Part, error) {
 		&i.HourlyAmount,
 		&i.HourlyCurrency,
 		&i.ArchivedAt,
+		&i.Material,
 	)
 	return i, err
 }
@@ -373,7 +377,7 @@ func (q *Queries) ListActiveOffersForParts(ctx context.Context, partIds []int64)
 }
 
 const listAlternatives = `-- name: ListAlternatives :many
-SELECT p.id, p.name, p.category, p.zone, p.created_at, p.mass_kg, p.co2_kg_per_unit, p.recycled_percent, p.recyclability_percent, p.manufacturing_amount, p.manufacturing_currency, p.production_days, p.labor_hours, p.hourly_amount, p.hourly_currency, p.archived_at FROM parts p JOIN part_alternatives a
+SELECT p.id, p.name, p.category, p.zone, p.created_at, p.mass_kg, p.co2_kg_per_unit, p.recycled_percent, p.recyclability_percent, p.manufacturing_amount, p.manufacturing_currency, p.production_days, p.labor_hours, p.hourly_amount, p.hourly_currency, p.archived_at, p.material FROM parts p JOIN part_alternatives a
     ON (a.part_low_id = $1 AND p.id = a.part_high_id)
     OR (a.part_high_id = $1 AND p.id = a.part_low_id)
 WHERE p.archived_at IS NULL
@@ -406,6 +410,7 @@ func (q *Queries) ListAlternatives(ctx context.Context, partID int64) ([]Part, e
 			&i.HourlyAmount,
 			&i.HourlyCurrency,
 			&i.ArchivedAt,
+			&i.Material,
 		); err != nil {
 			return nil, err
 		}
@@ -460,7 +465,7 @@ func (q *Queries) ListPartOffers(ctx context.Context, partID int64) ([]Offer, er
 }
 
 const listParts = `-- name: ListParts :many
-SELECT p.id, p.name, p.category, p.zone, p.created_at, p.mass_kg, p.co2_kg_per_unit, p.recycled_percent, p.recyclability_percent, p.manufacturing_amount, p.manufacturing_currency, p.production_days, p.labor_hours, p.hourly_amount, p.hourly_currency, p.archived_at FROM parts p
+SELECT p.id, p.name, p.category, p.zone, p.created_at, p.mass_kg, p.co2_kg_per_unit, p.recycled_percent, p.recyclability_percent, p.manufacturing_amount, p.manufacturing_currency, p.production_days, p.labor_hours, p.hourly_amount, p.hourly_currency, p.archived_at, p.material FROM parts p
 WHERE p.archived_at IS NULL
     AND ($1::text = '' OR strpos(lower(p.name), lower($1::text)) > 0)
     AND ($2::text = '' OR p.category = $2::text)
@@ -510,6 +515,7 @@ func (q *Queries) ListParts(ctx context.Context, arg ListPartsParams) ([]Part, e
 			&i.HourlyAmount,
 			&i.HourlyCurrency,
 			&i.ArchivedAt,
+			&i.Material,
 		); err != nil {
 			return nil, err
 		}
@@ -618,7 +624,7 @@ func (q *Queries) LockOfferForUpdate(ctx context.Context, id int64) (Offer, erro
 }
 
 const lockPartForShare = `-- name: LockPartForShare :one
-SELECT id, name, category, zone, created_at, mass_kg, co2_kg_per_unit, recycled_percent, recyclability_percent, manufacturing_amount, manufacturing_currency, production_days, labor_hours, hourly_amount, hourly_currency, archived_at FROM parts WHERE id = $1 FOR SHARE
+SELECT id, name, category, zone, created_at, mass_kg, co2_kg_per_unit, recycled_percent, recyclability_percent, manufacturing_amount, manufacturing_currency, production_days, labor_hours, hourly_amount, hourly_currency, archived_at, material FROM parts WHERE id = $1 FOR SHARE
 `
 
 func (q *Queries) LockPartForShare(ctx context.Context, id int64) (Part, error) {
@@ -641,12 +647,13 @@ func (q *Queries) LockPartForShare(ctx context.Context, id int64) (Part, error) 
 		&i.HourlyAmount,
 		&i.HourlyCurrency,
 		&i.ArchivedAt,
+		&i.Material,
 	)
 	return i, err
 }
 
 const lockPartForUpdate = `-- name: LockPartForUpdate :one
-SELECT id, name, category, zone, created_at, mass_kg, co2_kg_per_unit, recycled_percent, recyclability_percent, manufacturing_amount, manufacturing_currency, production_days, labor_hours, hourly_amount, hourly_currency, archived_at FROM parts WHERE id = $1 FOR UPDATE
+SELECT id, name, category, zone, created_at, mass_kg, co2_kg_per_unit, recycled_percent, recyclability_percent, manufacturing_amount, manufacturing_currency, production_days, labor_hours, hourly_amount, hourly_currency, archived_at, material FROM parts WHERE id = $1 FOR UPDATE
 `
 
 func (q *Queries) LockPartForUpdate(ctx context.Context, id int64) (Part, error) {
@@ -669,6 +676,7 @@ func (q *Queries) LockPartForUpdate(ctx context.Context, id int64) (Part, error)
 		&i.HourlyAmount,
 		&i.HourlyCurrency,
 		&i.ArchivedAt,
+		&i.Material,
 	)
 	return i, err
 }
@@ -768,7 +776,7 @@ UPDATE parts SET
     production_days = $10, labor_hours = $11,
     hourly_amount = $12, hourly_currency = $13
 WHERE id = $14
-RETURNING id, name, category, zone, created_at, mass_kg, co2_kg_per_unit, recycled_percent, recyclability_percent, manufacturing_amount, manufacturing_currency, production_days, labor_hours, hourly_amount, hourly_currency, archived_at
+RETURNING id, name, category, zone, created_at, mass_kg, co2_kg_per_unit, recycled_percent, recyclability_percent, manufacturing_amount, manufacturing_currency, production_days, labor_hours, hourly_amount, hourly_currency, archived_at, material
 `
 
 type UpdateDetailedPartParams struct {
@@ -823,6 +831,7 @@ func (q *Queries) UpdateDetailedPart(ctx context.Context, arg UpdateDetailedPart
 		&i.HourlyAmount,
 		&i.HourlyCurrency,
 		&i.ArchivedAt,
+		&i.Material,
 	)
 	return i, err
 }

@@ -8,7 +8,7 @@ import (
 
 // GeneratorVersion identifie les règles de génération. Toute modification des données de référence ou
 // des règles change l'empreinte du jeu : un dataset_version déjà chargé refuse alors le nouveau contenu.
-const GeneratorVersion = "sampledata.v2" // v2 : coût complet (ADR 0031)
+const GeneratorVersion = "sampledata.v3" // v2 : coût complet (ADR 0031) ; v3 : matière des pièces (ADR 0041)
 
 // Dataset est le jeu généré, prêt à charger. Toutes les valeurs décimales sont des chaînes canoniques
 // (jamais de float) ; les liens passent par des clés logiques stables, pas par des ids de base.
@@ -57,6 +57,7 @@ type Supplier struct {
 // Part est une pièce du catalogue ; tous ses attributs sont renseignés (exigence sample-dataset).
 type Part struct {
 	Key, Name, Category, Zone string
+	Material                  string // matière (ADR 0041)
 	MassKG                    string
 	CO2KGPerUnit              string
 	RecycledPercent           string
