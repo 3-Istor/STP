@@ -32,8 +32,9 @@ type Version struct {
 	Method           bom.CostMethod
 	Cost             *money.Money
 	CostError        string
-	// BudgetPercent : coût ÷ budget global × 100 (exact, arrondi en sortie) ; nil sans budget ou sans coût.
-	// Snapshot : budget global d'aujourd'hui de sa BOM (les budgets ne sont pas figés au snapshot).
+	// BudgetPercent : coût ÷ budget global × 100 (bom.BudgetPercent, exact, arrondi une fois en sortie) ; nil sans
+	// budget, sans coût ou budget dans une autre devise.
+	// Snapshot : budget global figé à la publication (budget actuel de sa BOM s'il a été publié avant 00015).
 	BudgetPercent    *decimal.Decimal
 	PriceSnapshotID  *int64 // nil : prix en direct (brouillon)
 	ProposedBy       *string
@@ -121,21 +122,22 @@ func (s *Service) familyOf(ctx context.Context, ref Ref) (family, error) {
 	return f, nil
 }
 
+// InSameFamily dit si le brouillon draftID est une version de la famille de bomID (bom.DraftFamily, pistes de
+// réduction) ; ErrBOMNotFound si bomID n'existe pas.
+func (s *Service) InSameFamily(ctx context.Context, bomID, draftID int64) (bool, error) {
+	f, err := s.familyOf(ctx, Ref{Kind: RefBOM, ID: bomID})
+	if err != nil {
+		return false, fmt.Errorf("family of bom %d: %w", bomID, err)
+	}
+	return slices.ContainsFunc(f.drafts, func(b bom.BOM) bool { return b.ID == draftID }), nil
+}
+
 // Versions renvoie les brouillons et snapshots de la famille de la BOM bomID, par date puis par id, chacun
 // chiffré selon sa méthode. Un coût indisponible est dit (CostError), il ne fait pas échouer la liste.
 func (s *Service) Versions(ctx context.Context, bomID int64) ([]Version, error) {
 	f, err := s.familyOf(ctx, Ref{Kind: RefBOM, ID: bomID})
 	if err != nil {
 		return nil, fmt.Errorf("versions of bom %d: %w", bomID, err)
-	}
-	budgets := map[int64]*bom.TargetBudget{}
-	rootBudget := func(id int64) (*bom.TargetBudget, error) {
-		if b, ok := budgets[id]; ok {
-			return b, nil
-		}
-		b, err := s.boms.RootBudget(ctx, id)
-		budgets[id] = b
-		return b, err
 	}
 	var out []Version
 	for _, b := range f.drafts {
@@ -151,14 +153,11 @@ func (s *Service) Versions(ctx context.Context, bomID int64) ([]Version, error) 
 				v.PartCount++
 			}
 		}
-		if err := s.versionCost(&v, dc.Totals, rootOf(dc.Input.Nodes)); err != nil {
+		root := bom.RootID(dc.Nodes)
+		if err := s.versionCost(&v, dc.Totals, root); err != nil {
 			return nil, err
 		}
-		rb, err := rootBudget(b.ID)
-		if err != nil {
-			return nil, fmt.Errorf("versions of bom %d: %w", bomID, err)
-		}
-		setBudget(&v, rb)
+		setBudget(&v, bom.RootBudgetOf(dc.Budgets, root)) // budgets de la même lecture que le coût
 		out = append(out, v)
 	}
 	for _, sn := range f.snaps {
@@ -178,29 +177,21 @@ func (s *Service) Versions(ctx context.Context, bomID int64) ([]Version, error) 
 				v.PartCount++
 			}
 		}
-		if err := s.versionCost(&v, p.Totals, rootOf(p.Input.Nodes)); err != nil {
+		root := bom.CalcRootID(p.Input.Nodes)
+		if err := s.versionCost(&v, p.Totals, root); err != nil {
 			return nil, err
 		}
-		rb, err := rootBudget(sn.BOMID)
+		budgets, err := s.frozenBudgets(ctx, sn) // budgets figés à la publication (v2-lot-g T3)
 		if err != nil {
 			return nil, fmt.Errorf("versions of bom %d: %w", bomID, err)
 		}
-		setBudget(&v, rb)
+		setBudget(&v, bom.RootBudgetOf(budgets, root))
 		out = append(out, v)
 	}
 	slices.SortStableFunc(out, func(a, b Version) int {
 		return cmp.Or(a.At.Compare(b.At), strings.Compare(a.Kind, b.Kind), cmp.Compare(a.ID, b.ID))
 	})
 	return out, nil
-}
-
-func rootOf(nodes []bom.CalcNode) int64 {
-	for _, n := range nodes {
-		if n.ParentID == nil {
-			return n.ID
-		}
-	}
-	return 0
 }
 
 func (s *Service) versionCost(v *Version, t bom.Totals, root int64) error {
@@ -225,9 +216,8 @@ func setBudget(v *Version, b *bom.TargetBudget) {
 		return
 	}
 	v.TargetBudgetRoot = &target
-	if v.Cost == nil || string(v.Cost.Currency()) != b.Currency || !b.Amount.IsPositive() {
+	if v.Cost == nil {
 		return
 	}
-	pct := v.Cost.Amount().Mul(decimal.NewFromInt(100)).DivRound(b.Amount, 4)
-	v.BudgetPercent = &pct
+	v.BudgetPercent = bom.BudgetPercent(*v.Cost, &target) // exact : arrondi une seule fois, en sortie
 }

@@ -132,6 +132,7 @@ func domainServices(pool *pgxpool.Pool, cat *catalog.Service, sup *supplier.Serv
 		WithAnalysisSources(pricingstore.New(pool), sup) // analyses du lot E (historique, fournisseurs)
 	snaps := snapshot.NewService(snapshotstore.New(pool), boms, cat, prices).
 		WithSupplierNames(sup) // explications de la comparaison, ADR 0032
+	boms.WithDraftFamily(snaps) // brouillon lié à une piste : même famille de versions (v2-lot-g T6)
 	return boms, snaps
 }
 

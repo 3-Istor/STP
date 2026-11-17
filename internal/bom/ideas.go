@@ -82,6 +82,20 @@ func (s *Service) WithIdeas(st IdeaStore) *Service {
 	return s
 }
 
+// DraftFamily dit si draftID est une version de la même famille que bomID (BOM d'origine, brouillons issus de ses
+// snapshots, ADR 0032) ; *snapshot.Service la satisfait (le lien snapshot → BOM vit dans ce domaine). ErrBOMNotFound
+// si bomID n'existe pas.
+type DraftFamily interface {
+	InSameFamily(ctx context.Context, bomID, draftID int64) (bool, error)
+}
+
+// WithDraftFamily branche la vérification de famille du brouillon lié à une piste. Sans, lier un brouillon à une
+// piste est refusé (ErrIdeasUnavailable) : la règle n'est jamais sautée en silence.
+func (s *Service) WithDraftFamily(f DraftFamily) *Service {
+	s.family = f
+	return s
+}
+
 // IdeasSummary : les pistes, le total des pistes ouvertes, l'écart à la cible (coût − budget global, nil sans
 // budget global ou sans coût) et le reste à trouver (écart − pistes ouvertes ; négatif = écart couvert).
 type IdeasSummary struct {
@@ -143,12 +157,10 @@ func (s *Service) Ideas(ctx context.Context, bomID int64) (IdeasSummary, error) 
 	if err != nil {
 		return IdeasSummary{}, fmt.Errorf("ideas of bom %d: %w", bomID, err)
 	}
-	budget, err := s.RootBudget(ctx, bomID)
-	if err != nil {
-		return IdeasSummary{}, fmt.Errorf("ideas of bom %d: %w", bomID, err)
-	}
+	root := RootID(dc.Nodes)
+	budget := RootBudgetOf(dc.Budgets, root) // même lecture que le coût
 	var cost *money.Money
-	if root, ok := dc.Totals.Node(rootID(dc.Nodes)); ok {
+	if root, ok := dc.Totals.Node(root); ok {
 		cost = root.Cost
 	}
 	out, err := SummarizeIdeas(money.Currency(dc.BOM.Currency), ideas, cost, budget)
@@ -158,37 +170,13 @@ func (s *Service) Ideas(ctx context.Context, bomID int64) (IdeasSummary, error) 
 	return out, nil
 }
 
-func rootID(nodes []Node) int64 {
-	for _, n := range nodes {
-		if n.ParentID == nil {
-			return n.ID
-		}
-	}
-	return 0
-}
-
-// RootBudget renvoie le budget global (celui de la racine), ou nil.
-func (s *Service) RootBudget(ctx context.Context, bomID int64) (*TargetBudget, error) {
-	nodes, err := s.store.Tree(ctx, bomID)
-	if err != nil {
-		return nil, err
-	}
-	budgets, err := s.store.TargetBudgets(ctx, bomID)
-	if err != nil {
-		return nil, err
-	}
-	root := rootID(nodes)
-	for _, b := range budgets {
-		if b.NodeID == root {
-			return &b, nil
-		}
-	}
-	return nil, nil //nolint:nilnil // pas de budget global
-}
-
 const maxIdeaText = 200
 
-// validateIdea : titre non vide, textes bornés, gain ≥ 0 dans la devise de la BOM, statut connu, brouillon existant.
+// maxIdeaGain : borne haute du gain estimé par voiture (exclue) ; au-delà, une erreur de saisie, pas une piste.
+var maxIdeaGain = decimal.New(1, 9)
+
+// validateIdea : titre non vide, textes bornés, 0 ≤ gain < 1e9 dans la devise de la BOM, statut connu ; brouillon
+// lié existant, de la même famille et différent de la BOM (sinon le gain, déjà dans son coût, compterait deux fois).
 func (s *Service) validateIdea(ctx context.Context, b BOM, in *IdeaInput) error {
 	in.Title, in.Owner = strings.TrimSpace(in.Title), strings.TrimSpace(in.Owner)
 	switch {
@@ -202,16 +190,31 @@ func (s *Service) validateIdea(ctx context.Context, b BOM, in *IdeaInput) error 
 		return fmt.Errorf("estimated gain is required: %w", ErrInvalidInput)
 	case string(in.Gain.Currency()) != b.Currency:
 		return fmt.Errorf("estimated gain in %s, bom in %s: %w", in.Gain.Currency(), b.Currency, ErrInvalidInput)
-	case in.Gain.Amount().IsNegative():
-		return fmt.Errorf("estimated gain %s must be >= 0: %w", in.Gain, ErrInvalidInput)
+	case in.Gain.Amount().IsNegative() || in.Gain.Amount().GreaterThanOrEqual(maxIdeaGain):
+		return fmt.Errorf("estimated gain %s must be >= 0 and < %s: %w", in.Gain, maxIdeaGain, ErrInvalidInput)
 	}
-	if in.DraftBOMID != nil {
-		if _, err := s.store.GetBOM(ctx, *in.DraftBOMID); err != nil {
-			if errors.Is(err, ErrBOMNotFound) {
-				return fmt.Errorf("draft bom %d does not exist: %w", *in.DraftBOMID, ErrInvalidInput)
-			}
-			return err
+	if in.DraftBOMID == nil {
+		return nil
+	}
+	draft := *in.DraftBOMID
+	if draft == b.ID {
+		return fmt.Errorf("draft bom %d is the idea's own bom: link another version of the family: %w", draft, ErrInvalidInput)
+	}
+	if _, err := s.store.GetBOM(ctx, draft); err != nil {
+		if errors.Is(err, ErrBOMNotFound) {
+			return fmt.Errorf("draft bom %d does not exist: %w", draft, ErrInvalidInput)
 		}
+		return err
+	}
+	if s.family == nil {
+		return fmt.Errorf("draft family check: %w", ErrIdeasUnavailable)
+	}
+	same, err := s.family.InSameFamily(ctx, b.ID, draft)
+	if err != nil {
+		return err
+	}
+	if !same {
+		return fmt.Errorf("draft bom %d is not a version of bom %d's family: %w", draft, b.ID, ErrInvalidInput)
 	}
 	return nil
 }

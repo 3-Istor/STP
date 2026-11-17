@@ -149,15 +149,17 @@ type CostLine struct {
 
 // lineDetail : données brutes d'une ligne, pour son libellé et sa source.
 type lineDetail struct {
-	qty         decimal.Decimal
-	unit        money.Money // prix coté, tarif au kg, emballage, outillage
-	mass        decimal.Decimal
-	rate, other pricing.Rate // rate : taux appliqué ; other : dernier taux comparé (fx)
+	qty  decimal.Decimal
+	unit money.Money // prix coté, tarif au kg, emballage, outillage
+	mass decimal.Decimal
+	// rate : taux appliqué ; other : dernier taux comparé (fx). Pointeurs partagés par toutes les lignes d'un calcul
+	// (costCalc.rateRef) : une ligne reste légère sur 30 000 nœuds (v2-lot-g T8) ; jamais modifiés.
+	rate, other *pricing.Rate
 	converted   bool
 	noLatest    bool
 	pct         decimal.Decimal
 	origin      string
-	discount    Discount
+	discount    *Discount // partagée par les lignes de l'offre (costCalc.discountRef), jamais modifiée
 	volume      int32
 	offerQty    decimal.Decimal
 	source      string // provenance de la cotation ou des faits (« tables », « snapshot N »)
@@ -189,7 +191,7 @@ func (l CostLine) Label() string {
 		return fmt.Sprintf("Écart de change : %s %s→%s %s au lieu du dernier taux %s", d.rate.Source, d.rate.From, d.rate.To,
 			d.rate.Rate, d.other.Rate)
 	case KindDiscount:
-		return discountLabel(d.discount)
+		return discountLabel(*d.discount)
 	case KindCustoms:
 		return fmt.Sprintf("Douane (origine %s) : %s %% du prix net de remise", d.origin, d.pct)
 	case KindFreight:
@@ -302,22 +304,36 @@ func resolveDiscount(offerID int64, contracts []supplier.Contract, qty decimal.D
 		d.TierMin = &m
 	}
 	if ev.Reason == "no_active_contract" {
-		// Le motif dit pourquoi : un contrat de l'offre a expiré (le plus récent, déterministe).
-		var expired []supplier.Contract
+		// Le motif dit pourquoi : un contrat de l'offre a expiré (le plus récent, déterministe) ; sinon un contrat
+		// n'a pas encore commencé (le plus proche) ; sinon aucun contrat. Expiré d'abord : c'est le contrôle
+		// bloquant expired_contracts, un renouvellement à venir ne le lève pas (v2-lot-g T7).
+		var expired, upcoming []supplier.Contract
 		for _, c := range contracts {
 			if !slices.Contains(c.OfferIDs, offerID) {
 				continue
 			}
-			if st, err := supplier.ContractStatus(c, asOf); err == nil && st == "expired" {
+			switch st, err := supplier.ContractStatus(c, asOf); {
+			case err != nil:
+				continue
+			case st == "expired":
 				expired = append(expired, c)
+			case st == "not_started":
+				upcoming = append(upcoming, c)
 			}
 		}
-		if len(expired) > 0 {
+		switch {
+		case len(expired) > 0:
 			last := slices.MaxFunc(expired, func(a, b supplier.Contract) int {
 				return cmp.Or(cmp.Compare(a.EndsOn, b.EndsOn), cmp.Compare(a.ID, b.ID))
 			})
 			id := last.ID
 			d.Reason, d.ContractID = "contract_expired", &id
+		case len(upcoming) > 0:
+			next := slices.MinFunc(upcoming, func(a, b supplier.Contract) int {
+				return cmp.Or(cmp.Compare(a.StartsOn, b.StartsOn), cmp.Compare(a.ID, b.ID))
+			})
+			id := next.ID
+			d.Reason, d.ContractID = "contract_not_started", &id
 		}
 	}
 	return d, nil

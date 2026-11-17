@@ -214,6 +214,17 @@ func checkDemoVersions(t *testing.T, pool *pgxpool.Pool) {
 	if proposed != "Arthur P." || validated != "Joe" || note != "Jalon de lancement" {
 		t.Errorf("V1 trace = %q %q %q", proposed, validated, note)
 	}
+	// Pistes : sur la Multipla (BOM publiée en V1), une seule chiffrée dans le brouillon B, aucune liée à sa
+	// propre BOM (v2-lot-g T6).
+	var onOrigin, linkedToB, selfLinked int
+	if err := pool.QueryRow(ctx, `SELECT count(*) FILTER (WHERE i.bom_id = s.bom_id),
+		count(*) FILTER (WHERE i.draft_bom_id = $1), count(*) FILTER (WHERE i.draft_bom_id = i.bom_id)
+		FROM bom_reduction_ideas i CROSS JOIN bom_snapshots s WHERE s.id = $2`, b, v1).Scan(&onOrigin, &linkedToB, &selfLinked); err != nil {
+		t.Fatal(err)
+	}
+	if onOrigin != 5 || linkedToB != 1 || selfLinked != 0 {
+		t.Errorf("ideas: %d on the Multipla, %d priced in B, %d self-linked; want 5, 1, 0", onOrigin, linkedToB, selfLinked)
+	}
 	c, err := snaps.Compare(ctx, snapshot.Ref{Kind: snapshot.RefSnapshot, ID: v1}, snapshot.Ref{Kind: snapshot.RefBOM, ID: b})
 	if err != nil {
 		t.Fatal(err)

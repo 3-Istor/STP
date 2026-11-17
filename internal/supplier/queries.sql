@@ -97,3 +97,13 @@ SELECT c.id, c.supplier_id, c.starts_on, c.ends_on, c.conditions,
         FROM contract_tiers t WHERE t.contract_id=c.id), '[]'::jsonb)::jsonb AS tiers_json
 FROM contracts c
 WHERE EXISTS (SELECT 1 FROM contract_offers co WHERE co.contract_id=c.id AND co.offer_id=$1) ORDER BY c.id;
+
+-- Tous les contrats en une lecture (analyses d'une BOM : un appel au lieu d'un par fournisseur, v2-lot-g T8).
+-- name: ReadAllContracts :many
+SELECT c.id, c.supplier_id, c.starts_on, c.ends_on, c.conditions,
+    ARRAY(SELECT co.offer_id FROM contract_offers co WHERE co.contract_id=c.id ORDER BY co.offer_id)::bigint[] AS offer_ids,
+    COALESCE((SELECT jsonb_agg(jsonb_build_object('min_quantity', t.min_quantity::text,
+        'discount_percent', t.discount_percent::text) ORDER BY t.min_quantity)
+        FROM contract_tiers t WHERE t.contract_id=c.id), '[]'::jsonb)::jsonb AS tiers_json
+FROM contracts c
+ORDER BY c.supplier_id, c.id;

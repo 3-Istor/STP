@@ -4,8 +4,8 @@
 -- name: CreateSnapshot :one
 INSERT INTO bom_snapshots (bom_id, price_snapshot_id, name, currency, volume, published_at, annual_hours,
     start_on, target_on, destination_country, cost_basis, fx_policy, program_volume, cost_as_of,
-    note, proposed_by, validated_by)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+    note, proposed_by, validated_by, budgets_frozen)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
 RETURNING *;
 
 -- Tous les nœuds en un COPY : 30 000 nœuds ne font pas 30 000 allers-retours. La FK vers le parent est
@@ -53,6 +53,14 @@ VALUES ($1, $2, $3, $4, $5, $6, $7);
 
 -- name: ListSnapshotChecks :many
 SELECT * FROM bom_snapshot_checks WHERE snapshot_id = $1 ORDER BY position;
+
+-- Budgets cibles figés (v2-lot-g T3, ADR 0038), par clé de nœud figé.
+-- name: InsertSnapshotTargetBudgets :copyfrom
+INSERT INTO bom_snapshot_target_budgets (snapshot_id, node_key, amount, currency)
+VALUES ($1, $2, $3, $4);
+
+-- name: ListSnapshotTargetBudgets :many
+SELECT * FROM bom_snapshot_target_budgets WHERE snapshot_id = $1 ORDER BY node_key;
 
 -- En-têtes de tous les snapshots (versions d'une famille de BOM), par id.
 -- name: ListSnapshots :many

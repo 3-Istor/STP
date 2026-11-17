@@ -1,6 +1,7 @@
 package bom
 
 import (
+	"context"
 	"errors"
 	"testing"
 
@@ -59,4 +60,29 @@ func TestSummarizeIdeas(t *testing.T) {
 			}
 		})
 	}
+}
+
+// Sans vérification de famille câblée, lier un brouillon à une piste est refusé (503), jamais accepté en silence ;
+// une piste sans brouillon lié reste possible (v2-lot-g T6).
+func TestIdeaDraftLinkNeedsTheFamilyCheck(t *testing.T) {
+	svc, bomID, _ := costService(t, t0, true)
+	svc.WithIdeas(memIdeas{})
+	other, err := svc.CreateBOM(t.Context(), NewBOM{Name: "B", Currency: "EUR", Volume: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	eur := *moneyPtr(t, "5", "EUR")
+	if _, err := svc.CreateIdea(t.Context(), bomID, IdeaInput{Title: "x", Gain: eur, DraftBOMID: &other.ID}); !errors.Is(err, ErrIdeasUnavailable) {
+		t.Fatalf("err = %v, want ErrIdeasUnavailable", err)
+	}
+	if _, err := svc.CreateIdea(t.Context(), bomID, IdeaInput{Title: "x", Gain: eur}); err != nil {
+		t.Fatalf("idea without draft: %v", err)
+	}
+}
+
+// memIdeas : stockage minimal des pistes (création seulement).
+type memIdeas struct{ IdeaStore }
+
+func (memIdeas) CreateIdea(_ context.Context, bomID int64, in IdeaInput) (Idea, error) {
+	return Idea{ID: 1, BOMID: bomID, Title: in.Title, Gain: in.Gain, Status: in.Status, DraftBOMID: in.DraftBOMID}, nil
 }

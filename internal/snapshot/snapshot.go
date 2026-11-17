@@ -42,6 +42,9 @@ type Snapshot struct {
 	// Profile : profil de véhicule figé (ADR 0036) ; nil si la BOM n'en avait pas (ou publié avant).
 	Profile     *bom.VehicleProfile
 	PublishedAt time.Time
+	// BudgetsFrozen : budgets cibles copiés à la publication (v2-lot-g T3) ; false pour un snapshot publié avant
+	// la migration 00015 (ses budgets sont alors ceux, actuels, de sa BOM).
+	BudgetsFrozen bool
 	// Trace de la décision (ADR 0033) : nil pour un snapshot publié avant, ou champ non saisi.
 	Note        *string
 	ProposedBy  *string
@@ -102,9 +105,12 @@ type Part struct {
 // Store est l'accès aux snapshots de BOM. Il n'a aucune méthode de modification ni de suppression
 // (la base les refuse aussi, ADR 0006). L'implémentation Postgres vit dans snapshot/snapshotstore.
 type Store interface {
-	// Create insère l'en-tête, tous les nœuds, le stock et les faits de coût figés dans une même transaction ;
-	// s.ID est ignoré.
-	Create(ctx context.Context, s Snapshot, nodes []Node, stock []bom.PartStock, cost FrozenCost, checks []FrozenCheck) (Snapshot, error)
+	// Create insère l'en-tête, tous les nœuds, le stock, les faits de coût, les contrôles et les budgets cibles
+	// (NodeID = clé du nœud figé) figés dans une même transaction ; s.ID est ignoré.
+	Create(ctx context.Context, s Snapshot, nodes []Node, stock []bom.PartStock, cost FrozenCost, checks []FrozenCheck,
+		budgets []bom.TargetBudget) (Snapshot, error)
+	// TargetBudgets renvoie les budgets cibles figés (NodeID = clé du nœud figé), triés par clé.
+	TargetBudgets(ctx context.Context, id int64) ([]bom.TargetBudget, error)
 	// Checks renvoie les contrôles figés à la publication (ADR 0033), vides pour un snapshot publié avant.
 	Checks(ctx context.Context, id int64) ([]FrozenCheck, error)
 	// List renvoie l'en-tête de tous les snapshots, par id (versions d'une famille de BOM).
@@ -156,12 +162,21 @@ type Published struct {
 // Avant tout, les contrôles avant publication sont recalculés (ADR 0033) : un contrôle block refuse
 // (ErrPublicationBlocked), un warn sans justification refuse (ErrJustificationRequired). Note, noms saisis,
 // contrôles et justifications sont copiés dans le snapshot.
+//
+// Le brouillon est lu une seule fois (bom.Store.Draft, lecture cohérente) : contrôles, nœuds figés, stock,
+// planning, réglages, budgets et faits de coût viennent tous de cet état, même si un PATCH arrive pendant la
+// publication (v2-lot-g T1, ADR 0038). En prix en direct, le même état est rechiffré avec le snapshot de prix
+// créé, sans relire le brouillon.
 func (s *Service) Publish(ctx context.Context, bomID int64, at time.Time, req PublishRequest) (Snapshot, error) {
 	trace, err := req.normalize()
 	if err != nil {
 		return Snapshot{}, fmt.Errorf("publish bom %d: %w", bomID, err)
 	}
-	checks, err := s.boms.PublicationChecks(ctx, bomID)
+	dc, err := s.boms.DraftCost(ctx, bomID)
+	if err != nil {
+		return Snapshot{}, fmt.Errorf("publish bom %d: %w", bomID, err)
+	}
+	checks, err := s.boms.PublicationChecksOf(ctx, dc)
 	if err != nil {
 		return Snapshot{}, fmt.Errorf("publish bom %d: %w", bomID, err)
 	}
@@ -169,19 +184,8 @@ func (s *Service) Publish(ctx context.Context, bomID int64, at time.Time, req Pu
 	if err != nil {
 		return Snapshot{}, fmt.Errorf("publish bom %d: %w", bomID, err)
 	}
-	b, draft, err := s.boms.Tree(ctx, bomID)
-	if err != nil {
-		return Snapshot{}, fmt.Errorf("publish bom %d: %w", bomID, err)
-	}
-	sch, err := s.boms.Schedule(ctx, bomID)
-	if err != nil {
-		return Snapshot{}, fmt.Errorf("publish bom %d: %w", bomID, err)
-	}
-	nodes, err := s.freezeNodes(ctx, draft)
-	if err != nil {
-		return Snapshot{}, fmt.Errorf("publish bom %d: %w", bomID, err)
-	}
-	stock, err := s.boms.Stock(ctx, bomID)
+	b := dc.BOM
+	nodes, err := s.freezeNodes(ctx, dc.Nodes)
 	if err != nil {
 		return Snapshot{}, fmt.Errorf("publish bom %d: %w", bomID, err)
 	}
@@ -196,24 +200,30 @@ func (s *Service) Publish(ctx context.Context, bomID int64, at time.Time, req Pu
 		if err := s.checkCovered(ctx, priceSnapID, offers, currency); err != nil {
 			return Snapshot{}, fmt.Errorf("publish bom %d with price snapshot %d: %w", bomID, priceSnapID, err)
 		}
-	} else if priceSnapID, err = s.pricing.FreezePrices(ctx, bomID, offers, []money.Currency{currency}, at); err != nil {
-		return Snapshot{}, fmt.Errorf("publish bom %d: %w", bomID, err)
+	} else {
+		if priceSnapID, err = s.pricing.FreezePrices(ctx, bomID, offers, []money.Currency{currency}, at); err != nil {
+			return Snapshot{}, fmt.Errorf("publish bom %d: %w", bomID, err)
+		}
+		// Même état du brouillon, chiffré avec les prix figés : ce qui est publié est ce qui est copié.
+		if dc, err = s.boms.CostOfDraft(ctx, dc.Draft(), &priceSnapID); err != nil {
+			return Snapshot{}, fmt.Errorf("publish bom %d: %w", bomID, err)
+		}
 	}
 
-	// Coût de la méthode (ADR 0031), chiffré avec les prix figés : ce qui est publié est ce qui est copié.
 	header := Snapshot{
 		BOMID: b.ID, PriceSnapshotID: priceSnapID, Name: b.Name, Currency: b.Currency, Volume: b.Volume,
-		AnnualHours: &b.AnnualHours, Schedule: sch, DestinationCountry: b.DestinationCountry, PublishedAt: at,
-		Note: trace.Note, ProposedBy: trace.ProposedBy, ValidatedBy: trace.ValidatedBy,
+		AnnualHours: &b.AnnualHours, Schedule: dc.Schedule, DestinationCountry: b.DestinationCountry, PublishedAt: at,
+		Note: trace.Note, ProposedBy: trace.ProposedBy, ValidatedBy: trace.ValidatedBy, BudgetsFrozen: true,
 	}
-	frozen, err := s.freezeCost(ctx, bomID, priceSnapID, &header)
+	frozen, err := freezeCost(dc, &header)
 	if err != nil {
 		return Snapshot{}, fmt.Errorf("publish bom %d: %w", bomID, err)
 	}
 	if header.Profile, err = s.boms.VehicleProfile(ctx, bomID); err != nil && !errors.Is(err, bom.ErrProfilesUnavailable) {
 		return Snapshot{}, fmt.Errorf("publish bom %d: %w", bomID, err)
 	}
-	out, err := s.store.Create(ctx, header, nodes, stock, frozen, frozenChecks)
+	// Budgets cibles : réglages copiés comme le reste (AGENTS §3) ; chaque budget porte sur un nœud de l'arbre lu.
+	out, err := s.store.Create(ctx, header, nodes, dc.Stock, frozen, frozenChecks, dc.Budgets)
 	if err != nil {
 		return Snapshot{}, fmt.Errorf("publish bom %d: %w", bomID, err)
 	}
@@ -224,20 +234,16 @@ func (s *Service) Publish(ctx context.Context, bomID int64, at time.Time, req Pu
 // publié, pour ne pas graver un trou dans un snapshot immuable.
 var ErrIncompleteCost = errors.New("cost under the bom's method is incomplete")
 
-// freezeCost chiffre le brouillon avec le snapshot de prix et copie méthode, date de calcul, taux budget de
-// l'année et faits de chaque offre (remise retenue comprise). Méthode par défaut : rien d'autre à figer.
-func (s *Service) freezeCost(ctx context.Context, bomID, priceSnapID int64, h *Snapshot) (FrozenCost, error) {
-	dc, err := s.boms.DraftCostWithPrices(ctx, bomID, priceSnapID)
-	if err != nil {
-		return FrozenCost{}, err
-	}
+// freezeCost copie, depuis le calcul dc fait avec le snapshot de prix publié, méthode, date de calcul, taux
+// budget de l'année et faits de chaque offre (remise retenue comprise). Méthode par défaut : rien d'autre à figer.
+func freezeCost(dc bom.DraftCost, h *Snapshot) (FrozenCost, error) {
 	ci := dc.Input.Cost
 	m := dc.BOM.CostMethod.OrDefault()
 	h.CostMethod = &m
 	if ci == nil || m == bom.DefaultCostMethod() || (m.Basis == bom.BasisPurchase && m.FX == bom.FXLatest) {
 		return FrozenCost{}, nil
 	}
-	if root, ok := dc.Totals.Node(rootID(dc.Nodes)); ok && root.CostErr != nil {
+	if root, ok := dc.Totals.Node(bom.RootID(dc.Nodes)); ok && root.CostErr != nil {
 		errs := []error{root.CostErr}
 		for _, id := range root.MissingCost { // la cause de chaque pièce sans coût, nommée
 			if n, ok := dc.Totals.Node(id); ok && n.CostErr != nil {
@@ -272,15 +278,6 @@ func (s *Service) freezeCost(ctx context.Context, bomID, priceSnapID int64, h *S
 		out.Offers = append(out.Offers, FrozenOffer{OfferID: id, OfferCost: oc})
 	}
 	return out, nil
-}
-
-func rootID(nodes []bom.Node) int64 {
-	for _, n := range nodes {
-		if n.ParentID == nil {
-			return n.ID
-		}
-	}
-	return 0
 }
 
 // freezeNodes copie l'arbre du brouillon avec les attributs courants du catalogue ; chaque pièce et
@@ -443,7 +440,11 @@ func (s *Service) frozenCostInput(ctx context.Context, h Snapshot) (*bom.CostInp
 	if len(frozen.BudgetRates) > 0 {
 		ci.BudgetRates = make(map[money.Currency]decimal.Decimal, len(frozen.BudgetRates))
 		for _, r := range frozen.BudgetRates {
-			ci.BudgetRates[r.From] = r.Rate
+			// Seulement le taux de l'année de calcul vers la devise du snapshot : une ligne d'une autre année ou
+			// vers une autre devise ne remplace jamais le taux utilisé à la publication (v2-lot-g T2).
+			if h.CostAsOf != nil && int(r.Year) == h.CostAsOf.UTC().Year() && string(r.To) == h.Currency {
+				ci.BudgetRates[r.From] = r.Rate
+			}
 		}
 	}
 	if len(frozen.Offers) > 0 {
@@ -521,7 +522,11 @@ func (s *Service) NewDraft(ctx context.Context, id int64) (bom.BOM, error) {
 			return bom.BOM{}, fmt.Errorf("new draft from snapshot %d: %w", id, err)
 		}
 	}
-	if err := s.copyDraft(ctx, b.ID, h.BOMID, nodes, stock, h.Schedule); err != nil {
+	budgets, err := s.frozenBudgets(ctx, h)
+	if err == nil {
+		err = s.copyDraft(ctx, b.ID, nodes, stock, budgets, h.Schedule)
+	}
+	if err != nil {
 		if delErr := s.boms.DeleteBOM(ctx, b.ID); delErr != nil {
 			err = errors.Join(err, fmt.Errorf("remove partial draft %d: %w", b.ID, delErr))
 		}
@@ -530,15 +535,23 @@ func (s *Service) NewDraft(ctx context.Context, id int64) (bom.BOM, error) {
 	return b, nil
 }
 
-// copyDraft recopie l'arbre, le stock (ADR 0022) et le planning (ADR 0023) figés dans le brouillon bomID, puis
-// les budgets cibles de la BOM source (non figés au snapshot : ceux d'aujourd'hui) des nœuds présents dans le
-// snapshot, pour que le brouillon se compare à la même cible.
-func (s *Service) copyDraft(ctx context.Context, bomID, sourceBOM int64, nodes []Node, stock []bom.PartStock, sch *bom.Schedule) error {
-	newIDs, err := s.copyTree(ctx, bomID, nodes)
-	if err != nil {
-		return err
+// frozenBudgets : budgets cibles du snapshot (NodeID = clé du nœud figé). Snapshot publié avant la migration
+// 00015 (BudgetsFrozen faux) : ses budgets n'ont pas été copiés, on garde l'ancien comportement, les budgets
+// actuels de sa BOM (la racine d'une BOM ne change jamais d'id, les autres nœuds absents du snapshot sont ignorés
+// par l'appelant).
+func (s *Service) frozenBudgets(ctx context.Context, h Snapshot) ([]bom.TargetBudget, error) {
+	if h.BudgetsFrozen {
+		return s.store.TargetBudgets(ctx, h.ID)
 	}
-	budgets, err := s.boms.TargetBudgetList(ctx, sourceBOM)
+	return s.boms.TargetBudgetList(ctx, h.BOMID)
+}
+
+// copyDraft recopie l'arbre, le stock (ADR 0022), le planning (ADR 0023) et les budgets cibles figés du snapshot
+// dans le brouillon bomID, pour que le brouillon se compare à la même cible que le snapshot.
+func (s *Service) copyDraft(ctx context.Context, bomID int64, nodes []Node, stock []bom.PartStock, budgets []bom.TargetBudget,
+	sch *bom.Schedule,
+) error {
+	newIDs, err := s.copyTree(ctx, bomID, nodes)
 	if err != nil {
 		return err
 	}

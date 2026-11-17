@@ -68,19 +68,16 @@ func EvaluateTargetBudgets(t Totals, budgets []TargetBudget) ([]BudgetStatus, er
 				st.Delta = &d
 			}
 		}
-		if ev.State != "unavailable" && st.Cost != nil && !target.Amount().IsZero() {
-			p := budgetPercent(st.Cost.Amount(), target.Amount())
-			st.Percent = &p
+		if ev.State != "unavailable" && st.Cost != nil {
+			// PercentOf : définition unique du domaine (v2-lot-g T5) ; arrondi half-even une seule fois, en sortie.
+			if p, ok := PercentOf(st.Cost.Amount(), target.Amount()); ok {
+				r := p.RoundBank(percentDigits)
+				st.Percent = &r
+			}
 		}
 		out = append(out, st)
 	}
 	return out, nil
-}
-
-// budgetPercent : cost ÷ target × 100, arrondi half-even à percentDigits décimales (division menée avec 16
-// décimales de garde au-delà, seule division non finie).
-func budgetPercent(cost, target decimal.Decimal) decimal.Decimal {
-	return cost.Mul(decimal.NewFromInt(100)).DivRound(target, percentDigits+16).RoundBank(percentDigits)
 }
 
 // TargetBudgets évalue les budgets cibles du brouillon contre ses totaux selon sa méthode.

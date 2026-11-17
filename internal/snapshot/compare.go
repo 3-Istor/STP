@@ -148,7 +148,7 @@ func (s *Service) loadSide(ctx context.Context, ref Ref, labels map[string]strin
 		out.totals = VersionTotals{Name: p.Snapshot.Name, Method: m, PriceSnapshotID: &p.Snapshot.PriceSnapshotID}
 	}
 	out.totals.Ref, out.totals.Label = ref, labels[ref.String()]
-	root, ok := out.bridge.Totals.Node(rootOf(out.bridge.Input.Nodes))
+	root, ok := out.bridge.Totals.Node(bom.CalcRootID(out.bridge.Input.Nodes))
 	if !ok {
 		return side{}, fmt.Errorf("%s: no root totals: %w", ref, bom.ErrInvalidTree)
 	}
@@ -163,6 +163,9 @@ func (s *Service) loadSide(ctx context.Context, ref Ref, labels map[string]strin
 func (s *Service) Compare(ctx context.Context, from, to Ref) (Comparison, error) {
 	labels := map[string]string{}
 	for _, r := range []Ref{from, to} {
+		if _, known := labels[r.String()]; known {
+			continue // même famille que « de » : déjà lue (v2-lot-g T8)
+		}
 		f, err := s.familyOf(ctx, r)
 		if err != nil {
 			return Comparison{}, fmt.Errorf("compare %s → %s: %w", from, to, err)
@@ -547,9 +550,8 @@ func explainFX(d bom.BridgeDiff, step bom.BridgeStep, a, z side) string {
 			foreign = foreign.Add(t.OwnCost.Amount())
 		}
 	}
-	if total.IsPositive() && foreign.IsPositive() {
-		pct := foreign.Mul(decimal.NewFromInt(100)).Div(total).Round(0)
-		return fmt.Sprintf("%s : %s %% du coût est payé hors %s.", what, pct, currencyName(cur, false))
+	if pct, ok := bom.PercentOf(foreign, total); ok && foreign.IsPositive() { // texte : arrondi half-even ici, une fois
+		return fmt.Sprintf("%s : %s %% du coût est payé hors %s.", what, pct.RoundBank(0), currencyName(cur, false))
 	}
 	return what + "."
 }

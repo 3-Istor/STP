@@ -2,6 +2,7 @@ package bom
 
 import (
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -108,6 +109,16 @@ func TestPublicationChecks(t *testing.T) {
 			in.Budgets[0].NodeID, in.Budgets[0].State = 1, "over"
 			return in
 		}, CheckBudgets, CheckOK, nil},
+		{"budget non évaluable (autre devise) : avertit, jamais vert (v2-lot-g T4)", func(t *testing.T) ChecksInput {
+			in := checksBase(t, nil)
+			in.Budgets[0].State, in.Budgets[0].Cost, in.Budgets[0].Error = "unavailable", nil, "budget in USD, cost in EUR: not converted"
+			return in
+		}, CheckBudgets, CheckWarn, []int64{2}},
+		{"budget global non évaluable : avertit aussi", func(t *testing.T) ChecksInput {
+			in := checksBase(t, nil)
+			in.Budgets[0].NodeID, in.Budgets[0].State, in.Budgets[0].Error = 1, "unavailable", "cost unavailable"
+			return in
+		}, CheckBudgets, CheckWarn, []int64{1}},
 		{"contrat expiré encore utilisé : bloque", func(t *testing.T) ChecksInput {
 			in := checksBase(t, nil)
 			uses, err := ExpiredContractUses(map[int64][]int64{10: {3}, 20: {4}},
@@ -158,6 +169,16 @@ func TestPublicationChecks(t *testing.T) {
 				t.Errorf("%s: empty title or detail: %+v", tt.code, c)
 			}
 		})
+	}
+}
+
+// Le motif d'un budget non évaluable est dit dans le détail, avec le nœud (v2-lot-g T4).
+func TestCheckBudgetsNamesTheUnavailableReason(t *testing.T) {
+	in := checksBase(t, nil)
+	in.Budgets[0].State, in.Budgets[0].Cost, in.Budgets[0].Error = "unavailable", nil, "budget in USD, cost in EUR: not converted"
+	c := byCode(RunChecks(in))[CheckBudgets]
+	if !strings.Contains(c.Detail, "budget in USD, cost in EUR: not converted") || !strings.Contains(c.Detail, in.Names[2]) {
+		t.Fatalf("detail = %q, want the node and the reason", c.Detail)
 	}
 }
 

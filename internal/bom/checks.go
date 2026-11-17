@@ -8,8 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/shopspring/decimal"
-
 	"bomstudio/internal/catalog"
 	"bomstudio/internal/money"
 	"bomstudio/internal/pricing"
@@ -193,12 +191,29 @@ func checkTargetDate(in ChecksInput) PublicationCheck {
 	return c
 }
 
-// checkBudgets : sous-systèmes (nœuds budgétés autres que la racine) au-dessus de leur budget.
+// checkBudgets : sous-systèmes (nœuds budgétés autres que la racine) au-dessus de leur budget, et budgets non
+// évaluables (autre devise que la BOM, coût manquant), racine comprise : une donnée manquante n'est jamais un
+// vert (AGENTS §3, v2-lot-g T4). Les deux exigent une justification (warn).
 func checkBudgets(in ChecksInput) PublicationCheck {
 	c := PublicationCheck{Code: CheckBudgets, Title: "Sous-systèmes dans leur budget", Level: CheckOK}
-	var over []string
+	label := func(id int64) string {
+		if l := in.Names[id]; l != "" {
+			return l
+		}
+		return fmt.Sprintf("nœud %d", id)
+	}
+	var over, unavailable []string
 	n := 0
 	for _, b := range in.Budgets {
+		if b.State == "unavailable" {
+			c.NodeIDs = append(c.NodeIDs, b.NodeID)
+			reason := b.Error
+			if reason == "" {
+				reason = "coût ou conversion indisponible"
+			}
+			unavailable = append(unavailable, label(b.NodeID)+" ("+reason+")")
+			continue
+		}
 		if b.NodeID == in.RootID {
 			continue
 		}
@@ -207,20 +222,26 @@ func checkBudgets(in ChecksInput) PublicationCheck {
 			continue
 		}
 		c.NodeIDs = append(c.NodeIDs, b.NodeID)
-		label := in.Names[b.NodeID]
-		if label == "" {
-			label = fmt.Sprintf("nœud %d", b.NodeID)
+		l := label(b.NodeID)
+		if pct, ok := PercentOf(b.Cost.Amount(), b.Target.Amount()); ok { // texte figé : arrondi half-even ici, une fois
+			l += " " + strings.Replace(pct.RoundBank(1).StringFixed(1), ".", ",", 1) + " %"
 		}
-		if b.Target.Amount().IsPositive() {
-			pct := b.Cost.Amount().Mul(decimal.NewFromInt(100)).DivRound(b.Target.Amount(), 1)
-			label += " " + strings.Replace(pct.StringFixed(1), ".", ",", 1) + " %"
-		}
-		over = append(over, label)
+		over = append(over, l)
 	}
+	slices.Sort(c.NodeIDs)
+	var titles, details []string
 	if len(over) > 0 {
+		titles = append(titles, fmt.Sprintf("%d sous-système(s) au-dessus du budget", len(over)))
+		details = append(details, strings.Join(over, ", "))
+	}
+	if len(unavailable) > 0 {
+		titles = append(titles, fmt.Sprintf("%d budget(s) non évaluable(s)", len(unavailable)))
+		details = append(details, "non évaluable : "+strings.Join(unavailable, ", "))
+	}
+	if len(titles) > 0 {
 		c.Level = CheckWarn
-		c.Title = fmt.Sprintf("%d sous-système(s) au-dessus du budget", len(over))
-		c.Detail = strings.Join(over, ", ") + " : justification requise"
+		c.Title = strings.Join(titles, ", ")
+		c.Detail = strings.Join(details, " ; ") + " : justification requise"
 		return c
 	}
 	c.Detail = fmt.Sprintf("%d budget(s)", n)
@@ -308,31 +329,29 @@ type SupplierNames interface {
 
 // PublicationChecks évalue les contrôles avant publication du brouillon (ADR 0033) sur ses totaux selon sa méthode.
 func (s *Service) PublicationChecks(ctx context.Context, bomID int64) ([]PublicationCheck, error) {
-	in, err := s.checksInput(ctx, bomID)
+	dc, err := s.DraftCost(ctx, bomID)
 	if err != nil {
 		return nil, fmt.Errorf("publication checks of bom %d: %w", bomID, err)
+	}
+	return s.PublicationChecksOf(ctx, dc)
+}
+
+// PublicationChecksOf évalue les contrôles sur un calcul déjà fait : la publication passe le même DraftCost
+// aux contrôles, aux nœuds figés et aux faits de coût (une seule lecture du brouillon, v2-lot-g T1).
+func (s *Service) PublicationChecksOf(ctx context.Context, dc DraftCost) ([]PublicationCheck, error) {
+	in, err := s.checksInput(ctx, dc)
+	if err != nil {
+		return nil, fmt.Errorf("publication checks of bom %d: %w", dc.BOM.ID, err)
 	}
 	return RunChecks(in), nil
 }
 
-func (s *Service) checksInput(ctx context.Context, bomID int64) (ChecksInput, error) {
-	dc, err := s.DraftCost(ctx, bomID)
+func (s *Service) checksInput(ctx context.Context, dc DraftCost) (ChecksInput, error) {
+	plan, err := PlanSchedule(dc.Input.Nodes, dc.Totals, dc.Schedule)
 	if err != nil {
 		return ChecksInput{}, err
 	}
-	sch, err := s.store.Schedule(ctx, bomID)
-	if err != nil {
-		return ChecksInput{}, err
-	}
-	plan, err := PlanSchedule(dc.Input.Nodes, dc.Totals, sch)
-	if err != nil {
-		return ChecksInput{}, err
-	}
-	targets, err := s.store.TargetBudgets(ctx, bomID)
-	if err != nil {
-		return ChecksInput{}, err
-	}
-	budgets, err := EvaluateTargetBudgets(dc.Totals, targets)
+	budgets, err := EvaluateTargetBudgets(dc.Totals, dc.Budgets)
 	if err != nil {
 		return ChecksInput{}, err
 	}
@@ -370,14 +389,8 @@ func (s *Service) checksInput(ctx context.Context, bomID int64) (ChecksInput, er
 			in.Archived[n.ID] = true
 		}
 	}
-	in.AsOf = dc.Totals.Explanation.CostAsOf
-	if in.AsOf == nil { // méthode historique : date de la cotation la plus récente utilisée
-		for _, t := range dc.Totals.Nodes {
-			if t.Quote != nil && (in.AsOf == nil || t.Quote.QuotedAt.After(*in.AsOf)) {
-				at := t.Quote.QuotedAt.UTC()
-				in.AsOf = &at
-			}
-		}
+	if at := CostAsOf(dc.Input); !at.IsZero() { // date de la méthode, sinon cotation la plus récente utilisée
+		in.AsOf = &at
 	}
 	if s.contracts == nil || in.AsOf == nil {
 		in.ContractsUnavailable = s.contracts == nil

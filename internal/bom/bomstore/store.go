@@ -271,6 +271,49 @@ func (s *Store) DeleteBOM(ctx context.Context, id int64) error {
 	return nil
 }
 
+// txOptionsBeginner : *pgxpool.Pool et *pgx.Conn ouvrent une transaction avec un niveau d'isolation.
+type txOptionsBeginner interface {
+	BeginTx(ctx context.Context, opts pgx.TxOptions) (pgx.Tx, error)
+}
+
+// Draft lit la BOM, l'arbre, le stock, le planning et les budgets dans une même transaction en lecture seule
+// REPEATABLE READ : les cinq lectures voient le même instantané de la base, même si un PATCH est validé entre
+// deux (v2-lot-g T1). Store câblé sur une transaction (tests) : un savepoint de cette transaction.
+func (s *Store) Draft(ctx context.Context, bomID int64) (bom.Draft, error) {
+	var tx pgx.Tx
+	var err error
+	if b, ok := s.db.(txOptionsBeginner); ok {
+		tx, err = b.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.RepeatableRead, AccessMode: pgx.ReadOnly})
+	} else {
+		tx, err = s.db.Begin(ctx)
+	}
+	if err != nil {
+		return bom.Draft{}, fmt.Errorf("draft of bom %d: begin: %w", bomID, err)
+	}
+	defer func() { _ = tx.Rollback(context.WithoutCancel(ctx)) }()
+	in := &Store{db: tx, q: s.q.WithTx(tx)}
+	var d bom.Draft
+	if d.BOM, err = in.GetBOM(ctx, bomID); err != nil {
+		return bom.Draft{}, err
+	}
+	if d.Nodes, err = in.Tree(ctx, bomID); err != nil {
+		return bom.Draft{}, err
+	}
+	if d.Stock, err = in.Stock(ctx, bomID); err != nil {
+		return bom.Draft{}, err
+	}
+	if d.Schedule, err = in.Schedule(ctx, bomID); err != nil {
+		return bom.Draft{}, err
+	}
+	if d.Budgets, err = in.TargetBudgets(ctx, bomID); err != nil {
+		return bom.Draft{}, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return bom.Draft{}, fmt.Errorf("draft of bom %d: commit: %w", bomID, err)
+	}
+	return d, nil
+}
+
 // Tree renvoie tous les nœuds de la BOM en une requête, triés par id.
 func (s *Store) Tree(ctx context.Context, bomID int64) ([]bom.Node, error) {
 	rows, err := s.q.ListNodes(ctx, bomID)

@@ -210,3 +210,39 @@ func (r iteratorForInsertSnapshotStock) Err() error {
 func (q *Queries) InsertSnapshotStock(ctx context.Context, arg []InsertSnapshotStockParams) (int64, error) {
 	return q.db.CopyFrom(ctx, []string{"bom_snapshot_part_stock"}, []string{"snapshot_id", "part_id", "quantity"}, &iteratorForInsertSnapshotStock{rows: arg})
 }
+
+// iteratorForInsertSnapshotTargetBudgets implements pgx.CopyFromSource.
+type iteratorForInsertSnapshotTargetBudgets struct {
+	rows                 []InsertSnapshotTargetBudgetsParams
+	skippedFirstNextCall bool
+}
+
+func (r *iteratorForInsertSnapshotTargetBudgets) Next() bool {
+	if len(r.rows) == 0 {
+		return false
+	}
+	if !r.skippedFirstNextCall {
+		r.skippedFirstNextCall = true
+		return true
+	}
+	r.rows = r.rows[1:]
+	return len(r.rows) > 0
+}
+
+func (r iteratorForInsertSnapshotTargetBudgets) Values() ([]interface{}, error) {
+	return []interface{}{
+		r.rows[0].SnapshotID,
+		r.rows[0].NodeKey,
+		r.rows[0].Amount,
+		r.rows[0].Currency,
+	}, nil
+}
+
+func (r iteratorForInsertSnapshotTargetBudgets) Err() error {
+	return nil
+}
+
+// Budgets cibles figés (v2-lot-g T3, ADR 0038), par clé de nœud figé.
+func (q *Queries) InsertSnapshotTargetBudgets(ctx context.Context, arg []InsertSnapshotTargetBudgetsParams) (int64, error) {
+	return q.db.CopyFrom(ctx, []string{"bom_snapshot_target_budgets"}, []string{"snapshot_id", "node_key", "amount", "currency"}, &iteratorForInsertSnapshotTargetBudgets{rows: arg})
+}

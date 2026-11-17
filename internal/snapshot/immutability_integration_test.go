@@ -104,6 +104,7 @@ func TestBomSnapshotRejectsMutations(t *testing.T) {
 	exec(`INSERT INTO bom_snapshot_nodes (snapshot_id, node_key, name, quantity, production_days)
 		VALUES ($1, $2, 'Voiture', 1, 2)`, snapID, rootID)
 	exec(`INSERT INTO bom_snapshot_part_stock (snapshot_id, part_id, quantity) VALUES ($1, $2, 40)`, snapID, partID)
+	exec(`INSERT INTO bom_snapshot_target_budgets (snapshot_id, node_key, amount, currency) VALUES ($1, $2, 450, 'EUR')`, snapID, rootID)
 	exec(`SET CONSTRAINTS ALL IMMEDIATE`) // vérifie maintenant les FK différées (la transaction est annulée à la fin)
 	exec(`UPDATE boms SET source_snapshot_id = $1 WHERE id = $2`, snapID, freeBomID)
 
@@ -123,6 +124,9 @@ func TestBomSnapshotRejectsMutations(t *testing.T) {
 		{"UPDATE du stock figé (ADR 0022)", `UPDATE bom_snapshot_part_stock SET quantity = 0 WHERE snapshot_id = $1`, []any{snapID}, restrictViolation},
 		{"DELETE du stock figé", `DELETE FROM bom_snapshot_part_stock WHERE snapshot_id = $1`, []any{snapID}, restrictViolation},
 		{"TRUNCATE du stock figé", `TRUNCATE bom_snapshot_part_stock`, nil, restrictViolation},
+		{"UPDATE d'un budget figé (v2-lot-g T3)", `UPDATE bom_snapshot_target_budgets SET amount = 1 WHERE snapshot_id = $1`, []any{snapID}, restrictViolation},
+		{"DELETE d'un budget figé", `DELETE FROM bom_snapshot_target_budgets WHERE snapshot_id = $1`, []any{snapID}, restrictViolation},
+		{"TRUNCATE des budgets figés", `TRUNCATE bom_snapshot_target_budgets`, nil, restrictViolation},
 		{"DELETE d'une BOM qui a un snapshot", `DELETE FROM boms WHERE id = $1`, []any{bomID}, foreignKeyViolation},
 		{"UPDATE d'un nœud du brouillon publié", `UPDATE bom_nodes SET quantity = 5 WHERE id = $1`, []any{leafID}, ""},
 		{"DELETE d'un nœud du brouillon publié", `DELETE FROM bom_nodes WHERE id = $1`, []any{leafID}, ""},
