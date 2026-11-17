@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { Explanation, NewNode, NodeAnomaly, NodeBudget, NodePatch, StockLine, TreeNode } from '../api.ts'
 import { partName, type Catalog } from '../catalog.ts'
-import { formatDate, formatDecimal, formatMoney, multiplyDecimal } from '../money.ts'
+import { decimalInput, formatDate, formatDecimal, formatMoney, multiplyDecimal, sameDecimal } from '../money.ts'
 import { AddNodeDialog } from './AddNodeDialog.tsx'
 import { AnomalyFacts } from './Anomalies.tsx'
 import { budgetClass, budgetPercentText, budgetTitle } from './budget.ts'
@@ -27,6 +27,9 @@ type Props = {
   target: Target // brouillon ou snapshot : source de la ventilation « Pourquoi ce coût ? »
   version: number // relecture de l'arbre : la ventilation est relue
   budget?: NodeBudget // budget cible propre au nœud (API), s'il en a un
+  currency: string // devise de la BOM : celle de tout budget
+  // onSetBudget : saisie du budget (onglet Structurer, brouillon) ; amount null retire le budget (ADR 0042).
+  onSetBudget?: (amount: string | null) => Promise<boolean>
 }
 
 // NodePanel : détail d'un nœud à la demande (AGENTS §5), dans la colonne de droite de toutes les étapes —
@@ -141,6 +144,10 @@ export function NodePanel(p: Props) {
         </ul>
       </details>
 
+      {!readOnly && !isPart && p.onSetBudget && (
+        <BudgetField key={`budget-${node.id}-${p.budget?.target.amount ?? ''}`} current={p.budget?.target.amount ?? null} currency={p.currency} onSet={p.onSetBudget} />
+      )}
+
       {!readOnly && (
         <>
           <EditFields key={`edit-${node.id}`} node={node} onPatch={p.onPatch} />
@@ -163,6 +170,36 @@ export function NodePanel(p: Props) {
         </>
       )}
     </section>
+  )
+}
+
+// BudgetField : budget cible de l'ensemble, dans la devise de la BOM. La règle « Σ des sous-ensembles ≤ budget de
+// l'ensemble » est vérifiée par l'API ; un refus s'affiche tel quel (data.run), le champ garde la saisie.
+function BudgetField({ current, currency, onSet }: { current: string | null; currency: string; onSet: (amount: string | null) => Promise<boolean> }) {
+  const [value, setValue] = useState(current ?? '')
+  const amount = decimalInput(value)
+  const valid = /^\d+(\.\d+)?$/.test(amount)
+  return (
+    <form
+      className="row"
+      onSubmit={(e) => {
+        e.preventDefault()
+        if (valid) void onSet(amount)
+      }}
+    >
+      <label>
+        Budget ({currency}){' '}
+        <input aria-label="Budget de l'ensemble" inputMode="decimal" size={10} placeholder="aucun" value={value} onChange={(e) => setValue(e.target.value)} />
+      </label>
+      <button type="submit" disabled={!valid || (current !== null && sameDecimal(amount, current))}>
+        OK
+      </button>
+      {current !== null && (
+        <button type="button" className="link" onClick={() => void onSet(null)}>
+          retirer
+        </button>
+      )}
+    </form>
   )
 }
 

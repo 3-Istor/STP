@@ -51,6 +51,8 @@ type BOMService interface {
 	LandedCosts(ctx context.Context, bomID, partID int64, offerIDs []int64) (bom.LandedComparison, error)
 	MakeOrBuy(ctx context.Context, bomID, nodeID int64, req bom.MakeOrBuyRequest) (bom.MakeOrBuyResult, error)
 	ClearSchedule(ctx context.Context, bomID int64) error
+	PutTargetBudget(ctx context.Context, bomID, nodeID int64, amount money.Money) (bom.TargetBudget, error)
+	DeleteTargetBudget(ctx context.Context, bomID, nodeID int64) error
 }
 
 // SnapshotService est ce que l'API attend du domaine snapshot ; *snapshot.Service la satisfait.
@@ -91,6 +93,8 @@ func (a *api) routes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/v1/boms/{id}/nodes", a.addNode)
 	mux.HandleFunc("PATCH /api/v1/boms/{id}/nodes/{nodeID}", a.patchNode)
 	mux.HandleFunc("DELETE /api/v1/boms/{id}/nodes/{nodeID}", a.deleteNode)
+	mux.HandleFunc("PUT /api/v1/boms/{id}/nodes/{nodeID}/budget", a.putBudget)
+	mux.HandleFunc("DELETE /api/v1/boms/{id}/nodes/{nodeID}/budget", a.deleteBudget)
 	mux.HandleFunc("GET /api/v1/boms/{id}/nodes/{nodeID}/suggestions", a.suggestions)
 	mux.HandleFunc("POST /api/v1/boms/{id}/nodes/{nodeID}/make-or-buy", a.makeOrBuy)
 	mux.HandleFunc("GET /api/v1/boms/{id}/anomalies", a.anomalies)
@@ -553,6 +557,56 @@ func (a *api) putStock(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, stockJSON{PartID: st.PartID, Quantity: st.Quantity.String()})
 }
 
+// --- Budgets cibles (ADR 0042) ---------------------------------------------------------------------------
+
+type targetBudgetJSON struct {
+	NodeID int64       `json:"node_id"`
+	Target money.Money `json:"target"`
+}
+
+// putBudget : {"amount":"3000.00","currency":"EUR"} ; 409 si les sous-budgets d'un ensemble dépasseraient son budget.
+func (a *api) putBudget(w http.ResponseWriter, r *http.Request) {
+	bomID, err := bomPathID(r, "id")
+	var nodeID int64
+	if err == nil {
+		nodeID, err = bomPathID(r, "nodeID")
+	}
+	var req money.Money
+	if err == nil {
+		err = decode(r, &req)
+	}
+	var b bom.TargetBudget
+	if err == nil {
+		b, err = a.boms.PutTargetBudget(r.Context(), bomID, nodeID, req)
+	}
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	target, err := money.New(b.Amount, b.Currency)
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, targetBudgetJSON{NodeID: b.NodeID, Target: target})
+}
+
+func (a *api) deleteBudget(w http.ResponseWriter, r *http.Request) {
+	bomID, err := bomPathID(r, "id")
+	var nodeID int64
+	if err == nil {
+		nodeID, err = bomPathID(r, "nodeID")
+	}
+	if err == nil {
+		err = a.boms.DeleteTargetBudget(r.Context(), bomID, nodeID)
+	}
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
 // --- Planning (ADR 0023) -----------------------------------------------------------------------------
 
 // putScheduleRequest : dates calendaires "AAAA-MM-JJ" ; target_on absent ou null = pas de date cible.
@@ -810,7 +864,7 @@ func statusOf(err error) int {
 		catalog.ErrMissingAttribute, bom.ErrMissingCost, bom.ErrNoBudgetRate, bom.ErrNoTooling, bom.ErrNoProgramVolume,
 		bom.ErrNoCostDate, bom.ErrNoCostFacts, snapshot.ErrIncompleteCost, supplier.ErrSelectionRequired,
 		pricing.ErrNoCustomsDuty, pricing.ErrNoFreightRate, pricing.ErrNoPackaging, pricing.ErrNoDestination,
-		snapshot.ErrPublicationBlocked, bom.ErrBridgeUnavailable, bom.ErrBridgeIncomplete, money.ErrCurrencyMismatch):
+		snapshot.ErrPublicationBlocked, bom.ErrBudgetExceedsParent, bom.ErrBridgeUnavailable, bom.ErrBridgeIncomplete, money.ErrCurrencyMismatch):
 		return http.StatusConflict
 	case is(snapshot.ErrJustificationRequired):
 		return http.StatusUnprocessableEntity

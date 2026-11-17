@@ -152,6 +152,17 @@ export function BomWorkspace({ route, data, error, onPublished }: Props) {
                 target={data.target}
                 version={data.version}
                 budget={data.budgets.byNode.get(selected.id)}
+                currency={data.currency}
+                onSetBudget={
+                  route.step === 'structurer'
+                    ? (amount) =>
+                        data.run(() =>
+                          amount === null
+                            ? api.deleteNodeBudget(data.target.id, selected.id)
+                            : api.setNodeBudget(data.target.id, selected.id, { amount, currency: data.currency }),
+                        )
+                    : undefined
+                }
                 onStartMove={() => {
                   setMoving(selected.id)
                   if (route.step !== 'structurer') go({ step: 'structurer' })

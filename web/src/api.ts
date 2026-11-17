@@ -458,6 +458,9 @@ export const api = {
   alternatives: (partID: number) => call<{ id: number; name: string }[]>('GET', `/parts/${partID}/alternatives`),
   setSchedule: (bomID: number, s: Schedule) => call<Schedule>('PUT', `/boms/${bomID}/schedule`, s),
   clearSchedule: (bomID: number) => call<void>('DELETE', `/boms/${bomID}/schedule`),
+  // Budget cible d'un nœud (ADR 0042) : refusé (409) si les sous-budgets d'un ensemble dépasseraient son budget.
+  setNodeBudget: (bomID: number, nodeID: number, target: Money) => call<unknown>('PUT', `/boms/${bomID}/nodes/${nodeID}/budget`, target),
+  deleteNodeBudget: (bomID: number, nodeID: number) => call<void>('DELETE', `/boms/${bomID}/nodes/${nodeID}/budget`),
   suggestions: (bomID: number, nodeID: number) => call<Suggestions>('GET', `/boms/${bomID}/nodes/${nodeID}/suggestions`),
   anomalies: (bomID: number, threshold: string) =>
     call<CostAnomalies>('GET', `/boms/${bomID}/anomalies?threshold=${encodeURIComponent(threshold)}`),

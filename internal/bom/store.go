@@ -131,9 +131,10 @@ type Store interface {
 	// SetNodePart remplace la pièce et l'offre d'un nœud pièce (id, quantité et enfants gardés) ; ErrNotAPart
 	// sur un sous-ensemble.
 	SetNodePart(ctx context.Context, bomID, nodeID, partID, offerID int64) (Node, error)
-	// MoveNode rattache le nœud à newParentID ; ErrCycle si newParentID est le nœud ou un descendant.
-	// Le contrôle et la mise à jour se font dans la même transaction.
-	MoveNode(ctx context.Context, bomID, nodeID, newParentID int64) (Node, error)
+	// MoveNode rattache le nœud à newParentID ; ErrCycle si newParentID est le nœud ou un descendant. check (non
+	// nil) juge l'arbre et les budgets après le déplacement (ADR 0042). Contrôles et mise à jour dans la même
+	// transaction.
+	MoveNode(ctx context.Context, bomID, nodeID, newParentID int64, check BudgetCheck) (Node, error)
 	// DeleteNode supprime le nœud et son sous-arbre ; ErrRootNode pour la racine.
 	DeleteNode(ctx context.Context, bomID, nodeID int64) error
 
@@ -154,4 +155,8 @@ type Store interface {
 	TargetBudgets(ctx context.Context, bomID int64) ([]TargetBudget, error)
 	// SetTargetBudget enregistre (ou remplace) le budget cible d'un nœud ; ErrNodeNotFound s'il n'est pas dans la BOM.
 	SetTargetBudget(ctx context.Context, bomID int64, b TargetBudget) error
+	// EditTargetBudget pose (b non nil) ou retire (b nil) le budget du nœud nodeID, BOM verrouillée : check juge
+	// l'arbre et les budgets résultants avant l'écriture ; s'il échoue, rien n'est écrit (ADR 0042).
+	// ErrBOMNotFound / ErrNodeNotFound si la BOM ou le nœud n'existe pas.
+	EditTargetBudget(ctx context.Context, bomID, nodeID int64, b *TargetBudget, check BudgetCheck) error
 }

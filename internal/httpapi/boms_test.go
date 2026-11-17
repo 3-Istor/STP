@@ -84,6 +84,13 @@ func (f *fakeBOMs) SetSchedule(_ context.Context, id int64, s bom.Schedule) (bom
 func (f *fakeBOMs) ClearSchedule(_ context.Context, id int64) error {
 	return f.record("ClearSchedule %d", id)
 }
+func (f *fakeBOMs) PutTargetBudget(_ context.Context, bomID, nodeID int64, m money.Money) (bom.TargetBudget, error) {
+	return bom.TargetBudget{NodeID: nodeID, Amount: m.Amount(), Currency: string(m.Currency())},
+		f.record("PutTargetBudget %d %d %s %s", bomID, nodeID, m.Amount(), m.Currency())
+}
+func (f *fakeBOMs) DeleteTargetBudget(_ context.Context, bomID, nodeID int64) error {
+	return f.record("DeleteTargetBudget %d %d", bomID, nodeID)
+}
 func (f *fakeBOMs) SetNodeStrategy(_ context.Context, bomID, nodeID int64, st *bom.Strategy) (bom.Node, error) {
 	v := "nil"
 	if st != nil {
@@ -312,6 +319,10 @@ func TestRoutes(t *testing.T) {
 		{"set schedule without start", "PUT", "/api/v1/boms/7/schedule", `{"target_on":"2027-02-01"}`, 400, "", `start_on is required`},
 		{"set schedule bad date", "PUT", "/api/v1/boms/7/schedule", `{"start_on":"01/12/2026"}`, 400, "", `not a date`},
 		{"clear schedule", "DELETE", "/api/v1/boms/7/schedule", "", 204, "ClearSchedule 7", ""},
+		{"set node budget", "PUT", "/api/v1/boms/7/nodes/3/budget", `{"amount":"3000.00","currency":"EUR"}`, 200,
+			"PutTargetBudget 7 3 3000 EUR", `{"node_id":3,"target":{"amount":"3000.00","currency":"EUR"}}`},
+		{"node budget as a JSON number is refused", "PUT", "/api/v1/boms/7/nodes/3/budget", `{"amount":3000,"currency":"EUR"}`, 400, "", `"error":`},
+		{"delete node budget", "DELETE", "/api/v1/boms/7/nodes/3/budget", "", 204, "DeleteTargetBudget 7 3", ""},
 		{"freeze prices", "POST", "/api/v1/boms/7/freeze-prices", "", 200, "FreezePrices 7 " + at, `"price_snapshot_id":5`},
 		{"unfreeze prices", "DELETE", "/api/v1/boms/7/freeze-prices", "", 200, "UnfreezePrices 7", `"price_snapshot_id":null`},
 		{"use existing price snapshot", "PUT", "/api/v1/boms/7/freeze-prices", `{"price_snapshot_id":12}`, 200, "UsePriceSnapshot 7 12", `"price_snapshot_id":12`},
@@ -389,6 +400,7 @@ func TestErrorMapping(t *testing.T) {
 		{"unknown part", catalog.ErrPartNotFound, 400, "part not found"},
 		{"unknown currency", money.ErrUnknownCurrency, 400, "unknown currency"},
 		{"joined errors keep their sentinel", errors.Join(pricing.ErrNoQuote, pricing.ErrNoRate), 409, "no price quote"},
+		{"sub-budgets over their assembly", bom.ErrBudgetExceedsParent, 409, "sub-budgets exceed"},
 		{"unexpected failure", errors.New("connection refused"), 500, "internal error"},
 	}
 	for _, tt := range tests {
