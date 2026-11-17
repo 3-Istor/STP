@@ -17,6 +17,9 @@ type SnapshotRequest struct {
 	ScopeID          *int64           `json:"scope_id,omitempty"`
 	TargetCurrencies []money.Currency `json:"target_currencies"`
 	AsOf             *time.Time       `json:"as_of,omitempty"`
+	// BudgetBOMID : portée « catalog » seulement, interne (jamais lue du corps HTTP) : les taux des devises de budget
+	// de cette BOM sont figés avec le lot (ADR 0044, ADR 0048).
+	BudgetBOMID *int64 `json:"-"`
 }
 type SnapshotFrame struct {
 	MarketFrame
@@ -68,11 +71,11 @@ func NewSnapshotService(store SnapshotRepository, cfg RunConfig) *SnapshotServic
 func (r SnapshotRequest) Validate() error {
 	switch r.Scope {
 	case "catalog":
-		if r.ScopeID != nil {
+		if r.ScopeID != nil || (r.BudgetBOMID != nil && *r.BudgetBOMID <= 0) {
 			return ErrInvalidReadRequest
 		}
 	case "offer", "supplier", "bom":
-		if r.ScopeID == nil || *r.ScopeID <= 0 {
+		if r.ScopeID == nil || *r.ScopeID <= 0 || r.BudgetBOMID != nil {
 			return ErrInvalidReadRequest
 		}
 	default:

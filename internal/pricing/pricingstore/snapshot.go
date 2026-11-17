@@ -75,6 +75,15 @@ func (u snapshotUnit) Frame(ctx context.Context, dataset string, req pricing.Sna
 			f.Offers = append(f.Offers, pricing.OfferRef{ID: r.ID, Currency: money.Currency(r.Currency)})
 		}
 	} else {
+		if req.Scope == "catalog" && req.BudgetBOMID != nil { // gel d'une BOM : ses devises de budget (ADR 0048)
+			sources, err := u.q.ReadBOMBudgetCurrencies(ctx, *req.BudgetBOMID)
+			if err != nil {
+				return f, err
+			}
+			for _, src := range sources {
+				f.Sources = append(f.Sources, money.Currency(src))
+			}
+		}
 		scope := pricingdb.ReadScopeOffersParams{}
 		if req.Scope == "offer" {
 			scope.OfferID = *req.ScopeID
