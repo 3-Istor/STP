@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { Component, useMemo, useState, type ReactNode } from 'react'
 import { api } from '../../api.ts'
 import { Vehicle3D, type ColorBy, type RenderMode, type Vehicle3DNode } from '../../features/vehicle3d/index.tsx'
 import { BomTree } from '../BomTree.tsx'
@@ -152,8 +152,30 @@ function Vehicle3DPane({ data, selectedID, onSelect }: { data: BomData; selected
         <span className="muted small v3d-hint">Double-clic : focus sur un sous-ensemble</span>
       </div>
       <div className="v3d-stage">
-        <Vehicle3D bomId={data.target.id} nodes={stable.nodes} selectedNodeId={selectedID} onSelectNode={onSelect} mode={mode} colorBy={colorBy} explode={explode} />
+        <Vehicle3DBoundary>
+          <Vehicle3D bomId={data.target.id} nodes={stable.nodes} selectedNodeId={selectedID} onSelectNode={onSelect} mode={mode} colorBy={colorBy} explode={explode} />
+        </Vehicle3DBoundary>
       </div>
     </div>
   )
+}
+
+// Vehicle3DBoundary : une panne de la 3D (pas de WebGL, chunk `three` non chargé) reste dans son panneau ;
+// l'arbre, la Synthèse et le reste de l'étape continuent de fonctionner.
+class Vehicle3DBoundary extends Component<{ children: ReactNode }, { error: string | null }> {
+  state = { error: null as string | null }
+  static getDerivedStateFromError(e: unknown) {
+    return { error: e instanceof Error ? e.message : String(e) }
+  }
+  render() {
+    if (this.state.error === null) return this.props.children
+    return (
+      <div className="v3d-failed" role="alert">
+        <p>
+          <strong>Vue 3D indisponible</strong> : {this.state.error}
+        </p>
+        <p className="muted small">WebGL est peut-être désactivé dans ce navigateur. L’arbre et les totaux restent utilisables.</p>
+      </div>
+    )
+  }
 }
