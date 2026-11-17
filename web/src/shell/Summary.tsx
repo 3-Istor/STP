@@ -4,19 +4,24 @@ import { partName } from '../catalog.ts'
 import { formatDate, formatDateTime, formatDecimal, formatMoney } from '../money.ts'
 import type { BomData } from '../bom/useBomData.ts'
 import { shareWidths } from './share.ts'
+import { budgetBarWidth, budgetClass, budgetPercentText, budgetTitle } from '../bom/budget.ts'
 
 // Nombre de snapshots de prix montrés d'emblée ; les autres à la demande (« Tous les snapshots »).
 const SHOWN_SNAPSHOTS = 3
 
 // Summary : colonne « Synthèse », identique sur les 5 étapes (maquettes I4, composant Summary de la V1).
-// Tout vient de l'API : rien n'est recalculé ni inventé. Budget et sous-systèmes hors budget n'existent pas
-// encore dans l'API (lot E) : la Synthèse le dit au lieu d'afficher un chiffre.
+// Tout vient de l'API : rien n'est recalculé ni inventé. Budgets (état, %) : lus avec l'arbre (ADR 0018, 0031).
 export function Summary({ data, onSelectNode }: { data: BomData; onSelectNode: (id: number) => void }) {
   const t = data.root?.totals ?? null
   const planning = data.planning
   const subsystems = data.root ? data.nodes.filter((n) => n.parent_id === data.root!.id) : []
   const widths = shareWidths(t?.cost ?? null, subsystems.map((n) => n.totals?.cost ?? null))
   const label = (n: TreeNode) => (n.part_id !== null ? partName(data.catalog, n.part_id) : n.name)
+  const budgets = data.budgets
+  const rootBudget = data.root ? budgets.byNode.get(data.root.id) : undefined
+  // Barres « % du budget » dès qu'un sous-système a un budget ; sinon part du coût du véhicule (lot C).
+  const byBudget = budgets.unavailable === null && subsystems.some((n) => budgets.byNode.has(n.id))
+  const overBudget = subsystems.filter((n) => budgets.byNode.get(n.id)?.state === 'over')
 
   let state: { text: string; cls?: string; status?: boolean }
   if (data.busy) state = { text: 'Recalcul en cours…', cls: 'recalc', status: true }
@@ -40,7 +45,7 @@ export function Summary({ data, onSelectNode }: { data: BomData; onSelectNode: (
         <strong className={`vl ${t?.cost_error_code ? 'over' : ''}`} title={t?.cost_error ?? undefined}>
           {t?.cost ? formatMoney(t.cost) : 'incomplet'}
         </strong>
-        <span className="small muted">budget : non défini dans l'API (lot E)</span>
+        <RootBudget data={data} />
       </div>
       <dl className="dl">
         <dt>Disponibilité</dt>
@@ -67,28 +72,56 @@ export function Summary({ data, onSelectNode }: { data: BomData; onSelectNode: (
           {t?.fte ? formatDecimal(t.fte, 2) : 'n/d'}
         </dd>
         <dt>Hors budget</dt>
-        <dd className="muted" title="Aucun budget par sous-système dans l'API actuelle (lot E)">—</dd>
+        <dd className={overBudget.length > 0 ? 't-over' : 'muted'} title={budgets.unavailable ?? 'Sous-systèmes dont le coût dépasse le budget cible'}>
+          {budgets.unavailable !== null
+            ? 'n/d'
+            : overBudget.length > 0
+              ? overBudget.map((n, i) => (
+                  <span key={n.id}>
+                    {i > 0 && ', '}
+                    <button type="button" className="link over-link" onClick={() => onSelectNode(n.id)}>
+                      {label(n)}
+                    </button>
+                  </span>
+                ))
+              : rootBudget || byBudget
+                ? 'aucun sous-système'
+                : 'aucun budget défini'}
+        </dd>
       </dl>
 
       {subsystems.length > 0 && (
         <>
-          <div className="h3">Par sous-système · coût par véhicule</div>
-          <ul className="sys">
-            {subsystems.map((n, i) => (
-              <li key={n.id}>
-                <button type="button" className="link sys-name" onClick={() => onSelectNode(n.id)} title={label(n)}>
-                  {label(n)}
-                </button>
-                <span className="bar" aria-hidden="true">
-                  {widths[i] !== null && <i style={{ width: `${widths[i]}%` }} />}
-                </span>
-                <span className={`n ${n.totals?.cost_error_code ? 'over' : ''}`}>
-                  {n.totals?.cost ? formatMoney(n.totals.cost) : 'incomplet'}
-                </span>
-              </li>
-            ))}
+          <div className="h3">{byBudget ? 'Par sous-système · % du budget' : 'Par sous-système · coût par véhicule'}</div>
+          <ul className={`sys ${byBudget ? 'by-budget' : ''}`}>
+            {subsystems.map((n, i) => {
+              const b = byBudget ? budgets.byNode.get(n.id) : undefined
+              const width = byBudget ? budgetBarWidth(b?.percent ?? null) : widths[i]
+              return (
+                <li key={n.id}>
+                  <button type="button" className="link sys-name" onClick={() => onSelectNode(n.id)} title={label(n)}>
+                    {label(n)}
+                  </button>
+                  <span className="bar" aria-hidden="true">
+                    {width !== null && <i className={b ? `fill-${b.state}` : undefined} style={{ width: `${width}%` }} />}
+                  </span>
+                  <span className={`n ${n.totals?.cost_error_code ? 'over' : ''}`}>
+                    {n.totals?.cost ? formatMoney(n.totals.cost) : 'incomplet'}
+                  </span>
+                  {byBudget && (
+                    <span className={`p ${budgetClass(b)}`} title={b ? budgetTitle(b) : 'Pas de budget cible sur ce sous-système'}>
+                      {b ? budgetPercentText(b) : '—'}
+                    </span>
+                  )}
+                </li>
+              )
+            })}
           </ul>
-          <p className="small muted hint">Barre : part du coût du véhicule (le % du budget viendra avec les budgets, lot E).</p>
+          <p className="small muted hint">
+            {byBudget
+              ? 'Barre : coût ÷ budget cible (vert < 90 %, orange ≥ 90 %, rouge au-delà de 100 %).'
+              : `Barre : part du coût du véhicule${budgets.unavailable ? ` (${budgets.unavailable.toLowerCase()})` : ''}.`}
+          </p>
         </>
       )}
 
@@ -103,6 +136,24 @@ export function Summary({ data, onSelectNode }: { data: BomData; onSelectNode: (
         </>
       )}
     </section>
+  )
+}
+
+// RootBudget : budget global (budget de la racine) et part consommée, sous le total (maquette I4-1).
+function RootBudget({ data }: { data: BomData }) {
+  const b = data.root ? data.budgets.byNode.get(data.root.id) : undefined
+  if (data.budgets.unavailable !== null) return <span className="small muted">budget : {data.budgets.unavailable.toLowerCase()}</span>
+  if (!b) return <span className="small muted">budget : aucun budget global défini</span>
+  const width = budgetBarWidth(b.percent)
+  return (
+    <>
+      <span className="small" title={budgetTitle(b)}>
+        budget {formatMoney(b.target)} · <b className={budgetClass(b)}>{budgetPercentText(b)}</b>
+      </span>
+      <span className="budget-track" aria-hidden="true">
+        {width !== null && <i className={`fill-${b.state}`} style={{ width: `${width}%` }} />}
+      </span>
+    </>
   )
 }
 

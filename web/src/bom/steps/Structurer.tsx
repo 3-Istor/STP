@@ -42,6 +42,8 @@ export function Structurer(p: Props) {
       selectedID={p.selectedID}
       onSelect={p.onSelect}
       anomalies={data.anomalyByNode}
+      budgets={data.budgets.byNode}
+      budgetsUnavailable={data.budgets.unavailable}
       query={query}
       onChangeOffer={(nodeID, offerID) => void data.run(() => api.patchNode(data.target.id, nodeID, { offer_id: offerID }))}
       moving={p.moving}

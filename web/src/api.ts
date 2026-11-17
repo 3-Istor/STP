@@ -172,10 +172,48 @@ export type Suggestions = {
   excluded: Candidate[]
 }
 
-// Méthode de calcul du coût (contrat du lot A, ADR 0031) : absente tant que l'API ne la renvoie pas.
-export type CostMethod = { basis: 'purchase' | 'landed' | 'full'; fx: 'budget' | 'latest'; program_volume?: number }
+// Méthode de calcul du coût (ADR 0031) : base (achat, rendu, complet) × change (taux budget, dernier taux).
+// program_volume : volume programme pour amortir l'outillage, exigé par la base « full ».
+export type CostBasis = 'purchase' | 'landed' | 'full'
+export type FXPolicy = 'budget' | 'latest'
+export type CostMethod = { basis: CostBasis; fx: FXPolicy; program_volume?: number | null }
 
-export type Explanation = { currency: string; price_snapshot_id: number | null; rates: Rate[]; cost_method?: CostMethod }
+// cost_method et cost_as_of (date de calcul : contrats, année du taux budget) sont absents d'un snapshot
+// publié avant ADR 0031 ; budget_rates : taux budget utilisés.
+export type Explanation = {
+  currency: string
+  price_snapshot_id: number | null
+  rates: Rate[]
+  cost_method?: CostMethod
+  cost_as_of?: string | null
+  budget_rates?: Rate[]
+}
+
+// Budget cible d'un nœud comparé à son coût (ADR 0018, 0031). État et pourcentage sont calculés par l'API :
+// ok (vert), warn (orange, coût ≥ 90 % du budget), over (rouge, coût > budget), unavailable (coût ou
+// conversion manquant, jamais vert). percent : coût ÷ budget × 100, 1 décimale, null si indisponible.
+export type BudgetState = 'ok' | 'warn' | 'over' | 'unavailable'
+export type NodeBudget = {
+  node_id: number
+  target: Money
+  cost: Money | null
+  delta: Money | null
+  percent: string | null
+  state: BudgetState
+  error: string | null
+}
+
+// Ventilation du coût d'un nœud (« Pourquoi ce coût ? », ADR 0031) : lignes additives dans la devise de la
+// BOM, Σ amount = total. Un sous-ensemble agrège ses descendants par nature (as_of null).
+export type CostLineKind = 'price' | 'fx' | 'discount' | 'customs' | 'freight' | 'packaging' | 'tooling'
+export type CostBreakdown = {
+  node_id: number
+  currency: string
+  method: CostMethod
+  cost_as_of: string | null
+  lines: { kind: CostLineKind; label: string; amount: Money; source: string; as_of: string | null }[]
+  total: Money
+}
 
 // État de la source de prix (GET /api/v1/pricing/status).
 export type PricingStatus = { dataset_version?: string; tick?: number; as_of?: string; status: string }
@@ -188,7 +226,8 @@ export type PriceSnapshotRef = {
   taken_at: string
 }
 
-export type Tree = { bom: BOM; nodes: TreeNode[]; explanation: Explanation; stock: StockLine[]; planning: Planning }
+// budgets : budgets cibles évalués sur les totaux de cette même réponse (absent d'une API antérieure au lot F).
+export type Tree = { bom: BOM; nodes: TreeNode[]; explanation: Explanation; stock: StockLine[]; planning: Planning; budgets?: NodeBudget[] }
 
 export type Snapshot = {
   id: number
@@ -292,6 +331,11 @@ export const api = {
   snapshot: (id: number) => call<Published>('GET', `/snapshots/${id}`),
   newDraft: (snapshotID: number) => call<BOM>('POST', `/snapshots/${snapshotID}/drafts`),
   pricingStatus: () => call<PricingStatus>('GET', '/pricing/status'),
+  // Méthode de calcul (brouillon seulement en écriture) ; « full » exige program_volume.
+  setCostMethod: (bomID: number, m: CostMethod) => call<CostMethod>('PUT', `/boms/${bomID}/cost-method`, m),
+  costBreakdown: (bomID: number, nodeID: number) => call<CostBreakdown>('GET', `/boms/${bomID}/nodes/${nodeID}/cost-breakdown`),
+  snapshotCostBreakdown: (snapshotID: number, nodeID: number) =>
+    call<CostBreakdown>('GET', `/snapshots/${snapshotID}/nodes/${nodeID}/cost-breakdown`),
 }
 
 export function errorMessage(e: unknown): string {

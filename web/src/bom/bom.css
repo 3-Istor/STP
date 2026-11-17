@@ -64,7 +64,11 @@ table.compact td:not(:first-child), table.compact th:not(:first-child) { text-al
 .tree-row .offer { color: var(--muted); }
 .tree-row select.offer { padding: 1px 4px; color: var(--fg); }
 .tree-row .cost, .tree-head .cost { width: 7.5rem; text-align: right; flex: none; }
-.tree-row .budget, .tree-head .budget { width: 4rem; text-align: right; flex: none; color: var(--muted); }
+.tree-row .budget, .tree-head .budget { width: 4.5rem; text-align: right; flex: none; color: var(--muted); }
+.tree-row .budget:is(.t-ok, .t-warn, .t-over) { font-weight: 500; }
+.tree-row .budget.t-ok { color: var(--ok); }
+.tree-row .budget.t-warn { color: var(--warn); }
+.tree-row .budget.t-over { color: var(--over); }
 .tree-row .co2, .tree-head .co2 { width: 4.5rem; text-align: right; flex: none; }
 .tree-row .lead, .tree-head .lead { width: 3rem; text-align: right; flex: none; }
 .tree-row.has-error .cost { color: var(--over); }

@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import type { NodeAnomaly, TreeNode } from '../api.ts'
+import type { NodeAnomaly, NodeBudget, TreeNode } from '../api.ts'
 import { partName, type Catalog } from '../catalog.ts'
 import { formatDecimal, formatMoney } from '../money.ts'
 import { flatten, initiallyCollapsed } from './flatten.ts'
 import { describeAnomaly } from './anomaly.ts'
+import { budgetClass, budgetPercentText, budgetTitle } from './budget.ts'
 import { strategyLabels } from './strategy.ts'
 
 // Virtualisation faite à la main (spec NLPF-69, aucune dépendance) : l'arbre est aplati en lignes de
@@ -25,6 +26,9 @@ type Props = {
   onPickParent: (parentID: number) => void
   // Anomalies de coût par nœud (ADR 0027) : surbrillance des pièces suspectes, raison au survol.
   anomalies?: ReadonlyMap<number, NodeAnomaly>
+  // Budgets cibles par nœud (API) ; budgetsUnavailable : pourquoi la colonne est vide (snapshot publié…).
+  budgets?: ReadonlyMap<number, NodeBudget>
+  budgetsUnavailable?: string | null
   // Recherche (champ dans la barre d'outils de l'étape Structurer).
   query: string
   // Actions en ligne sur le nœud sélectionné (brouillon) : ajouter dessous, déplacer, supprimer.
@@ -109,7 +113,9 @@ export function BomTree(props: Props) {
         <span className="qty" title="Quantité par parent">Qté</span>
         <span className="offer" title="Offre retenue : fournisseur · prix unitaire · délai de livraison">Offre retenue</span>
         <span className="cost" title="Coût par véhicule du sous-arbre, quantités comprises">Coût / véh.</span>
-        <span className="budget" title="Part du budget : aucun budget dans l'API actuelle (lot E)">Budget</span>
+        <span className="budget" title={props.budgetsUnavailable ?? 'Coût du sous-arbre ÷ budget cible du nœud (vert < 90 %, orange ≥ 90 %, rouge > 100 %) ; « — » : pas de budget sur ce nœud'}>
+          Budget
+        </span>
         <span className="co2" title="CO₂ du sous-arbre par véhicule, en kg">CO₂ kg</span>
         <span className="lead" title="Délai du sous-arbre en jours : le plus long des enfants plus le délai propre (livraison ou production)">Délai</span>
       </div>
@@ -207,7 +213,7 @@ export function BomTree(props: Props) {
               <span className="cost" title={t?.cost_error ?? undefined}>
                 {t?.cost ? formatMoney(t.cost) : t?.cost_error_code ? 'prix manquant' : 'n/d'}
               </span>
-              <span className="budget" aria-hidden="true">—</span>
+              <BudgetCell budget={props.budgets?.get(n.id)} />
               <span className="co2">{t ? formatDecimal(t.co2_kg, 1) : ''}</span>
               <span className="lead">{t ? `${t.lead_time_days} j` : ''}</span>
             </div>
@@ -216,5 +222,14 @@ export function BomTree(props: Props) {
       </div>
     </div>
     </div>
+  )
+}
+
+function BudgetCell({ budget }: { budget: NodeBudget | undefined }) {
+  if (!budget) return <span className="budget muted">—</span>
+  return (
+    <span className={`budget ${budgetClass(budget)}`} title={budgetTitle(budget)}>
+      {budgetPercentText(budget)}
+    </span>
   )
 }
