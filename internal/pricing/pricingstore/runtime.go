@@ -183,7 +183,7 @@ func (s *RuntimeStore) Apply(ctx context.Context, p pricing.RuntimePlan, out pri
 			return state, pricing.ErrRuntimeDataConflict
 		}
 		state.Tick++
-		state.AsOf = state.AsOf.AddDate(0, 0, 1)
+		state.AsOf = pricing.NextAsOf(p.Config, state.AsOf) // boucle sur une année (ADR 0043)
 	}
 	if p.Current == nil {
 		config, err := json.Marshal(p.Config.Normalize())

@@ -31,7 +31,7 @@ func (m *memoryRuntime) Apply(_ context.Context, p pricing.RuntimePlan, out pric
 	}
 	if p.Advance {
 		s.Tick++
-		s.AsOf = s.AsOf.AddDate(0, 0, 1)
+		s.AsOf = pricing.NextAsOf(p.Config, s.AsOf)
 	}
 	m.state = &s
 	m.rows += len(out.Quotes)
@@ -74,7 +74,8 @@ func TestClockProduces365NewDaysExactly(t *testing.T) {
 			if !errors.Is(err, context.Canceled) {
 				t.Fatalf("run: %v", err)
 			}
-			if store.state.Tick != 365 || !store.state.AsOf.Equal(start.AddDate(0, 0, 365)) || store.rows != 730 || events != 366 || clock.now.Sub(start) != duration {
+			// 365 jours après le 01/01/2026 : l'année est bouclée, retour au 01/01/2026 (ADR 0043).
+			if store.state.Tick != 365 || !store.state.AsOf.Equal(start) || store.rows != 730 || events != 366 || clock.now.Sub(start) != duration {
 				t.Fatalf("tick=%d rows=%d events=%d elapsed=%s", store.state.Tick, store.rows, events, clock.now.Sub(start))
 			}
 		})
@@ -105,5 +106,29 @@ func TestTickDelayYearBoundary(t *testing.T) {
 		if sum != 40*time.Minute {
 			t.Fatalf("phase %d drift: %s", phase, sum)
 		}
+	}
+}
+
+// TestNextAsOfLoopsOverOneYear : l'horloge simulée boucle sur l'année qui commence au départ du run (ADR 0043).
+func TestNextAsOfLoopsOverOneYear(t *testing.T) {
+	day := func(s string) time.Time { d, _ := time.Parse(time.DateOnly, s); return d }
+	tests := []struct {
+		name, start, current, want string
+	}{
+		{"jour ordinaire", "2026-01-01", "2026-03-14", "2026-03-15"},
+		{"fin de février", "2026-01-01", "2026-02-28", "2026-03-01"},
+		{"veille du dernier jour", "2026-01-01", "2026-12-30", "2026-12-31"},
+		{"QUAND on dépasse le 31/12/2026 ALORS retour au 01/01/2026", "2026-01-01", "2026-12-31", "2026-01-01"},
+		{"année bissextile : 366 jours avant de boucler", "2028-01-01", "2028-12-31", "2028-01-01"},
+		{"départ en cours d'année : l'année court jusqu'à la veille de l'anniversaire", "2026-11-05", "2027-11-04", "2026-11-05"},
+		{"hors de l'année (run ancien déjà au-delà) : retour au départ", "2026-01-01", "2028-09-09", "2026-01-01"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := pricing.RunConfig{InitialAsOf: day(tt.start)}
+			if got := pricing.NextAsOf(cfg, day(tt.current)); !got.Equal(day(tt.want)) {
+				t.Fatalf("next of %s = %s, want %s", tt.current, got.Format(time.DateOnly), tt.want)
+			}
+		})
 	}
 }

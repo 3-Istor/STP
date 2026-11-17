@@ -214,7 +214,7 @@ func (r *Runtime) fetch(ctx context.Context, p RuntimePlan) (SourceOutput, error
 		}
 	}
 	if p.Advance {
-		next := through.AddDate(0, 0, 1)
+		next := NextAsOf(p.Config, through)
 		if err := collect(SourceCatalog, p.Offers, nil, next, next); err != nil {
 			return SourceOutput{}, err
 		}
@@ -223,6 +223,18 @@ func (r *Runtime) fetch(ctx context.Context, p RuntimePlan) (SourceOutput, error
 		}
 	}
 	return out, nil
+}
+
+// NextAsOf : jour simulé qui suit current. L'horloge boucle sur une année (ADR 0043) : le lendemain du dernier
+// jour de l'année qui commence à InitialAsOf (31/12/2026 pour un départ au 01/01/2026) est InitialAsOf. Le
+// simulateur étant une fonction pure de la date, un tour rejoue exactement les mêmes cotations : elles existent
+// déjà et sont acceptées sans réécriture (contenu identique, ADR 0015).
+func NextAsOf(c RunConfig, current time.Time) time.Time {
+	next := current.AddDate(0, 0, 1)
+	if !next.Before(c.InitialAsOf.AddDate(1, 0, 0)) {
+		return c.InitialAsOf
+	}
+	return next
 }
 
 // TickDelay distribue les nanosecondes restantes : 365 délais font exactement une année réelle.
