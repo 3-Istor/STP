@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# Moulinette rapide avant chaque commit (ADR 0039). Contourner (--no-verify) se voit en CI,
+# qui rejoue les mêmes contrôles : le hook fait gagner du temps, il ne protège pas seul.
+set -euo pipefail
+cd "$(git rev-parse --show-toplevel)"
+./scripts/verify.sh fast
+go run ./cmd/risk -staged | head -n 3

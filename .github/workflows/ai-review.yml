@@ -1,0 +1,69 @@
+# Relecture IA d'une PR, proportionnée au niveau de risque (ADR 0040, REVIEW.md).
+# Inerte tant que le secret ANTHROPIC_API_KEY n'existe pas : le job le dit et s'arrête en vert.
+# La relecture n'approuve ni ne bloque rien : elle commente, un humain décide.
+name: AI review
+
+on:
+  pull_request:
+    types: [opened, synchronize, ready_for_review]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ai-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    if: github.event.pull_request.draft == false && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      pull-requests: write
+      id-token: write
+    steps:
+      - name: Clé disponible ?
+        id: key
+        env:
+          KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          if [ -z "$KEY" ]; then
+            echo "ANTHROPIC_API_KEY absent : relecture IA non lancée (not_run)." | tee -a "$GITHUB_STEP_SUMMARY"
+            echo "present=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: steps.key.outputs.present == 'true'
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
+        if: steps.key.outputs.present == 'true'
+        with:
+          go-version-file: go.mod
+      - name: Niveau de risque
+        if: steps.key.outputs.present == 'true'
+        id: risk
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          go run ./cmd/risk -base "origin/$BASE_REF" > risk.md
+          level=$(go run ./cmd/risk -base "origin/$BASE_REF" -json | python3 -c 'import json,sys; print(json.load(sys.stdin)["level"])')
+          echo "level=$level" >> "$GITHUB_OUTPUT"
+      - uses: anthropics/claude-code-action@cc98b3ae241b0fcfb6a42a2690751afffecb4452 # v1.0.278
+        if: steps.key.outputs.present == 'true' && steps.risk.outputs.level != '0'
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          claude_args: --max-turns 40 --allowedTools "Read,Grep,Glob,Bash(git diff:*),Bash(git log:*),Bash(go test:*),Task,mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*)"
+          prompt: |
+            Relis la PR ${{ github.repository }}#${{ github.event.pull_request.number }} de BOM Studio.
+            Le niveau de risque calculé est dans risk.md (lis-le d'abord). Applique REVIEW.md à la lettre :
+            échelle Important / Nit / Pré-existant, axes domaine, confiance, impact ; ne publie aucun
+            constat spéculatif ni de style. Lance en sous-agents, en parallèle, les relecteurs de
+            .claude/agents/ qu'exige le niveau (table d'AGENTS.md §1), chacun avec seulement la base git
+            et la liste des fichiers. Publie chaque constat Important en commentaire en ligne, puis un seul
+            commentaire de synthèse : niveau, bilan par sévérité, et « où l'humain doit regarder ».
+            Tu n'approuves rien et tu ne modifies aucun fichier.

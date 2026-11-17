@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# Traçabilité (AGENTS.md, équipe multi-IA) : un commit qui touche le code et dont l'auteur
+# déclare une IA doit porter un trailer Co-Authored-By. Ici on vérifie la forme, pas l'honnêteté :
+# un commit marqué « [ia] » ou produit par un agent (CLAUDE_CODE / CODEX env) sans trailer est refusé.
+set -euo pipefail
+msg_file="$1"
+if grep -qiE '^\[ia\]|\(ia\)' "$msg_file" || [ -n "${CLAUDECODE:-}${CODEX_SANDBOX:-}" ]; then
+  if ! grep -qE '^Co-Authored-By: .+' "$msg_file"; then
+    echo "commit-msg : commit écrit avec une IA sans trailer « Co-Authored-By: <outil/modèle> <adresse> » (AGENTS.md)." >&2
+    exit 1
+  fi
+fi

@@ -12,7 +12,7 @@ SIM_YEAR_DURATION ?= 40m
 SIM_FX_PAIRS ?= [{"series_key":"fx:EUR:GBP","base_currency":"EUR","quote_currency":"GBP","reference":"0.855","band_percent":"5"},{"series_key":"fx:EUR:JPY","base_currency":"EUR","quote_currency":"JPY","reference":"161","band_percent":"5"},{"series_key":"fx:EUR:USD","base_currency":"EUR","quote_currency":"USD","reference":"1.087","band_percent":"5"},{"series_key":"fx:GBP:EUR","base_currency":"GBP","quote_currency":"EUR","reference":"1.17","band_percent":"5"},{"series_key":"fx:GBP:JPY","base_currency":"GBP","quote_currency":"JPY","reference":"190","band_percent":"5"},{"series_key":"fx:GBP:USD","base_currency":"GBP","quote_currency":"USD","reference":"1.27","band_percent":"5"},{"series_key":"fx:JPY:EUR","base_currency":"JPY","quote_currency":"EUR","reference":"0.0062","band_percent":"5"},{"series_key":"fx:JPY:GBP","base_currency":"JPY","quote_currency":"GBP","reference":"0.0053","band_percent":"5"},{"series_key":"fx:JPY:USD","base_currency":"JPY","quote_currency":"USD","reference":"0.0067","band_percent":"5"},{"series_key":"fx:USD:EUR","base_currency":"USD","quote_currency":"EUR","reference":"0.92","band_percent":"5"},{"series_key":"fx:USD:GBP","base_currency":"USD","quote_currency":"GBP","reference":"0.787","band_percent":"5"},{"series_key":"fx:USD:JPY","base_currency":"USD","quote_currency":"JPY","reference":"150","band_percent":"5"}]
 export PRICE_API_URL SIM_DATASET_VERSION SIM_SEED SIM_AS_OF SIM_YEAR_DURATION SIM_FX_PAIRS
 
-.PHONY: run priceapi seed test cover sec lint migrate db dev web sqlc up down models
+.PHONY: run priceapi seed test cover sec lint migrate db dev web sqlc up down models verify risk hooks tools
 
 run: ## API sur :8080
 	go run ./cmd/server
@@ -83,3 +83,18 @@ models: ## modèle 3D réaliste (téléchargement, ~12 Mo)
 		mv "$$tmp/src.glb" $(MODEL_DIR)/CarConcept.glb; echo "models: gltfpack absent, modèle copié sans compression"; \
 	fi; \
 	ls -l $(MODEL_DIR)/CarConcept.glb
+
+# --- Harnais (ADR 0039, docs/harnais.md) ------------------------------------------------
+LEVEL ?= fast
+verify: ## moulinette : make verify LEVEL=fast|pr|nightly, résumé dans .verify/verify-summary.md
+	./scripts/verify.sh $(LEVEL)
+
+risk: ## niveau de risque (0–3) du changement courant et point de contrôle humain
+	go run ./cmd/risk
+
+hooks: ## active les hooks git du dépôt (pre-commit = moulinette fast, commit-msg = trailer IA)
+	git config core.hooksPath .githooks
+	@echo "hooks actifs : .githooks/"
+
+tools: ## outils du harnais épinglés (gitleaks, osv-scanner, actionlint, gremlins, SBOM) dans .tools/bin
+	./scripts/install-tools.sh
