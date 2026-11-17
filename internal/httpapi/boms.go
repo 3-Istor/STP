@@ -546,7 +546,7 @@ func (a *api) putStock(w http.ResponseWriter, r *http.Request) {
 	}
 	st, err := a.boms.SetPartStock(r.Context(), bomID, partID, *req.Quantity)
 	if errors.Is(err, catalog.ErrPartNotFound) { // la pièce est dans le chemin : ressource introuvable
-		writeJSON(w, http.StatusNotFound, map[string]string{"error": err.Error()})
+		writeErrorBody(w, http.StatusNotFound, err.Error(), "part_not_found")
 		return
 	}
 	if err != nil {
@@ -861,5 +861,5 @@ func writeError(w http.ResponseWriter, r *http.Request, err error) {
 		slog.ErrorContext(r.Context(), "request failed", "method", r.Method, "path", r.URL.Path, "err", err)
 		msg = "internal error"
 	}
-	writeJSON(w, status, map[string]string{"error": msg, "code": errorCode(err)})
+	writeErrorBody(w, status, msg, errorCode(err))
 }

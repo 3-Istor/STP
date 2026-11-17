@@ -20,7 +20,15 @@ export const errorPhrases: Record<string, string> = {
   no_cost_date: 'La date de calcul du coût n’est pas définie.',
   no_cost_facts: 'Les données de coût de cette BOM sont indisponibles.',
   incomplete_cost: 'Le coût est incomplet : corrigez les pièces sans coût avant de figer.',
-  selection_required: 'Choisissez d’abord une offre fournisseur pour cette pièce.',
+  contract_selection_required: 'Plusieurs contrats sont actifs pour cette pièce : choisissez celui à appliquer.',
+  invalid_logistics: 'Les données logistiques saisies ne sont pas valides.',
+  analysis_unavailable: 'L’analyse n’est pas disponible pour le moment.',
+  profiles_unavailable: 'Les profils de véhicule ne sont pas disponibles pour le moment.',
+  not_found: 'Ressource introuvable.',
+  conflict: 'Cette opération entre en conflit avec l’état actuel des données.',
+  unavailable: 'Service momentanément indisponible. Réessayez dans un instant.',
+  method_not_allowed: 'Cette opération n’est pas permise ici.',
+  route_not_found: 'Adresse de l’API introuvable.',
   no_customs_duty: 'Aucun droit de douane connu pour cette origine.',
   no_freight_rate: 'Aucun tarif de fret connu pour cette destination.',
   no_packaging: 'L’emballage de cette pièce n’est pas renseigné.',
@@ -45,6 +53,10 @@ export const errorPhrases: Record<string, string> = {
   ideas_unavailable: 'Les idées ne sont pas disponibles pour le moment.',
   internal: 'Erreur interne du serveur. Réessayez ; si elle persiste, prévenez l’équipe.',
 }
+
+// Codes dont le texte du serveur nomme le champ, la valeur ou le nœud en cause : on le garde après la phrase.
+const detailedCodes = new Set(['bad_request', 'invalid_input', 'invalid_threshold', 'publication_blocked', 'budget_exceeds_parent', 'cycle', 'missing_cost', 'invalid_logistics'])
+export const keepsServerDetail = (code: string | undefined): boolean => code !== undefined && detailedCodes.has(code)
 
 export function phraseFor(code: string | undefined): string | undefined {
   return code ? errorPhrases[code] : undefined

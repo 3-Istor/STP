@@ -140,6 +140,7 @@ export function BomTree(props: Props) {
         {rows.slice(first, last).map((r, i) => {
           const n = r.node
           const t = n.totals
+          const cause = t?.cost ? null : costCause(n)
           const isPart = n.part_id !== null
           const offers = isPart ? (catalog.byPart.get(n.part_id!)?.offers ?? []) : []
           const classes = ['tree-row']
@@ -226,8 +227,8 @@ export function BomTree(props: Props) {
                   {isPart ? (offers.find((o) => o.id === n.offer_id)?.supplier ?? `offre #${n.offer_id}`) : ''}
                 </span>
               )}
-              <span className="cost" title={t?.cost ? undefined : costCause(n).title || undefined}>
-                {t?.cost ? formatMoney(t.cost) : costCause(n).text}
+              <span className="cost" title={t?.cost ? undefined : cause?.title || undefined}>
+                {cause ? cause.text : t?.cost ? formatMoney(t.cost) : null}
               </span>
               <BudgetCell budget={props.budgets?.get(n.id)} />
               <span className="co2">{t ? formatDecimal(t.co2_kg, 1) : ''}</span>

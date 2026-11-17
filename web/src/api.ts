@@ -1,7 +1,7 @@
 // Client de l'API /api/v1 (contrat : internal/httpapi/boms_json.go). Champs en snake_case comme l'API ;
 // montants, quantités, CO2, masses et taux en chaînes décimales, jamais en `number`.
 import type { Money } from './money.ts'
-import { phraseFor } from './errors.ts'
+import { keepsServerDetail, phraseFor } from './errors.ts'
 
 export type BOM = {
   id: number
@@ -529,6 +529,10 @@ export const api = {
 
 // errorMessage : la phrase française du code d'erreur si l'API en donne un connu, sinon le texte reçu.
 export function errorMessage(e: unknown): string {
-  if (e instanceof ApiError) return phraseFor(e.code) ?? e.message
+  if (e instanceof ApiError) {
+    const phrase = phraseFor(e.code)
+    if (!phrase) return e.message
+    return keepsServerDetail(e.code) && e.message ? `${phrase} (${e.message})` : phrase
+  }
   return e instanceof Error ? e.message : String(e)
 }

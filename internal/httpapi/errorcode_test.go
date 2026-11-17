@@ -6,12 +6,16 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 
 	"bomstudio/internal/bom"
 	"bomstudio/internal/money"
 	"bomstudio/internal/pricing"
 	"bomstudio/internal/snapshot"
+	"bomstudio/internal/supplier"
 )
 
 func TestErrorCodeIsStableAndKeepsTheMessage(t *testing.T) {
@@ -51,5 +55,43 @@ func TestErrorTableCodesAreUnique(t *testing.T) {
 			t.Errorf("code %q of %v is empty, reserved or duplicated", e.code, e.err)
 		}
 		seen[e.code] = true
+	}
+}
+
+// Le champ cost_error_code de l'arbre et le code d'erreur HTTP disent la même chose pour la même sentinelle.
+func TestCostErrorCodesAgreeWithErrorTable(t *testing.T) {
+	for _, e := range []error{
+		bom.ErrNoBudgetRate, bom.ErrNoTooling, bom.ErrNoProgramVolume, bom.ErrNoCostDate, bom.ErrNoCostFacts,
+		pricing.ErrNoQuote, pricing.ErrNoRate, supplier.ErrSelectionRequired, pricing.ErrNoDestination,
+		pricing.ErrNoCustomsDuty, pricing.ErrNoFreightRate, pricing.ErrNoPackaging, bom.ErrMissingCost,
+	} {
+		if a, b := costErrorCode(e), errorCode(e); a != b {
+			t.Errorf("%v: cost_error_code %q, error code %q", e, a, b)
+		}
+	}
+}
+
+// Quand plusieurs sentinelles sont jointes, la première de la table l'emporte (comme l'ancien switch).
+func TestErrorTableOrderDecides(t *testing.T) {
+	err := errors.Join(bom.ErrInvalidInput, bom.ErrNodeNotFound)
+	if got := errorCode(err); got != "node_not_found" || statusOf(err) != http.StatusNotFound {
+		t.Fatalf("got %s %d, want node_not_found 404", got, statusOf(err))
+	}
+}
+
+// Aucun corps d'erreur écrit à la main : tout passe par writeErrorBody, donc porte un code.
+func TestNoHandWrittenErrorBody(t *testing.T) {
+	files, _ := filepath.Glob("*.go")
+	for _, f := range files {
+		if strings.HasSuffix(f, "_test.go") || f == "errorcode.go" {
+			continue
+		}
+		b, err := os.ReadFile(f)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if strings.Contains(string(b), `map[string]string{"error"`) {
+			t.Errorf("%s écrit un corps d'erreur sans code : utilisez writeErrorBody", f)
+		}
 	}
 }

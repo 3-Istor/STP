@@ -2,7 +2,6 @@ package httpapi
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -70,11 +69,7 @@ func (h analysisHandler) register(mux *http.ServeMux) {
 
 // writeAnalysisError : source non câblée → 503 ; le reste suit writeError.
 func writeAnalysisError(w http.ResponseWriter, r *http.Request, err error) {
-	if errors.Is(err, bom.ErrAnalysisUnavailable) || errors.Is(err, bom.ErrProfilesUnavailable) {
-		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"error": err.Error()})
-		return
-	}
-	writeError(w, r, err)
+	writeError(w, r, err) // ErrAnalysisUnavailable et ErrProfilesUnavailable (503) sont dans errorTable
 }
 
 // pct : pourcentage exact du domaine → 2 décimales, arrondi half-even une seule fois (ADR 0004, v2-lot-g T5).
