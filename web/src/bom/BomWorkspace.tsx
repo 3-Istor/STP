@@ -91,7 +91,8 @@ export function BomWorkspace({ route, data, error, onPublished }: Props) {
     case 'sourcer':
       main = (
         <Sourcer tab={route.tab} onTab={(t) => go({ tab: t })} supplier={route.supplier} onSupplier={(s) => go({ supplier: s }, true)}
-          onOpenSupplier={(s) => go({ tab: 'fournisseurs', supplier: s })} bomID={data.target.id} version={data.version} readOnly={data.readOnly} />
+          onOpenSupplier={(s) => go({ tab: 'fournisseurs', supplier: s })} bomID={data.target.id} version={data.version} readOnly={data.readOnly}
+          onSaved={() => void data.run(async () => {})} />
       )
       break
     case 'arbitrer':
