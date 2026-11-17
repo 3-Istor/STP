@@ -7,6 +7,7 @@ import { AddNodeDialog } from './AddNodeDialog.tsx'
 import { AnomalyFacts } from './Anomalies.tsx'
 import { budgetClass, budgetPercentText, budgetTitle } from './budget.ts'
 import { CostBreakdown } from './CostBreakdown.tsx'
+import { productionDaysInput, quantityChanged } from './nodeEdit.ts'
 import type { Target } from '../router.ts'
 import { StockPanel } from './StockPanel.tsx'
 
@@ -251,6 +252,7 @@ function BudgetField({ current, bomCurrency, globalBudget, onSet }: { current: M
 function EditFields({ node, onPatch }: { node: TreeNode; onPatch: (p: NodePatch) => Promise<boolean> }) {
   const [qty, setQty] = useState(node.quantity)
   const [days, setDays] = useState(String(node.production_days))
+  const daysValue = productionDaysInput(days)
   const isPart = node.part_id !== null
   return (
     <div className="stack">
@@ -259,13 +261,13 @@ function EditFields({ node, onPatch }: { node: TreeNode; onPatch: (p: NodePatch)
           className="row"
           onSubmit={(e) => {
             e.preventDefault()
-            void onPatch({ quantity: qty.trim() })
+            void onPatch({ quantity: decimalInput(qty) })
           }}
         >
           <label>
             Quantité <input aria-label="Quantité" inputMode="decimal" size={6} value={qty} onChange={(e) => setQty(e.target.value)} />
           </label>
-          <button type="submit" disabled={qty.trim() === node.quantity}>
+          <button type="submit" disabled={!quantityChanged(qty, node.quantity)}>
             OK
           </button>
         </form>
@@ -276,16 +278,17 @@ function EditFields({ node, onPatch }: { node: TreeNode; onPatch: (p: NodePatch)
           className="row"
           onSubmit={(e) => {
             e.preventDefault()
-            void onPatch({ production_days: Number.parseInt(days, 10) })
+            if (daysValue !== null) void onPatch({ production_days: daysValue })
           }}
         >
           <label>
             Jours de production{' '}
             <input aria-label="Jours de production" type="number" min={0} step={1} value={days} onChange={(e) => setDays(e.target.value)} />
           </label>
-          <button type="submit" disabled={days === String(node.production_days)}>
+          <button type="submit" disabled={daysValue === null || daysValue === node.production_days}>
             OK
           </button>
+          {daysValue === null && <small role="alert">Entrez un nombre entier de jours (0 ou plus).</small>}
         </form>
       )}
     </div>
