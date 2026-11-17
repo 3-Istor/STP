@@ -1,0 +1,8 @@
+{
+  "3D_PLAN.md": "b92cded3bc3fe53e016308ea6fcba0863a41f760df1fd8b81648c08b6ee756ef",
+  "3D_PROGRESS.md": "bc6c9a6b3cf9db4b4821b7b6f47882d69cbda943759bc4625609bca4de8f4450",
+  "docs/3d/AUDIT.md": "9fdd4d3e46db560ef5f929d7ec590bdf7eb08e4350f6bdfe96ec4e63fced73ce",
+  "docs/3d/assets-manifest.json": "d3cdaa45796d56ec7d6c6cb290587839226e9ffad0ed9c6ccc46f6d139b50503",
+  "scripts/audit_3d_assets.py": "d86aa4e3fe7c8b51277e3d416f0109e311304e3805fa8c934e9cbc0bfa7d9701",
+  "scripts/test_audit_3d_assets.py": "4bdce40c1788824ccdba553f09ba3f98fe299ca2fad73d9e6f0fc51a525b8167"
+}
