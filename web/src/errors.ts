@@ -37,6 +37,8 @@ export const errorPhrases: Record<string, string> = {
   budget_exceeds_parent: 'Ce budget dépasse celui de l’ensemble parent.',
   bridge_unavailable: 'Le pont de coût est indisponible pour cette BOM.',
   bridge_incomplete: 'Le pont de coût est incomplet : des pièces n’ont pas de coût.',
+  invalid_history_data: 'Une donnée de prix enregistrée est invalide : la conversion du budget est impossible pour le moment.',
+  budgets_changed: 'Les budgets ont changé pendant l’enregistrement : rien n’a été écrit, recommencez.',
   currency_mismatch: 'Deux montants en devises différentes ne peuvent pas être additionnés sans taux.',
   justification_required: 'Une justification est nécessaire pour continuer.',
   bad_request: 'La demande est illisible ou incomplète.',

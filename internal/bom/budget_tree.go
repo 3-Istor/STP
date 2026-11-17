@@ -306,6 +306,36 @@ func (s *Service) budgetFX(ctx context.Context, b BOM, budgets []TargetBudget, e
 	return fx, nil
 }
 
+// ErrBudgetsChanged : des budgets d'une autre devise sont apparus pendant l'écriture, plusieurs fois de suite ; rien
+// n'a été écrit, l'appel peut être refait.
+var ErrBudgetsChanged = errors.New("budgets changed during the write")
+
+// errBudgetStale : sous le verrou, un budget dans une devise dont les taux n'ont pas été lus est apparu depuis la
+// lecture (écrivain concurrent) ; interne, withBudgetCheck recommence avec des taux frais.
+var errBudgetStale = errors.New("budget rates read before a concurrent write")
+
+const budgetAttempts = 3
+
+// withBudgetCheck lit la BOM, ses budgets et les taux nécessaires, puis appelle write avec la règle à juger sous le
+// verrou. Si cette règle voit une devise de budget non couverte, rien n'est écrit et la lecture recommence (3 fois
+// au plus) : un refus ErrNoRate ne doit jamais venir d'un taux simplement pas encore lu.
+func (s *Service) withBudgetCheck(ctx context.Context, bomID, touched int64, extra []string, write func(b BOM, check BudgetCheck) error) error {
+	for range budgetAttempts {
+		b, err := s.store.GetBOM(ctx, bomID)
+		if err != nil {
+			return err
+		}
+		check, err := s.budgetCheck(ctx, b, touched, extra...)
+		if err != nil {
+			return err
+		}
+		if err := write(b, check); !errors.Is(err, errBudgetStale) {
+			return err
+		}
+	}
+	return fmt.Errorf("budgets of bom %d: %w", bomID, ErrBudgetsChanged)
+}
+
 // budgetCheck : la règle des budgets pour une écriture sur touched, avec les taux de toutes les devises en jeu.
 func (s *Service) budgetCheck(ctx context.Context, b BOM, touched int64, extra ...string) (BudgetCheck, error) {
 	current, err := s.store.TargetBudgets(ctx, b.ID)
@@ -316,7 +346,19 @@ func (s *Service) budgetCheck(ctx context.Context, b BOM, touched int64, extra .
 	if err != nil {
 		return nil, err
 	}
+	covered := map[string]bool{string(fx.Currency): true}
+	for _, c := range extra {
+		covered[c] = true
+	}
+	for _, x := range current {
+		covered[x.Currency] = true
+	}
 	return func(st BudgetState) error {
+		for _, x := range st.Budgets {
+			if !covered[x.Currency] {
+				return fmt.Errorf("budget of node %d in %s was not read: %w", x.NodeID, x.Currency, errBudgetStale)
+			}
+		}
 		// Les taux ont été lus pour la devise d'avant le verrou : si elle a changé entre-temps, on refuse (à refaire).
 		if st.Currency != string(fx.Currency) {
 			return fmt.Errorf("bom %d currency changed from %s to %s during the write, retry: %w", b.ID, fx.Currency, st.Currency, money.ErrCurrencyMismatch)
@@ -329,27 +371,25 @@ func (s *Service) budgetCheck(ctx context.Context, b BOM, touched int64, extra .
 // refusé s'il fait dépasser un ensemble qu'il touche (ErrBudgetExceedsParent) ou si un taux manque (ErrNoRate) :
 // rien n'est alors écrit.
 func (s *Service) PutTargetBudget(ctx context.Context, bomID, nodeID int64, amount money.Money) (TargetBudget, error) {
-	b, err := s.store.GetBOM(ctx, bomID)
-	if err != nil {
+	if _, err := s.store.GetBOM(ctx, bomID); err != nil {
 		return TargetBudget{}, fmt.Errorf("budget of node %d in bom %d: %w", nodeID, bomID, err)
 	}
 	if amount.Amount().IsNegative() {
 		return TargetBudget{}, fmt.Errorf("budget of node %d: %s must be >= 0: %w", nodeID, amount.Amount(), ErrInvalidInput)
 	}
 	tb := TargetBudget{NodeID: nodeID, Amount: amount.Amount(), Currency: string(amount.Currency())}
-	tree, err := s.budgetCheck(ctx, b, nodeID, tb.Currency)
-	if err != nil {
-		return TargetBudget{}, fmt.Errorf("budget of node %d in bom %d: %w", nodeID, bomID, err)
-	}
-	// ADR 0045 : le budget global (racine) reste dans la devise de la BOM, lue sous le verrou avec l'arbre.
-	check := func(st BudgetState) error {
-		if tb.Currency != st.Currency && RootID(st.Nodes) == nodeID {
-			return fmt.Errorf("global budget of bom %d must be in %s, not %s (ADR 0045): %w", bomID, st.Currency, tb.Currency, ErrInvalidInput)
+	err := s.withBudgetCheck(ctx, bomID, nodeID, []string{tb.Currency}, func(_ BOM, tree BudgetCheck) error {
+		// ADR 0045 : le budget global (racine) reste dans la devise de la BOM, lue sous le verrou avec l'arbre.
+		check := func(st BudgetState) error {
+			if tb.Currency != st.Currency && RootID(st.Nodes) == nodeID {
+				return fmt.Errorf("global budget of bom %d must be in %s, not %s (ADR 0045): %w", bomID, st.Currency, tb.Currency, ErrInvalidInput)
+			}
+			return tree(st)
 		}
-		return tree(st)
-	}
-	if err := s.store.EditTargetBudget(ctx, bomID, nodeID, &tb, check); err != nil {
-		return TargetBudget{}, err // déjà « edit budget of node … in bom … » (store)
+		return s.store.EditTargetBudget(ctx, bomID, nodeID, &tb, check) // erreur déjà située (store)
+	})
+	if err != nil {
+		return TargetBudget{}, err
 	}
 	return tb, nil
 }
@@ -357,15 +397,12 @@ func (s *Service) PutTargetBudget(ctx context.Context, bomID, nodeID int64, amou
 // DeleteTargetBudget retire le budget d'un nœud (sans effet s'il n'en a pas). Ses sous-budgets remontent alors vers
 // l'ensemble budgété au-dessus : le retrait est refusé s'il le ferait dépasser.
 func (s *Service) DeleteTargetBudget(ctx context.Context, bomID, nodeID int64) error {
-	b, err := s.store.GetBOM(ctx, bomID)
-	if err != nil {
+	if _, err := s.store.GetBOM(ctx, bomID); err != nil {
 		return fmt.Errorf("delete budget of node %d in bom %d: %w", nodeID, bomID, err)
 	}
-	check, err := s.budgetCheck(ctx, b, nodeID)
-	if err != nil {
-		return fmt.Errorf("delete budget of node %d in bom %d: %w", nodeID, bomID, err)
-	}
-	return s.store.EditTargetBudget(ctx, bomID, nodeID, nil, check) // erreur déjà située (store)
+	return s.withBudgetCheck(ctx, bomID, nodeID, nil, func(_ BOM, check BudgetCheck) error {
+		return s.store.EditTargetBudget(ctx, bomID, nodeID, nil, check) // erreur déjà située (store)
+	})
 }
 
 // globalBudgetCurrency : règle d'ADR 0045 pour un changement de devise, jugée sous le verrou de la BOM (store). Refusé

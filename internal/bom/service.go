@@ -441,18 +441,18 @@ func (s *Service) checkReplacement(ctx context.Context, currentPart, partID, off
 // MoveNode rattache le nœud à un autre parent ; ErrCycle si c'est le nœud ou l'un de ses descendants
 // (contrôle fait par le store, dans la transaction de la mise à jour).
 func (s *Service) MoveNode(ctx context.Context, bomID, nodeID, newParentID int64) (Node, error) {
-	b, err := s.store.GetBOM(ctx, bomID)
-	if err != nil {
+	if _, err := s.store.GetBOM(ctx, bomID); err != nil {
 		return Node{}, fmt.Errorf("move node %d in bom %d: %w", nodeID, bomID, err)
 	}
 	// Un ensemble budgété déplacé sous un autre compte dans ses sous-budgets (ADR 0042, ADR 0044).
-	check, err := s.budgetCheck(ctx, b, nodeID)
+	var out Node
+	err := s.withBudgetCheck(ctx, bomID, nodeID, nil, func(_ BOM, check BudgetCheck) error {
+		var err error
+		out, err = s.store.MoveNode(ctx, bomID, nodeID, newParentID, check)
+		return err // déjà « move node … under … in bom … » (store)
+	})
 	if err != nil {
-		return Node{}, fmt.Errorf("move node %d in bom %d: %w", nodeID, bomID, err)
-	}
-	out, err := s.store.MoveNode(ctx, bomID, nodeID, newParentID, check)
-	if err != nil {
-		return Node{}, err // déjà « move node … under … in bom … » (store)
+		return Node{}, err
 	}
 	return out, nil
 }

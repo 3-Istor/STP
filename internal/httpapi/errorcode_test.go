@@ -28,6 +28,8 @@ func TestErrorCodeIsStableAndKeepsTheMessage(t *testing.T) {
 		{"cotation absente, enveloppée", fmt.Errorf("part 3: %w", pricing.ErrNoQuote), "no_quote"},
 		{"taux absent", pricing.ErrNoRate, "no_rate"},
 		{"devises différentes", money.ErrCurrencyMismatch, "currency_mismatch"},
+		{"donnée de prix invalide dans le contrôle de budget", fmt.Errorf("budget rates of bom 1: %w", pricing.ErrInvalidHistoryData), "invalid_history_data"},
+		{"budgets modifiés pendant l'écriture", bom.ErrBudgetsChanged, "budgets_changed"},
 		{"coût incomplet à la publication", snapshot.ErrIncompleteCost, "incomplete_cost"},
 		{"requête illisible", errBadRequest, "bad_request"},
 		{"erreur inconnue", errors.New("boom"), "internal"},
@@ -86,12 +88,20 @@ func TestNoHandWrittenErrorBody(t *testing.T) {
 		if strings.HasSuffix(f, "_test.go") || f == "errorcode.go" {
 			continue
 		}
-		b, err := os.ReadFile(f)
+		b, err := os.ReadFile(filepath.Clean(f))
 		if err != nil {
 			t.Fatal(err)
 		}
 		if strings.Contains(string(b), `map[string]string{"error"`) {
 			t.Errorf("%s écrit un corps d'erreur sans code : utilisez writeErrorBody", f)
 		}
+	}
+}
+
+// Une donnée de prix invalide dans le contrôle de budget est un conflit (409), pas une panne serveur (500).
+func TestInvalidHistoryDataIsAConflict(t *testing.T) {
+	err := fmt.Errorf("budget rates of bom 1: %w", pricing.ErrInvalidHistoryData)
+	if got := statusOf(err); got != http.StatusConflict {
+		t.Fatalf("status %d, want 409", got)
 	}
 }

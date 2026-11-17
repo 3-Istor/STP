@@ -53,6 +53,8 @@ var errorTable = []apiError{
 	{bom.ErrBridgeUnavailable, http.StatusConflict, "bridge_unavailable"},
 	{bom.ErrBridgeIncomplete, http.StatusConflict, "bridge_incomplete"},
 	{money.ErrCurrencyMismatch, http.StatusConflict, "currency_mismatch"},
+	{pricing.ErrInvalidHistoryData, http.StatusConflict, "invalid_history_data"},
+	{bom.ErrBudgetsChanged, http.StatusConflict, "budgets_changed"},
 
 	{snapshot.ErrJustificationRequired, http.StatusUnprocessableEntity, "justification_required"},
 

@@ -303,6 +303,22 @@ func (s *Service) TargetBudgetList(ctx context.Context, bomID int64) ([]TargetBu
 	return out, nil
 }
 
+// CheckFrozenBudgets juge les budgets figés d'un snapshot (nœuds et budgets sous la même clé) selon la règle de
+// l'ADR 0042 : aucun ensemble budgété n'est dépassé par ses sous-budgets. Les taux sont ceux du snapshot de prix
+// de b (b.PriceSnapshotID), pas ceux du jour : le même snapshot donne le même verdict (ADR 0044). Erreurs
+// nommées : ErrBudgetExceedsParent, pricing.ErrNoRate.
+func (s *Service) CheckFrozenBudgets(ctx context.Context, b BOM, nodes []Node, budgets []TargetBudget) error {
+	fx, err := s.budgetFX(ctx, b, budgets)
+	if err != nil {
+		return err
+	}
+	touched := make([]int64, len(budgets))
+	for i, x := range budgets {
+		touched[i] = x.NodeID
+	}
+	return CheckBudgetTree(nodes, budgets, touched, fx)
+}
+
 // SetTargetBudget enregistre le budget cible d'un nœud (copie d'un brouillon depuis un snapshot).
 func (s *Service) SetTargetBudget(ctx context.Context, bomID int64, b TargetBudget) error {
 	if b.Amount.IsNegative() {

@@ -5,7 +5,7 @@ import { decimalInput, formatDate, formatDecimal, formatMoney, multiplyDecimal, 
 import type { Money } from '../money.ts'
 import { AddNodeDialog } from './AddNodeDialog.tsx'
 import { AnomalyFacts } from './Anomalies.tsx'
-import { budgetClass, budgetPercentText, budgetTitle } from './budget.ts'
+import { allocationTitle, budgetClass, budgetPercentText, budgetTitle } from './budget.ts'
 import { CostBreakdown } from './CostBreakdown.tsx'
 import { MissingCost } from './MissingCost.tsx'
 import { productionDaysInput, quantityChanged } from './nodeEdit.ts'
@@ -77,7 +77,7 @@ export function NodePanel(p: Props) {
           {p.budget?.allocation && (
             <>
               <dt>Répartition</dt>
-              <dd className="t-warn" title={p.budget.allocation.reason}>
+              <dd className="t-warn" title={allocationTitle(p.budget.allocation.kind)}>
                 {p.budget.allocation.kind === 'over'
                   ? 'sous-budgets au-dessus de ce budget au taux actuel (change)'
                   : 'répartition non vérifiable : taux de change manquant'}
