@@ -4,10 +4,7 @@ import { partName, type Catalog } from '../catalog.ts'
 import { formatDate, formatDecimal, formatMoney, multiplyDecimal } from '../money.ts'
 import { AddNodeDialog } from './AddNodeDialog.tsx'
 import { AnomalyFacts } from './Anomalies.tsx'
-import { LandedPanel } from './LandedPanel.tsx'
-import { MakeOrBuyPanel } from './MakeOrBuyPanel.tsx'
 import { StockPanel } from './StockPanel.tsx'
-import { StrategyPanel } from './StrategyPanel.tsx'
 
 type Props = {
   node: TreeNode
@@ -21,16 +18,14 @@ type Props = {
   onStartMove: () => void
   onDelete: () => void
   stock: StockLine[]
-  bomID: number
   anomaly?: NodeAnomaly
-  treeVersion?: number
-  // destination : pays de destination de la BOM ; undefined = pas de comparaison (snapshot en lecture seule).
-  destination?: string | null
+  parentName?: string // fil du nœud (parent direct), comme la maquette I4-1
   onSetStock?: (partID: number, quantity: string) => Promise<boolean>
 }
 
-// NodePanel : détail d'un nœud à la demande (AGENTS §5) — totaux, sur quoi ils reposent, quantités
-// commandées — et les actions du brouillon sur ce nœud.
+// NodePanel : détail d'un nœud à la demande (AGENTS §5), dans la colonne de droite de toutes les étapes —
+// totaux, sur quoi ils reposent, quantités commandées, stock — et les actions du brouillon sur ce nœud.
+// V2 (lot C) : la stratégie est dans l'étape Arbitrer, le coût rendu et le make-or-buy dans Chiffrer.
 export function NodePanel(p: Props) {
   const { node, explanation, volume, catalog, readOnly, isRoot } = p
   const t = node.totals
@@ -40,7 +35,8 @@ export function NodePanel(p: Props) {
   const offer = isPart ? catalog.byPart.get(node.part_id!)?.offers.find((o) => o.id === node.offer_id) : undefined
 
   return (
-    <aside className="panel" aria-label="Détail du nœud">
+    <section className="node-detail" aria-label="Détail du nœud">
+      {p.parentName && <div className="muted small">{p.parentName} ›</div>}
       <h2>{title}</h2>
       <p className="muted">
         {isPart ? `Pièce #${node.part_id}, offre #${node.offer_id}${offer ? ` (${offer.supplier})` : ''}` : 'Sous-ensemble'}
@@ -71,7 +67,7 @@ export function NodePanel(p: Props) {
           <dd>
             {formatDecimal(multiplyDecimal(t.real_quantity, volume))} pour {formatDecimal(String(volume))} véhicules
           </dd>
-          <dt>CO2</dt>
+          <dt>CO₂</dt>
           <dd>{formatDecimal(t.co2_kg, 2)} kg</dd>
           <dt>Masse</dt>
           <dd>{formatDecimal(t.mass_kg, 2)} kg</dd>
@@ -89,23 +85,6 @@ export function NodePanel(p: Props) {
       )}
 
       <AnomalyFacts anomaly={p.anomaly} />
-
-      <StrategyPanel
-        key={`strategy-${node.id}-${p.treeVersion ?? 0}`}
-        bomID={p.bomID}
-        node={node}
-        catalog={catalog}
-        readOnly={readOnly}
-        onPatch={p.onPatch}
-      />
-
-      {!isPart && !readOnly && p.destination !== undefined && (
-        <MakeOrBuyPanel key={`mob-${node.id}-${p.treeVersion ?? 0}`} bomID={p.bomID} nodeID={node.id} currency={explanation.currency} />
-      )}
-
-      {isPart && !readOnly && p.destination !== undefined && (
-        <LandedPanel key={`landed-${node.id}-${p.treeVersion ?? 0}`} bomID={p.bomID} node={node} catalog={catalog} destination={p.destination} />
-      )}
 
       {isPart && (
         <StockPanel
@@ -167,7 +146,7 @@ export function NodePanel(p: Props) {
           {adding && <AddNodeDialog parentName={title} parentID={node.id} catalog={catalog} onAdd={p.onAdd} onClose={() => setAdding(false)} />}
         </>
       )}
-    </aside>
+    </section>
   )
 }
 
