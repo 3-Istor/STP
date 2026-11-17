@@ -10,6 +10,7 @@ type Props = {
   onSetSchedule?: (s: Schedule) => void
   onClearSchedule?: () => void
   onSelect: (nodeID: number) => void
+  open?: boolean // déplié d'emblée (carte de l'étape Chiffrer)
 }
 
 const dateFormat = new Intl.DateTimeFormat('fr-FR', { dateStyle: 'medium', timeZone: 'UTC' })
@@ -18,7 +19,7 @@ const formatDay = (d: string) => dateFormat.format(new Date(`${d}T00:00:00Z`))
 // PlanningPanel : date de disponibilité, date cible et pièces qui la mettent en danger (ADR 0023).
 // Tout vient de l'API ; les alternatives plus rapides proposées sont les autres offres de la même pièce
 // au délai de livraison plus court (suggestion seulement : l'utilisateur change l'offre dans l'arbre).
-export function PlanningPanel({ planning, nodes, catalog, readOnly, onSetSchedule, onClearSchedule, onSelect }: Props) {
+export function PlanningPanel({ planning, nodes, catalog, readOnly, onSetSchedule, onClearSchedule, onSelect, open = false }: Props) {
   const [start, setStart] = useState(planning.schedule?.start_on ?? '')
   const [target, setTarget] = useState(planning.schedule?.target_on ?? '')
   const byID = new Map(nodes.map((n) => [n.id, n]))
@@ -29,7 +30,7 @@ export function PlanningPanel({ planning, nodes, catalog, readOnly, onSetSchedul
   const status = planning.target_met === null ? undefined : planning.target_met ? 'ok' : 'over'
 
   return (
-    <details className="small">
+    <details className="small" open={open}>
       <summary>
         Disponibilité :{' '}
         <strong className={status}>

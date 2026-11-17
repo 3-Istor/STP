@@ -64,22 +64,23 @@ async function mockAPI(page: Page, opts: { patchDelayMs?: number } = {}) {
 }
 
 async function openBOM(page: Page) {
-  await page.goto('/#boms')
-  await page.getByRole('button', { name: 'Fiat Multipla', exact: true }).click()
+  await page.goto('/#/boms/1/structurer')
 }
 
 test('les snapshots de prix sont nommés à la seconde près et un choix attache le snapshot', async ({ page }) => {
   const calls = await mockAPI(page)
   await openBOM(page)
-  const source = page.getByRole('combobox', { name: 'Source des prix' })
-  await expect(source).toBeEnabled()
-  await expect(source.locator('option')).toHaveText([
-    'en direct',
-    '04/11/2026 09:15:03 UTC · BOM n°1 · #7',
-    '04/11/2026 09:15:00 UTC · BOM n°1 · #6',
-    '01/11/2026 08:00:00 UTC · tout le catalogue · #2',
+  // Synthèse, « Prix utilisés » : en direct puis les snapshots du plus récent au plus ancien.
+  const source = page.getByRole('radiogroup', { name: 'Prix utilisés' })
+  await expect(source.locator('label')).toHaveText([
+    /^En direct/,
+    /^#7 · 04\/11\/2026 09:15:03 UTC\s*BOM n°1$/,
+    /^#6 · 04\/11\/2026 09:15:00 UTC\s*BOM n°1$/,
+    /^#2 · 01\/11\/2026 08:00:00 UTC\s*catalogue$/,
   ])
-  await source.selectOption('6')
+  await expect(source.getByRole('radio', { name: /^En direct/ })).toBeChecked()
+  // Le choix part à l'API ; le bouton coché suit la BOM relue (ici le mock relit toujours « en direct »).
+  await source.getByRole('radio', { name: /^#6 · / }).click()
   await expect.poll(() => calls).toEqual([{ method: 'PUT', path: '/api/v1/boms/1/freeze-prices', body: { price_snapshot_id: 6 } }])
 })
 
@@ -87,6 +88,10 @@ test('un changement de stratégie reste affiché et dit « Recalcul en cours… 
   const calls = await mockAPI(page, { patchDelayMs: 1500 })
   await openBOM(page)
   await page.getByRole('treeitem', { name: /Injecteur/ }).getByText('Injecteur', { exact: true }).click()
+  await expect(page).toHaveURL(/#\/boms\/1\/structurer\?node=2$/)
+  // La stratégie est dans l'étape Arbitrer ; la sélection suit d'une étape à l'autre par l'URL.
+  await page.getByRole('navigation', { name: 'Étapes' }).getByRole('link', { name: /Arbitrer/ }).click()
+  await expect(page).toHaveURL(/#\/boms\/1\/arbitrer\?node=2$/)
   const strategy = page.getByRole('combobox', { name: 'Stratégie du nœud' })
   await strategy.selectOption('co2')
   // Pendant la requête : le choix reste visible, le sélecteur est verrouillé, le statut le dit, les totaux sont grisés.

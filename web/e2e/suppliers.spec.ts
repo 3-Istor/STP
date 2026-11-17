@@ -33,7 +33,7 @@ test('offres isolées, variations explicites et prix manquant visible', async ({
   await mockSupplierAPI(page)
   await page.goto('/#fournisseurs')
   await chooseSupplier(page, 'Atlas')
-  await expect(page.getByRole('article', { name: 'Offre 101 : Injecteur Atlas' })).toBeVisible()
+  await expect(page.getByRole('row', { name: 'Offre 101 : Injecteur Atlas' })).toBeVisible()
   await expect(page.getByText('Moteur Boréal', { exact: true })).toHaveCount(0)
 
   const up = page.getByTestId('variation-101')
@@ -49,12 +49,14 @@ test('offres isolées, variations explicites et prix manquant visible', async ({
   expect(downColor.actual).toBe(downColor.ok)
   expect(stableColor.actual).not.toBe(stableColor.ok)
   expect(stableColor.actual).not.toBe(stableColor.over)
-  const missing = page.getByRole('article', { name: 'Offre 104 : Sans cotation Atlas' })
+  const missing = page.getByRole('row', { name: 'Offre 104 : Sans cotation Atlas' })
   await expect(missing).toContainText('Aucune cotation disponible')
-  await expect(missing).not.toContainText('0,00')
+  // Ni prix ni variation fabriqués : la ligne montre l'absence (la fourchette cotée, elle, est une donnée réelle).
+  await expect(page.getByTestId('price-104')).toHaveText('Prix indisponible')
+  await expect(page.getByTestId('variation-104')).toHaveText('Variation indisponible')
 
   await chooseSupplier(page, 'Boréal')
-  await expect(page.getByRole('article', { name: 'Offre 201 : Moteur Boréal' })).toBeVisible()
+  await expect(page.getByRole('row', { name: 'Offre 201 : Moteur Boréal' })).toBeVisible()
   await expect(page.getByText('Injecteur Atlas', { exact: true })).toHaveCount(0)
 })
 
@@ -110,25 +112,56 @@ test('historique utilisable au clic, au clavier et au toucher', async ({ page },
   await expect(page.getByRole('dialog')).toHaveCount(0)
 })
 
-test('carte d’offre entièrement cliquable, offres triées et recherche', async ({ page }, testInfo) => {
+test('ligne d’offre cliquable : courbe de prix par période, offres triées et recherche', async ({ page }, testInfo) => {
   await mockSupplierAPI(page)
   await page.goto('/#fournisseurs')
   await chooseSupplier(page, 'Atlas')
   // Offres triées par nom de pièce.
-  await expect(page.locator('.offer-card h3')).toHaveText(['Capteur Atlas', 'Filtre Atlas', 'Injecteur Atlas', 'Sans cotation Atlas'])
-  // Un clic sur le nom de la pièce (hors bouton « Voir l’historique ») ouvre l’historique.
-  const title = page.getByRole('article', { name: 'Offre 101 : Injecteur Atlas' }).getByRole('heading', { name: 'Injecteur Atlas' })
-  if (testInfo.project.use.hasTouch) await title.tap()
-  else await title.click()
+  await expect(page.locator('.offer-row .part-name')).toHaveText(['Capteur Atlas', 'Filtre Atlas', 'Injecteur Atlas', 'Sans cotation Atlas'])
+  // Un clic sur la ligne (hors bouton d’historique) affiche sa courbe ; le bouton ouvre le détail des cotations.
+  const name = page.getByRole('row', { name: 'Offre 101 : Injecteur Atlas' }).getByText('Injecteur Atlas', { exact: true })
+  if (testInfo.project.use.hasTouch) await name.tap()
+  else await name.click()
+  await expect(page.getByRole('region', { name: 'Historique du prix · Injecteur Atlas' })).toBeVisible()
+  await expect(page.getByRole('row', { name: 'Offre 101 : Injecteur Atlas' })).toHaveClass(/sel/)
+  await page.getByRole('region', { name: 'Historique du prix · Injecteur Atlas' }).getByRole('button', { name: 'Toutes les cotations…' }).click()
   await expect(page.getByRole('dialog', { name: 'Historique : Injecteur Atlas' })).toBeVisible()
   await page.keyboard.press('Escape')
   await expect(page.getByRole('dialog')).toHaveCount(0)
 
   const search = page.getByRole('searchbox', { name: 'Rechercher une offre' })
   await search.fill('filtre')
-  await expect(page.locator('.offer-card h3')).toHaveText(['Filtre Atlas'])
+  await expect(page.locator('.offer-row .part-name')).toHaveText(['Filtre Atlas'])
   await search.fill('aucune pièce')
   await expect(page.getByText('Aucune offre ne correspond à « aucune pièce »')).toBeVisible()
+})
+
+test('courbe de prix : période comptée depuis l’instant des statistiques, cotations réelles seulement', async ({ page }) => {
+  const pages = defaultPages()
+  const view = offerView({ id: 101, name: 'Injecteur Atlas' })
+  const q = (id: number, amount: string, at: string) => ({ id, offer_id: 101, price: { amount, currency: 'EUR' }, source: 'e2e-fixture', quoted_at: at })
+  view.statistics.history = [
+    q(1, '100.00', '2026-07-01T00:00:00Z'), q(2, '130.00', '2026-10-15T00:00:00Z'), q(3, '95.00', '2026-10-20T00:00:00Z'),
+    q(4, '105.00', '2026-10-28T00:00:00Z'), q(5, '110.00', '2026-11-04T12:00:00Z'),
+  ]
+  pages['1'].offers[0] = view
+  await mockSupplierAPI(page, pages)
+  await page.goto('/#fournisseurs')
+  await chooseSupplier(page, 'Atlas')
+  await page.getByRole('row', { name: 'Offre 101 : Injecteur Atlas' }).click()
+  const card = page.getByRole('region', { name: 'Historique du prix · Injecteur Atlas' })
+  // Tout : un point par mois (juillet, octobre, novembre), clôture réelle du mois.
+  await expect(card.locator('.chart-month')).toHaveCount(3)
+  // 1 mois avant le 04/11/2026 12:00 : la cotation de juillet sort, un point par jour.
+  await card.getByRole('radio', { name: '1 mois' }).click()
+  await expect(card.getByRole('radio', { name: '1 mois' })).toHaveAttribute('aria-checked', 'true')
+  await expect(card.locator('.chart-month')).toHaveCount(4)
+  await expect(card.getByRole('img')).toHaveAttribute('aria-label', /de 95,00\s€ à 130,00\s€/)
+  await expect(card.getByRole('status')).toContainText(/clôture 110,00\s€/)
+  // Une fenêtre sans cotation le dit, sans courbe à zéro.
+  pages['1'].offers[0] = { ...view, statistics: { ...view.statistics, history: [q(1, '100.00', '2026-07-01T00:00:00Z')] } }
+  await page.getByRole('button', { name: 'Actualiser les données' }).click()
+  await expect(card.getByText('Aucune cotation sur cette période.')).toBeVisible()
 })
 
 test('historique lisible : un point par mois, clôture et bornes réelles du mois', async ({ page }, testInfo) => {
@@ -211,7 +244,7 @@ test('pièce du catalogue ajoutée au fournisseur : recherche, offre complète',
   const posts = await mockCatalogWrites(page)
   await page.goto('/#fournisseurs')
   await chooseSupplier(page, 'Atlas')
-  await page.getByRole('button', { name: '+ Nouvelle pièce vendue' }).click()
+  await page.getByRole('button', { name: '+ Offre' }).click()
   const dialog = page.getByRole('dialog', { name: 'Nouvelle pièce vendue' })
   const parts = dialog.getByRole('listbox', { name: 'Pièces du catalogue' }).getByRole('option')
   await expect(parts).toHaveText([/^Bougie d’allumage/, /^Injecteur Atlas.*déjà vendue par ce fournisseur/])
@@ -240,7 +273,7 @@ test('nouvelle pièce : tous ses attributs, et pas de doublon si l’offre est r
   const posts = await mockCatalogWrites(page, 1)
   await page.goto('/#fournisseurs')
   await chooseSupplier(page, 'Atlas')
-  await page.getByRole('button', { name: '+ Nouvelle pièce vendue' }).click()
+  await page.getByRole('button', { name: '+ Offre' }).click()
   const dialog = page.getByRole('dialog', { name: 'Nouvelle pièce vendue' })
   await dialog.getByRole('radio', { name: 'Nouvelle pièce' }).click()
   const fill = async (label: string, value: string) => dialog.getByLabel(label, { exact: true }).fill(value)
@@ -279,20 +312,24 @@ test('nouvelle pièce : tous ses attributs, et pas de doublon si l’offre est r
 test('liste des fournisseurs filtrable, défilement propre sur grand écran', async ({ page }, testInfo) => {
   await mockSupplierAPI(page)
   await page.goto('/#fournisseurs')
-  const list = page.getByRole('navigation', { name: 'Choisir un fournisseur' })
+  const list = page.getByRole('table', { name: 'Choisir un fournisseur' })
   await expect(list.getByRole('button')).toHaveCount(2)
   const filter = page.getByRole('searchbox', { name: 'Filtrer les fournisseurs' })
   await filter.fill('boreal')
   await expect(list.getByRole('button')).toHaveText([/Boréal/])
-  await expect(page.locator('.supplier-sidebar .count')).toHaveText('1 / 2')
+  await expect(page.locator('.supplier-count')).toHaveText('1 / 2')
   await filter.fill('zzz')
   await expect(page.getByText('Aucun fournisseur ne correspond à « zzz ».')).toBeVisible()
   await filter.fill('')
   await expect(list.getByRole('button')).toHaveCount(2)
+  // Le fournisseur choisi est dans l'URL : un lien ou un rechargement y revient.
+  await list.getByRole('button', { name: 'Fournisseur Boréal' }).click()
+  await expect(page).toHaveURL(/#\/fournisseurs\?supplier=2$/)
+  await page.reload()
+  await expect(page.getByRole('heading', { name: 'Boréal', exact: true })).toBeVisible()
   if (!testInfo.project.use.isMobile && !testInfo.project.use.hasTouch) {
-    // La liste défile dans sa colonne, bornée à la hauteur de la fenêtre.
-    await expect(list).toHaveCSS('overflow-y', 'auto')
-    await expect(page.locator('.supplier-sidebar')).toHaveCSS('position', 'sticky')
+    // La liste défile dans son bloc, bornée à la hauteur de la fenêtre.
+    await expect(page.locator('.supplier-list-block .scroll')).toHaveCSS('overflow-y', 'auto')
   }
 })
 
@@ -355,13 +392,13 @@ test('une réponse Atlas retardée ne remplace pas les offres Boréal', async ({
     await chooseSupplier(page, 'Atlas')
     await held.requested
     await chooseSupplier(page, 'Boréal')
-    await expect(page.getByRole('article', { name: 'Offre 201 : Moteur Boréal' })).toBeVisible()
+    await expect(page.getByRole('row', { name: 'Offre 201 : Moteur Boréal' })).toBeVisible()
     held.release()
     await held.settled
     // Attendre le rendu après la résolution réseau, sans minuterie arbitraire.
     await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))))
     await expect(page.getByRole('heading', { name: 'Boréal', exact: true })).toBeVisible()
-    await expect(page.getByRole('article', { name: 'Offre 201 : Moteur Boréal' })).toBeVisible()
+    await expect(page.getByRole('row', { name: 'Offre 201 : Moteur Boréal' })).toBeVisible()
     await expect(page.getByText('Injecteur Atlas', { exact: true })).toHaveCount(0)
   } finally {
     held.release()
@@ -405,7 +442,7 @@ test('création fournisseur : validation serveur visible et notes transmises en 
     }
   })
   await page.goto('/#fournisseurs')
-  await page.getByRole('button', { name: '+ Nouveau fournisseur', exact: true }).click()
+  await page.getByRole('button', { name: '+ Fournisseur', exact: true }).click()
   const dialog = page.getByRole('dialog', { name: 'Nouveau fournisseur', exact: true })
   await dialog.getByLabel('Nom du fournisseur').fill('Cèdre')
   await dialog.getByLabel('Qualité (sur 5)').fill('6')
@@ -439,7 +476,6 @@ test('contrat expiré lu du serveur et édition sans conversion des paliers', as
   })
   await page.goto('/#fournisseurs')
   await chooseSupplier(page, 'Atlas')
-  await page.getByRole('tab', { name: /^Contrats/ }).click()
   await expect(page.getByText('Expiré', { exact: true })).toBeVisible()
   await page.getByRole('button', { name: 'Modifier le contrat #10', exact: true }).click()
   const dialog = page.getByRole('dialog', { name: 'Modifier le contrat #10', exact: true })

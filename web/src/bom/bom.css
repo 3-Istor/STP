@@ -1,543 +1,82 @@
-/* Styles de l'espace BOM (NLPF-69), limités à .bom-space pour ne pas toucher l'espace fournisseurs.
-   Même direction artistique que l'espace fournisseurs : les jetons ci-dessous reprennent la palette
-   de index.css (--primary, --muted, --border) ; --ok, --warn, --over y sont définis (AGENTS §5). */
-.bom-space {
-  font-size: 14px;
-  --bg: #fff;
-  --fg: #183047;
-  --line: var(--border);
-  --hover: #eef3fa;
-  --accent: var(--primary);
-  --accent-bg: #e7eefc;
-}
-
-.bom-space * {
-  box-sizing: border-box;
-}
-
-.bom-space {
-  margin: 0;
-  background: #f4f7fb;
-  color: var(--fg);
-}
-
-/* Contrôles compacts : les styles de formulaire de index.css (labels en colonne, champs pleine largeur)
-   sont pensés pour les dialogues fournisseurs, pas pour les réglages en ligne de la BOM. */
-.bom-space input,
-.bom-space select {
-  width: auto;
-  padding: 0.3rem 0.5rem;
-  border-radius: 6px;
-  color: var(--fg);
-}
-
-.bom-space form label {
-  flex-direction: row;
-  align-items: center;
-  gap: 0.4rem;
-  margin: 0;
-  font-size: inherit;
-  font-weight: 550;
-  color: #304a68;
-}
-
-.bom-space button {
-  border: 1px solid var(--border);
-  background: #fff;
-  color: #3f5877;
-  border-radius: 7px;
-  padding: 0.35rem 0.8rem;
-  font-weight: 600;
-}
-
-.bom-space button:hover:not(:disabled) {
-  background: #f0f5fc;
-  border-color: #b7c9e5;
-}
-
-.bom-space h1 {
-  font-size: 1.4rem;
-  margin: 0 0 0.25rem;
-}
-
-.bom-space h2 {
-  font-size: 1.1rem;
-  margin: 0 0 0.5rem;
-}
-
-.bom-space h3 {
-  font-size: 1rem;
-  margin: 0.5rem 0 0;
-}
-
-.bom-space .muted {
-  color: var(--muted);
-}
-
-.bom-space .small {
-  font-size: 0.85rem;
-}
-
-.bom-space .over {
-  color: var(--over);
-}
-
-.bom-space .ok {
-  color: var(--ok);
-}
-
-/* Pièce au coût anormal (ADR 0027) : rouge = dépassé (AGENTS §5). */
-.bom-space .tree-row.anomaly { box-shadow: inset 3px 0 0 var(--over); }
-.bom-space .badge.over { color: var(--over); border-color: var(--over); margin-left: 0.4rem; font-size: 0.7rem; }
-
-.bom-space .row {
-  display: flex;
-  gap: 0.5rem;
-  align-items: center;
-  flex-wrap: wrap;
-}
-
-.bom-space .stack {
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-}
-
-.bom-space button.link {
-  background: none;
-  border: none;
-  padding: 0;
-  font-weight: inherit;
-  color: var(--accent);
-  cursor: pointer;
-  text-align: left;
-}
-
-.bom-space button.icon {
-  background: none;
-  border: none;
-  padding: 0 0.3rem;
-  color: var(--muted);
-  cursor: pointer;
-}
-
-.bom-space button.primary {
-  background: var(--accent);
-  color: #fff;
-  border: 1px solid var(--accent);
-}
-
-.bom-space button.primary:hover:not(:disabled) {
-  background: #184eaf;
-}
-
-.bom-space button.danger {
-  color: var(--over);
-}
-
-.bom-space .error {
-  color: var(--over);
-  border-left: 3px solid var(--over);
-  padding: 0.3rem 0.6rem;
-  margin: 0.5rem 0;
-}
-
-.bom-space .notice {
-  border-left: 3px solid var(--accent);
-  padding: 0.3rem 0.6rem;
-  margin: 0.5rem 0;
-}
-
-.bom-space .badge {
-  font-size: 0.8rem;
-  font-weight: normal;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  padding: 0.1rem 0.5rem;
-}
-
-/* Mise en page : liste des BOM | vue */
-.bom-space .app {
-  display: grid;
-  grid-template-columns: 240px 1fr;
-  height: calc(100vh - var(--header-height)); /* sous .app-header */
-}
-
-.bom-space .app > main {
-  min-width: 0;
-  padding: 1rem;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.bom-space .bom-list {
-  border-right: 1px solid var(--line);
-  background: #fff;
-  padding: 1rem;
-  overflow-y: auto;
-}
-
-.bom-space .bom-list ul {
-  list-style: none;
-  padding: 0;
-  margin: 0 0 1rem;
-}
-
-.bom-space .bom-list li {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  padding: 0.4rem 0.5rem;
-  border-radius: 8px;
-}
-
-.bom-space .bom-list li .muted {
-  grid-column: 1;
-  font-size: 0.8rem;
-}
-
-.bom-space .bom-list li .icon {
-  grid-row: 1 / span 2;
-  grid-column: 2;
-}
-
-.bom-space .bom-list li:hover {
-  background: var(--hover);
-  cursor: pointer;
-}
-
-.bom-space .bom-list li.selected {
-  background: var(--accent-bg);
-}
-
-.bom-space .bom-list input {
-  min-width: 0;
-  flex: 1;
-}
-
-.bom-space .view {
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  flex: 1;
-}
-
-.bom-space .view-head {
-  display: flex;
-  gap: 1.5rem;
-  align-items: flex-start;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  margin-bottom: 0.5rem;
-}
-
-.bom-space .view-head input[type='number'] {
-  width: 6rem;
-}
-
-.bom-space .totals {
-  display: flex;
-  gap: 1.5rem;
-  flex-wrap: wrap;
-}
-
-.bom-space .totals > div {
-  display: flex;
-  flex-direction: column;
-}
-
-.bom-space .totals strong {
-  font-size: 1.2rem;
-}
-
-.bom-space .totals p {
-  flex-basis: 100%;
-  margin: 0;
-}
-
-.bom-space .actions {
-  display: flex;
-  gap: 0.5rem;
-}
-
-/* Calcul en cours : les chiffres d'avant restent lisibles mais grisés, le texte le dit. */
-.bom-space .totals[aria-busy='true'] strong {
-  opacity: 0.45;
-}
-
-.bom-space .recalc {
-  color: var(--warn);
-}
-
-.bom-space .recalc::before {
-  content: '';
-  display: inline-block;
-  width: 0.6em;
-  height: 0.6em;
-  margin-right: 0.35em;
-  border: 2px solid currentColor;
-  border-right-color: transparent;
-  border-radius: 50%;
-  animation: bom-spin 0.8s linear infinite;
-  vertical-align: -0.05em;
-}
-
-@keyframes bom-spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .bom-space .recalc::before {
-    animation: none;
-  }
-}
-
-/* Arbre virtualisé + panneau latéral */
-.bom-space .bom-workspace {
-  display: grid;
-  /* minmax(0, 1fr) : la colonne de l'arbre ne dépend pas de son contenu (lignes en position: absolute). */
-  grid-template-columns: minmax(0, 1fr) 340px;
-  min-width: 0;
-  gap: 1rem;
-  flex: 1;
-  min-height: 0;
-}
-
-.bom-space .tree {
-  overflow-y: auto;
-  background: var(--bg);
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  min-height: 0;
-}
-
-.bom-space .tree.moving .tree-row {
-  cursor: copy;
-}
-
-.bom-space .tree-row {
-  position: absolute;
-  left: 0;
-  right: 0;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding-right: 0.5rem;
-  white-space: nowrap;
-  cursor: pointer;
-  border-bottom: 1px solid var(--line);
-}
-
-.bom-space .tree-row:hover {
-  background: var(--hover);
-}
-
-.bom-space .tree-row.selected {
-  background: var(--accent-bg);
-}
-
-.bom-space .tree-row .toggle {
-  border: none;
-  background: none;
-  width: 1.2rem;
-  padding: 0;
-  color: var(--muted);
-  cursor: pointer;
-}
-
-.bom-space .tree-row .name {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.bom-space .tree-row .qty {
-  color: var(--muted);
-  width: 4rem;
-  text-align: right;
-}
-
-.bom-space .tree-row .offer {
-  width: 16rem;
-  max-width: 16rem;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.bom-space .tree-row .cost {
-  width: 8rem;
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-}
-
-.bom-space .tree-row .lead {
-  width: 3rem;
-  text-align: right;
-  color: var(--muted);
-}
-
-.bom-space .tree-row.has-error .cost {
-  color: var(--over);
-}
-
-.bom-space .panel {
-  background: var(--bg);
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  padding: 0.8rem;
-  overflow-y: auto;
-  min-height: 0;
-}
-
-.bom-space .panel .facts {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 0.25rem 0.8rem;
-  margin: 0.5rem 0;
-}
-
-.bom-space .panel dt {
-  color: var(--muted);
-}
-
-.bom-space .panel dd {
-  margin: 0;
-  overflow-wrap: anywhere;
-}
-
-.bom-space .panel details {
-  margin: 0.5rem 0;
-}
-
-.bom-space .panel .explain {
-  padding-left: 1.1rem;
-  margin: 0.3rem 0;
-}
-
-.bom-space .panel input[type='number'] {
-  width: 5rem;
-}
-
-.bom-space .panel .add {
-  border-top: 1px solid var(--line);
-  margin-top: 0.8rem;
-  padding-top: 0.4rem;
-}
-
-@media (max-width: 900px) {
-  .bom-space .app {
-    grid-template-columns: 1fr;
-    height: auto;
-  }
-  .bom-space .bom-workspace {
-    grid-template-columns: 1fr;
-  }
-  .bom-space .tree {
-    height: 60vh;
-  }
-}
-
-/* Tableaux compacts des détails à la demande (ETP par sous-système…). */
-.bom-space table.compact { border-collapse: collapse; margin-top: 0.25rem; }
-.bom-space table.compact th,
-.bom-space table.compact td { padding: 0.15rem 0.5rem; text-align: left; }
-.bom-space table.compact td:not(:first-child),
-.bom-space table.compact th:not(:first-child) { text-align: right; }
-
-/* Pièce couverte par le stock de la BOM (ADR 0022) : vert = dans l'objectif (AGENTS §5). */
-.bom-space .badge.ok { color: var(--ok); border-color: var(--ok); margin-left: 0.4rem; font-size: 0.7rem; }
-
-/* Recherche + en-tête de colonnes de l'arbre (BomTree.tsx). */
-.bom-space .tree-pane {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  min-width: 0;
-  min-height: 0;
-}
-
-.bom-space .tree-pane .tree {
-  flex: 1;
-}
-
-.bom-space .tree-search {
-  width: 100%;
-  padding: 0.5rem 0.7rem;
-}
-
-.bom-space .tree-head {
-  position: sticky;
-  top: 0;
-  z-index: 1;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  /* même retrait que les lignes : 8 px + bouton de dépliage (1.2rem) + écart */
-  padding: 0 0.5rem 0 calc(8px + 1.7rem);
-  background: #f5f8fc;
-  border-bottom: 1px solid var(--line);
-  color: #304a68;
-  font-size: 0.75rem;
-  font-weight: 650;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  white-space: nowrap;
-}
-
-.bom-space .tree-head .name { flex: 1; min-width: 0; }
-.bom-space .tree-head .qty { width: 4rem; text-align: right; }
-.bom-space .tree-head .offer { width: 16rem; overflow: hidden; text-overflow: ellipsis; }
-.bom-space .tree-head .cost { width: 8rem; text-align: right; }
-.bom-space .tree-head .lead { width: 3rem; text-align: right; }
-.bom-space .tree-head [title] { cursor: help; }
-
-.bom-space .tree-empty {
-  padding: 0.8rem;
-  margin: 0;
-}
-
-/* Fenêtres de l'espace BOM (AddNodeDialog, AppDialog). Les sélecteurs .bom-space dialog l'emportent sur
-   les contrôles compacts de l'espace BOM : les fenêtres reprennent le style des dialogues fournisseurs. */
-.bom-space .add-dialog { width: min(640px, calc(100% - 28px)); }
-.bom-space .add-dialog form label { flex-direction: column; align-items: stretch; gap: 6px; }
-.bom-space .add-dialog input:not([type='radio']),
-.bom-space .add-dialog select { width: 100%; padding: 9px 11px; }
-.bom-space dialog .primary-button { background: var(--primary); color: #fff; border: 0; padding: 10px 16px; }
-.bom-space dialog .primary-button:hover:not(:disabled) { background: #184eaf; }
-.bom-space dialog .primary-button:disabled { cursor: not-allowed; opacity: .5; }
-.bom-space dialog .danger-button { background: var(--over); }
-.bom-space dialog .danger-button:hover:not(:disabled) { background: #9a2533; }
-.bom-space dialog .secondary-button { padding: 10px 16px; }
-.bom-space dialog form label { flex-direction: column; align-items: stretch; gap: 6px; }
-.bom-space dialog input:not([type='radio']) { width: 100%; padding: 9px 11px; }
-.bom-space .add-dialog .icon-button { border: 0; padding: 0; }
-.bom-space .segmented button { border: 0; background: transparent; }
-.bom-space .segmented button[aria-checked='true'] { background: #fff; }
-.bom-space .add-filters { display: grid; grid-template-columns: minmax(0, 1fr) 200px; gap: 8px; margin-bottom: 8px; }
-.bom-space .pick-list button { border: 0; background: transparent; padding: 8px 10px; font-weight: 500; }
-.bom-space .pick-list li[aria-selected='true'] button { background: var(--accent-bg); }
-.bom-space .pick-list button:hover:not(:disabled) { background: var(--hover); }
-.bom-space .add-dialog fieldset { margin: 16px 0 0; }
-.bom-space .add-dialog .offer-choice { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; gap: 10px; flex-direction: row; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; font-weight: 450; color: var(--fg); }
-.bom-space .add-dialog .offer-choice:has(input:checked) { border-color: var(--primary); background: #f3f7fd; }
-.bom-space .add-group { display: grid; gap: 12px; }
-.bom-space .add-dialog .form-actions { align-items: flex-end; }
-.bom-space .add-dialog .qty-field { margin-right: auto; width: 120px; }
-@media (max-width: 720px) {
-  .bom-space .add-filters { grid-template-columns: 1fr; }
-  .bom-space .add-dialog .offer-choice { grid-template-columns: auto minmax(0, 1fr); }
-}
-
-/* Arbre étroit (petit écran, panneau latéral ouvert) : les colonnes gardent leur largeur et l'arbre
-   défile horizontalement, plutôt que d'écraser le nom ou de masquer le sélecteur d'offre (changement
-   d'offre en un geste, spec BOM). */
-.bom-space .tree-pane { container-type: inline-size; }
-.bom-space .tree-row .name,
-.bom-space .tree-head .name { min-width: 9rem; }
-.bom-space .tree-pane .tree { overflow: auto; }
-@container (max-width: 680px) {
-  .bom-space .tree-pane .tree > * { min-width: 680px; }
+/* Arbre BOM, panneaux de nœud et réglages (étapes Structurer, Chiffrer, Arbitrer). Couleurs : ui/tokens.css. */
+
+/* Boutons sans classe des panneaux existants : style .btn des maquettes. */
+button:where(:not([class])), button.primary, button.danger {
+  border: 1px solid var(--control-line); background: var(--surface); color: var(--fg);
+  border-radius: var(--radius); padding: 4px 10px;
+}
+button:where(:not([class])):hover:not(:disabled), button.danger:hover:not(:disabled) { background: var(--hover); }
+button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); }
+button.primary:hover:not(:disabled) { background: var(--accent-hover); }
+button.danger { color: var(--over); }
+button.icon { border: 0; background: none; color: var(--muted); padding: 0 4px; }
+
+.small { font-size: var(--fs-small); }
+.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.stack { display: flex; flex-direction: column; gap: 6px; }
+.row label, .stack label { display: inline-flex; align-items: center; gap: 6px; }
+.error { color: var(--over); border-left: 3px solid var(--over); padding: 4px 8px; margin: 6px 0; }
+.badge { font-size: var(--fs-tiny); border: 1px solid var(--line); border-radius: 3px; padding: 0 5px; margin-left: 6px; color: var(--muted); font-weight: 400; }
+.badge.ok { color: var(--ok); border-color: var(--ok); }
+.badge.over { color: var(--over); border-color: var(--over); background: var(--over-bg); }
+.recalc { color: var(--warn); }
+.recalc::before {
+  content: ''; display: inline-block; width: .6em; height: .6em; margin-right: .35em;
+  border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%;
+  animation: bom-spin .8s linear infinite; vertical-align: -.05em;
+}
+@keyframes bom-spin { to { transform: rotate(360deg); } }
+
+details > summary { cursor: pointer; }
+table.compact { border-collapse: collapse; margin-top: 4px; }
+table.compact th, table.compact td { padding: 2px 8px; text-align: left; height: auto; border: 0; background: none; text-transform: none; letter-spacing: 0; font-size: var(--fs-small); }
+table.compact td:not(:first-child), table.compact th:not(:first-child) { text-align: right; }
+
+/* Faits d'un nœud (colonne de droite) et explications. */
+.facts { display: grid; grid-template-columns: auto 1fr; gap: 3px 12px; margin: 8px 0; font-size: var(--fs-small); }
+.facts dt { color: var(--muted); }
+.facts dd { margin: 0; text-align: right; overflow-wrap: anywhere; }
+.explain { padding-left: 16px; margin: 4px 0; font-size: var(--fs-small); }
+.node-detail .row { margin-top: 8px; }
+.node-detail h2 { margin: 0; font-size: 15px; font-weight: 600; }
+.node-detail input[type='number'] { width: 5rem; }
+
+/* Arbre virtualisé (BomTree.tsx) : lignes de hauteur fixe positionnées en absolu. */
+.tree-pane { display: flex; flex-direction: column; min-width: 0; min-height: 0; flex: 1; container-type: inline-size; }
+.tree { overflow: auto; background: var(--surface); min-height: 0; flex: 1; position: relative; }
+.tree.moving .tree-row { cursor: copy; }
+.tree-head, .tree-row { display: flex; align-items: center; gap: 8px; padding-right: 8px; white-space: nowrap; }
+.tree-head {
+  position: sticky; top: 0; z-index: 1; padding-left: calc(8px + 18px + 8px);
+  background: var(--surface-2); border-bottom: 1px solid var(--line); color: var(--muted);
+  font-size: var(--fs-tiny); font-weight: 600; text-transform: uppercase; letter-spacing: .04em;
+}
+.tree-head [title] { cursor: help; }
+.tree-row { position: absolute; left: 0; right: 0; cursor: pointer; border-bottom: 1px solid var(--line-soft); }
+.tree-row:hover { background: var(--hover); }
+.tree-row.selected { background: var(--accent-bg); }
+.tree-row.anomaly { box-shadow: inset 3px 0 0 var(--over-fill); }
+.tree-row .toggle { border: 0; background: none; width: 18px; padding: 0; color: var(--muted); font-size: 10px; flex: none; }
+.tree-row .name, .tree-head .name { flex: 1; min-width: 9rem; overflow: hidden; text-overflow: ellipsis; }
+.tree-row.group .name { font-weight: 600; }
+.tree-row .qty, .tree-head .qty { width: 3.5rem; text-align: right; flex: none; }
+.tree-row .offer, .tree-head .offer { width: 15rem; max-width: 15rem; overflow: hidden; text-overflow: ellipsis; flex: none; }
+.tree-row .offer { color: var(--muted); }
+.tree-row select.offer { padding: 1px 4px; color: var(--fg); }
+.tree-row .cost, .tree-head .cost { width: 7.5rem; text-align: right; flex: none; }
+.tree-row .budget, .tree-head .budget { width: 4rem; text-align: right; flex: none; color: var(--muted); }
+.tree-row .co2, .tree-head .co2 { width: 4.5rem; text-align: right; flex: none; }
+.tree-row .lead, .tree-head .lead { width: 3rem; text-align: right; flex: none; }
+.tree-row.has-error .cost { color: var(--over); }
+.tree-row .acts { display: inline-flex; gap: 4px; margin-left: 8px; vertical-align: middle; }
+.tree-row .ib { width: 22px; height: 22px; border: 1px solid var(--control-line); border-radius: 3px; background: var(--surface); color: var(--fg-2); display: inline-flex; align-items: center; justify-content: center; padding: 0; font-size: 12px; }
+.tree-row .ib:hover { background: var(--hover); }
+.tree-empty { padding: 10px; margin: 0; }
+@container (max-width: 760px) {
+  .tree > * { min-width: 760px; }
+}
+/* Arbre + 3D (maquette I4-2) : l'arbre ne garde que le nom, le coût et le budget. */
+.view-arbre-3d .tree-row :is(.qty, .offer, .co2, .lead), .view-arbre-3d .tree-head :is(.qty, .offer, .co2, .lead) { display: none; }
+@container (max-width: 760px) {
+  .view-arbre-3d .tree > * { min-width: 0; }
 }

@@ -172,7 +172,13 @@ export type Suggestions = {
   excluded: Candidate[]
 }
 
-export type Explanation = { currency: string; price_snapshot_id: number | null; rates: Rate[] }
+// Méthode de calcul du coût (contrat du lot A, ADR 0031) : absente tant que l'API ne la renvoie pas.
+export type CostMethod = { basis: 'purchase' | 'landed' | 'full'; fx: 'budget' | 'latest'; program_volume?: number }
+
+export type Explanation = { currency: string; price_snapshot_id: number | null; rates: Rate[]; cost_method?: CostMethod }
+
+// État de la source de prix (GET /api/v1/pricing/status).
+export type PricingStatus = { dataset_version?: string; tick?: number; as_of?: string; status: string }
 
 // En-tête d'un snapshot de prix (GET /api/v1/price-snapshots) : périmètre et instant figé.
 export type PriceSnapshotRef = {
@@ -285,6 +291,7 @@ export const api = {
   publish: (id: number) => call<Snapshot>('POST', `/boms/${id}/publish`),
   snapshot: (id: number) => call<Published>('GET', `/snapshots/${id}`),
   newDraft: (snapshotID: number) => call<BOM>('POST', `/snapshots/${snapshotID}/drafts`),
+  pricingStatus: () => call<PricingStatus>('GET', '/pricing/status'),
 }
 
 export function errorMessage(e: unknown): string {

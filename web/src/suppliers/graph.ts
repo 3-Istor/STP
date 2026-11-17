@@ -11,20 +11,36 @@ function scaled(history: Quote[]): bigint[] {
   return prices.map((price) => price.coefficient * 10n ** BigInt(scale - price.scale))
 }
 
-// Un mois de cotations résumé par trois cotations réelles : la dernière du mois (clôture), la plus basse
-// et la plus haute. Aucune moyenne n'est calculée : chaque valeur affichée est un prix réellement coté.
+// Une période (mois, semaine ou jour) de cotations résumée par trois cotations réelles : la dernière de la
+// période (clôture), la plus basse et la plus haute. Aucune moyenne n'est calculée : chaque valeur affichée
+// est un prix réellement coté. (Le type garde son nom historique `Month` : le mois est l'unité par défaut.)
 export type Month = { key: string; start: Date; close: Quote; low: Quote; high: Quote; count: number }
+export type Unit = 'day' | 'week' | 'month'
+
+// bucketStart : début UTC de la période qui contient `at` (semaine : du lundi).
+function bucketStart(at: Date, unit: Unit): Date {
+  if (unit === 'month') return new Date(Date.UTC(at.getUTCFullYear(), at.getUTCMonth(), 1))
+  const day = new Date(Date.UTC(at.getUTCFullYear(), at.getUTCMonth(), at.getUTCDate()))
+  if (unit === 'day') return day
+  const shift = (day.getUTCDay() + 6) % 7 // lundi = 0
+  return new Date(day.getTime() - shift * 86_400_000)
+}
 
 export function monthlySeries(history: Quote[]): Month[] {
+  return bucketSeries(history, 'month')
+}
+
+export function bucketSeries(history: Quote[], unit: Unit): Month[] {
   if (!history.length) return []
   const values = scaled(history)
   const months = new Map<string, { start: Date; close: number; low: number; high: number; count: number }>()
   history.forEach((quote, index) => {
     const at = new Date(quote.quoted_at)
-    const key = `${at.getUTCFullYear()}-${String(at.getUTCMonth() + 1).padStart(2, '0')}`
+    const start = bucketStart(at, unit)
+    const key = unit === 'month' ? start.toISOString().slice(0, 7) : start.toISOString().slice(0, 10)
     const month = months.get(key)
     if (!month) {
-      months.set(key, { start: new Date(Date.UTC(at.getUTCFullYear(), at.getUTCMonth(), 1)), close: index, low: index, high: index, count: 1 })
+      months.set(key, { start, close: index, low: index, high: index, count: 1 })
       return
     }
     month.count++
@@ -83,3 +99,32 @@ export function monthLabel(month: Month, index: number): string {
   return index === 0 || month.start.getUTCMonth() === 0 ? `${short} ${month.start.getUTCFullYear()}` : short
 }
 export function monthTitle(month: Month): string { return monthYearFormat.format(month.start) }
+
+const dayFormat = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'short', timeZone: 'UTC' })
+const dayTitleFormat = new Intl.DateTimeFormat('fr-FR', { dateStyle: 'long', timeZone: 'UTC' })
+
+// bucketLabel : étiquette d'axe d'une période ; jours et semaines par leur date de début (« 3 nov. »).
+export function bucketLabel(bucket: Month, index: number, unit: Unit): string {
+  return unit === 'month' ? monthLabel(bucket, index) : dayFormat.format(bucket.start)
+}
+export function bucketTitle(bucket: Month, unit: Unit): string {
+  if (unit === 'month') return monthTitle(bucket)
+  return unit === 'day' ? dayTitleFormat.format(bucket.start) : `semaine du ${dayTitleFormat.format(bucket.start)}`
+}
+
+// Périodes de l'historique (Sourcer) : fenêtre comptée en mois avant l'instant `as_of` des statistiques
+// renvoyées par l'API (jamais l'heure du poste). null : toute la fenêtre servie par l'API.
+export const PERIODS = [
+  { id: '1m', label: '1 mois', months: 1, unit: 'day' },
+  { id: '3m', label: '3 mois', months: 3, unit: 'week' },
+  { id: '6m', label: '6 mois', months: 6, unit: 'week' },
+  { id: 'all', label: 'Tout', months: null, unit: 'month' },
+] as const satisfies readonly { id: string; label: string; months: number | null; unit: Unit }[]
+export type PeriodID = (typeof PERIODS)[number]['id']
+
+export function inPeriod(history: Quote[], asOf: string | null | undefined, months: number | null): Quote[] {
+  if (months === null || !asOf) return history
+  const end = new Date(asOf)
+  const from = Date.UTC(end.getUTCFullYear(), end.getUTCMonth() - months, end.getUTCDate(), end.getUTCHours(), end.getUTCMinutes(), end.getUTCSeconds())
+  return history.filter((q) => new Date(q.quoted_at).getTime() >= from)
+}
