@@ -585,7 +585,7 @@ func explainDiscounts(n *namer, d bom.BridgeDiff, a, z side) (string, error) {
 	for _, sup := range order {
 		g := expired[sup]
 		out = append(out, fmt.Sprintf("Contrat %s expiré : la remise (jusqu'à %s %%) ne s'applique plus sur %s",
-			sup, g.maxLost, plural(g.count, "offre", "offres")))
+			sup, strings.Replace(g.maxLost.String(), ".", ",", 1), plural(g.count, "offre", "offres")))
 	}
 	if other > 0 {
 		out = append(out, "Remise modifiée (palier ou contrat) sur "+plural(other, "offre", "offres"))

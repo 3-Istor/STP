@@ -4,7 +4,7 @@ title: V2 lot B — versions et publication (comparaison et pont de coût, contr
 source: manual
 source_ref: docs/v2/plan-implementation.md (lot B)
 created: 2026-11-17
-status: in-progress
+status: review
 priority: P1
 depends_on: [v2-lot-a]
 branch: v2-lot-b
@@ -62,7 +62,8 @@ moteur. Maquettes : I4-6 Arbitrer, I4-7 Publier, I4-0 Toutes les BOM. Pas de fro
   chez un autre fournisseur, haut-parleurs ajoutés aux 4 portes), 5 pistes (maquette I4-6) ; idempotent.
 
 ### Should Have
-- S1 `GET /api/v1/boms` enrichi sans casser le contrat (champs ajoutés seulement).
+- S1 `GET /api/v1/boms` enrichi sans casser le contrat (champs ajoutés seulement) — **non fait** : `source_snapshot_id`
+  suffit à grouper, `GET /boms/{id}/versions` donne libellés, coûts et trace (voir state.md D9).
 - S2 `GET /api/v1/snapshots/{id}` expose note, proposé/validé par et contrôles figés.
 
 ### Won't Do
@@ -71,38 +72,38 @@ moteur. Maquettes : I4-6 Arbitrer, I4-7 Publier, I4-0 Toutes les BOM. Pas de fro
 
 ## Tasks
 
-- [ ] T1: Ticket et ADR 0032, 0033
+- [x] T1: Ticket et ADR 0032, 0033
   - **Files**: `.specs/v2-lot-b/*`, `docs/adr/0032-*.md`, `docs/adr/0033-*.md`
   - **Approach**: ordre du pont, appariement, règles des contrôles, traçabilité.
   - **Done when**: ADR Proposé, tâches listées.
-- [ ] T2: Migration 00013 et requêtes sqlc
+- [x] T2: Migration 00013 et requêtes sqlc
   - **Files**: `migrations/00013_versions_and_publication.sql`, `internal/{bom,snapshot}/queries.sql`, code généré
   - **Approach**: colonnes note/proposed_by/validated_by de `bom_snapshots`, `bom_snapshot_checks` immuable,
     `bom_reduction_ideas`, `seed_demo_steps`.
   - **Done when**: goose up/reset/up, sqlc à jour, tests existants verts.
-- [ ] T3: Pont de coût pur
+- [x] T3: Pont de coût pur
   - **Files**: `internal/bom/bridge.go`, `bridge_test.go`
   - **Approach**: appariement par chemin, 9 états, `ComputeTotals` à chaque marche, contrôle des extrémités.
   - **Done when**: somme = écart au centime (cause isolée, combinées, devises différentes), ordre testé.
-- [ ] T4: Contrôles avant publication
+- [x] T4: Contrôles avant publication
   - **Files**: `internal/bom/checks.go`, `checks_test.go`
   - **Approach**: une fonction pure par règle sur une entrée construite par le service.
   - **Done when**: chaque règle ok/warn/block testée.
-- [ ] T5: Publication tracée
+- [x] T5: Publication tracée
   - **Files**: `internal/snapshot/snapshot.go`, `snapshotstore`, tests d'intégration
   - **Approach**: contrôles recalculés à la publication, refus nommés, copie dans le snapshot.
   - **Done when**: 409/422 par erreur nommée, trace relue, immuabilité testée.
-- [ ] T6: Comparaison, versions, pistes (services)
+- [x] T6: Comparaison, versions, pistes (services)
   - **Files**: `internal/snapshot/compare.go`, `versions.go`, `internal/bom/ideas.go`, stores
   - **Approach**: références `snapshot:`/`bom:`, explications avec noms, famille de versions, pistes CRUD.
   - **Done when**: tests de service (intégration) verts.
-- [ ] T7: API
+- [x] T7: API
   - **Files**: `internal/httpapi/versions.go`, `boms.go`, tests
   - **Done when**: routes testées (codes et formes JSON).
-- [ ] T8: Données de démo
+- [x] T8: Données de démo
   - **Files**: `internal/sampledata/versions.go`, `seedstore`, `cmd/server/seed.go`
   - **Done when**: seed deux fois idempotent ; comparaison V1 → B non vide sur la base seedée.
-- [ ] T9: Vérification et livrable §9
+- [x] T9: Vérification et livrable §9
   - **Files**: `.specs/v2-lot-b/state.md`
   - **Done when**: vet, lint, tests, goose, sqlc ; réponses réelles `compare` et `publication-checks` collées.
 
@@ -116,8 +117,8 @@ moteur. Maquettes : I4-6 Arbitrer, I4-7 Publier, I4-0 Toutes les BOM. Pas de fro
 - Seed, serveur :8084 + API de prix :8094 ; `GET /compare?from=snapshot:V1&to=bom:B`, `GET /boms/B/publication-checks`.
 
 ### Acceptance Criteria
-- [ ] AC1 (R1) : Σ causes = delta.cost exactement ; causes non vides sur V1 → B.
-- [ ] AC2 (R2, R3) : un `block` refuse (409), un `warn` non justifié refuse (422), la trace est dans le snapshot.
-- [ ] AC3 (R4) : reste à trouver = écart à la cible − pistes ouvertes.
-- [ ] AC4 (R5) : V1 et B listés ensemble, dates à la seconde.
-- [ ] AC5 (R6) : seed idempotent.
+- [x] AC1 (R1) : Σ causes = delta.cost exactement ; causes non vides sur V1 → B.
+- [x] AC2 (R2, R3) : un `block` refuse (409), un `warn` non justifié refuse (422), la trace est dans le snapshot.
+- [x] AC3 (R4) : reste à trouver = écart à la cible − pistes ouvertes.
+- [x] AC4 (R5) : V1 et B listés ensemble, dates à la seconde.
+- [x] AC5 (R6) : seed idempotent.
