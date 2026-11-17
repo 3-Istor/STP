@@ -4,7 +4,7 @@ title: V2 lot F — intégration front (partie 1 : 3D dans Structurer, budgets, 
 source: manual
 source_ref: docs/v2/plan-implementation.md (vague 3, lot F), maquettes docs/v2/maquettes/I4-1, I4-2, I4-3
 created: 2026-11-17
-status: in-progress
+status: review
 priority: P1
 depends_on: [v2-lot-a, v2-lot-c, v2-lot-d]
 branch: v2-lot-f
@@ -110,27 +110,27 @@ Contrats réels : `.specs/v2-lot-b/state.md` (versions, compare, publication-che
 `.specs/v2-lot-e/state.md` (fx-sensitivity, price-drivers, sourcing, analysis/anomalies, profils), ADR 0032,
 0033, 0036, 0037. Seed : V1 publiée (snapshot 1), brouillon A (BOM 1), brouillon B (BOM 3), 5 pistes.
 
-- [ ] T9: Client API des lots B et E et spec de la partie 2
+- [x] T9: Client API des lots B et E et spec de la partie 2
   - **Files**: `web/src/api.ts`, `.specs/v2-lot-f/*`
   - **Done when**: types et appels pour toutes les routes ci-dessus, `tsc` vert.
-- [ ] T10: Toutes les BOM avec versions (`GET /boms/{id}/versions`) et aperçu
+- [x] T10: Toutes les BOM avec versions (`GET /boms/{id}/versions`) et aperçu
   - **Files**: `web/src/home/AllBoms.tsx`
   - **Done when**: versions sous chaque BOM (date à la seconde, coût, % budget, prix, proposé/validé par), aperçu.
-- [ ] T11: Chiffrer : sensibilité (choc 5/10 %), pièces qui pèsent, anomalies €/kg par impact ; existant plus discret
+- [x] T11: Chiffrer : sensibilité (choc 5/10 %), pièces qui pèsent, anomalies €/kg par impact ; existant plus discret
   - **Files**: `web/src/bom/steps/Chiffrer.tsx`, `web/src/bom/analysis/*`
-- [ ] T12: Sourcer › Vue d'ensemble (`analysis/sourcing`)
+- [x] T12: Sourcer › Vue d'ensemble (`analysis/sourcing`)
   - **Files**: `web/src/bom/steps/Sourcer.tsx`, `web/src/bom/analysis/*`
-- [ ] T13: Profil de véhicule dans les réglages ; classement des alternatives selon le profil
+- [x] T13: Profil de véhicule dans les réglages ; classement des alternatives selon le profil
   - **Files**: `web/src/bom/ProfileSettings.tsx`, `web/src/bom/StrategyPanel.tsx`
-- [ ] T14: Arbitrer : comparaison, causes triées, pièces modifiées, pistes de réduction
+- [x] T14: Arbitrer : comparaison, causes triées, pièces modifiées, pistes de réduction
   - **Files**: `web/src/bom/steps/Arbitrer.tsx`, `web/src/bom/Ideas.tsx`
-- [ ] T15: Publier : contrôles, justifications, versions, note et noms, publication 409/422
+- [x] T15: Publier : contrôles, justifications, versions, note et noms, publication 409/422
   - **Files**: `web/src/bom/steps/Publier.tsx`
-- [ ] T16: Badges des étapes alimentés par les données (ou retirés)
+- [x] T16: Badges des étapes alimentés par les données (ou retirés)
   - **Files**: `web/src/App.tsx`
-- [ ] T17: Libellés de cascade arrondis à l'affichage ; fond de la 3D selon le thème
+- [x] T17: Libellés de cascade arrondis à l'affichage ; fond de la 3D selon le thème
   - **Files**: `web/src/bom/CostBreakdown.tsx`, `web/src/features/vehicle3d/*`, `web/src/ui/tokens.css`
-- [ ] T18: e2e (comparaison V1 → B et causes, publication refusée sur B, profil → classement), vérification
+- [x] T18: e2e (comparaison V1 → B et causes, publication refusée sur B, profil → classement), vérification
   réelle, captures clair/sombre, état
   - **Files**: `web/e2e/*`, `docs/v2/captures/lot-f/*`, `.specs/v2-lot-f/state.md`
 
