@@ -18,7 +18,7 @@ export function Chiffrer({ data, selectedID, onSelect }: { data: BomData; select
   return (
     <>
       <section className="block" aria-label="Élément sélectionné">
-        <h3>{node ? `Pourquoi ce coût ? · ${title}` : 'Élément sélectionné'}</h3>
+        <h3>{node ? `Élément sélectionné · ${title}` : 'Élément sélectionné'}</h3>
         <div className="in">
           {!node && <p className="muted">Sélectionnez une pièce ou un ensemble (étape Structurer ou barres de la Synthèse).</p>}
           {node && data.readOnly && <p className="muted">Snapshot publié : coût rendu et make-or-buy se simulent sur un brouillon.</p>}
@@ -28,7 +28,7 @@ export function Chiffrer({ data, selectedID, onSelect }: { data: BomData; select
           {node && !data.readOnly && node.part_id === null && (
             <MakeOrBuyPanel key={`mob-${node.id}-${data.version}`} bomID={bomID} nodeID={node.id} currency={data.explanation.currency} />
           )}
-          {node && <p className="muted small">Cascade complète prix → change → remise → douane → transport → outillage : lot A.</p>}
+          {node && <p className="muted small">« Pourquoi ce coût ? » (prix → change → remise → douane → transport → outillage) : colonne de droite, onglet Détail.</p>}
         </div>
       </section>
 

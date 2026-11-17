@@ -140,6 +140,9 @@ export function BomWorkspace({ route, data, error, published, onPublished }: Pro
                 stock={data.stock}
                 anomaly={data.anomalyByNode.get(selected.id)}
                 onSetStock={(partID, q) => data.run(() => api.setPartStock(data.target.id, partID, q))}
+                target={data.target}
+                version={data.version}
+                budget={data.budgets.byNode.get(selected.id)}
                 onStartMove={() => {
                   setMoving(selected.id)
                   if (route.step !== 'structurer') go({ step: 'structurer' })

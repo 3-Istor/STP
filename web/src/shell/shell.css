@@ -201,3 +201,16 @@ tr.expired td { background: var(--over-bg); }
 .contract-status.active { color: var(--ok); }
 .contract-status.expired { color: var(--over); }
 @media (max-width: 900px) { .suppliers { grid-template-columns: minmax(0, 1fr); } .supplier-list-block .scroll { max-height: 40vh; } }
+
+/* « Pourquoi ce coût ? » (maquette I4-1). */
+.cascade-block { margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--line); }
+.cascade-block h3 { margin: 0 0 4px; font-size: 14px; font-weight: 600; }
+.cascade-method { margin: 0 0 6px; }
+.casc { display: flex; flex-direction: column; font-size: var(--fs-small); }
+.casc-row { display: grid; grid-template-columns: 1fr auto; gap: 10px; padding: 5px 0; border-bottom: 1px solid var(--line-soft); align-items: start; }
+.casc-kind { font-weight: 500; }
+.casc-label { color: var(--fg-2); overflow-wrap: anywhere; }
+.casc .src { font-family: var(--font-mono); font-size: 10.5px; color: var(--muted); overflow-wrap: anywhere; }
+.casc-amount { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.casc-row.absent .casc-kind { color: var(--muted); }
+.casc-row.tot { border-bottom: 0; border-top: 1px solid var(--fg-2); font-weight: 600; }
