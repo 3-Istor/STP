@@ -78,7 +78,11 @@ type candidateJSON struct {
 	CostScore    *string      `json:"cost_score"`
 	LeadScore    *string      `json:"lead_time_score"`
 	CO2Score     *string      `json:"co2_score"`
-	Excluded     *string      `json:"excluded"` // raison de l'exclusion (prix, taux ou attribut manquant)
+	MassScore    *string      `json:"mass_score"`    // profil de véhicule (ADR 0036)
+	QualityScore *string      `json:"quality_score"` // idem ; 0 quand le critère ne pèse pas
+	MassKg       *string      `json:"mass_kg"`
+	Quality      *string      `json:"quality"`
+	Excluded     *string      `json:"excluded"` // raison de l'exclusion (prix, taux, attribut ou note qualité manquant)
 }
 
 // suggestionsJSON : strategy null = aucune stratégie dans la lignée (ordre par offre).
@@ -91,6 +95,10 @@ type suggestionsJSON struct {
 	PriceSnapshotID *int64          `json:"price_snapshot_id"`
 	Candidates      []candidateJSON `json:"candidates"`
 	Excluded        []candidateJSON `json:"excluded"`
+	// Profile : profil de véhicule qui classe quand aucune stratégie de nœud ne s'applique (ADR 0036) ;
+	// weights : poids appliqués (stratégie, profil, ou tous nuls).
+	Profile *profileJSON `json:"profile"`
+	Weights *weightsJSON `json:"weights"`
 }
 
 func toSuggestionsJSON(s bom.Suggestions) suggestionsJSON {
@@ -98,7 +106,11 @@ func toSuggestionsJSON(s bom.Suggestions) suggestionsJSON {
 	out := suggestionsJSON{
 		NodeID: s.NodeID, RealQuantity: s.RealQuantity.String(), Currency: string(s.Currency),
 		PriceSnapshotID: s.PriceSnapshotID, Candidates: make([]candidateJSON, len(s.Ranked)),
-		Excluded: make([]candidateJSON, len(s.Excluded)),
+		Excluded: make([]candidateJSON, len(s.Excluded)), Weights: toWeightsJSON(s.Weights),
+	}
+	if s.Profile != nil {
+		p := toProfileJSON(s.Profile)
+		out.Profile = &p
 	}
 	if s.Strategy != "" {
 		st, from := string(s.Strategy), s.StrategyFrom
@@ -107,6 +119,7 @@ func toSuggestionsJSON(s bom.Suggestions) suggestionsJSON {
 	for i, r := range s.Ranked {
 		c := toCandidateJSON(r.Candidate)
 		c.Score, c.CostScore, c.LeadScore, c.CO2Score = score(r.Score), score(r.CostScore), score(r.LeadScore), score(r.CO2Score)
+		c.MassScore, c.QualityScore = score(r.MassScore), score(r.QualityScore)
 		out.Candidates[i] = c
 	}
 	for i, c := range s.Excluded {
@@ -118,8 +131,12 @@ func toSuggestionsJSON(s bom.Suggestions) suggestionsJSON {
 func toCandidateJSON(c bom.Candidate) candidateJSON {
 	out := candidateJSON{PartID: c.PartID, OfferID: c.OfferID, Current: c.Current, Cost: c.Cost}
 	if c.HasFacts {
-		lead, co2 := c.LeadDays, c.CO2Kg.String()
-		out.LeadTimeDays, out.CO2Kg = &lead, &co2
+		lead, co2, mass := c.LeadDays, c.CO2Kg.String(), c.MassKg.String()
+		out.LeadTimeDays, out.CO2Kg, out.MassKg = &lead, &co2, &mass
+	}
+	if c.Quality != nil {
+		q := c.Quality.String()
+		out.Quality = &q
 	}
 	if q := c.Quote; q != nil {
 		out.Quote = &quoteJSON{OfferID: q.OfferID, Price: q.Price, Source: q.Source, QuotedAt: q.QuotedAt}

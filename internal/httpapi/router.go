@@ -71,6 +71,7 @@ func NewRouter(services ...Services) http.Handler {
 		a.costs, _ = s.BOMs.(CostService)
 		a.snapCosts, _ = s.Snapshots.(SnapshotCostService)
 		a.routes(mux)
+		mountAnalysis(mux, s.BOMs, s.Snapshots) // lot E : analyses et profils de véhicule (analysis.go)
 	}
 	return jsonNotFound(mux)
 }

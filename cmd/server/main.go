@@ -86,7 +86,9 @@ func run() error {
 	logistics := pricing.NewLogisticsService(logisticsStore)
 	boms := bom.NewService(bomstore.New(pool), catalogService, prices).
 		WithCatalogListing(catalogService).WithLogistics(logistics.Store()).
-		WithCostSources(logisticsStore, supplierService) // méthode de calcul du coût, ADR 0031
+		WithCostSources(logisticsStore, supplierService).            // méthode de calcul du coût, ADR 0031
+		WithProfiles(bomstore.New(pool)).                            // profils de véhicule, ADR 0036
+		WithAnalysisSources(pricingstore.New(pool), supplierService) // analyses du lot E (historique, fournisseurs)
 	bomSnapshots := snapshot.NewService(snapshotstore.New(pool), boms, catalogService, prices)
 
 	handler := httpapi.NewRouter(httpapi.Services{
