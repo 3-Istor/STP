@@ -107,7 +107,7 @@ func ComputeFXSensitivity(in TotalsInput, base Totals, rootID int64, shockPercen
 		if total.Amount().IsPositive() {
 			e.SharePercent = exposed.Amount().Mul(hundred).DivRound(total.Amount(), percentPrecision)
 		}
-		e.BudgetPercentAfter = budgetPercent(after, budget)
+		e.BudgetPercentAfter = analysisBudgetPercent(after, budget)
 		out.Currencies = append(out.Currencies, e)
 	}
 	slices.SortFunc(out.Currencies, func(a, b FXExposure) int {
@@ -214,7 +214,7 @@ func (s *Service) rootBudget(ctx context.Context, dc DraftCost) (*money.Money, s
 	return nil, "no target budget on the root node", nil
 }
 
-func budgetPercent(cost money.Money, budget *money.Money) *decimal.Decimal {
+func analysisBudgetPercent(cost money.Money, budget *money.Money) *decimal.Decimal {
 	if budget == nil || !budget.Amount().IsPositive() || cost.Currency() != budget.Currency() {
 		return nil
 	}
