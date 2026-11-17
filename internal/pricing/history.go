@@ -17,18 +17,18 @@ var (
 )
 
 // HistoricalQuote identifie exactement la cotation immuable utilisée (ADR 0011).
-// HistoryWindow : fenêtre [From, To] des cotations à lire pour une offre (lecture par lot, ReadWindows).
-type HistoryWindow struct {
-	OfferID  int64
-	From, To time.Time
-}
-
 type HistoricalQuote struct {
 	ID       int64       `json:"id"`
 	OfferID  int64       `json:"offer_id"`
 	Price    money.Money `json:"price"`
 	Source   string      `json:"source"`
 	QuotedAt time.Time   `json:"quoted_at"`
+}
+
+// HistoryWindow : fenêtre [From, To] des cotations à lire pour une offre (lecture par lot, ReadWindows).
+type HistoryWindow struct {
+	OfferID  int64
+	From, To time.Time
 }
 
 // Statistics garde les données disponibles même si une référence ou une fenêtre manque.

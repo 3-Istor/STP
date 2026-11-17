@@ -98,6 +98,15 @@ func TestNoHandWrittenErrorBody(t *testing.T) {
 	}
 }
 
+// Le détail d'une cotation corrompue (identifiant, valeur brute) reste dans le journal.
+func TestInvalidHistoryDataBodyHidesTheDetail(t *testing.T) {
+	w := httptest.NewRecorder()
+	writeError(w, httptest.NewRequest(http.MethodGet, "/api/v1/x", nil), fmt.Errorf("decode quote 77 price: bad amount 12x: %w", pricing.ErrInvalidHistoryData))
+	if body := w.Body.String(); strings.Contains(body, "77") || strings.Contains(body, "12x") || !strings.Contains(body, "invalid_history_data") {
+		t.Fatalf("body %s leaks the stored value or lacks the code", body)
+	}
+}
+
 // Une donnée de prix invalide dans le contrôle de budget est un conflit (409), pas une panne serveur (500).
 func TestInvalidHistoryDataIsAConflict(t *testing.T) {
 	err := fmt.Errorf("budget rates of bom 1: %w", pricing.ErrInvalidHistoryData)

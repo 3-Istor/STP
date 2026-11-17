@@ -499,7 +499,7 @@ func (s *Service) NewDraft(ctx context.Context, id int64) (bom.BOM, error) {
 		return bom.BOM{}, fmt.Errorf("new draft from snapshot %d: %w", id, err)
 	}
 	if h.BudgetsFrozen { // ses budgets sont ceux du snapshot, sous les clés de ses nœuds ; sinon voir frozenBudgets
-		if err := s.checkFrozenBudgets(ctx, h, nodes, budgets); err != nil {
+		if err := bom.CheckFrozenBudgets(frozenTree(nodes), budgets, money.Currency(h.Currency)); err != nil {
 			return bom.BOM{}, fmt.Errorf("new draft from snapshot %d: frozen budgets break the budget rule: %w", id, err)
 		}
 	}
@@ -538,17 +538,6 @@ func (s *Service) NewDraft(ctx context.Context, id int64) (bom.BOM, error) {
 		return bom.BOM{}, fmt.Errorf("new draft from snapshot %d: %w", id, err)
 	}
 	return b, nil
-}
-
-// checkFrozenBudgets : la règle de l'ADR 0042 sur les budgets figés, aux taux du snapshot de prix. Un brouillon ne
-// naît pas d'un état que le service aurait refusé : la copie échoue et dit pourquoi, rien n'est créé.
-func (s *Service) checkFrozenBudgets(ctx context.Context, h Snapshot, nodes []Node, budgets []bom.TargetBudget) error {
-	tree := make([]bom.Node, len(nodes))
-	for i, n := range nodes {
-		tree[i] = bom.Node{ID: n.Key, ParentID: n.ParentKey, Name: n.Name}
-	}
-	priceID := h.PriceSnapshotID
-	return s.boms.CheckFrozenBudgets(ctx, bom.BOM{ID: h.BOMID, Currency: h.Currency, PriceSnapshotID: &priceID}, tree, budgets)
 }
 
 // frozenBudgets : budgets cibles du snapshot (NodeID = clé du nœud figé). Snapshot publié avant la migration
@@ -700,4 +689,13 @@ func offerIDs(nodes []Node) []int64 {
 	}
 	slices.Sort(ids)
 	return slices.Compact(ids)
+}
+
+// frozenTree : l'arbre figé sous la forme que juge la règle des budgets (identifiant = clé du nœud figé).
+func frozenTree(nodes []Node) []bom.Node {
+	tree := make([]bom.Node, len(nodes))
+	for i, n := range nodes {
+		tree[i] = bom.Node{ID: n.Key, ParentID: n.ParentKey, Name: n.Name}
+	}
+	return tree
 }

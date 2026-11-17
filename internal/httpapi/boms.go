@@ -861,5 +861,10 @@ func writeError(w http.ResponseWriter, r *http.Request, err error) {
 		slog.ErrorContext(r.Context(), "request failed", "method", r.Method, "path", r.URL.Path, "err", err)
 		msg = "internal error"
 	}
-	writeErrorBody(w, status, msg, errorCode(err))
+	code := errorCode(err)
+	if code == "invalid_history_data" { // donnée stockée corrompue : ni identifiant de cotation ni valeur brute au client
+		slog.ErrorContext(r.Context(), "invalid stored price data", "method", r.Method, "path", r.URL.Path, "err", err)
+		msg = "invalid stored price data"
+	}
+	writeErrorBody(w, status, msg, code)
 }

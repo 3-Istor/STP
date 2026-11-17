@@ -49,3 +49,29 @@ func roueChild(t *testing.T, f fixture, bomID, roue int64) int64 {
 	t.Fatal("no child under the Roue part")
 	return 0
 }
+
+// SI un budget figé ne dépasse son ensemble que par le change (devise étrangère, taux du snapshot) ALORS la copie
+// n'est pas bloquée : ADR 0044, le dérapage de change est un avertissement de répartition, pas un refus.
+func TestNewDraftKeepsFrozenBudgetsThatOnlyExceedThroughTheRate(t *testing.T) {
+	f := newFixture(t)
+	ctx := t.Context()
+	b, roue := f.newDraft(t)
+	ecrou := roueChild(t, f, b.ID, roue)
+	for _, row := range []struct {
+		node     int64
+		amount   string
+		currency string
+	}{{roue, "60", "EUR"}, {ecrou, "80", "USD"}} {
+		if _, err := f.tx.Exec(ctx, `INSERT INTO bom_target_budgets(bom_id, node_id, amount, currency) VALUES ($1,$2,$3,$4)`, b.ID, row.node, row.amount, row.currency); err != nil {
+			t.Fatal(err)
+		}
+	}
+	s := f.publish(t, b.ID)
+	d, err := f.snaps.NewDraft(ctx, s.ID)
+	if err != nil {
+		t.Fatalf("new draft: %v, want the copy kept (only the exchange rate decides)", err)
+	}
+	if n := f.snapshotCount(t, d.ID); n != 0 {
+		t.Fatalf("unexpected snapshots on the new draft: %d", n)
+	}
+}

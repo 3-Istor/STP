@@ -11,6 +11,7 @@ import (
 	"github.com/shopspring/decimal"
 
 	"bomstudio/internal/money"
+	"bomstudio/internal/pricing"
 )
 
 // Pistes de réduction (vision V2 §2) : gain estimé par voiture, responsable, statut et brouillon qui la chiffre.
@@ -303,20 +304,26 @@ func (s *Service) TargetBudgetList(ctx context.Context, bomID int64) ([]TargetBu
 	return out, nil
 }
 
-// CheckFrozenBudgets juge les budgets figés d'un snapshot (nœuds et budgets sous la même clé) selon la règle de
-// l'ADR 0042 : aucun ensemble budgété n'est dépassé par ses sous-budgets. Les taux sont ceux du snapshot de prix
-// de b (b.PriceSnapshotID), pas ceux du jour : le même snapshot donne le même verdict (ADR 0044). Erreurs
-// nommées : ErrBudgetExceedsParent, pricing.ErrNoRate.
-func (s *Service) CheckFrozenBudgets(ctx context.Context, b BOM, nodes []Node, budgets []TargetBudget) error {
-	fx, err := s.budgetFX(ctx, b, budgets)
-	if err != nil {
-		return err
-	}
+// CheckFrozenBudgets juge les budgets figés d'un snapshot (nœuds et budgets sous la même clé) : ErrBudgetExceedsParent
+// si les sous-budgets d'un ensemble le dépassent sans qu'aucun change n'intervienne (même devise que la BOM) : une
+// donnée vraiment incohérente. Un ensemble dont le verdict dépend d'un taux n'est pas jugé ici : le dérapage de
+// change est un avertissement de répartition, pas un refus (ADR 0044, AllocationWarnings), et le snapshot figé ne
+// peut pas être corrigé ; sa copie ne doit pas être bloquée. Sans horloge ni lecture : même entrée, même verdict.
+func CheckFrozenBudgets(nodes []Node, budgets []TargetBudget, currency money.Currency) error {
+	t := newBudgetTree(nodes, budgets)
+	fx := BudgetFX{Currency: currency} // aucun taux : toute conversion échoue en pricing.ErrNoRate, donc « non jugé »
 	touched := make([]int64, len(budgets))
 	for i, x := range budgets {
 		touched[i] = x.NodeID
 	}
-	return CheckBudgetTree(nodes, budgets, touched, fx)
+	for _, id := range t.scope(touched) {
+		switch err := t.judge(id, fx); {
+		case err == nil, errors.Is(err, pricing.ErrNoRate):
+		default:
+			return err
+		}
+	}
+	return nil
 }
 
 // SetTargetBudget enregistre le budget cible d'un nœud (copie d'un brouillon depuis un snapshot).
