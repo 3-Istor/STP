@@ -316,7 +316,7 @@ export class Viewer {
     const dz = c[2] - this.vehicleCenter[2], dx = c[0] - this.vehicleCenter[0]
     const side = 0.08 * this.vehicleLength
     // Vue de trois quarts du côté où les pièces sortent, comme le focus roue de la maquette I4-3.
-    const dir = Math.abs(dz) > side ? new THREE.Vector3(0.5, 0.22, Math.sign(dz) * 0.84)
+    const dir = Math.abs(dz) > side ? new THREE.Vector3(0.78, 0.28, Math.sign(dz) * 0.62)
       : Math.abs(dx) > side ? new THREE.Vector3(Math.sign(dx) * 0.84, 0.3, 0.45)
         : new THREE.Vector3(-0.55, 0.65, 0.55)
     dir.normalize()

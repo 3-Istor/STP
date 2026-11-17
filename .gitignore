@@ -34,3 +34,6 @@ go.work.sum
 
 # Projet
 /bin/
+
+# Modèle 3D réaliste téléchargé par `make models` (CC-BY 4.0, ADR 0035) : jamais commité
+/web/public/models/*.glb
