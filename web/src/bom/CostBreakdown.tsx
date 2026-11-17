@@ -3,6 +3,7 @@ import { api, errorMessage, type CostBasis, type CostBreakdown as Breakdown, typ
 import { formatDate, formatMoney } from '../money.ts'
 import type { Target } from '../router.ts'
 import { methodLabel } from './costMethod.ts'
+import { roundedLabel } from './labels.ts'
 
 // « Pourquoi ce coût ? » (maquette I4-1, ADR 0031) : la ventilation du coût d'un nœud telle que l'API la
 // renvoie — une ligne par nature (prix, change, remise, douane, transport, emballage, outillage) avec sa
@@ -82,7 +83,9 @@ function Cascade({ data }: { data: Breakdown }) {
           <div className="casc-row" role="row" key={`${l.kind}-${i}`}>
             <div role="cell">
               <span className="casc-kind">{kindLabels[l.kind] ?? l.kind}</span>
-              <div className="casc-label">{l.label}</div>
+              <div className="casc-label" title={l.label}>
+                {roundedLabel(l.label)}
+              </div>
               <div className="src">
                 {l.source}
                 {l.as_of ? ` · ${formatDate(l.as_of)}` : ''}

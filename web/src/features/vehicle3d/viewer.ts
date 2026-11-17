@@ -186,6 +186,12 @@ export class Viewer {
     this.applyStyles()
   }
 
+  /** Fond de la scène (thème clair / sombre), couleur « #rrggbb ». */
+  setBackground(hex: string) {
+    this.scene.background = new THREE.Color(hex)
+    this.requestRender()
+  }
+
   setExplode(k: number) {
     this.explode = Math.min(Math.max(k, 0), 1)
     if (!this.focusKey) { this.applyPositions(); this.updateSelectionFrames(); this.requestRender() }
