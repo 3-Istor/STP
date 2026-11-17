@@ -1,4 +1,5 @@
-# Pipeline CI — voir docs/workflow.md §7 et ADR 0001.
+# Pipeline CI — voir docs/workflow.md §7, ADR 0001 et ADR 0039 (harnais).
+# Actions épinglées par SHA (une étiquette se déplace, un SHA non) ; Dependabot les met à jour.
 name: CI
 
 on:
@@ -36,8 +37,8 @@ jobs:
     env:
       DATABASE_URL: postgres://bom:bom@localhost:5432/bomstudio?sslmode=disable
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-go@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
         with:
           go-version-file: go.mod
       - name: go mod tidy à jour
@@ -65,7 +66,7 @@ jobs:
             go tool cover -func=coverage.out
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: coverage-go
           path: coverage.out
@@ -77,8 +78,8 @@ jobs:
       run:
         working-directory: web
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
           cache: npm
@@ -92,7 +93,7 @@ jobs:
         run: npx --no-install playwright install --with-deps chromium firefox webkit
       - name: Parcours UI sur les trois moteurs, ordinateur et mobile
         run: npm run test:e2e
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: failure()
         with:
           name: playwright-failures
@@ -125,11 +126,11 @@ jobs:
       DATABASE_URL: postgres://bom:bom@localhost:5432/bomstudio?sslmode=disable
       NLPF68_BROWSER_MODE: native
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-go@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
         with:
           go-version-file: go.mod
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
           cache: npm
@@ -140,7 +141,7 @@ jobs:
         run: npx --no-install playwright install --with-deps chromium firefox webkit
       - name: Vraie source HTTP, ingestion, PostgreSQL, SSE et UI
         run: go test -race -count=1 -timeout=4m -run '^TestPricingLiveBrowsers$' ./internal/pricing/pricingstore
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: failure()
         with:
           name: playwright-live-failures
@@ -151,8 +152,8 @@ jobs:
   security:
     runs-on: ${{ fromJSON(vars.CNP_CI_RUNS_ON || '["self-hosted","Linux","X64"]') }}
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-go@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
         with:
           go-version-file: go.mod
       - name: govulncheck
@@ -163,7 +164,7 @@ jobs:
   compose:
     runs-on: ${{ fromJSON(vars.CNP_CI_RUNS_ON || '["self-hosted","Linux","X64"]') }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Démarrer la stack
         run: docker compose up -d --build --wait
       - name: Back via nginx
@@ -178,3 +179,66 @@ jobs:
       - name: Arrêt
         if: always()
         run: docker compose down -v
+
+  # Niveau de risque du changement (ADR 0039) : dit à l'humain ce qu'il doit relire, et où.
+  risk:
+    if: github.event_name == 'pull_request'
+    runs-on: ${{ fromJSON(vars.CNP_CI_RUNS_ON || '["self-hosted","Linux","X64"]') }}
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
+        with:
+          go-version-file: go.mod
+      - name: Niveau de risque et point de contrôle humain
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          go run ./cmd/risk -base "origin/$BASE_REF" | tee -a "$GITHUB_STEP_SUMMARY"
+          go run ./cmd/risk -base "origin/$BASE_REF" -json > risk.json
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: risk
+          path: risk.json
+          retention-days: 30
+
+  # Chaîne d'approvisionnement (ADR 0039) : outils épinglés dans scripts/tools.env.
+  supply-chain:
+    runs-on: ${{ fromJSON(vars.CNP_CI_RUNS_ON || '["self-hosted","Linux","X64"]') }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
+        with:
+          go-version-file: go.mod
+      - name: Outils épinglés
+        run: ./scripts/install-tools.sh && echo "$PWD/.tools/bin" >> "$GITHUB_PATH"
+      - name: Secrets dans les commits de la PR (gitleaks)
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: gitleaks git --redact --no-banner --log-opts="$BASE_SHA..HEAD"
+      - name: Secrets dans le dernier push (gitleaks)
+        if: github.event_name != 'pull_request'
+        run: gitleaks git --redact --no-banner --log-opts="-1"
+      - name: Failles connues, Go et npm (osv-scanner)
+        run: osv-scanner scan source --lockfile go.mod --lockfile web/package-lock.json
+      - name: Workflows GitHub (actionlint)
+        run: actionlint
+      - name: SBOM CycloneDX (Go et web)
+        run: |
+          mkdir -p sbom
+          cyclonedx-gomod mod -json -output sbom/go.cdx.json
+          npm --prefix web sbom --sbom-format cyclonedx --omit dev --package-lock-only > sbom/web.cdx.json
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: sbom
+          path: sbom/
+          retention-days: 90
+
