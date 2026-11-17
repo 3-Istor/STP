@@ -560,12 +560,17 @@ type snapshotJSON struct {
 	AnnualHours     *string   `json:"annual_hours"` // null : snapshot publié avant ADR 0024
 	Destination     *string   `json:"destination_country"`
 	PublishedAt     time.Time `json:"published_at"`
+	// Trace de la publication (ADR 0033) ; null si non saisie ou publiée avant.
+	Note        *string `json:"note"`
+	ProposedBy  *string `json:"proposed_by"`
+	ValidatedBy *string `json:"validated_by"`
 }
 
 func toSnapshotJSON(s snapshot.Snapshot) snapshotJSON {
 	out := snapshotJSON{
 		ID: s.ID, BOMID: s.BOMID, PriceSnapshotID: s.PriceSnapshotID, Name: s.Name,
 		Currency: s.Currency, Volume: s.Volume, PublishedAt: s.PublishedAt, Destination: s.DestinationCountry,
+		Note: s.Note, ProposedBy: s.ProposedBy, ValidatedBy: s.ValidatedBy,
 	}
 	if h := s.AnnualHours; h != nil {
 		v := h.String()
@@ -581,4 +586,22 @@ type publishedJSON struct {
 	Explanation explanationJSON `json:"explanation"`
 	Stock       []stockJSON     `json:"stock"`
 	Planning    planningJSON    `json:"planning"`
+	// Checks : contrôles avant publication figés, avec la justification de chaque avertissement (ADR 0033).
+	Checks []frozenCheckJSON `json:"checks"`
+}
+
+type frozenCheckJSON struct {
+	Code          string  `json:"code"`
+	Level         string  `json:"level"`
+	Title         string  `json:"title"`
+	Detail        string  `json:"detail"`
+	Justification *string `json:"justification"`
+}
+
+func toFrozenChecksJSON(cs []snapshot.FrozenCheck) []frozenCheckJSON {
+	out := make([]frozenCheckJSON, len(cs))
+	for i, c := range cs {
+		out[i] = frozenCheckJSON{Code: c.Code, Level: c.Level, Title: c.Title, Detail: c.Detail, Justification: c.Justification}
+	}
+	return out
 }

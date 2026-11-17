@@ -76,7 +76,10 @@ type api struct {
 	// costs, snapCosts : méthode de coût et ventilation (ADR 0031) ; routes montées seulement si fournies.
 	costs     CostService
 	snapCosts SnapshotCostService
-	now       func() time.Time
+	// versions, review : comparaison, versions, contrôles et pistes (ADR 0032, 0033) ; montées si fournies.
+	versions VersionsService
+	review   ReviewService
+	now      func() time.Time
 }
 
 func (a *api) routes(mux *http.ServeMux) {
@@ -717,7 +720,7 @@ func (a *api) getSnapshot(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, http.StatusOK, publishedJSON{
 		Snapshot: toSnapshotJSON(p.Snapshot), Nodes: nodes, Explanation: toExplanationJSON(p.Totals.Explanation),
-		Stock: toStockJSON(p.Stock), Planning: toPlanningJSON(p.Planning),
+		Stock: toStockJSON(p.Stock), Planning: toPlanningJSON(p.Planning), Checks: toFrozenChecksJSON(p.Checks),
 	})
 }
 
@@ -801,20 +804,20 @@ func statusOf(err error) int {
 	}
 	switch {
 	case is(bom.ErrBOMNotFound, bom.ErrNodeNotFound, snapshot.ErrSnapshotNotFound, pricing.ErrUnknownOffer,
-		pricing.ErrPriceSnapshotNotFound):
+		pricing.ErrPriceSnapshotNotFound, bom.ErrIdeaNotFound):
 		return http.StatusNotFound
 	case is(bom.ErrCycle, bom.ErrHasSnapshots, bom.ErrRootNode, pricing.ErrNoQuote, pricing.ErrNoRate,
 		catalog.ErrMissingAttribute, bom.ErrMissingCost, bom.ErrNoBudgetRate, bom.ErrNoTooling, bom.ErrNoProgramVolume,
 		bom.ErrNoCostDate, bom.ErrNoCostFacts, snapshot.ErrIncompleteCost, supplier.ErrSelectionRequired,
 		pricing.ErrNoCustomsDuty, pricing.ErrNoFreightRate, pricing.ErrNoPackaging, pricing.ErrNoDestination,
-		snapshot.ErrPublicationBlocked, bom.ErrBridgeUnavailable, bom.ErrBridgeIncomplete):
+		snapshot.ErrPublicationBlocked, bom.ErrBridgeUnavailable, bom.ErrBridgeIncomplete, money.ErrCurrencyMismatch):
 		return http.StatusConflict
 	case is(snapshot.ErrJustificationRequired):
 		return http.StatusUnprocessableEntity
 	case is(errBadRequest, bom.ErrInvalidInput, pricing.ErrInvalidThreshold, bom.ErrOfferNotForPart, bom.ErrNotAPart,
 		catalog.ErrPartNotFound, catalog.ErrOfferNotFound, money.ErrUnknownCurrency):
 		return http.StatusBadRequest
-	case is(bom.ErrSuggestionsUnavailable, bom.ErrLogisticsUnavailable, bom.ErrCostSourcesUnavailable):
+	case is(bom.ErrSuggestionsUnavailable, bom.ErrLogisticsUnavailable, bom.ErrCostSourcesUnavailable, bom.ErrIdeasUnavailable):
 		return http.StatusServiceUnavailable
 	default:
 		return http.StatusInternalServerError
