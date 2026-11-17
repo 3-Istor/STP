@@ -19,7 +19,6 @@ import (
 	"bomstudio/internal/money"
 	"bomstudio/internal/pricing"
 	"bomstudio/internal/snapshot"
-	"bomstudio/internal/supplier"
 )
 
 // BOMService est ce que l'API attend du domaine bom ; *bom.Service la satisfait.
@@ -846,39 +845,15 @@ func decodeOptional(r *http.Request, v any) error {
 	return nil
 }
 
-// statusOf traduit une erreur métier en code HTTP. Une erreur inconnue est une erreur serveur.
+// statusOf : statut HTTP d'une erreur du domaine, lu dans errorTable (un seul endroit, avec le code stable).
 func statusOf(err error) int {
-	is := func(targets ...error) bool {
-		for _, t := range targets {
-			if errors.Is(err, t) {
-				return true
-			}
-		}
-		return false
+	if e, ok := lookupError(err); ok {
+		return e.status
 	}
-	switch {
-	case is(bom.ErrBOMNotFound, bom.ErrNodeNotFound, snapshot.ErrSnapshotNotFound, pricing.ErrUnknownOffer,
-		pricing.ErrPriceSnapshotNotFound, bom.ErrIdeaNotFound):
-		return http.StatusNotFound
-	case is(bom.ErrCycle, bom.ErrHasSnapshots, bom.ErrRootNode, pricing.ErrNoQuote, pricing.ErrNoRate,
-		catalog.ErrMissingAttribute, bom.ErrMissingCost, bom.ErrNoBudgetRate, bom.ErrNoTooling, bom.ErrNoProgramVolume,
-		bom.ErrNoCostDate, bom.ErrNoCostFacts, snapshot.ErrIncompleteCost, supplier.ErrSelectionRequired,
-		pricing.ErrNoCustomsDuty, pricing.ErrNoFreightRate, pricing.ErrNoPackaging, pricing.ErrNoDestination,
-		snapshot.ErrPublicationBlocked, bom.ErrBudgetExceedsParent, bom.ErrBridgeUnavailable, bom.ErrBridgeIncomplete, money.ErrCurrencyMismatch):
-		return http.StatusConflict
-	case is(snapshot.ErrJustificationRequired):
-		return http.StatusUnprocessableEntity
-	case is(errBadRequest, bom.ErrInvalidInput, pricing.ErrInvalidThreshold, bom.ErrOfferNotForPart, bom.ErrNotAPart,
-		catalog.ErrPartNotFound, catalog.ErrOfferNotFound, money.ErrUnknownCurrency):
-		return http.StatusBadRequest
-	case is(bom.ErrSuggestionsUnavailable, bom.ErrLogisticsUnavailable, bom.ErrCostSourcesUnavailable, bom.ErrIdeasUnavailable):
-		return http.StatusServiceUnavailable
-	default:
-		return http.StatusInternalServerError
-	}
+	return http.StatusInternalServerError
 }
 
-// writeError écrit {"error": "..."} ; le détail d'une erreur serveur est journalisé, pas renvoyé.
+// writeError écrit {"error": "...", "code": "..."} (code stable, voir errorTable) ; le détail d'une erreur serveur est journalisé, pas renvoyé.
 func writeError(w http.ResponseWriter, r *http.Request, err error) {
 	status := statusOf(err)
 	msg := err.Error()
@@ -886,5 +861,5 @@ func writeError(w http.ResponseWriter, r *http.Request, err error) {
 		slog.ErrorContext(r.Context(), "request failed", "method", r.Method, "path", r.URL.Path, "err", err)
 		msg = "internal error"
 	}
-	writeJSON(w, status, map[string]string{"error": msg})
+	writeJSON(w, status, map[string]string{"error": msg, "code": errorCode(err)})
 }
