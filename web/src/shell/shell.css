@@ -231,3 +231,15 @@ tr.expired td { background: var(--over-bg); }
 .boms-table td { white-space: nowrap; }
 .acts-cell .btn.ico { padding: 2px 8px; }
 a.btn { text-decoration: none; }
+
+/* Analyses (Chiffrer, Sourcer) : barres horizontales et blocs repliables. */
+.bars { list-style: none; margin: 0; padding: 0; }
+.bars li { display: grid; grid-template-columns: minmax(120px, 34%) 1fr 92px; gap: 10px; align-items: center; font-size: var(--fs-small); padding: 3px 0; }
+.bars .bar-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bars .bar { height: 8px; background: var(--track); border-radius: 4px; overflow: hidden; }
+.bars .bar i { display: block; height: 100%; background: var(--bar); }
+.bars .bar i.exposed { background: var(--warn-fill); }
+.bars .n { text-align: right; white-space: nowrap; }
+details.fold > summary { padding: 9px 12px; font-weight: 600; font-size: var(--fs); list-style-position: inside; color: var(--fg-2); }
+details.fold[open] > summary { border-bottom: 1px solid var(--line); }
+.block > h3 .seg { font-weight: 400; }
