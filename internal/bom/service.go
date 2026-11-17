@@ -38,6 +38,11 @@ type Service struct {
 	// costParams et contracts : faits de la méthode de calcul du coût (ADR 0031) ; nil → méthode par défaut seulement.
 	costParams pricing.CostParamsStore
 	contracts  ContractSource
+	// profiles : profils de véhicule (ADR 0036) ; nil → aucun profil, classement par stratégie de nœud seulement.
+	profiles ProfileStore
+	// history et suppliers : historique des cotations et annuaire des fournisseurs, pour les analyses (lot E).
+	history   QuoteHistory
+	suppliers SupplierDirectory
 }
 
 // WithLogistics branche les tables du coût total rendu (ADR 0025).
