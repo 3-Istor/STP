@@ -87,7 +87,7 @@ func seedCounts(t *testing.T, pool *pgxpool.Pool) map[string]int {
 	t.Helper()
 	out := map[string]int{}
 	for _, table := range []string{"suppliers", "parts", "offers", "boms", "bom_nodes", "price_quotes", "fx_quotes",
-		"pricing_runs", "seed_loads", "customs_duties", "freight_rates", "budget_rates", "bom_target_budgets", "bom_schedule"} {
+		"pricing_runs", "seed_loads", "customs_duties", "freight_rates", "budget_rates", "bom_target_budgets", "bom_schedule", "bom_vehicle_profiles"} {
 		var n int
 		if err := pool.QueryRow(t.Context(), "SELECT count(*) FROM "+table).Scan(&n); err != nil {
 			t.Fatal(err)
@@ -122,6 +122,11 @@ func TestRunSeedTwiceWithSameParametersAddsNothing(t *testing.T) {
 		t.Fatalf("first seed: %v, want 2 BOM, 1 seed_load, 10 budgets, 1 schedule, 6 budget rates, 24 customs duties", first)
 	}
 	checkMultiplaPilot(t, pool)
+	var preset string // ADR 0036 : la Multipla seedée en profil familiale, seule BOM avec un profil
+	if err := pool.QueryRow(t.Context(), `SELECT p.preset FROM bom_vehicle_profiles p JOIN boms b ON b.id = p.bom_id
+		WHERE b.name = 'Fiat Multipla 1.6 16V'`).Scan(&preset); err != nil || preset != "family" || first["bom_vehicle_profiles"] != 1 {
+		t.Fatalf("multipla profile %q (%v), %d profiles; want family only", preset, err, first["bom_vehicle_profiles"])
+	}
 
 	if err := runSeed(t.Context(), pool); err != nil {
 		t.Fatal("second seed:", err)
