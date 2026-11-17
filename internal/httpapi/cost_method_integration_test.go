@@ -25,7 +25,7 @@ import (
 // ADR 0031, routes de la méthode de coût sur une vraie base : une pièce GB (2 kg, 100 GBP le 2026-02-15) ×3
 // dans une BOM EUR de volume 200 livrée en IT, contrat 5 % dès 500, taux budget 2026 GBP→EUR 1.15.
 func TestCostMethodRoutes(t *testing.T) {
-	h, tx := catalogAPI(t) // transaction annulée en fin de test
+	_, tx := catalogAPI(t) // transaction annulée en fin de test
 	ctx := t.Context()
 	scan := func(sql string, args []any, dest ...any) {
 		t.Helper()
@@ -63,7 +63,7 @@ func TestCostMethodRoutes(t *testing.T) {
 	cat := catalog.NewService(catalogstore.New(tx), time.Now)
 	boms := bom.NewService(bomstore.New(tx), cat, prices).
 		WithCostSources(pricingstore.NewLogistics(tx), supplier.NewService(supplierstore.New(tx)))
-	h = NewRouter(Services{BOMs: boms, Snapshots: snapshot.NewService(snapshotstore.New(tx), boms, cat, prices)})
+	h := NewRouter(Services{BOMs: boms, Snapshots: snapshot.NewService(snapshotstore.New(tx), boms, cat, prices)})
 
 	var created bomJSON
 	if err := json.Unmarshal(apiCall(t, h, "POST", "/api/v1/boms", `{"name":"Multipla","currency":"EUR","volume":200}`,
