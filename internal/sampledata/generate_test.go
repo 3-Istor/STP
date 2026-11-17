@@ -3,7 +3,6 @@ package sampledata
 import (
 	"errors"
 	"reflect"
-	"strings"
 	"testing"
 
 	"github.com/shopspring/decimal"
@@ -138,13 +137,12 @@ func TestDatasetInvariants(t *testing.T) {
 			}
 			return true
 		}},
-		{"every offer has packaging; Multipla and common offers declare tooling (0 when none)", func() bool {
+		{"every offer has packaging and declares tooling (0 when none)", func() bool {
 			for _, o := range d.Offers {
 				if !nonNegative(o.PackagingAmount) || o.PackagingCurrency != o.Currency {
 					return false
 				}
-				mpl := strings.HasPrefix(o.PartKey, "mpl.") || strings.HasPrefix(o.PartKey, "com.")
-				if mpl != (o.ToolingAmount != "") || (mpl && !nonNegative(o.ToolingAmount)) {
+				if o.ToolingAmount == "" || o.ToolingCurrency == "" || !nonNegative(o.ToolingAmount) {
 					t.Logf("offer %s: tooling %q", o.Key, o.ToolingAmount)
 					return false
 				}

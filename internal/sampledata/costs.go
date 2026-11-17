@@ -3,7 +3,6 @@ package sampledata
 import (
 	"fmt"
 	"slices"
-	"strings"
 	"time"
 
 	"github.com/shopspring/decimal"
@@ -41,14 +40,21 @@ var budgetRates2026 = []BudgetRate{
 	{2026, "EUR", "GBP", "0.8700"}, {2026, "JPY", "GBP", "0.0054"}, {2026, "USD", "GBP", "0.7900"},
 }
 
-// toolingEUR : outillage (moules, outils d'emboutissage) par offre des pièces Multipla qui en ont, en EUR.
-// Les autres offres des pièces Multipla et communes déclarent 0 explicitement ; celles de la Valhalla
-// restent non renseignées (NULL).
+// toolingEUR : outillage (moules, outils d'emboutissage) par offre des pièces qui en ont, en EUR.
+// Toutes les autres offres (Multipla, communes et Valhalla) déclarent 0 explicitement : le jeu ne laisse
+// aucun outillage non renseigné, donc aucun coût complet en erreur (ErrNoTooling) à cause du jeu.
 var toolingEUR = map[string]string{
 	"mpl.porte-av": "84000", "mpl.porte-ar": "78000", "mpl.hayon": "92000", "mpl.capot": "65000",
 	"mpl.pavillon": "110000", "mpl.cote-caisse": "240000", "mpl.plancher-av": "150000", "mpl.plancher-ar": "160000",
 	"mpl.pare-choc-av": "120000", "mpl.pare-choc-ar": "110000", "mpl.planche": "180000",
 	"mpl.bloc": "380000", "mpl.culasse": "290000", "mpl.carter-bv": "210000",
+	// Valhalla : moules de composites et outillages de fonderie/forge, séries courtes (valeurs fictives).
+	"vlh.monocoque": "1200000", "vlh.berceau-av": "180000", "vlh.berceau-ar": "220000", "vlh.crash-box": "90000",
+	"vlh.arceau": "150000", "vlh.plancher-plat": "260000", "vlh.cloison-feu": "110000", "vlh.porte": "320000",
+	"vlh.capot-av": "190000", "vlh.capot-moteur": "210000", "vlh.aile-av": "140000", "vlh.ponton": "150000",
+	"vlh.bouclier-av": "200000", "vlh.diffuseur": "230000", "vlh.aileron": "280000", "vlh.bloc": "650000",
+	"vlh.culasse": "480000", "vlh.vilebrequin": "160000", "vlh.collecteur-adm": "170000",
+	"vlh.collecteur-ech": "140000", "vlh.turbo": "260000", "vlh.batterie-ht": "300000",
 }
 
 // multiplaBudgets : budgets cibles par voiture (EUR) ; le nom désigne un sous-ensemble unique de l'arbre,
@@ -76,7 +82,7 @@ func costParams(seed string, d *Dataset) {
 		switch {
 		case toolingEUR[o.PartKey] != "":
 			o.ToolingAmount, o.ToolingCurrency = toolingEUR[o.PartKey], "EUR"
-		case strings.HasPrefix(o.PartKey, "mpl.") || strings.HasPrefix(o.PartKey, "com."):
+		default:
 			o.ToolingAmount, o.ToolingCurrency = "0", "EUR"
 		}
 	}
