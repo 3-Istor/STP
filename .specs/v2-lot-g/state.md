@@ -50,6 +50,12 @@ updated: 2026-11-17
   (`start_on`/`target_on`, ADR 0023). Cas UPDATE/DELETE/TRUNCATE des budgets figés ajoutés à
   `TestBomSnapshotRejectsMutations`. `go test -count=1 ./...` vert.
 
+### T4: Contrôle budgets non évaluable → warn
+- **Status**: completed
+- **Notes**: tests d'abord (2 cas de `TestPublicationChecks` + `TestCheckBudgetsNamesTheUnavailableReason`) : le
+  contrôle était `ok` (« 1 budget(s) »). Un budget `unavailable` (autre devise, coût manquant), racine comprise,
+  passe le contrôle en `warn` avec le nœud et la raison dans le détail (justification exigée à la publication).
+
 ## Decisions
 
 ## Blockers

@@ -193,12 +193,29 @@ func checkTargetDate(in ChecksInput) PublicationCheck {
 	return c
 }
 
-// checkBudgets : sous-systèmes (nœuds budgétés autres que la racine) au-dessus de leur budget.
+// checkBudgets : sous-systèmes (nœuds budgétés autres que la racine) au-dessus de leur budget, et budgets non
+// évaluables (autre devise que la BOM, coût manquant), racine comprise : une donnée manquante n'est jamais un
+// vert (AGENTS §3, v2-lot-g T4). Les deux exigent une justification (warn).
 func checkBudgets(in ChecksInput) PublicationCheck {
 	c := PublicationCheck{Code: CheckBudgets, Title: "Sous-systèmes dans leur budget", Level: CheckOK}
-	var over []string
+	label := func(id int64) string {
+		if l := in.Names[id]; l != "" {
+			return l
+		}
+		return fmt.Sprintf("nœud %d", id)
+	}
+	var over, unavailable []string
 	n := 0
 	for _, b := range in.Budgets {
+		if b.State == "unavailable" {
+			c.NodeIDs = append(c.NodeIDs, b.NodeID)
+			reason := b.Error
+			if reason == "" {
+				reason = "coût ou conversion indisponible"
+			}
+			unavailable = append(unavailable, label(b.NodeID)+" ("+reason+")")
+			continue
+		}
 		if b.NodeID == in.RootID {
 			continue
 		}
@@ -207,20 +224,27 @@ func checkBudgets(in ChecksInput) PublicationCheck {
 			continue
 		}
 		c.NodeIDs = append(c.NodeIDs, b.NodeID)
-		label := in.Names[b.NodeID]
-		if label == "" {
-			label = fmt.Sprintf("nœud %d", b.NodeID)
-		}
+		l := label(b.NodeID)
 		if b.Target.Amount().IsPositive() {
 			pct := b.Cost.Amount().Mul(decimal.NewFromInt(100)).DivRound(b.Target.Amount(), 1)
-			label += " " + strings.Replace(pct.StringFixed(1), ".", ",", 1) + " %"
+			l += " " + strings.Replace(pct.StringFixed(1), ".", ",", 1) + " %"
 		}
-		over = append(over, label)
+		over = append(over, l)
 	}
+	slices.Sort(c.NodeIDs)
+	var titles, details []string
 	if len(over) > 0 {
+		titles = append(titles, fmt.Sprintf("%d sous-système(s) au-dessus du budget", len(over)))
+		details = append(details, strings.Join(over, ", "))
+	}
+	if len(unavailable) > 0 {
+		titles = append(titles, fmt.Sprintf("%d budget(s) non évaluable(s)", len(unavailable)))
+		details = append(details, "non évaluable : "+strings.Join(unavailable, ", "))
+	}
+	if len(titles) > 0 {
 		c.Level = CheckWarn
-		c.Title = fmt.Sprintf("%d sous-système(s) au-dessus du budget", len(over))
-		c.Detail = strings.Join(over, ", ") + " : justification requise"
+		c.Title = strings.Join(titles, ", ")
+		c.Detail = strings.Join(details, " ; ") + " : justification requise"
 		return c
 	}
 	c.Detail = fmt.Sprintf("%d budget(s)", n)
