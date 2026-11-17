@@ -56,7 +56,7 @@ export default function App() {
     case 'boms':
       screen = (
         <Frame route={route} bar={{ ...bar, items: [`${count(boms.length)} BOM`], right: null }}>
-          <AllBoms boms={boms} published={published} error={listError} onChanged={refresh} />
+          <AllBoms boms={boms} error={listError} onChanged={refresh} />
         </Frame>
       )
       break

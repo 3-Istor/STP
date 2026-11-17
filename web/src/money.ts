@@ -68,3 +68,33 @@ export function sameDecimal(a: string, b: string): boolean {
   }
   return canon(a) === canon(b)
 }
+
+// formatSignedMoney : écart signé « + 348,40 € » / « − 125,00 € » ; le signe vient de la chaîne, jamais d'un
+// calcul. « 0,00 € » sans signe.
+export function formatSignedMoney(m: Money | null | undefined): string {
+  if (!m) return 'n/d'
+  const neg = m.amount.startsWith('-')
+  const abs = neg ? m.amount.slice(1) : m.amount
+  const text = formatMoney({ amount: abs, currency: m.currency })
+  if (/^0+(\.0+)?$/.test(abs)) return text
+  return `${neg ? '−' : '+'} ${text}`
+}
+
+/** Signe d'une chaîne décimale : -1, 0 ou 1 (couleur d'un écart), sans conversion en nombre. */
+export function decimalSign(value: string): -1 | 0 | 1 {
+  if (/^-?0*(\.0*)?$/.test(value)) return 0
+  return value.startsWith('-') ? -1 : 1
+}
+
+const percentFormats = new Map<number, Intl.NumberFormat>()
+
+// formatPercent : pourcentage déjà calculé par l'API (chaîne), affiché avec `digits` décimales au plus.
+export function formatPercent(value: string | null | undefined, digits = 1): string {
+  if (value === null || value === undefined) return 'n/d'
+  let f = percentFormats.get(digits)
+  if (!f) {
+    f = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: digits, minimumFractionDigits: digits, roundingMode: 'halfEven' })
+    percentFormats.set(digits, f)
+  }
+  return `${f.format(value as Decimal)} %`
+}

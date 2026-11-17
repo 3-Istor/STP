@@ -222,3 +222,12 @@ tr.expired td { background: var(--over-bg); }
 .casc-amount { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .casc-row.absent .casc-kind { color: var(--muted); }
 .casc-row.tot { border-bottom: 0; border-top: 1px solid var(--fg-2); font-weight: 600; }
+
+/* Toutes les BOM : une ligne par famille, ses versions dessous (maquette I4-0). */
+.boms-table .family-row td { background: var(--surface-2); }
+.boms-table .family-row .toggle { border: 0; background: none; color: var(--muted); width: 18px; padding: 0; font-size: 10px; }
+.boms-table td.n, .boms-table th.n { text-align: right; white-space: nowrap; }
+.mono { font-family: var(--font-mono); }
+.boms-table td { white-space: nowrap; }
+.acts-cell .btn.ico { padding: 2px 8px; }
+a.btn { text-decoration: none; }
