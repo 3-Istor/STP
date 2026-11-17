@@ -24,6 +24,8 @@ même verdict) appelée par `NewDraft` **avant** `CreateBOM` ; un refus renvoie 
 migration 00015 (`BudgetsFrozen` faux) n'est pas vérifié : ses budgets sont les budgets vivants de sa BOM.
 
 ## Conséquences
+- Limite : un ensemble qui contient au moins un budget en devise étrangère n'est jamais jugé à la copie, même si
+  ses budgets dans la devise de la BOM le dépassent déjà seuls (le verdict n'est pas calculé sans taux).
 - Facile : un brouillon ne naît plus d'un état que le service aurait refusé ; la raison est nommée à l'écran.
 - Difficile : un snapshot incohérent ne peut plus être rouvert tel quel ; l'issue (copier sans budgets, ou avec
   avertissement) reste à décider par un humain si le cas se présente. `Publish` ne juge toujours pas les budgets

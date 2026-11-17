@@ -2,6 +2,7 @@ package bom
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -99,5 +100,39 @@ func TestBudgetFXInSnapshotMode(t *testing.T) {
 	live, err := svc.budgetFX(ctx, BOM{ID: 1, Currency: "EUR"}, budgets)
 	if err != nil || live.Context.Mode != "live" || len(live.Rates) == 0 || live.Rates[0].Rate != "0.9" {
 		t.Fatalf("live mode: %+v (%v), want today's 0.9", live, err)
+	}
+}
+
+// CheckFrozenBudgets : refuse le dépassement sans change, n'abandonne pas les autres ensembles quand l'un exige un
+// taux, et ne juge pas un ensemble dont un budget est en devise étrangère (ADR 0047).
+func TestCheckFrozenBudgets(t *testing.T) {
+	// racine(1) → A(2) → a1(4) ; racine → B(3) → b1(5), b2(6)
+	parent := func(id int64) *int64 { return &id }
+	nodes := []Node{
+		{ID: 1}, {ID: 2, ParentID: parent(1)}, {ID: 3, ParentID: parent(1)},
+		{ID: 4, ParentID: parent(2)}, {ID: 5, ParentID: parent(3)}, {ID: 6, ParentID: parent(3)},
+	}
+	b := func(id int64, amount, currency string) TargetBudget {
+		return TargetBudget{NodeID: id, Amount: dec(amount), Currency: currency}
+	}
+	tests := []struct {
+		name    string
+		budgets []TargetBudget
+		wantErr error
+	}{
+		{"tout en EUR et tenu", []TargetBudget{b(2, "100", "EUR"), b(4, "100", "EUR")}, nil},
+		{"dépassement en EUR : refusé", []TargetBudget{b(3, "100", "EUR"), b(5, "60", "EUR"), b(6, "50", "EUR")}, ErrBudgetExceedsParent},
+		{"A exige un taux (non jugé), B dépassé en EUR : B est quand même refusé",
+			[]TargetBudget{b(2, "100", "EUR"), b(4, "10", "USD"), b(3, "100", "EUR"), b(5, "60", "EUR"), b(6, "50", "EUR")}, ErrBudgetExceedsParent},
+		{"dépassement dû au seul change : copié", []TargetBudget{b(2, "100", "EUR"), b(4, "200", "USD")}, nil},
+		{"ensemble en devise étrangère : non jugé, copié", []TargetBudget{b(2, "100", "USD"), b(4, "500", "USD")}, nil},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := CheckFrozenBudgets(nodes, tt.budgets, "EUR")
+			if (tt.wantErr == nil) != (err == nil) || (tt.wantErr != nil && !errors.Is(err, tt.wantErr)) {
+				t.Fatalf("err = %v, want %v", err, tt.wantErr)
+			}
+		})
 	}
 }
