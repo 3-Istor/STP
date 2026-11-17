@@ -44,3 +44,13 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14);
 
 -- name: ListSnapshotOfferCosts :many
 SELECT * FROM bom_snapshot_offer_costs WHERE snapshot_id = $1 ORDER BY offer_id;
+
+-- Profil de véhicule figé (ADR 0036).
+-- name: InsertSnapshotVehicleProfile :exec
+INSERT INTO bom_snapshot_vehicle_profiles
+    (snapshot_id, preset, weight_cost, weight_co2, weight_lead_time, weight_mass, weight_quality)
+VALUES ($1, $2, $3, $4, $5, $6, $7);
+
+-- name: GetSnapshotVehicleProfile :one
+SELECT preset, weight_cost, weight_co2, weight_lead_time, weight_mass, weight_quality
+FROM bom_snapshot_vehicle_profiles WHERE snapshot_id = $1;

@@ -105,6 +105,34 @@ func (q *Queries) GetSnapshot(ctx context.Context, id int64) (BomSnapshot, error
 	return i, err
 }
 
+const getSnapshotVehicleProfile = `-- name: GetSnapshotVehicleProfile :one
+SELECT preset, weight_cost, weight_co2, weight_lead_time, weight_mass, weight_quality
+FROM bom_snapshot_vehicle_profiles WHERE snapshot_id = $1
+`
+
+type GetSnapshotVehicleProfileRow struct {
+	Preset         string
+	WeightCost     int16
+	WeightCo2      int16
+	WeightLeadTime int16
+	WeightMass     int16
+	WeightQuality  int16
+}
+
+func (q *Queries) GetSnapshotVehicleProfile(ctx context.Context, snapshotID int64) (GetSnapshotVehicleProfileRow, error) {
+	row := q.db.QueryRow(ctx, getSnapshotVehicleProfile, snapshotID)
+	var i GetSnapshotVehicleProfileRow
+	err := row.Scan(
+		&i.Preset,
+		&i.WeightCost,
+		&i.WeightCo2,
+		&i.WeightLeadTime,
+		&i.WeightMass,
+		&i.WeightQuality,
+	)
+	return i, err
+}
+
 type InsertSnapshotBudgetRatesParams struct {
 	SnapshotID   int64
 	Year         int32
@@ -150,6 +178,36 @@ type InsertSnapshotStockParams struct {
 	SnapshotID int64
 	PartID     int64
 	Quantity   decimal.Decimal
+}
+
+const insertSnapshotVehicleProfile = `-- name: InsertSnapshotVehicleProfile :exec
+INSERT INTO bom_snapshot_vehicle_profiles
+    (snapshot_id, preset, weight_cost, weight_co2, weight_lead_time, weight_mass, weight_quality)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
+`
+
+type InsertSnapshotVehicleProfileParams struct {
+	SnapshotID     int64
+	Preset         string
+	WeightCost     int16
+	WeightCo2      int16
+	WeightLeadTime int16
+	WeightMass     int16
+	WeightQuality  int16
+}
+
+// Profil de véhicule figé (ADR 0036).
+func (q *Queries) InsertSnapshotVehicleProfile(ctx context.Context, arg InsertSnapshotVehicleProfileParams) error {
+	_, err := q.db.Exec(ctx, insertSnapshotVehicleProfile,
+		arg.SnapshotID,
+		arg.Preset,
+		arg.WeightCost,
+		arg.WeightCo2,
+		arg.WeightLeadTime,
+		arg.WeightMass,
+		arg.WeightQuality,
+	)
+	return err
 }
 
 const listSnapshotBudgetRates = `-- name: ListSnapshotBudgetRates :many

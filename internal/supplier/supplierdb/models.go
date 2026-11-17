@@ -115,11 +115,31 @@ type BomSnapshotPartStock struct {
 	Quantity   decimal.Decimal
 }
 
+type BomSnapshotVehicleProfile struct {
+	SnapshotID     int64
+	Preset         string
+	WeightCost     int16
+	WeightCo2      int16
+	WeightLeadTime int16
+	WeightMass     int16
+	WeightQuality  int16
+}
+
 type BomTargetBudget struct {
 	BomID    int64
 	NodeID   int64
 	Amount   decimal.Decimal
 	Currency string
+}
+
+type BomVehicleProfile struct {
+	BomID          int64
+	Preset         string
+	WeightCost     int16
+	WeightCo2      int16
+	WeightLeadTime int16
+	WeightMass     int16
+	WeightQuality  int16
 }
 
 type BudgetRate struct {

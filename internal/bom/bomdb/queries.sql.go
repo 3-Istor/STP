@@ -258,6 +258,35 @@ func (q *Queries) GetSchedule(ctx context.Context, bomID int64) (BomSchedule, er
 	return i, err
 }
 
+const getVehicleProfile = `-- name: GetVehicleProfile :one
+SELECT preset, weight_cost, weight_co2, weight_lead_time, weight_mass, weight_quality
+FROM bom_vehicle_profiles WHERE bom_id = $1
+`
+
+type GetVehicleProfileRow struct {
+	Preset         string
+	WeightCost     int16
+	WeightCo2      int16
+	WeightLeadTime int16
+	WeightMass     int16
+	WeightQuality  int16
+}
+
+// Profil de véhicule (ADR 0036) : pondérations du classement des alternatives.
+func (q *Queries) GetVehicleProfile(ctx context.Context, bomID int64) (GetVehicleProfileRow, error) {
+	row := q.db.QueryRow(ctx, getVehicleProfile, bomID)
+	var i GetVehicleProfileRow
+	err := row.Scan(
+		&i.Preset,
+		&i.WeightCost,
+		&i.WeightCo2,
+		&i.WeightLeadTime,
+		&i.WeightMass,
+		&i.WeightQuality,
+	)
+	return i, err
+}
+
 const isInSubtree = `-- name: IsInSubtree :one
 WITH RECURSIVE subtree (node_id) AS (
     SELECT n.id FROM bom_nodes n
@@ -883,5 +912,55 @@ func (q *Queries) UpsertTargetBudget(ctx context.Context, arg UpsertTargetBudget
 	)
 	var i UpsertTargetBudgetRow
 	err := row.Scan(&i.NodeID, &i.Amount, &i.Currency)
+	return i, err
+}
+
+const upsertVehicleProfile = `-- name: UpsertVehicleProfile :one
+INSERT INTO bom_vehicle_profiles (bom_id, preset, weight_cost, weight_co2, weight_lead_time, weight_mass, weight_quality)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
+ON CONFLICT (bom_id) DO UPDATE SET preset = EXCLUDED.preset, weight_cost = EXCLUDED.weight_cost,
+    weight_co2 = EXCLUDED.weight_co2, weight_lead_time = EXCLUDED.weight_lead_time,
+    weight_mass = EXCLUDED.weight_mass, weight_quality = EXCLUDED.weight_quality
+RETURNING preset, weight_cost, weight_co2, weight_lead_time, weight_mass, weight_quality
+`
+
+type UpsertVehicleProfileParams struct {
+	BomID          int64
+	Preset         string
+	WeightCost     int16
+	WeightCo2      int16
+	WeightLeadTime int16
+	WeightMass     int16
+	WeightQuality  int16
+}
+
+type UpsertVehicleProfileRow struct {
+	Preset         string
+	WeightCost     int16
+	WeightCo2      int16
+	WeightLeadTime int16
+	WeightMass     int16
+	WeightQuality  int16
+}
+
+func (q *Queries) UpsertVehicleProfile(ctx context.Context, arg UpsertVehicleProfileParams) (UpsertVehicleProfileRow, error) {
+	row := q.db.QueryRow(ctx, upsertVehicleProfile,
+		arg.BomID,
+		arg.Preset,
+		arg.WeightCost,
+		arg.WeightCo2,
+		arg.WeightLeadTime,
+		arg.WeightMass,
+		arg.WeightQuality,
+	)
+	var i UpsertVehicleProfileRow
+	err := row.Scan(
+		&i.Preset,
+		&i.WeightCost,
+		&i.WeightCo2,
+		&i.WeightLeadTime,
+		&i.WeightMass,
+		&i.WeightQuality,
+	)
 	return i, err
 }

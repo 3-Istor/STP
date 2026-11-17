@@ -174,3 +174,16 @@ SELECT node_id, amount, currency FROM bom_target_budgets WHERE bom_id = $1 ORDER
 INSERT INTO bom_target_budgets (bom_id, node_id, amount, currency) VALUES ($1, $2, $3, $4)
 ON CONFLICT (bom_id, node_id) DO UPDATE SET amount = EXCLUDED.amount, currency = EXCLUDED.currency
 RETURNING node_id, amount, currency;
+
+-- Profil de véhicule (ADR 0036) : pondérations du classement des alternatives.
+-- name: GetVehicleProfile :one
+SELECT preset, weight_cost, weight_co2, weight_lead_time, weight_mass, weight_quality
+FROM bom_vehicle_profiles WHERE bom_id = $1;
+
+-- name: UpsertVehicleProfile :one
+INSERT INTO bom_vehicle_profiles (bom_id, preset, weight_cost, weight_co2, weight_lead_time, weight_mass, weight_quality)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
+ON CONFLICT (bom_id) DO UPDATE SET preset = EXCLUDED.preset, weight_cost = EXCLUDED.weight_cost,
+    weight_co2 = EXCLUDED.weight_co2, weight_lead_time = EXCLUDED.weight_lead_time,
+    weight_mass = EXCLUDED.weight_mass, weight_quality = EXCLUDED.weight_quality
+RETURNING preset, weight_cost, weight_co2, weight_lead_time, weight_mass, weight_quality;
