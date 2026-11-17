@@ -21,6 +21,9 @@ type Bom struct {
 	SourceSnapshotID   pgtype.Int8
 	AnnualHours        decimal.Decimal
 	DestinationCountry pgtype.Text
+	CostBasis          string
+	FxPolicy           string
+	ProgramVolume      pgtype.Int4
 }
 
 type BomNode struct {
@@ -59,6 +62,18 @@ type BomSnapshot struct {
 	StartOn            pgtype.Date
 	TargetOn           pgtype.Date
 	DestinationCountry pgtype.Text
+	CostBasis          pgtype.Text
+	FxPolicy           pgtype.Text
+	ProgramVolume      pgtype.Int4
+	CostAsOf           pgtype.Timestamptz
+}
+
+type BomSnapshotBudgetRate struct {
+	SnapshotID   int64
+	Year         int32
+	FromCurrency string
+	ToCurrency   string
+	Rate         decimal.Decimal
 }
 
 type BomSnapshotNode struct {
@@ -77,10 +92,41 @@ type BomSnapshotNode struct {
 	Strategy       pgtype.Text
 }
 
+type BomSnapshotOfferCost struct {
+	SnapshotID         int64
+	OfferID            int64
+	OriginCountry      string
+	DiscountPercent    decimal.NullDecimal
+	DiscountReason     pgtype.Text
+	DiscountContractID pgtype.Int8
+	DiscountTierMin    decimal.NullDecimal
+	CustomsPercent     decimal.NullDecimal
+	FreightAmountPerKg decimal.NullDecimal
+	FreightCurrency    pgtype.Text
+	PackagingAmount    decimal.NullDecimal
+	PackagingCurrency  pgtype.Text
+	ToolingAmount      decimal.NullDecimal
+	ToolingCurrency    pgtype.Text
+}
+
 type BomSnapshotPartStock struct {
 	SnapshotID int64
 	PartID     int64
 	Quantity   decimal.Decimal
+}
+
+type BomTargetBudget struct {
+	BomID    int64
+	NodeID   int64
+	Amount   decimal.Decimal
+	Currency string
+}
+
+type BudgetRate struct {
+	Year         int32
+	FromCurrency string
+	ToCurrency   string
+	Rate         decimal.Decimal
 }
 
 type Contract struct {
@@ -141,6 +187,8 @@ type Offer struct {
 	ArchivedAt        pgtype.Timestamptz
 	PackagingAmount   decimal.NullDecimal
 	PackagingCurrency pgtype.Text
+	ToolingAmount     decimal.NullDecimal
+	ToolingCurrency   pgtype.Text
 }
 
 type Part struct {

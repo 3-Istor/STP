@@ -224,3 +224,22 @@ DELETE FROM customs_duties WHERE origin_country = $1 AND destination_country = $
 
 -- name: DeleteFreightRate :exec
 DELETE FROM freight_rates WHERE origin_country = $1 AND destination_country = $2;
+
+-- Coût complet (ADR 0031) : emballage et outillage de plusieurs offres en une lecture.
+-- name: ListOfferCostParams :many
+SELECT id, origin_country, packaging_amount, packaging_currency, tooling_amount, tooling_currency
+FROM offers WHERE id = ANY(@offer_ids::bigint[]) ORDER BY id;
+
+-- name: SetOfferTooling :one
+UPDATE offers SET tooling_amount = $2, tooling_currency = $3
+WHERE id = $1
+RETURNING id, tooling_amount, tooling_currency;
+
+-- Taux budget d'une année vers une devise (paires directes seulement).
+-- name: ListBudgetRates :many
+SELECT * FROM budget_rates WHERE year = $1 AND to_currency = $2 ORDER BY from_currency;
+
+-- name: UpsertBudgetRate :one
+INSERT INTO budget_rates (year, from_currency, to_currency, rate) VALUES ($1, $2, $3, $4)
+ON CONFLICT (year, from_currency, to_currency) DO UPDATE SET rate = EXCLUDED.rate
+RETURNING *;

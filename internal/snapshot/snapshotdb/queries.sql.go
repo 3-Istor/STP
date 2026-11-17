@@ -16,9 +16,9 @@ import (
 const createSnapshot = `-- name: CreateSnapshot :one
 
 INSERT INTO bom_snapshots (bom_id, price_snapshot_id, name, currency, volume, published_at, annual_hours,
-    start_on, target_on, destination_country)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-RETURNING id, bom_id, price_snapshot_id, name, currency, volume, published_at, annual_hours, start_on, target_on, destination_country
+    start_on, target_on, destination_country, cost_basis, fx_policy, program_volume, cost_as_of)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+RETURNING id, bom_id, price_snapshot_id, name, currency, volume, published_at, annual_hours, start_on, target_on, destination_country, cost_basis, fx_policy, program_volume, cost_as_of
 `
 
 type CreateSnapshotParams struct {
@@ -32,6 +32,10 @@ type CreateSnapshotParams struct {
 	StartOn            pgtype.Date
 	TargetOn           pgtype.Date
 	DestinationCountry pgtype.Text
+	CostBasis          pgtype.Text
+	FxPolicy           pgtype.Text
+	ProgramVolume      pgtype.Int4
+	CostAsOf           pgtype.Timestamptz
 }
 
 // Requêtes du domaine snapshot (sqlc → internal/snapshot/snapshotdb). Voir ADR 0006.
@@ -48,6 +52,10 @@ func (q *Queries) CreateSnapshot(ctx context.Context, arg CreateSnapshotParams) 
 		arg.StartOn,
 		arg.TargetOn,
 		arg.DestinationCountry,
+		arg.CostBasis,
+		arg.FxPolicy,
+		arg.ProgramVolume,
+		arg.CostAsOf,
 	)
 	var i BomSnapshot
 	err := row.Scan(
@@ -62,12 +70,16 @@ func (q *Queries) CreateSnapshot(ctx context.Context, arg CreateSnapshotParams) 
 		&i.StartOn,
 		&i.TargetOn,
 		&i.DestinationCountry,
+		&i.CostBasis,
+		&i.FxPolicy,
+		&i.ProgramVolume,
+		&i.CostAsOf,
 	)
 	return i, err
 }
 
 const getSnapshot = `-- name: GetSnapshot :one
-SELECT id, bom_id, price_snapshot_id, name, currency, volume, published_at, annual_hours, start_on, target_on, destination_country FROM bom_snapshots WHERE id = $1
+SELECT id, bom_id, price_snapshot_id, name, currency, volume, published_at, annual_hours, start_on, target_on, destination_country, cost_basis, fx_policy, program_volume, cost_as_of FROM bom_snapshots WHERE id = $1
 `
 
 func (q *Queries) GetSnapshot(ctx context.Context, id int64) (BomSnapshot, error) {
@@ -85,8 +97,20 @@ func (q *Queries) GetSnapshot(ctx context.Context, id int64) (BomSnapshot, error
 		&i.StartOn,
 		&i.TargetOn,
 		&i.DestinationCountry,
+		&i.CostBasis,
+		&i.FxPolicy,
+		&i.ProgramVolume,
+		&i.CostAsOf,
 	)
 	return i, err
+}
+
+type InsertSnapshotBudgetRatesParams struct {
+	SnapshotID   int64
+	Year         int32
+	FromCurrency string
+	ToCurrency   string
+	Rate         decimal.Decimal
 }
 
 type InsertSnapshotNodesParams struct {
@@ -105,10 +129,57 @@ type InsertSnapshotNodesParams struct {
 	Strategy       pgtype.Text
 }
 
+type InsertSnapshotOfferCostsParams struct {
+	SnapshotID         int64
+	OfferID            int64
+	OriginCountry      string
+	DiscountPercent    decimal.NullDecimal
+	DiscountReason     pgtype.Text
+	DiscountContractID pgtype.Int8
+	DiscountTierMin    decimal.NullDecimal
+	CustomsPercent     decimal.NullDecimal
+	FreightAmountPerKg decimal.NullDecimal
+	FreightCurrency    pgtype.Text
+	PackagingAmount    decimal.NullDecimal
+	PackagingCurrency  pgtype.Text
+	ToolingAmount      decimal.NullDecimal
+	ToolingCurrency    pgtype.Text
+}
+
 type InsertSnapshotStockParams struct {
 	SnapshotID int64
 	PartID     int64
 	Quantity   decimal.Decimal
+}
+
+const listSnapshotBudgetRates = `-- name: ListSnapshotBudgetRates :many
+SELECT snapshot_id, year, from_currency, to_currency, rate FROM bom_snapshot_budget_rates WHERE snapshot_id = $1 ORDER BY year, from_currency, to_currency
+`
+
+func (q *Queries) ListSnapshotBudgetRates(ctx context.Context, snapshotID int64) ([]BomSnapshotBudgetRate, error) {
+	rows, err := q.db.Query(ctx, listSnapshotBudgetRates, snapshotID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []BomSnapshotBudgetRate
+	for rows.Next() {
+		var i BomSnapshotBudgetRate
+		if err := rows.Scan(
+			&i.SnapshotID,
+			&i.Year,
+			&i.FromCurrency,
+			&i.ToCurrency,
+			&i.Rate,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listSnapshotNodes = `-- name: ListSnapshotNodes :many
@@ -138,6 +209,45 @@ func (q *Queries) ListSnapshotNodes(ctx context.Context, snapshotID int64) ([]Bo
 			&i.LeadTimeDays,
 			&i.LaborHours,
 			&i.Strategy,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listSnapshotOfferCosts = `-- name: ListSnapshotOfferCosts :many
+SELECT snapshot_id, offer_id, origin_country, discount_percent, discount_reason, discount_contract_id, discount_tier_min, customs_percent, freight_amount_per_kg, freight_currency, packaging_amount, packaging_currency, tooling_amount, tooling_currency FROM bom_snapshot_offer_costs WHERE snapshot_id = $1 ORDER BY offer_id
+`
+
+func (q *Queries) ListSnapshotOfferCosts(ctx context.Context, snapshotID int64) ([]BomSnapshotOfferCost, error) {
+	rows, err := q.db.Query(ctx, listSnapshotOfferCosts, snapshotID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []BomSnapshotOfferCost
+	for rows.Next() {
+		var i BomSnapshotOfferCost
+		if err := rows.Scan(
+			&i.SnapshotID,
+			&i.OfferID,
+			&i.OriginCountry,
+			&i.DiscountPercent,
+			&i.DiscountReason,
+			&i.DiscountContractID,
+			&i.DiscountTierMin,
+			&i.CustomsPercent,
+			&i.FreightAmountPerKg,
+			&i.FreightCurrency,
+			&i.PackagingAmount,
+			&i.PackagingCurrency,
+			&i.ToolingAmount,
+			&i.ToolingCurrency,
 		); err != nil {
 			return nil, err
 		}

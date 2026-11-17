@@ -61,7 +61,7 @@ const createBOM = `-- name: CreateBOM :one
 INSERT INTO boms (name, currency, volume, source_snapshot_id, annual_hours, destination_country)
 VALUES ($1, $2, $3, $4, $5,
     $6)
-RETURNING id, name, currency, volume, created_at, price_snapshot_id, source_snapshot_id, annual_hours, destination_country
+RETURNING id, name, currency, volume, created_at, price_snapshot_id, source_snapshot_id, annual_hours, destination_country, cost_basis, fx_policy, program_volume
 `
 
 type CreateBOMParams struct {
@@ -95,6 +95,9 @@ func (q *Queries) CreateBOM(ctx context.Context, arg CreateBOMParams) (Bom, erro
 		&i.SourceSnapshotID,
 		&i.AnnualHours,
 		&i.DestinationCountry,
+		&i.CostBasis,
+		&i.FxPolicy,
+		&i.ProgramVolume,
 	)
 	return i, err
 }
@@ -191,7 +194,7 @@ func (q *Queries) DeleteSchedule(ctx context.Context, bomID int64) (int64, error
 }
 
 const getBOM = `-- name: GetBOM :one
-SELECT id, name, currency, volume, created_at, price_snapshot_id, source_snapshot_id, annual_hours, destination_country FROM boms
+SELECT id, name, currency, volume, created_at, price_snapshot_id, source_snapshot_id, annual_hours, destination_country, cost_basis, fx_policy, program_volume FROM boms
 WHERE id = $1
 `
 
@@ -208,6 +211,9 @@ func (q *Queries) GetBOM(ctx context.Context, id int64) (Bom, error) {
 		&i.SourceSnapshotID,
 		&i.AnnualHours,
 		&i.DestinationCountry,
+		&i.CostBasis,
+		&i.FxPolicy,
+		&i.ProgramVolume,
 	)
 	return i, err
 }
@@ -281,7 +287,7 @@ func (q *Queries) IsInSubtree(ctx context.Context, arg IsInSubtreeParams) (bool,
 }
 
 const listBOMs = `-- name: ListBOMs :many
-SELECT id, name, currency, volume, created_at, price_snapshot_id, source_snapshot_id, annual_hours, destination_country FROM boms
+SELECT id, name, currency, volume, created_at, price_snapshot_id, source_snapshot_id, annual_hours, destination_country, cost_basis, fx_policy, program_volume FROM boms
 ORDER BY id
 `
 
@@ -304,6 +310,9 @@ func (q *Queries) ListBOMs(ctx context.Context) ([]Bom, error) {
 			&i.SourceSnapshotID,
 			&i.AnnualHours,
 			&i.DestinationCountry,
+			&i.CostBasis,
+			&i.FxPolicy,
+			&i.ProgramVolume,
 		); err != nil {
 			return nil, err
 		}
@@ -379,6 +388,37 @@ func (q *Queries) ListPartStock(ctx context.Context, bomID int64) ([]BomPartStoc
 	return items, nil
 }
 
+const listTargetBudgets = `-- name: ListTargetBudgets :many
+SELECT node_id, amount, currency FROM bom_target_budgets WHERE bom_id = $1 ORDER BY node_id
+`
+
+type ListTargetBudgetsRow struct {
+	NodeID   int64
+	Amount   decimal.Decimal
+	Currency string
+}
+
+// Budgets cibles par nœud (ADR 0018, 0031) ; le budget de la racine est le budget global.
+func (q *Queries) ListTargetBudgets(ctx context.Context, bomID int64) ([]ListTargetBudgetsRow, error) {
+	rows, err := q.db.Query(ctx, listTargetBudgets, bomID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListTargetBudgetsRow
+	for rows.Next() {
+		var i ListTargetBudgetsRow
+		if err := rows.Scan(&i.NodeID, &i.Amount, &i.Currency); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const lockBOM = `-- name: LockBOM :one
 SELECT id FROM boms
 WHERE id = $1
@@ -397,7 +437,7 @@ func (q *Queries) LockBOM(ctx context.Context, id int64) (int64, error) {
 const renameBOM = `-- name: RenameBOM :one
 UPDATE boms SET name = $2
 WHERE id = $1
-RETURNING id, name, currency, volume, created_at, price_snapshot_id, source_snapshot_id, annual_hours, destination_country
+RETURNING id, name, currency, volume, created_at, price_snapshot_id, source_snapshot_id, annual_hours, destination_country, cost_basis, fx_policy, program_volume
 `
 
 type RenameBOMParams struct {
@@ -418,6 +458,9 @@ func (q *Queries) RenameBOM(ctx context.Context, arg RenameBOMParams) (Bom, erro
 		&i.SourceSnapshotID,
 		&i.AnnualHours,
 		&i.DestinationCountry,
+		&i.CostBasis,
+		&i.FxPolicy,
+		&i.ProgramVolume,
 	)
 	return i, err
 }
@@ -425,7 +468,7 @@ func (q *Queries) RenameBOM(ctx context.Context, arg RenameBOMParams) (Bom, erro
 const setBOMAnnualHours = `-- name: SetBOMAnnualHours :one
 UPDATE boms SET annual_hours = $2
 WHERE id = $1
-RETURNING id, name, currency, volume, created_at, price_snapshot_id, source_snapshot_id, annual_hours, destination_country
+RETURNING id, name, currency, volume, created_at, price_snapshot_id, source_snapshot_id, annual_hours, destination_country, cost_basis, fx_policy, program_volume
 `
 
 type SetBOMAnnualHoursParams struct {
@@ -447,6 +490,48 @@ func (q *Queries) SetBOMAnnualHours(ctx context.Context, arg SetBOMAnnualHoursPa
 		&i.SourceSnapshotID,
 		&i.AnnualHours,
 		&i.DestinationCountry,
+		&i.CostBasis,
+		&i.FxPolicy,
+		&i.ProgramVolume,
+	)
+	return i, err
+}
+
+const setBOMCostMethod = `-- name: SetBOMCostMethod :one
+UPDATE boms SET cost_basis = $2, fx_policy = $3, program_volume = $4
+WHERE id = $1
+RETURNING id, name, currency, volume, created_at, price_snapshot_id, source_snapshot_id, annual_hours, destination_country, cost_basis, fx_policy, program_volume
+`
+
+type SetBOMCostMethodParams struct {
+	ID            int64
+	CostBasis     string
+	FxPolicy      string
+	ProgramVolume pgtype.Int4
+}
+
+// Méthode de calcul du coût (ADR 0031).
+func (q *Queries) SetBOMCostMethod(ctx context.Context, arg SetBOMCostMethodParams) (Bom, error) {
+	row := q.db.QueryRow(ctx, setBOMCostMethod,
+		arg.ID,
+		arg.CostBasis,
+		arg.FxPolicy,
+		arg.ProgramVolume,
+	)
+	var i Bom
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Currency,
+		&i.Volume,
+		&i.CreatedAt,
+		&i.PriceSnapshotID,
+		&i.SourceSnapshotID,
+		&i.AnnualHours,
+		&i.DestinationCountry,
+		&i.CostBasis,
+		&i.FxPolicy,
+		&i.ProgramVolume,
 	)
 	return i, err
 }
@@ -454,7 +539,7 @@ func (q *Queries) SetBOMAnnualHours(ctx context.Context, arg SetBOMAnnualHoursPa
 const setBOMDestination = `-- name: SetBOMDestination :one
 UPDATE boms SET destination_country = $1
 WHERE id = $2
-RETURNING id, name, currency, volume, created_at, price_snapshot_id, source_snapshot_id, annual_hours, destination_country
+RETURNING id, name, currency, volume, created_at, price_snapshot_id, source_snapshot_id, annual_hours, destination_country, cost_basis, fx_policy, program_volume
 `
 
 type SetBOMDestinationParams struct {
@@ -476,6 +561,9 @@ func (q *Queries) SetBOMDestination(ctx context.Context, arg SetBOMDestinationPa
 		&i.SourceSnapshotID,
 		&i.AnnualHours,
 		&i.DestinationCountry,
+		&i.CostBasis,
+		&i.FxPolicy,
+		&i.ProgramVolume,
 	)
 	return i, err
 }
@@ -483,7 +571,7 @@ func (q *Queries) SetBOMDestination(ctx context.Context, arg SetBOMDestinationPa
 const setBOMPriceSnapshot = `-- name: SetBOMPriceSnapshot :one
 UPDATE boms SET price_snapshot_id = $1
 WHERE id = $2
-RETURNING id, name, currency, volume, created_at, price_snapshot_id, source_snapshot_id, annual_hours, destination_country
+RETURNING id, name, currency, volume, created_at, price_snapshot_id, source_snapshot_id, annual_hours, destination_country, cost_basis, fx_policy, program_volume
 `
 
 type SetBOMPriceSnapshotParams struct {
@@ -505,6 +593,9 @@ func (q *Queries) SetBOMPriceSnapshot(ctx context.Context, arg SetBOMPriceSnapsh
 		&i.SourceSnapshotID,
 		&i.AnnualHours,
 		&i.DestinationCountry,
+		&i.CostBasis,
+		&i.FxPolicy,
+		&i.ProgramVolume,
 	)
 	return i, err
 }
@@ -695,7 +786,7 @@ func (q *Queries) SetNodeStrategy(ctx context.Context, arg SetNodeStrategyParams
 const updateBOMSettings = `-- name: UpdateBOMSettings :one
 UPDATE boms SET currency = $2, volume = $3
 WHERE id = $1
-RETURNING id, name, currency, volume, created_at, price_snapshot_id, source_snapshot_id, annual_hours, destination_country
+RETURNING id, name, currency, volume, created_at, price_snapshot_id, source_snapshot_id, annual_hours, destination_country, cost_basis, fx_policy, program_volume
 `
 
 type UpdateBOMSettingsParams struct {
@@ -717,6 +808,9 @@ func (q *Queries) UpdateBOMSettings(ctx context.Context, arg UpdateBOMSettingsPa
 		&i.SourceSnapshotID,
 		&i.AnnualHours,
 		&i.DestinationCountry,
+		&i.CostBasis,
+		&i.FxPolicy,
+		&i.ProgramVolume,
 	)
 	return i, err
 }
@@ -758,5 +852,36 @@ func (q *Queries) UpsertSchedule(ctx context.Context, arg UpsertScheduleParams) 
 	row := q.db.QueryRow(ctx, upsertSchedule, arg.BomID, arg.StartOn, arg.TargetOn)
 	var i BomSchedule
 	err := row.Scan(&i.BomID, &i.StartOn, &i.TargetOn)
+	return i, err
+}
+
+const upsertTargetBudget = `-- name: UpsertTargetBudget :one
+INSERT INTO bom_target_budgets (bom_id, node_id, amount, currency) VALUES ($1, $2, $3, $4)
+ON CONFLICT (bom_id, node_id) DO UPDATE SET amount = EXCLUDED.amount, currency = EXCLUDED.currency
+RETURNING node_id, amount, currency
+`
+
+type UpsertTargetBudgetParams struct {
+	BomID    int64
+	NodeID   int64
+	Amount   decimal.Decimal
+	Currency string
+}
+
+type UpsertTargetBudgetRow struct {
+	NodeID   int64
+	Amount   decimal.Decimal
+	Currency string
+}
+
+func (q *Queries) UpsertTargetBudget(ctx context.Context, arg UpsertTargetBudgetParams) (UpsertTargetBudgetRow, error) {
+	row := q.db.QueryRow(ctx, upsertTargetBudget,
+		arg.BomID,
+		arg.NodeID,
+		arg.Amount,
+		arg.Currency,
+	)
+	var i UpsertTargetBudgetRow
+	err := row.Scan(&i.NodeID, &i.Amount, &i.Currency)
 	return i, err
 }

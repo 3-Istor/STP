@@ -440,6 +440,41 @@ func (q *Queries) LinkSnapshotPrice(ctx context.Context, arg LinkSnapshotPricePa
 	return err
 }
 
+const listBudgetRates = `-- name: ListBudgetRates :many
+SELECT year, from_currency, to_currency, rate FROM budget_rates WHERE year = $1 AND to_currency = $2 ORDER BY from_currency
+`
+
+type ListBudgetRatesParams struct {
+	Year       int32
+	ToCurrency string
+}
+
+// Taux budget d'une année vers une devise (paires directes seulement).
+func (q *Queries) ListBudgetRates(ctx context.Context, arg ListBudgetRatesParams) ([]BudgetRate, error) {
+	rows, err := q.db.Query(ctx, listBudgetRates, arg.Year, arg.ToCurrency)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []BudgetRate
+	for rows.Next() {
+		var i BudgetRate
+		if err := rows.Scan(
+			&i.Year,
+			&i.FromCurrency,
+			&i.ToCurrency,
+			&i.Rate,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listCustomsDuties = `-- name: ListCustomsDuties :many
 SELECT origin_country, destination_country, duty_percent FROM customs_duties ORDER BY origin_country, destination_country
 `
@@ -482,6 +517,48 @@ func (q *Queries) ListFreightRates(ctx context.Context) ([]FreightRate, error) {
 			&i.DestinationCountry,
 			&i.AmountPerKg,
 			&i.Currency,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listOfferCostParams = `-- name: ListOfferCostParams :many
+SELECT id, origin_country, packaging_amount, packaging_currency, tooling_amount, tooling_currency
+FROM offers WHERE id = ANY($1::bigint[]) ORDER BY id
+`
+
+type ListOfferCostParamsRow struct {
+	ID                int64
+	OriginCountry     string
+	PackagingAmount   decimal.NullDecimal
+	PackagingCurrency pgtype.Text
+	ToolingAmount     decimal.NullDecimal
+	ToolingCurrency   pgtype.Text
+}
+
+// Coût complet (ADR 0031) : emballage et outillage de plusieurs offres en une lecture.
+func (q *Queries) ListOfferCostParams(ctx context.Context, offerIds []int64) ([]ListOfferCostParamsRow, error) {
+	rows, err := q.db.Query(ctx, listOfferCostParams, offerIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListOfferCostParamsRow
+	for rows.Next() {
+		var i ListOfferCostParamsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.OriginCountry,
+			&i.PackagingAmount,
+			&i.PackagingCurrency,
+			&i.ToolingAmount,
+			&i.ToolingCurrency,
 		); err != nil {
 			return nil, err
 		}
@@ -1281,6 +1358,31 @@ func (q *Queries) SetOfferPackaging(ctx context.Context, arg SetOfferPackagingPa
 	return i, err
 }
 
+const setOfferTooling = `-- name: SetOfferTooling :one
+UPDATE offers SET tooling_amount = $2, tooling_currency = $3
+WHERE id = $1
+RETURNING id, tooling_amount, tooling_currency
+`
+
+type SetOfferToolingParams struct {
+	ID              int64
+	ToolingAmount   decimal.NullDecimal
+	ToolingCurrency pgtype.Text
+}
+
+type SetOfferToolingRow struct {
+	ID              int64
+	ToolingAmount   decimal.NullDecimal
+	ToolingCurrency pgtype.Text
+}
+
+func (q *Queries) SetOfferTooling(ctx context.Context, arg SetOfferToolingParams) (SetOfferToolingRow, error) {
+	row := q.db.QueryRow(ctx, setOfferTooling, arg.ID, arg.ToolingAmount, arg.ToolingCurrency)
+	var i SetOfferToolingRow
+	err := row.Scan(&i.ID, &i.ToolingAmount, &i.ToolingCurrency)
+	return i, err
+}
+
 const tryRuntimeLease = `-- name: TryRuntimeLease :one
 SELECT pg_try_advisory_lock(hashtextextended($1::text, 0))::boolean
 `
@@ -1306,6 +1408,36 @@ type UpdateRuntimeRunParams struct {
 func (q *Queries) UpdateRuntimeRun(ctx context.Context, arg UpdateRuntimeRunParams) error {
 	_, err := q.db.Exec(ctx, updateRuntimeRun, arg.DatasetVersion, arg.Tick, arg.AsOf)
 	return err
+}
+
+const upsertBudgetRate = `-- name: UpsertBudgetRate :one
+INSERT INTO budget_rates (year, from_currency, to_currency, rate) VALUES ($1, $2, $3, $4)
+ON CONFLICT (year, from_currency, to_currency) DO UPDATE SET rate = EXCLUDED.rate
+RETURNING year, from_currency, to_currency, rate
+`
+
+type UpsertBudgetRateParams struct {
+	Year         int32
+	FromCurrency string
+	ToCurrency   string
+	Rate         decimal.Decimal
+}
+
+func (q *Queries) UpsertBudgetRate(ctx context.Context, arg UpsertBudgetRateParams) (BudgetRate, error) {
+	row := q.db.QueryRow(ctx, upsertBudgetRate,
+		arg.Year,
+		arg.FromCurrency,
+		arg.ToCurrency,
+		arg.Rate,
+	)
+	var i BudgetRate
+	err := row.Scan(
+		&i.Year,
+		&i.FromCurrency,
+		&i.ToCurrency,
+		&i.Rate,
+	)
+	return i, err
 }
 
 const upsertCustomsDuty = `-- name: UpsertCustomsDuty :one

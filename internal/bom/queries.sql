@@ -159,3 +159,18 @@ RETURNING *;
 -- name: DeleteSchedule :execrows
 DELETE FROM bom_schedule
 WHERE bom_id = $1;
+
+-- Méthode de calcul du coût (ADR 0031).
+-- name: SetBOMCostMethod :one
+UPDATE boms SET cost_basis = $2, fx_policy = $3, program_volume = sqlc.narg(program_volume)
+WHERE id = $1
+RETURNING *;
+
+-- Budgets cibles par nœud (ADR 0018, 0031) ; le budget de la racine est le budget global.
+-- name: ListTargetBudgets :many
+SELECT node_id, amount, currency FROM bom_target_budgets WHERE bom_id = $1 ORDER BY node_id;
+
+-- name: UpsertTargetBudget :one
+INSERT INTO bom_target_budgets (bom_id, node_id, amount, currency) VALUES ($1, $2, $3, $4)
+ON CONFLICT (bom_id, node_id) DO UPDATE SET amount = EXCLUDED.amount, currency = EXCLUDED.currency
+RETURNING node_id, amount, currency;
