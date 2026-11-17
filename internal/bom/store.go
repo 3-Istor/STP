@@ -107,7 +107,9 @@ type Store interface {
 	// GetBOM renvoie la BOM, ou ErrBOMNotFound.
 	GetBOM(ctx context.Context, id int64) (BOM, error)
 	RenameBOM(ctx context.Context, id int64, name string) (BOM, error)
-	UpdateSettings(ctx context.Context, id int64, currency string, volume int32) (BOM, error)
+	// UpdateSettings change devise et volume ; check (non nil) juge le changement sous le verrou de la BOM, avec sa
+	// devise actuelle et son budget global, dans la même transaction que l'écriture (ADR 0045).
+	UpdateSettings(ctx context.Context, id int64, currency string, volume int32, check SettingsCheck) (BOM, error)
 	SetAnnualHours(ctx context.Context, id int64, hours decimal.Decimal) (BOM, error)
 	SetDestination(ctx context.Context, id int64, country *string) (BOM, error)
 	// SetPriceSnapshot fige les prix (snapshotID non nil) ou les remet en direct (nil).

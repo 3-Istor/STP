@@ -154,7 +154,7 @@ func TestCreateBOMHasRootCurrencyAndVolume(t *testing.T) {
 		t.Fatalf("tree = %+v, want une seule racine nommée Citadine", nodes)
 	}
 
-	if _, err := s.UpdateSettings(ctx, b.ID, "USD", 10); err != nil {
+	if _, err := s.UpdateSettings(ctx, b.ID, "USD", 10, nil); err != nil {
 		t.Fatalf("update settings: %v", err)
 	}
 	got, err := s.GetBOM(ctx, b.ID)
@@ -509,8 +509,8 @@ func TestEditTargetBudget(t *testing.T) {
 	b, ids := sampleTree(t, s) // R ─ A ─ B ─ C ; R ─ D
 	// La règle ne juge que les ensembles touchés par l'écriture (ADR 0044) : touched = nœud écrit ou déplacé.
 	checkOn := func(node string) bom.BudgetCheck {
-		return func(nodes []bom.Node, budgets []bom.TargetBudget) error {
-			return bom.CheckBudgetTree(nodes, budgets, []int64{ids[node]}, bom.BudgetFX{Currency: "EUR"})
+		return func(st bom.BudgetState) error {
+			return bom.CheckBudgetTree(st.Nodes, st.Budgets, []int64{ids[node]}, bom.BudgetFX{Currency: "EUR"})
 		}
 	}
 	eur := func(node, amount string) *bom.TargetBudget {

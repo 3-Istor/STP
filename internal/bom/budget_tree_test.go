@@ -218,7 +218,11 @@ func TestServiceTargetBudgets(t *testing.T) {
 		{"changer la devise de la BOM avec un budget global : refusé (ADR 0045)", func() error {
 			_, err := svc.UpdateSettings(ctx, b.ID, "USD", 1)
 			return err
-		}, ErrInvalidInput, nil},
+		}, ErrInvalidInput, func() {
+			if got, err := svc.store.GetBOM(ctx, b.ID); err != nil || got.Currency != "EUR" {
+				t.Fatalf("bom currency %q (err %v), want EUR kept", got.Currency, err)
+			}
+		}},
 		{"sans budget global, la BOM passe en USD ; un déplacement sans rapport passe", func() error {
 			if err := svc.DeleteTargetBudget(ctx, b.ID, root); err != nil {
 				return err

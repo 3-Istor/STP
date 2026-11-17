@@ -32,6 +32,16 @@ UPDATE boms SET name = $2
 WHERE id = $1
 RETURNING *;
 
+-- Verrou de la BOM qui rend aussi sa devise : une règle qui en dépend (budget global, ADR 0045) est jugée sur la
+-- devise lue sous le verrou, jamais sur une lecture faite avant la transaction.
+-- name: LockBOMCurrency :one
+SELECT currency::text FROM boms
+WHERE id = $1
+FOR UPDATE;
+
+-- name: RootNodeID :one
+SELECT id FROM bom_nodes WHERE bom_id = $1 AND parent_id IS NULL;
+
 -- name: UpdateBOMSettings :one
 UPDATE boms SET currency = $2, volume = $3
 WHERE id = $1

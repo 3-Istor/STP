@@ -88,7 +88,28 @@ func (m *memStore) RenameBOM(_ context.Context, id int64, name string) (BOM, err
 	return m.updateBOM(id, func(b *BOM) { b.Name = name })
 }
 
-func (m *memStore) UpdateSettings(_ context.Context, id int64, currency string, volume int32) (BOM, error) {
+func (m *memStore) UpdateSettings(_ context.Context, id int64, currency string, volume int32, check SettingsCheck) (BOM, error) {
+	if check != nil {
+		m.mu.Lock()
+		b, err := m.getBOM(id)
+		var global *TargetBudget
+		if err == nil {
+			root := RootID(m.treeLocked(id))
+			for _, x := range m.budgets[id] {
+				if x.NodeID == root {
+					x := x
+					global = &x
+				}
+			}
+		}
+		m.mu.Unlock()
+		if err != nil {
+			return BOM{}, err
+		}
+		if err := check(b.Currency, global); err != nil {
+			return BOM{}, err
+		}
+	}
 	return m.updateBOM(id, func(b *BOM) { b.Currency, b.Volume = currency, volume })
 }
 
@@ -193,7 +214,8 @@ func (m *memStore) EditTargetBudget(_ context.Context, bomID, nodeID int64, b *T
 		next = append(next, *b)
 	}
 	if check != nil {
-		if err := check(m.treeLocked(bomID), next); err != nil {
+		cur, _ := m.getBOM(bomID)
+		if err := check(BudgetState{Currency: cur.Currency, Nodes: m.treeLocked(bomID), Budgets: next}); err != nil {
 			return err
 		}
 	}
@@ -355,7 +377,8 @@ func (m *memStore) MoveNode(_ context.Context, bomID, nodeID, newParentID int64,
 	n.ParentID = &newParentID
 	m.nodes[nodeID] = n
 	if check != nil {
-		if err := check(m.treeLocked(bomID), m.budgets[bomID]); err != nil {
+		cur, _ := m.getBOM(bomID)
+		if err := check(BudgetState{Currency: cur.Currency, Nodes: m.treeLocked(bomID), Budgets: m.budgets[bomID]}); err != nil {
 			n.ParentID = old
 			m.nodes[nodeID] = n
 			return Node{}, err

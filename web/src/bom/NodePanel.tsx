@@ -202,7 +202,10 @@ const BUDGET_CURRENCIES = ['EUR', 'USD', 'GBP', 'JPY']
 // est vérifiée par l'API ; un refus s'affiche tel quel (data.run), le champ garde la saisie.
 // globalBudget : racine (budget global), toujours dans la devise de la BOM (ADR 0045).
 function BudgetField({ current, bomCurrency, globalBudget, onSet }: { current: Money | null; bomCurrency: string; globalBudget: boolean; onSet: (amount: string | null, currency: string) => Promise<boolean> }) {
-  const [value, setValue] = useState(current?.amount ?? '')
+  // Budget global hérité dans une autre devise (avant ADR 0045) : pas de préremplissage, sinon OK enregistrerait le
+  // même nombre dans la devise de la BOM, sans conversion. Il est à ressaisir dans la devise de la BOM.
+  const foreignGlobal = globalBudget && current !== null && current.currency !== bomCurrency
+  const [value, setValue] = useState(foreignGlobal ? '' : (current?.amount ?? ''))
   const [currency, setCurrency] = useState(globalBudget ? bomCurrency : (current?.currency ?? bomCurrency))
   const amount = decimalInput(value)
   const valid = /^\d+(\.\d+)?$/.test(amount)
@@ -235,6 +238,11 @@ function BudgetField({ current, bomCurrency, globalBudget, onSet }: { current: M
         <button type="button" className="link" onClick={() => void onSet(null, currency)}>
           retirer
         </button>
+      )}
+      {foreignGlobal && (
+        <span className="muted small">
+          budget global actuel en {current.currency} : à ressaisir en {bomCurrency}
+        </span>
       )}
     </form>
   )

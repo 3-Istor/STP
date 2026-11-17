@@ -115,11 +115,50 @@ func (s *Store) RenameBOM(ctx context.Context, id int64, name string) (bom.BOM, 
 }
 
 // UpdateSettings change la devise de référence et le volume.
-func (s *Store) UpdateSettings(ctx context.Context, id int64, currency string, volume int32) (bom.BOM, error) {
-	row, err := s.q.UpdateBOMSettings(ctx, bomdb.UpdateBOMSettingsParams{
-		ID: id, Currency: currency, Volume: volume,
+// UpdateSettings change devise et volume ; check est jugé sous le verrou de la BOM (devise actuelle, budget global),
+// dans la même transaction que l'écriture : un budget global posé en parallèle ne peut pas contourner la règle.
+func (s *Store) UpdateSettings(ctx context.Context, id int64, currency string, volume int32, check bom.SettingsCheck) (bom.BOM, error) {
+	var out bom.BOM
+	err := s.inTx(ctx, func(q *bomdb.Queries) error {
+		current, err := q.LockBOMCurrency(ctx, id)
+		if err != nil {
+			return notFound(err, bom.ErrBOMNotFound)
+		}
+		if check != nil {
+			global, err := globalBudget(ctx, q, id)
+			if err != nil {
+				return err
+			}
+			if err := check(current, global); err != nil {
+				return err
+			}
+		}
+		row, err := q.UpdateBOMSettings(ctx, bomdb.UpdateBOMSettingsParams{ID: id, Currency: currency, Volume: volume})
+		out, err = bomOrErr(row, err, "update")
+		return err
 	})
-	return bomOrErr(row, err, fmt.Sprintf("update settings of bom %d", id))
+	if err != nil {
+		return bom.BOM{}, fmt.Errorf("update settings of bom %d: %w", id, err)
+	}
+	return out, nil
+}
+
+// globalBudget : budget de la racine de la BOM (budget global), nil s'il n'y en a pas ; lu dans la transaction q.
+func globalBudget(ctx context.Context, q *bomdb.Queries, bomID int64) (*bom.TargetBudget, error) {
+	root, err := q.RootNodeID(ctx, bomID)
+	if err != nil {
+		return nil, fmt.Errorf("root of bom %d: %w", bomID, notFound(err, bom.ErrBOMNotFound))
+	}
+	rows, err := q.ListTargetBudgets(ctx, bomID)
+	if err != nil {
+		return nil, fmt.Errorf("target budgets of bom %d: %w", bomID, err)
+	}
+	for _, r := range rows {
+		if r.NodeID == root {
+			return &bom.TargetBudget{NodeID: r.NodeID, Amount: r.Amount, Currency: r.Currency}, nil
+		}
+	}
+	return nil, nil
 }
 
 // Stock renvoie le stock de la BOM, trié par pièce (ADR 0022).
@@ -383,7 +422,8 @@ func (s *Store) SetNodeProductionDays(ctx context.Context, bomID, nodeID int64, 
 func (s *Store) MoveNode(ctx context.Context, bomID, nodeID, newParentID int64, check bom.BudgetCheck) (bom.Node, error) {
 	var out bom.Node
 	err := s.inTx(ctx, func(q *bomdb.Queries) error {
-		if _, err := q.LockBOM(ctx, bomID); err != nil {
+		currency, err := q.LockBOMCurrency(ctx, bomID)
+		if err != nil {
 			return notFound(err, bom.ErrBOMNotFound)
 		}
 		for _, id := range []int64{nodeID, newParentID} {
@@ -414,7 +454,8 @@ func (s *Store) MoveNode(ctx context.Context, bomID, nodeID, newParentID int64, 
 		if err != nil {
 			return err
 		}
-		return check(nodes, budgets) // erreur : la transaction est annulée, le nœud reste où il était
+		// erreur : la transaction est annulée, le nœud reste où il était
+		return check(bom.BudgetState{Currency: currency, Nodes: nodes, Budgets: budgets})
 	})
 	if err != nil {
 		return bom.Node{}, fmt.Errorf("move node %d under %d in bom %d: %w", nodeID, newParentID, bomID, err)
@@ -594,7 +635,8 @@ func (s *Store) SetTargetBudget(ctx context.Context, bomID int64, b bom.TargetBu
 // deux écritures concurrentes ne peuvent pas chacune passer la règle et la casser ensemble (ADR 0042).
 func (s *Store) EditTargetBudget(ctx context.Context, bomID, nodeID int64, b *bom.TargetBudget, check bom.BudgetCheck) error {
 	err := s.inTx(ctx, func(q *bomdb.Queries) error {
-		if _, err := q.LockBOM(ctx, bomID); err != nil {
+		currency, err := q.LockBOMCurrency(ctx, bomID) // devise relue sous le verrou (ADR 0045)
+		if err != nil {
 			return notFound(err, bom.ErrBOMNotFound)
 		}
 		if _, err := q.GetNode(ctx, bomdb.GetNodeParams{BomID: bomID, ID: nodeID}); err != nil {
@@ -609,7 +651,7 @@ func (s *Store) EditTargetBudget(ctx context.Context, bomID, nodeID int64, b *bo
 			budgets = append(budgets, *b)
 		}
 		if check != nil {
-			if err := check(nodes, budgets); err != nil {
+			if err := check(bom.BudgetState{Currency: currency, Nodes: nodes, Budgets: budgets}); err != nil {
 				return err
 			}
 		}

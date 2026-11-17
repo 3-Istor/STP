@@ -180,10 +180,7 @@ func (s *Service) UpdateSettings(ctx context.Context, id int64, currency string,
 	if err := validateSettings(currency, volume); err != nil {
 		return BOM{}, fmt.Errorf("update settings of bom %d: %w", id, err)
 	}
-	if err := s.checkGlobalBudgetCurrency(ctx, id, currency); err != nil {
-		return BOM{}, fmt.Errorf("update settings of bom %d: %w", id, err)
-	}
-	out, err := s.store.UpdateSettings(ctx, id, currency, volume)
+	out, err := s.store.UpdateSettings(ctx, id, currency, volume, globalBudgetCurrency(id, currency))
 	if err != nil {
 		return BOM{}, fmt.Errorf("update settings of bom %d: %w", id, err)
 	}

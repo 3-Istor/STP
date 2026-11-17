@@ -23,8 +23,19 @@ import (
 // ErrBudgetExceedsParent : les budgets des sous-ensembles d'un ensemble dépasseraient son budget.
 var ErrBudgetExceedsParent = errors.New("sub-budgets exceed the budget of their assembly")
 
-// BudgetCheck juge un arbre et ses budgets tels qu'ils seraient après l'écriture ; une erreur annule l'écriture.
-type BudgetCheck func(nodes []Node, budgets []TargetBudget) error
+// BudgetState : ce que l'écriture laisserait, lu sous le verrou de la BOM : sa devise, l'arbre et les budgets.
+type BudgetState struct {
+	Currency string
+	Nodes    []Node
+	Budgets  []TargetBudget
+}
+
+// BudgetCheck juge l'état qu'une écriture laisserait ; une erreur annule l'écriture.
+type BudgetCheck func(st BudgetState) error
+
+// SettingsCheck juge un changement de réglages sous le verrou de la BOM : sa devise actuelle et son budget global (nil
+// sans budget global).
+type SettingsCheck func(currency string, global *TargetBudget) error
 
 // BudgetFX : taux qui convertissent les budgets dans la devise de la BOM (ADR 0044) : direct ou inverse (ADR 0017),
 // datés, de la même source que les coûts. Vide si tous les budgets sont dans la devise de la BOM.
@@ -305,8 +316,12 @@ func (s *Service) budgetCheck(ctx context.Context, b BOM, touched int64, extra .
 	if err != nil {
 		return nil, err
 	}
-	return func(nodes []Node, budgets []TargetBudget) error {
-		return CheckBudgetTree(nodes, budgets, []int64{touched}, fx)
+	return func(st BudgetState) error {
+		// Les taux ont été lus pour la devise d'avant le verrou : si elle a changé entre-temps, on refuse (à refaire).
+		if st.Currency != string(fx.Currency) {
+			return fmt.Errorf("bom %d currency changed from %s to %s during the write, retry: %w", b.ID, fx.Currency, st.Currency, money.ErrCurrencyMismatch)
+		}
+		return CheckBudgetTree(st.Nodes, st.Budgets, []int64{touched}, fx)
 	}, nil
 }
 
@@ -326,12 +341,12 @@ func (s *Service) PutTargetBudget(ctx context.Context, bomID, nodeID int64, amou
 	if err != nil {
 		return TargetBudget{}, fmt.Errorf("budget of node %d in bom %d: %w", nodeID, bomID, err)
 	}
-	// ADR 0045 : le budget global (racine) reste dans la devise de la BOM ; jugé dans la transaction, sur l'arbre lu.
-	check := func(nodes []Node, budgets []TargetBudget) error {
-		if tb.Currency != b.Currency && RootID(nodes) == nodeID {
-			return fmt.Errorf("global budget of bom %d must be in %s, not %s (ADR 0045): %w", bomID, b.Currency, tb.Currency, ErrInvalidInput)
+	// ADR 0045 : le budget global (racine) reste dans la devise de la BOM, lue sous le verrou avec l'arbre.
+	check := func(st BudgetState) error {
+		if tb.Currency != st.Currency && RootID(st.Nodes) == nodeID {
+			return fmt.Errorf("global budget of bom %d must be in %s, not %s (ADR 0045): %w", bomID, st.Currency, tb.Currency, ErrInvalidInput)
 		}
-		return tree(nodes, budgets)
+		return tree(st)
 	}
 	if err := s.store.EditTargetBudget(ctx, bomID, nodeID, &tb, check); err != nil {
 		return TargetBudget{}, err // déjà « edit budget of node … in bom … » (store)
@@ -353,25 +368,15 @@ func (s *Service) DeleteTargetBudget(ctx context.Context, bomID, nodeID int64) e
 	return s.store.EditTargetBudget(ctx, bomID, nodeID, nil, check) // erreur déjà située (store)
 }
 
-// checkGlobalBudgetCurrency refuse de changer la devise d'une BOM qui a un budget global (ADR 0045) : il serait
-// alors dans une autre devise que la BOM. On retire ou on ressaisit d'abord le budget global ; les sous-budgets
-// gardent leur devise et restent convertis (ADR 0044).
-func (s *Service) checkGlobalBudgetCurrency(ctx context.Context, bomID int64, currency string) error {
-	b, err := s.store.GetBOM(ctx, bomID)
-	if err != nil || b.Currency == currency {
-		return err
+// globalBudgetCurrency : règle d'ADR 0045 pour un changement de devise, jugée sous le verrou de la BOM (store). Refusé
+// si la BOM a un budget global dans une autre devise que la nouvelle ; permis sans budget global, ou si le budget
+// global est déjà dans la nouvelle devise (données antérieures remises en cohérence).
+func globalBudgetCurrency(bomID int64, to string) SettingsCheck {
+	return func(current string, global *TargetBudget) error {
+		if current == to || global == nil || global.Currency == to {
+			return nil
+		}
+		return fmt.Errorf("bom %d has a global budget of %s %s: remove it before switching to %s (ADR 0045): %w",
+			bomID, global.Amount, global.Currency, to, ErrInvalidInput)
 	}
-	budgets, err := s.store.TargetBudgets(ctx, bomID)
-	if err != nil || len(budgets) == 0 {
-		return err
-	}
-	nodes, err := s.store.Tree(ctx, bomID)
-	if err != nil {
-		return err
-	}
-	if g := RootBudgetOf(budgets, RootID(nodes)); g != nil {
-		return fmt.Errorf("bom %d has a global budget of %s %s: remove or re-enter it before switching to %s (ADR 0045): %w",
-			bomID, g.Amount, g.Currency, currency, ErrInvalidInput)
-	}
-	return nil
 }
