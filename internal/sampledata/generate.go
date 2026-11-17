@@ -133,7 +133,7 @@ func makePart(seed string, sec section, p partSpec) Part {
 	}
 	ref := dec(p.price).Mul(dec(eurTo[currency]))
 	return Part{
-		Key: p.key, Name: p.name, Category: sec.category, Zone: sec.zone,
+		Key: p.key, Name: p.name, Category: sec.category, Zone: sec.zone, Material: p.mat.name(),
 		MassKG:                mass.String(),
 		CO2KGPerUnit:          co2.String(),
 		RecycledPercent:       strconv.Itoa(intBetween(seed, p.key, "recycled", m.recycled[0], m.recycled[1])),

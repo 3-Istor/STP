@@ -262,6 +262,7 @@ type Part struct {
 	HourlyAmount          decimal.NullDecimal
 	HourlyCurrency        pgtype.Text
 	ArchivedAt            pgtype.Timestamptz
+	Material              pgtype.Text
 }
 
 type PartAlternative struct {

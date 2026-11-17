@@ -1,6 +1,7 @@
 // Client de l'API /api/v1 (contrat : internal/httpapi/boms_json.go). Champs en snake_case comme l'API ;
 // montants, quantités, CO2, masses et taux en chaînes décimales, jamais en `number`.
 import type { Money } from './money.ts'
+import { keepsServerDetail, phraseFor } from './errors.ts'
 
 export type BOM = {
   id: number
@@ -207,6 +208,12 @@ export type NodeBudget = {
   percent: string | null
   state: BudgetState
   error: string | null
+  // ADR 0044 : budget dans une autre devise que la BOM, converti au taux du jour (taux utilisé) ; null sinon.
+  converted?: Money | null
+  rate?: Rate | null
+  // Répartition d'un ensemble (ADR 0045) : over = les sous-budgets dépassent ce budget au taux courant (change) ;
+  // unverifiable = un taux manque, la répartition n'a pas pu être jugée. Signalé, jamais bloquant ; null sinon.
+  allocation?: { kind: 'over' | 'unverifiable'; reason: string } | null
 }
 
 // Ventilation du coût d'un nœud (« Pourquoi ce coût ? », ADR 0031) : lignes additives dans la devise de la
@@ -420,9 +427,11 @@ export type ProfilePreset = { preset: string; label: string; hint: string; weigh
 
 export class ApiError extends Error {
   readonly status: number
-  constructor(status: number, message: string) {
+  readonly code: string | undefined
+  constructor(status: number, message: string, code?: string) {
     super(message)
     this.status = status
+    this.code = code
   }
 }
 
@@ -434,13 +443,15 @@ async function call<T>(method: string, path: string, body?: unknown): Promise<T>
   })
   if (!res.ok) {
     let msg = `${res.status} ${res.statusText}`
+    let code: string | undefined
     try {
-      const data = (await res.json()) as { error?: string }
+      const data = (await res.json()) as { error?: string; code?: string }
       if (data.error) msg = data.error
+      code = data.code
     } catch {
       // corps non JSON : on garde le statut HTTP
     }
-    throw new ApiError(res.status, msg)
+    throw new ApiError(res.status, msg, code)
   }
   if (res.status === 204) return undefined as T
   return (await res.json()) as T
@@ -458,6 +469,9 @@ export const api = {
   alternatives: (partID: number) => call<{ id: number; name: string }[]>('GET', `/parts/${partID}/alternatives`),
   setSchedule: (bomID: number, s: Schedule) => call<Schedule>('PUT', `/boms/${bomID}/schedule`, s),
   clearSchedule: (bomID: number) => call<void>('DELETE', `/boms/${bomID}/schedule`),
+  // Budget cible d'un nœud (ADR 0042) : refusé (409) si les sous-budgets d'un ensemble dépasseraient son budget.
+  setNodeBudget: (bomID: number, nodeID: number, target: Money) => call<unknown>('PUT', `/boms/${bomID}/nodes/${nodeID}/budget`, target),
+  deleteNodeBudget: (bomID: number, nodeID: number) => call<void>('DELETE', `/boms/${bomID}/nodes/${nodeID}/budget`),
   suggestions: (bomID: number, nodeID: number) => call<Suggestions>('GET', `/boms/${bomID}/nodes/${nodeID}/suggestions`),
   anomalies: (bomID: number, threshold: string) =>
     call<CostAnomalies>('GET', `/boms/${bomID}/anomalies?threshold=${encodeURIComponent(threshold)}`),
@@ -513,6 +527,12 @@ export const api = {
   setProfile: (bomID: number, p: { preset: string; weights: Weights }) => call<VehicleProfile>('PUT', `/boms/${bomID}/profile`, p),
 }
 
+// errorMessage : la phrase française du code d'erreur si l'API en donne un connu, sinon le texte reçu.
 export function errorMessage(e: unknown): string {
+  if (e instanceof ApiError) {
+    const phrase = phraseFor(e.code)
+    if (!phrase) return e.message
+    return keepsServerDetail(e.code) && e.message ? `${phrase} (${e.message})` : phrase
+  }
   return e instanceof Error ? e.message : String(e)
 }

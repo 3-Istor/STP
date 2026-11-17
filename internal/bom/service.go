@@ -180,7 +180,7 @@ func (s *Service) UpdateSettings(ctx context.Context, id int64, currency string,
 	if err := validateSettings(currency, volume); err != nil {
 		return BOM{}, fmt.Errorf("update settings of bom %d: %w", id, err)
 	}
-	out, err := s.store.UpdateSettings(ctx, id, currency, volume)
+	out, err := s.store.UpdateSettings(ctx, id, currency, volume, globalBudgetCurrency(id, currency))
 	if err != nil {
 		return BOM{}, fmt.Errorf("update settings of bom %d: %w", id, err)
 	}
@@ -441,9 +441,18 @@ func (s *Service) checkReplacement(ctx context.Context, currentPart, partID, off
 // MoveNode rattache le nœud à un autre parent ; ErrCycle si c'est le nœud ou l'un de ses descendants
 // (contrôle fait par le store, dans la transaction de la mise à jour).
 func (s *Service) MoveNode(ctx context.Context, bomID, nodeID, newParentID int64) (Node, error) {
-	out, err := s.store.MoveNode(ctx, bomID, nodeID, newParentID)
-	if err != nil {
+	if _, err := s.store.GetBOM(ctx, bomID); err != nil {
 		return Node{}, fmt.Errorf("move node %d in bom %d: %w", nodeID, bomID, err)
+	}
+	// Un ensemble budgété déplacé sous un autre compte dans ses sous-budgets (ADR 0042, ADR 0044).
+	var out Node
+	err := s.withBudgetCheck(ctx, bomID, nodeID, nil, func(_ BOM, check BudgetCheck) error {
+		var err error
+		out, err = s.store.MoveNode(ctx, bomID, nodeID, newParentID, check)
+		return err // déjà « move node … under … in bom … » (store)
+	})
+	if err != nil {
+		return Node{}, err
 	}
 	return out, nil
 }
@@ -696,7 +705,7 @@ func (s *Service) Totals(ctx context.Context, bomID int64) (TreeTotals, error) {
 	if err != nil {
 		return TreeTotals{}, fmt.Errorf("totals of bom %d: target budgets: %w", bomID, err)
 	}
-	budgets, err := EvaluateTargetBudgets(dc.Totals, targets)
+	budgets, err := s.budgetStatuses(ctx, dc.BOM, dc.Nodes, dc.Totals, targets)
 	if err != nil {
 		return TreeTotals{}, fmt.Errorf("totals of bom %d: %w", bomID, err)
 	}

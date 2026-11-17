@@ -494,6 +494,15 @@ func (s *Service) NewDraft(ctx context.Context, id int64) (bom.BOM, error) {
 	if err != nil {
 		return bom.BOM{}, fmt.Errorf("new draft from snapshot %d: %w", id, err)
 	}
+	budgets, err := s.frozenBudgets(ctx, h)
+	if err != nil {
+		return bom.BOM{}, fmt.Errorf("new draft from snapshot %d: %w", id, err)
+	}
+	if h.BudgetsFrozen { // ses budgets sont ceux du snapshot, sous les clés de ses nœuds ; sinon voir frozenBudgets
+		if err := bom.CheckFrozenBudgets(frozenTree(nodes), budgets, money.Currency(h.Currency)); err != nil {
+			return bom.BOM{}, fmt.Errorf("new draft from snapshot %d: frozen budgets break the budget rule: %w", id, err)
+		}
+	}
 	b, err := s.boms.CreateBOM(ctx, bom.NewBOM{
 		Name: h.Name, Currency: h.Currency, Volume: h.Volume, SourceSnapshotID: &h.ID, AnnualHours: h.AnnualHours,
 		DestinationCountry: h.DestinationCountry,
@@ -522,11 +531,7 @@ func (s *Service) NewDraft(ctx context.Context, id int64) (bom.BOM, error) {
 			return bom.BOM{}, fmt.Errorf("new draft from snapshot %d: %w", id, err)
 		}
 	}
-	budgets, err := s.frozenBudgets(ctx, h)
-	if err == nil {
-		err = s.copyDraft(ctx, b.ID, nodes, stock, budgets, h.Schedule)
-	}
-	if err != nil {
+	if err := s.copyDraft(ctx, b.ID, nodes, stock, budgets, h.Schedule); err != nil {
 		if delErr := s.boms.DeleteBOM(ctx, b.ID); delErr != nil {
 			err = errors.Join(err, fmt.Errorf("remove partial draft %d: %w", b.ID, delErr))
 		}
@@ -684,4 +689,13 @@ func offerIDs(nodes []Node) []int64 {
 	}
 	slices.Sort(ids)
 	return slices.Compact(ids)
+}
+
+// frozenTree : l'arbre figé sous la forme que juge la règle des budgets (identifiant = clé du nœud figé).
+func frozenTree(nodes []Node) []bom.Node {
+	tree := make([]bom.Node, len(nodes))
+	for i, n := range nodes {
+		tree[i] = bom.Node{ID: n.Key, ParentID: n.ParentKey, Name: n.Name}
+	}
+	return tree
 }

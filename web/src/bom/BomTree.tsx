@@ -6,6 +6,7 @@ import { flatten, initiallyCollapsed } from './flatten.ts'
 import { describeAnomaly } from './anomaly.ts'
 import { budgetClass, budgetPercentText, budgetTitle } from './budget.ts'
 import { strategyLabels } from './strategy.ts'
+import { causeLabel, dominantCause } from './costCause.ts'
 
 // Virtualisation faite à la main (spec NLPF-69, aucune dépendance) : l'arbre est aplati en lignes de
 // hauteur fixe et seules les lignes visibles (plus une marge) sont dans le DOM, quel que soit le nombre de nœuds.
@@ -59,6 +60,21 @@ export function BomTree(props: Props) {
   // Sélection venue d'ailleurs (lien profond, autre étape, Synthèse) : ses ancêtres sont dépliés et la
   // ligne est ramenée dans la zone visible. Un clic dans l'arbre ne fait rien défiler (ligne déjà visible).
   const byID = useMemo(() => new Map(nodes.map((n) => [n.id, n])), [nodes])
+
+  // Cause d'un coût absent : celle de la pièce, ou la cause dominante des pièces sans coût sous un ensemble.
+  const causeCache = useMemo(() => new Map<number, string>(), [byID])
+  const costCause = (n: TreeNode): { text: string; title: string } => {
+    const t = n.totals
+    if (!t?.cost_error_code) return { text: 'n/d', title: '' }
+    if (t.cost_error_code !== 'missing_cost' || t.missing_cost.length === 0) return { text: causeLabel(t.cost_error_code), title: t.cost_error ?? '' }
+    let text = causeCache.get(n.id)
+    if (text === undefined) {
+      const c = dominantCause(t.missing_cost, byID)
+      text = c ? c.label : causeLabel(null)
+      causeCache.set(n.id, text)
+    }
+    return { text, title: `${t.missing_cost.length} pièce(s) sans coût sous ce nœud : ${text}` }
+  }
   const [revealedFor, setRevealedFor] = useState<number | null>(null)
   if (selectedID !== revealedFor) {
     // Mise à jour pendant le rendu (état dérivé de la sélection précédente), pas dans un effet.
@@ -124,6 +140,7 @@ export function BomTree(props: Props) {
         {rows.slice(first, last).map((r, i) => {
           const n = r.node
           const t = n.totals
+          const cause = t?.cost ? null : costCause(n)
           const isPart = n.part_id !== null
           const offers = isPart ? (catalog.byPart.get(n.part_id!)?.offers ?? []) : []
           const classes = ['tree-row']
@@ -210,8 +227,8 @@ export function BomTree(props: Props) {
                   {isPart ? (offers.find((o) => o.id === n.offer_id)?.supplier ?? `offre #${n.offer_id}`) : ''}
                 </span>
               )}
-              <span className="cost" title={t?.cost_error ?? undefined}>
-                {t?.cost ? formatMoney(t.cost) : t?.cost_error_code ? 'prix manquant' : 'n/d'}
+              <span className="cost" title={t?.cost ? undefined : cause?.title || undefined}>
+                {cause ? cause.text : t?.cost ? formatMoney(t.cost) : null}
               </span>
               <BudgetCell budget={props.budgets?.get(n.id)} />
               <span className="co2">{t ? formatDecimal(t.co2_kg, 1) : ''}</span>

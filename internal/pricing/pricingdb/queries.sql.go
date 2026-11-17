@@ -207,6 +207,53 @@ func (q *Queries) HistoricalPriceQuotes(ctx context.Context, arg HistoricalPrice
 	return items, nil
 }
 
+const historicalPriceQuotesBatch = `-- name: HistoricalPriceQuotesBatch :many
+SELECT q.id, q.offer_id, q.amount, q.currency, q.source, q.quoted_at, q.recorded_at FROM price_quotes q
+WHERE q.offer_id = ANY($1::bigint[])
+    AND EXISTS (
+        SELECT 1 FROM generate_subscripts($1::bigint[], 1) AS i
+        WHERE ($1::bigint[])[i] = q.offer_id
+            AND q.quoted_at >= ($2::timestamptz[])[i]
+            AND q.quoted_at <= ($3::timestamptz[])[i]
+    )
+ORDER BY q.offer_id, q.quoted_at, q.id
+`
+
+type HistoricalPriceQuotesBatchParams struct {
+	OfferIds     []int64
+	WindowStarts []time.Time
+	AsOfs        []time.Time
+}
+
+// Les trois tableaux sont parallèles : la fenêtre i est celle de l'offre offer_ids[i].
+func (q *Queries) HistoricalPriceQuotesBatch(ctx context.Context, arg HistoricalPriceQuotesBatchParams) ([]PriceQuote, error) {
+	rows, err := q.db.Query(ctx, historicalPriceQuotesBatch, arg.OfferIds, arg.WindowStarts, arg.AsOfs)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []PriceQuote
+	for rows.Next() {
+		var i PriceQuote
+		if err := rows.Scan(
+			&i.ID,
+			&i.OfferID,
+			&i.Amount,
+			&i.Currency,
+			&i.Source,
+			&i.QuotedAt,
+			&i.RecordedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const insertPriceQuote = `-- name: InsertPriceQuote :one
 
 INSERT INTO price_quotes (offer_id, amount, currency, source, quoted_at)
@@ -739,6 +786,31 @@ func (q *Queries) PricingSupplierExists(ctx context.Context, id int64) (bool, er
 	return column_1, err
 }
 
+const readBOMBudgetCurrencies = `-- name: ReadBOMBudgetCurrencies :many
+SELECT DISTINCT currency::text FROM bom_target_budgets WHERE bom_id=$1 ORDER BY 1
+`
+
+// Devises des budgets cibles d'une BOM (ADR 0044) : leurs taux vers la devise de la BOM sont figés avec ses prix.
+func (q *Queries) ReadBOMBudgetCurrencies(ctx context.Context, bomID int64) ([]string, error) {
+	rows, err := q.db.Query(ctx, readBOMBudgetCurrencies, bomID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var currency string
+		if err := rows.Scan(&currency); err != nil {
+			return nil, err
+		}
+		items = append(items, currency)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const readBOMPriceCurrency = `-- name: ReadBOMPriceCurrency :one
 SELECT currency FROM boms WHERE id=$1
 `
@@ -1255,31 +1327,6 @@ func (q *Queries) RuntimeManifest(ctx context.Context, hash string) (PricingMani
 	row := q.db.QueryRow(ctx, runtimeManifest, hash)
 	var i PricingManifest
 	err := row.Scan(&i.Hash, &i.Offers, &i.Pairs)
-	return i, err
-}
-
-const runtimePrice = `-- name: RuntimePrice :one
-SELECT id, offer_id, amount, currency, source, quoted_at, recorded_at FROM price_quotes WHERE offer_id = $1 AND source = $2 AND quoted_at = $3
-`
-
-type RuntimePriceParams struct {
-	OfferID  int64
-	Source   string
-	QuotedAt time.Time
-}
-
-func (q *Queries) RuntimePrice(ctx context.Context, arg RuntimePriceParams) (PriceQuote, error) {
-	row := q.db.QueryRow(ctx, runtimePrice, arg.OfferID, arg.Source, arg.QuotedAt)
-	var i PriceQuote
-	err := row.Scan(
-		&i.ID,
-		&i.OfferID,
-		&i.Amount,
-		&i.Currency,
-		&i.Source,
-		&i.QuotedAt,
-		&i.RecordedAt,
-	)
 	return i, err
 }
 

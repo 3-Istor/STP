@@ -19,6 +19,9 @@ type Props = {
   // Fournisseur choisi, porté par l'URL (?supplier=) ; null : le premier par ordre alphabétique.
   selectedID: number | null
   onSelect: (id: number) => void
+  // onSaved : un contrat ou une offre vient d'être enregistré ; dans une BOM (Sourcer), relit l'arbre pour que
+  // totaux, remises et contrôles (badge « contrat expiré ») suivent.
+  onSaved?: () => void
 }
 
 const score = (v: string | null) => (v === null ? '–' : formatDecimal(v))
@@ -29,7 +32,7 @@ const contractStatus = (c: Contract) =>
 // SuppliersPage (maquette I4-5b) : fournisseurs, offres et contrats en tables denses. Reprend toutes les
 // fonctions de la page Fournisseurs V1 : création de fournisseur, d'offre (pièce vendue), de contrat et
 // modification, prix en direct (flux SSE), historique des prix (période au choix, détail en fenêtre).
-export default function SuppliersPage({ selectedID: wanted, onSelect }: Props) {
+export default function SuppliersPage({ selectedID: wanted, onSelect, onSaved }: Props) {
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
   const [supplierLoading, setSupplierLoading] = useState(true)
   const [supplierError, setSupplierError] = useState('')
@@ -193,8 +196,8 @@ export default function SuppliersPage({ selectedID: wanted, onSelect }: Props) {
       </> : !supplierLoading && <section className="block"><div className="in"><h2>Un regard clair sur vos fournisseurs</h2><p className="muted">Retrouvez les offres, les prix et les contrats au même endroit.</p><button className="btn pri" onClick={() => setCreateSupplier(true)}>Créer le premier fournisseur</button></div></section>}
     </div>
     {createSupplier && <SupplierDialog onClose={() => setCreateSupplier(false)} onSaved={(item) => { setSuppliers((old) => sortByName([...old.filter((s) => s.id !== item.id), item])); chooseSupplier(item.id); setCreateSupplier(false) }} />}
-    {contractForm && supplier?.id === contractForm.supplierID && <ContractDialog key={contractForm.contract?.id ?? 'new'} supplierID={supplier.id} offers={currentPage?.offers ?? []} contract={contractForm.contract} onClose={() => setContractForm(null)} onSaved={() => { setContractForm(null); setRefresh((version) => version + 1) }} />}
-    {offerForm && supplier && <OfferDialog supplier={supplier} onClose={() => setOfferForm(false)} onSaved={() => { setOfferForm(false); refreshData() }} />}
+    {contractForm && supplier?.id === contractForm.supplierID && <ContractDialog key={contractForm.contract?.id ?? 'new'} supplierID={supplier.id} offers={currentPage?.offers ?? []} contract={contractForm.contract} onClose={() => setContractForm(null)} onSaved={() => { setContractForm(null); setRefresh((version) => version + 1); onSaved?.() }} />}
+    {offerForm && supplier && <OfferDialog supplier={supplier} onClose={() => setOfferForm(false)} onSaved={() => { setOfferForm(false); refreshData(); onSaved?.() }} />}
     {historyView && <HistoryDialog key={historyView.offer.id} view={historyView} onClose={() => setHistoryID(null)} />}
   </div>
 }

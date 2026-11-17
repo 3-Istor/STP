@@ -21,7 +21,7 @@ func (h supplierHandler) register(mux *http.ServeMux) {
 	} {
 		mux.HandleFunc(route.path, func(w http.ResponseWriter, _ *http.Request) {
 			w.Header().Set("Allow", route.allow)
-			writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "méthode HTTP non autorisée"})
+			writeErrorBody(w, http.StatusMethodNotAllowed, "méthode HTTP non autorisée", "method_not_allowed")
 		})
 	}
 	mux.HandleFunc("GET /api/v1/suppliers", h.list)
@@ -48,7 +48,7 @@ func supplierError(w http.ResponseWriter, r *http.Request, err error) {
 	default:
 		slog.ErrorContext(r.Context(), "supplier request failed", "err", err)
 	}
-	writeJSON(w, status, map[string]string{"error": message})
+	writeErrorBody(w, status, message, codeOrStatus(err, status))
 }
 
 func (h supplierHandler) list(w http.ResponseWriter, r *http.Request) {

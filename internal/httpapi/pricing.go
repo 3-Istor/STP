@@ -26,10 +26,10 @@ func pricingError(w http.ResponseWriter, r *http.Request, err error) {
 	}
 	if status == http.StatusInternalServerError {
 		slog.ErrorContext(r.Context(), "pricing read failed", "err", err)
-		writeJSON(w, status, map[string]string{"error": "lecture des prix indisponible"})
+		writeErrorBody(w, status, "lecture des prix indisponible", "internal")
 		return
 	}
-	writeJSON(w, status, map[string]string{"error": err.Error()})
+	writeErrorBody(w, status, err.Error(), codeOrStatus(err, status))
 }
 func pricingTime(r *http.Request, key string) (*time.Time, error) {
 	values, ok := r.URL.Query()[key]

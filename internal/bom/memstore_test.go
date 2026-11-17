@@ -88,7 +88,28 @@ func (m *memStore) RenameBOM(_ context.Context, id int64, name string) (BOM, err
 	return m.updateBOM(id, func(b *BOM) { b.Name = name })
 }
 
-func (m *memStore) UpdateSettings(_ context.Context, id int64, currency string, volume int32) (BOM, error) {
+func (m *memStore) UpdateSettings(_ context.Context, id int64, currency string, volume int32, check SettingsCheck) (BOM, error) {
+	if check != nil {
+		m.mu.Lock()
+		b, err := m.getBOM(id)
+		var global *TargetBudget
+		if err == nil {
+			root := RootID(m.treeLocked(id))
+			for _, x := range m.budgets[id] {
+				if x.NodeID == root {
+					x := x
+					global = &x
+				}
+			}
+		}
+		m.mu.Unlock()
+		if err != nil {
+			return BOM{}, err
+		}
+		if err := check(b.Currency, global); err != nil {
+			return BOM{}, err
+		}
+	}
 	return m.updateBOM(id, func(b *BOM) { b.Currency, b.Volume = currency, volume })
 }
 
@@ -182,6 +203,29 @@ func (m *memStore) SetTargetBudget(_ context.Context, bomID int64, b TargetBudge
 	return nil
 }
 
+func (m *memStore) EditTargetBudget(_ context.Context, bomID, nodeID int64, b *TargetBudget, check BudgetCheck) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if _, err := m.getNode(bomID, nodeID); err != nil {
+		return err
+	}
+	next := slices.DeleteFunc(slices.Clone(m.budgets[bomID]), func(x TargetBudget) bool { return x.NodeID == nodeID })
+	if b != nil {
+		next = append(next, *b)
+	}
+	if check != nil {
+		cur, _ := m.getBOM(bomID)
+		if err := check(BudgetState{Currency: cur.Currency, Nodes: m.treeLocked(bomID), Budgets: next}); err != nil {
+			return err
+		}
+	}
+	if m.budgets == nil {
+		m.budgets = map[int64][]TargetBudget{}
+	}
+	m.budgets[bomID] = next
+	return nil
+}
+
 func (m *memStore) SetPriceSnapshot(_ context.Context, id int64, snapshotID *int64) (BOM, error) {
 	return m.updateBOM(id, func(b *BOM) { b.PriceSnapshotID = snapshotID })
 }
@@ -232,6 +276,11 @@ func (m *memStore) Tree(_ context.Context, bomID int64) ([]Node, error) {
 	if _, err := m.getBOM(bomID); err != nil {
 		return nil, err
 	}
+	return m.treeLocked(bomID), nil
+}
+
+// treeLocked : nœuds de la BOM triés par id ; m.mu tenu par l'appelant.
+func (m *memStore) treeLocked(bomID int64) []Node {
 	var out []Node
 	for _, n := range m.nodes {
 		if n.BOMID == bomID {
@@ -239,7 +288,7 @@ func (m *memStore) Tree(_ context.Context, bomID int64) ([]Node, error) {
 		}
 	}
 	slices.SortFunc(out, func(a, b Node) int { return cmp.Compare(a.ID, b.ID) })
-	return out, nil
+	return out
 }
 
 func (m *memStore) getNode(bomID, nodeID int64) (Node, error) {
@@ -309,7 +358,7 @@ func (m *memStore) SetNodePart(_ context.Context, bomID, nodeID, partID, offerID
 	})
 }
 
-func (m *memStore) MoveNode(_ context.Context, bomID, nodeID, newParentID int64) (Node, error) {
+func (m *memStore) MoveNode(_ context.Context, bomID, nodeID, newParentID int64, check BudgetCheck) (Node, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	n, err := m.getNode(bomID, nodeID)
@@ -324,8 +373,17 @@ func (m *memStore) MoveNode(_ context.Context, bomID, nodeID, newParentID int64)
 			return Node{}, ErrCycle
 		}
 	}
+	old := n.ParentID
 	n.ParentID = &newParentID
 	m.nodes[nodeID] = n
+	if check != nil {
+		cur, _ := m.getBOM(bomID)
+		if err := check(BudgetState{Currency: cur.Currency, Nodes: m.treeLocked(bomID), Budgets: m.budgets[bomID]}); err != nil {
+			n.ParentID = old
+			m.nodes[nodeID] = n
+			return Node{}, err
+		}
+	}
 	return n, nil
 }
 

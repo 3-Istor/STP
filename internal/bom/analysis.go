@@ -15,6 +15,9 @@ import (
 // QuoteHistory : historique immuable des cotations d'une offre (ADR 0011). pricingstore.Store la satisfait.
 type QuoteHistory interface {
 	ReadHistory(ctx context.Context, offerID int64, from, to time.Time) ([]pricing.HistoricalQuote, error)
+	// ReadWindows lit en une requête les cotations de la fenêtre de chaque offre (sans la référence d'avant la
+	// fenêtre), par offre ; une offre sans cotation dans sa fenêtre n'a pas d'entrée.
+	ReadWindows(ctx context.Context, windows []pricing.HistoryWindow) (map[int64][]pricing.HistoricalQuote, error)
 }
 
 // SupplierDirectory : les fournisseurs (nom, notes). *supplier.Service la satisfait.

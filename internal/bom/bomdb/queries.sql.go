@@ -251,6 +251,20 @@ func (q *Queries) DeleteSchedule(ctx context.Context, bomID int64) (int64, error
 	return result.RowsAffected(), nil
 }
 
+const deleteTargetBudget = `-- name: DeleteTargetBudget :exec
+DELETE FROM bom_target_budgets WHERE bom_id = $1 AND node_id = $2
+`
+
+type DeleteTargetBudgetParams struct {
+	BomID  int64
+	NodeID int64
+}
+
+func (q *Queries) DeleteTargetBudget(ctx context.Context, arg DeleteTargetBudgetParams) error {
+	_, err := q.db.Exec(ctx, deleteTargetBudget, arg.BomID, arg.NodeID)
+	return err
+}
+
 const getBOM = `-- name: GetBOM :one
 SELECT id, name, currency, volume, created_at, price_snapshot_id, source_snapshot_id, annual_hours, destination_country, cost_basis, fx_policy, program_volume FROM boms
 WHERE id = $1
@@ -582,6 +596,21 @@ func (q *Queries) LockBOM(ctx context.Context, id int64) (int64, error) {
 	return id_2, err
 }
 
+const lockBOMCurrency = `-- name: LockBOMCurrency :one
+SELECT currency::text FROM boms
+WHERE id = $1
+FOR UPDATE
+`
+
+// Verrou de la BOM qui rend aussi sa devise : une règle qui en dépend (budget global, ADR 0045) est jugée sur la
+// devise lue sous le verrou, jamais sur une lecture faite avant la transaction.
+func (q *Queries) LockBOMCurrency(ctx context.Context, id int64) (string, error) {
+	row := q.db.QueryRow(ctx, lockBOMCurrency, id)
+	var currency string
+	err := row.Scan(&currency)
+	return currency, err
+}
+
 const renameBOM = `-- name: RenameBOM :one
 UPDATE boms SET name = $2
 WHERE id = $1
@@ -611,6 +640,17 @@ func (q *Queries) RenameBOM(ctx context.Context, arg RenameBOMParams) (Bom, erro
 		&i.ProgramVolume,
 	)
 	return i, err
+}
+
+const rootNodeID = `-- name: RootNodeID :one
+SELECT id FROM bom_nodes WHERE bom_id = $1 AND parent_id IS NULL
+`
+
+func (q *Queries) RootNodeID(ctx context.Context, bomID int64) (int64, error) {
+	row := q.db.QueryRow(ctx, rootNodeID, bomID)
+	var id int64
+	err := row.Scan(&id)
+	return id, err
 }
 
 const setBOMAnnualHours = `-- name: SetBOMAnnualHours :one

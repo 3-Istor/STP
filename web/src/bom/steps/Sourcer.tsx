@@ -10,6 +10,7 @@ type Props = {
   version: number
   onOpenSupplier: (id: number) => void // onglet Fournisseurs, fournisseur choisi (une seule navigation)
   readOnly: boolean // snapshot publié : les analyses se calculent sur un brouillon (E12)
+  onSaved: () => void // contrat ou offre enregistré : la BOM est relue (totaux, contrôles, badges)
 }
 
 const SOURCER_TABS = [
@@ -19,7 +20,7 @@ const SOURCER_TABS = [
 
 // Sourcer (maquettes I4-5, I4-5b) : « Chez qui, à quelles conditions ? ». L'onglet Fournisseurs reprend
 // toute la page Fournisseurs de la V1 (création, offres, contrats et remises, historique des prix).
-export function Sourcer({ tab, onTab, supplier, onSupplier, onOpenSupplier, bomID, version, readOnly }: Props) {
+export function Sourcer({ tab, onTab, supplier, onSupplier, onOpenSupplier, bomID, version, readOnly, onSaved }: Props) {
   const current = tab === 'fournisseurs' ? 'fournisseurs' : 'apercu'
   return (
     <>
@@ -41,7 +42,7 @@ export function Sourcer({ tab, onTab, supplier, onSupplier, onOpenSupplier, bomI
           />
         )
       ) : (
-        <SuppliersPage selectedID={supplier} onSelect={onSupplier} />
+        <SuppliersPage selectedID={supplier} onSelect={onSupplier} onSaved={onSaved} />
       )}
     </>
   )

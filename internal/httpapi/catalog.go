@@ -28,7 +28,7 @@ func (h catalogHandler) register(mux *http.ServeMux) {
 	} {
 		mux.HandleFunc(route.path, func(w http.ResponseWriter, _ *http.Request) {
 			w.Header().Set("Allow", route.allow)
-			writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "méthode HTTP non autorisée"})
+			writeErrorBody(w, http.StatusMethodNotAllowed, "méthode HTTP non autorisée", "method_not_allowed")
 		})
 	}
 	mux.HandleFunc("POST /api/v1/parts", h.createPart)
@@ -91,7 +91,7 @@ func pathID(r *http.Request, name string) (int64, error) {
 }
 
 func badRequest(w http.ResponseWriter, err error) {
-	writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+	writeErrorBody(w, http.StatusBadRequest, err.Error(), codeOrStatus(err, http.StatusBadRequest))
 }
 
 func catalogError(w http.ResponseWriter, r *http.Request, err error) {
@@ -113,7 +113,7 @@ func catalogError(w http.ResponseWriter, r *http.Request, err error) {
 	default:
 		slog.ErrorContext(r.Context(), "catalog request failed", "err", err)
 	}
-	writeJSON(w, status, map[string]string{"error": message})
+	writeErrorBody(w, status, message, codeOrStatus(err, status))
 }
 
 func (h catalogHandler) createPart(w http.ResponseWriter, r *http.Request) {

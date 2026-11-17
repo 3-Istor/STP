@@ -33,7 +33,7 @@ type CostAnomalies struct {
 // actives de sa catégorie, chacune à son offre la moins chère, tout converti dans la devise de la BOM aux
 // prix de la même source que les totaux (ADR 0027). Rien n'est corrigé : la BOM n'est pas modifiée.
 func (s *Service) CostAnomalies(ctx context.Context, bomID int64, threshold decimal.Decimal) (CostAnomalies, error) {
-	out, _, _, err := s.anomaliesWith(ctx, bomID, s.anomalies, threshold)
+	out, _, _, err := s.anomaliesWith(ctx, bomID, anomalySpec{detector: s.anomalies}, threshold)
 	return out, err
 }
 
@@ -43,9 +43,17 @@ type anomalyNode struct {
 	node Node
 }
 
-// anomaliesWith juge chaque nœud pièce avec detector ; population et sujets portent coût unitaire converti
+// familyOf : catégorie × matière de la pièce ; vide si l'une des deux manque (jamais devinée).
+func familyOf(p catalog.Part) string {
+	if p.Category == "" || p.Material == nil {
+		return ""
+	}
+	return p.Category + " · " + *p.Material
+}
+
+// anomaliesWith juge chaque nœud pièce avec le détecteur de spec ; population et sujets portent coût unitaire converti
 // et masse de la pièce. Rend aussi la pièce et le nœud de chaque verdict, et l'arbre lu.
-func (s *Service) anomaliesWith(ctx context.Context, bomID int64, detector pricing.AnomalyDetector, threshold decimal.Decimal) (
+func (s *Service) anomaliesWith(ctx context.Context, bomID int64, spec anomalySpec, threshold decimal.Decimal) (
 	CostAnomalies, []anomalyNode, []Node, error,
 ) {
 	if s.listing == nil {
@@ -55,8 +63,12 @@ func (s *Service) anomaliesWith(ctx context.Context, bomID int64, detector prici
 	if err != nil {
 		return CostAnomalies{}, nil, nil, fmt.Errorf("cost anomalies of bom %d: %w", bomID, err)
 	}
+	detector, need := spec.detector, spec.needs
 	if detector == nil {
 		return CostAnomalies{}, nil, nil, fmt.Errorf("cost anomalies of bom %d: no detector: %w", bomID, ErrInvalidInput)
+	}
+	if need.history && s.history == nil {
+		return CostAnomalies{}, nil, nil, fmt.Errorf("cost anomalies of bom %d: %w", bomID, ErrSuggestionsUnavailable)
 	}
 	currency := money.Currency(b.Currency)
 	out := CostAnomalies{Threshold: threshold, Currency: currency, PriceSnapshotID: b.PriceSnapshotID}
@@ -161,6 +173,9 @@ func (s *Service) anomaliesWith(ctx context.Context, bomID int64, detector prici
 	for _, p := range all {
 		catalogParts[p.ID] = p.Part
 		sample := pricing.CostSample{PartID: p.ID, Category: p.Category, MassKg: p.MassKG, Err: pricing.ErrNoQuote}
+		if need.family {
+			sample.Family = familyOf(p.Part)
+		}
 		for _, o := range p.Offers {
 			if o.ArchivedAt != nil {
 				continue
@@ -175,6 +190,49 @@ func (s *Service) anomaliesWith(ctx context.Context, bomID int64, detector prici
 			}
 		}
 		population = append(population, sample)
+	}
+
+	// Méthode « offres » : coût de chaque offre active de la pièce ; une offre sans prix ou sans taux est comptée
+	// à part (Missing), jamais remplacée par un prix.
+	offerCosts := map[int64][]money.Money{}
+	offerMissing, offerArchived := map[int64]int{}, map[int64]int{}
+	activeParts := map[int64]struct{}{}
+	if need.offers {
+		for _, p := range all {
+			activeParts[p.ID] = struct{}{}
+			for _, o := range p.Offers {
+				if o.ArchivedAt != nil {
+					offerArchived[p.ID]++
+					continue
+				}
+				if c, err := unit(o.ID); err != nil {
+					offerMissing[p.ID]++
+				} else {
+					offerCosts[p.ID] = append(offerCosts[p.ID], *c)
+				}
+			}
+		}
+	}
+	// Méthode « historique » : cotations des 12 derniers mois de chaque offre retenue, lues en une seule requête.
+	trails := map[int64]*pricing.PriceTrail{}
+	if need.history {
+		var windows []pricing.HistoryWindow
+		seenOffer := map[int64]bool{}
+		for _, n := range nodes {
+			if !n.IsPart() || seenOffer[*n.OfferID] || quotes[*n.OfferID].Err != nil {
+				continue
+			}
+			seenOffer[*n.OfferID] = true
+			at := quotes[*n.OfferID].Quote.QuotedAt
+			windows = append(windows, pricing.HistoryWindow{OfferID: *n.OfferID, From: pricing.AnnualWindowStart(at), To: at})
+		}
+		hist, err := s.history.ReadWindows(ctx, windows)
+		if err != nil {
+			return CostAnomalies{}, nil, nil, fmt.Errorf("cost anomalies of bom %d: history: %w", bomID, err)
+		}
+		for _, w := range windows {
+			trails[w.OfferID] = trailFrom(quotes[w.OfferID].Quote, hist[w.OfferID])
+		}
 	}
 
 	var subjects []pricing.CostSample
@@ -192,7 +250,20 @@ func (s *Service) anomaliesWith(ctx context.Context, bomID int64, detector prici
 			catalogParts[p.ID] = p
 		}
 		c, err := unit(*n.OfferID)
-		subjects = append(subjects, pricing.CostSample{PartID: *n.PartID, Category: p.Category, Cost: c, MassKg: p.MassKG, Err: err})
+		sample := pricing.CostSample{PartID: *n.PartID, Category: p.Category, Cost: c, MassKg: p.MassKG, Err: err}
+		if need.family {
+			sample.Family = familyOf(p)
+		}
+		if need.offers {
+			sample.OfferCosts, sample.MissingOffers, sample.ArchivedOffers = offerCosts[p.ID], offerMissing[p.ID], offerArchived[p.ID]
+			if _, active := activeParts[p.ID]; !active && err == nil {
+				sample.Err = pricing.ErrPartArchived // hors population active : ses offres ne sont pas comparées
+			}
+		}
+		if need.history && err == nil {
+			sample.Trail = trails[*n.OfferID]
+		}
+		subjects = append(subjects, sample)
 		judged = append(judged, anomalyNode{part: p, node: n})
 	}
 	verdicts, err := detector.Detect(subjects, population, threshold)
@@ -205,4 +276,23 @@ func (s *Service) anomaliesWith(ctx context.Context, bomID int64, detector prici
 	// nodes est trié par id (Store.Tree) : out.Nodes et judged le sont aussi, dans le même ordre.
 	slices.SortFunc(out.Nodes, func(a, b NodeAnomaly) int { return cmp.Compare(a.NodeID, b.NodeID) })
 	return out, judged, nodes, nil
+}
+
+// trailFrom : la cotation courante d'une offre et ses cotations passées de la fenêtre de 12 mois, dans la devise
+// de l'offre. La cotation courante n'est pas dans le passé ; une cotation dans une autre devise est écartée mais
+// comptée (OtherCurrency), jamais convertie.
+func trailFrom(current pricing.Quote, hist []pricing.HistoricalQuote) *pricing.PriceTrail {
+	start := pricing.AnnualWindowStart(current.QuotedAt)
+	t := &pricing.PriceTrail{Current: current.Price}
+	for _, h := range hist {
+		if h.ID == current.ID || h.QuotedAt.Before(start) {
+			continue
+		}
+		if h.Price.Currency() != current.Price.Currency() {
+			t.OtherCurrency++
+			continue
+		}
+		t.Past = append(t.Past, h.Price)
+	}
+	return t
 }

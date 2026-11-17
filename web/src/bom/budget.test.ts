@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { budgetBarWidth, budgetClass, budgetPercentText } from './budget.ts'
+import { allocationTitle, budgetBarWidth, budgetClass, budgetPercentText } from './budget.ts'
 import type { NodeBudget } from '../api.ts'
 
 const budget = (state: NodeBudget['state'], percent: string | null): NodeBudget => ({
@@ -32,4 +32,10 @@ test('pourcentage affiché tel que l’API le donne, une décimale, « n/d » sa
   assert.equal(budgetPercentText(budget('over', '104.0')), '104,0 %')
   assert.equal(budgetPercentText(budget('ok', '86.3')), '86,3 %')
   assert.equal(budgetPercentText(budget('unavailable', null)), 'n/d')
+})
+
+test('infobulle de répartition : phrase française, jamais le texte technique du serveur', () => {
+  assert.match(allocationTitle('over'), /dépassent ce budget/)
+  assert.match(allocationTitle('unverifiable'), /taux de change/)
+  assert.doesNotMatch(allocationTitle('over') + allocationTitle('unverifiable'), /exchange|exceeds|budget of node/)
 })

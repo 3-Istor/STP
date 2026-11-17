@@ -25,6 +25,12 @@ type HistoricalQuote struct {
 	QuotedAt time.Time   `json:"quoted_at"`
 }
 
+// HistoryWindow : fenêtre [From, To] des cotations à lire pour une offre (lecture par lot, ReadWindows).
+type HistoryWindow struct {
+	OfferID  int64
+	From, To time.Time
+}
+
 // Statistics garde les données disponibles même si une référence ou une fenêtre manque.
 // Les pointeurs nil s'encodent en null ; aucun montant ou pourcentage manquant ne devient zéro.
 type Statistics struct {
