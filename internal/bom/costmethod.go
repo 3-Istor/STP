@@ -161,11 +161,20 @@ type lineDetail struct {
 	volume      int32
 	offerQty    decimal.Decimal
 	source      string // provenance de la cotation ou des faits (« tables », « snapshot N »)
+	aggregate   bool   // ligne agrégée d'un sous-arbre
+}
+
+var kindNames = map[CostKind]string{
+	KindPrice: "Prix d'achat", KindFX: "Écart de change (taux budget − dernier taux)", KindDiscount: "Remises de contrat",
+	KindCustoms: "Douane", KindFreight: "Transport", KindPackaging: "Emballage", KindTooling: "Outillage amorti",
 }
 
 // Label décrit la ligne en français.
 func (l CostLine) Label() string {
 	d := l.d
+	if d.aggregate {
+		return kindNames[l.Kind] + " : somme des pièces du sous-ensemble"
+	}
 	switch l.Kind {
 	case KindPrice:
 		s := fmt.Sprintf("Prix coté %s × %s", d.unit, d.qty)
@@ -200,6 +209,9 @@ func (l CostLine) Label() string {
 // Source dit d'où vient la donnée de la ligne.
 func (l CostLine) Source() string {
 	d := l.d
+	if d.aggregate {
+		return "agrégat du sous-arbre"
+	}
 	switch l.Kind {
 	case KindPrice:
 		return d.source

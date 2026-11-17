@@ -37,7 +37,16 @@ type BOM struct {
 	PriceSnapshotID *int64
 	// SourceSnapshotID : snapshot dont ce brouillon a été créé (D3), nil sinon.
 	SourceSnapshotID *int64
-	CreatedAt        time.Time
+	// CostMethod : méthode de calcul du coût (ADR 0031) ; zéro = DefaultCostMethod.
+	CostMethod CostMethod
+	CreatedAt  time.Time
+}
+
+// TargetBudget : budget cible par voiture d'un nœud (ADR 0018, 0031) ; celui de la racine est le budget global.
+type TargetBudget struct {
+	NodeID   int64
+	Amount   decimal.Decimal
+	Currency string
 }
 
 // NewBOM décrit une BOM à créer. Sa racine porte le nom de la BOM.
@@ -136,4 +145,8 @@ type Store interface {
 	// SetSchedule enregistre (ou remplace) le planning ; ErrBOMNotFound si la BOM n'existe pas.
 	SetSchedule(ctx context.Context, bomID int64, s Schedule) (Schedule, error)
 	DeleteSchedule(ctx context.Context, bomID int64) error
+	// SetCostMethod enregistre la méthode de calcul du coût (ADR 0031) ; ErrBOMNotFound si la BOM n'existe pas.
+	SetCostMethod(ctx context.Context, id int64, m CostMethod) (BOM, error)
+	// TargetBudgets renvoie les budgets cibles de la BOM, triés par nœud.
+	TargetBudgets(ctx context.Context, bomID int64) ([]TargetBudget, error)
 }

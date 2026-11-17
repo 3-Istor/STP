@@ -35,6 +35,9 @@ type Service struct {
 	anomalies pricing.AnomalyDetector
 	// logistics : tables de douane, de transport et emballage (coût rendu, ADR 0025) ; nil → indisponible.
 	logistics pricing.LogisticsStore
+	// costParams et contracts : faits de la méthode de calcul du coût (ADR 0031) ; nil → méthode par défaut seulement.
+	costParams pricing.CostParamsStore
+	contracts  ContractSource
 }
 
 // WithLogistics branche les tables du coût total rendu (ADR 0025).
@@ -665,35 +668,19 @@ type TreeTotals struct {
 // absent (pricing.ErrNoQuote / ErrNoRate) devient une erreur nommée sur le nœud ; toute autre erreur
 // (catalogue incohérent, snapshot de prix introuvable, panne) fait échouer l'appel : rien n'est caché.
 func (s *Service) Totals(ctx context.Context, bomID int64) (TreeTotals, error) {
-	b, err := s.store.GetBOM(ctx, bomID)
+	dc, err := s.DraftCost(ctx, bomID)
 	if err != nil {
-		return TreeTotals{}, fmt.Errorf("totals of bom %d: %w", bomID, err)
-	}
-	nodes, err := s.store.Tree(ctx, bomID)
-	if err != nil {
-		return TreeTotals{}, fmt.Errorf("totals of bom %d: %w", bomID, err)
-	}
-	stock, err := s.store.Stock(ctx, bomID)
-	if err != nil {
-		return TreeTotals{}, fmt.Errorf("totals of bom %d: %w", bomID, err)
-	}
-	in, err := s.totalsInput(ctx, b, nodes, stock)
-	if err != nil {
-		return TreeTotals{}, fmt.Errorf("totals of bom %d: %w", bomID, err)
-	}
-	t, err := ComputeTotals(in)
-	if err != nil {
-		return TreeTotals{}, fmt.Errorf("totals of bom %d: %w", bomID, err)
+		return TreeTotals{}, fmt.Errorf("totals: %w", err)
 	}
 	sch, err := s.store.Schedule(ctx, bomID)
 	if err != nil {
 		return TreeTotals{}, fmt.Errorf("totals of bom %d: %w", bomID, err)
 	}
-	plan, err := PlanSchedule(in.Nodes, t, sch)
+	plan, err := PlanSchedule(dc.Input.Nodes, dc.Totals, sch)
 	if err != nil {
 		return TreeTotals{}, fmt.Errorf("totals of bom %d: %w", bomID, err)
 	}
-	return TreeTotals{BOM: b, Nodes: nodes, Stock: stock, Totals: t, Planning: plan}, nil
+	return TreeTotals{BOM: dc.BOM, Nodes: dc.Nodes, Stock: dc.Stock, Totals: dc.Totals, Planning: plan}, nil
 }
 
 func (s *Service) totalsInput(ctx context.Context, b BOM, nodes []Node, stock []PartStock) (TotalsInput, error) {
@@ -737,9 +724,16 @@ func (s *Service) totalsInput(ctx context.Context, b BOM, nodes []Node, stock []
 	if err != nil {
 		return TotalsInput{}, err
 	}
+	ci, err := s.costInput(ctx, b, offers, prices)
+	if err != nil {
+		return TotalsInput{}, err
+	}
+	if err := addRates(ctx, s.pricing, b.PriceSnapshotID, extraRateCurrencies(ci, currency, rates), currency, rates); err != nil {
+		return TotalsInput{}, err
+	}
 	return TotalsInput{
 		Nodes: calc, Currency: currency, Prices: prices, Rates: rates, PriceSnapshotID: b.PriceSnapshotID,
-		Volume: b.Volume, AnnualHours: &b.AnnualHours, Stock: StockMap(stock),
+		Volume: b.Volume, AnnualHours: &b.AnnualHours, Stock: StockMap(stock), Cost: ci,
 	}, nil
 }
 

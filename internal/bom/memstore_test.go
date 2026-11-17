@@ -20,6 +20,7 @@ type memStore struct {
 	published map[int64]bool               // BOM qui ont un snapshot publié
 	stock     map[[2]int64]decimal.Decimal // (bom, pièce) → quantité
 	schedules map[int64]Schedule
+	budgets   map[int64][]TargetBudget
 	nextID    int64
 }
 
@@ -153,6 +154,19 @@ func (m *memStore) SetDestination(_ context.Context, id int64, c *string) (BOM, 
 
 func (m *memStore) SetAnnualHours(_ context.Context, id int64, hours decimal.Decimal) (BOM, error) {
 	return m.updateBOM(id, func(b *BOM) { b.AnnualHours = hours })
+}
+
+func (m *memStore) SetCostMethod(_ context.Context, id int64, cm CostMethod) (BOM, error) {
+	return m.updateBOM(id, func(b *BOM) { b.CostMethod = cm })
+}
+
+func (m *memStore) TargetBudgets(_ context.Context, bomID int64) ([]TargetBudget, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if _, err := m.getBOM(bomID); err != nil {
+		return nil, err
+	}
+	return m.budgets[bomID], nil
 }
 
 func (m *memStore) SetPriceSnapshot(_ context.Context, id int64, snapshotID *int64) (BOM, error) {
