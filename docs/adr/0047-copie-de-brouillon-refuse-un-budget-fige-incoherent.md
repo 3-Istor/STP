@@ -1,5 +1,5 @@
 # 0047 — La copie d'un brouillon refuse un budget figé incohérent
-Statut : Proposé — Date : 2026-11-17 — Décideurs : à valider par Arthur.presle
+Statut : Accepté — Date : 2026-11-17 — Décideurs : Arthur.presle (accord explicite dans le chat)
 
 ## Contexte
 Relecture de la PR #26 : `snapshot.NewDraft` recopiait les budgets figés d'un snapshot par `SetTargetBudget`, qui ne
@@ -17,7 +17,7 @@ définitif, on ne peut pas le corriger.
 3. **Refuser seulement l'incohérence sans change** — dépassement entre budgets dans la devise de la BOM ; tout
    ensemble dont le verdict dépend d'un taux est copié et laissé à `AllocationWarnings`.
 
-## Décision (proposée)
+## Décision
 **Option 3.** `bom.CheckFrozenBudgets(nodes, budgets, devise)` : fonction pure (aucun taux, aucune horloge, même entrée
 même verdict) appelée par `NewDraft` **avant** `CreateBOM` ; un refus renvoie `ErrBudgetExceedsParent` (409,
 `budget_exceeds_parent`) avec le nœud et les montants, et ne crée aucun brouillon. Un snapshot antérieur à la
