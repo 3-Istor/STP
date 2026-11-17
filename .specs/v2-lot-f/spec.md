@@ -4,7 +4,7 @@ title: V2 lot F — intégration front (partie 1 : 3D dans Structurer, budgets, 
 source: manual
 source_ref: docs/v2/plan-implementation.md (vague 3, lot F), maquettes docs/v2/maquettes/I4-1, I4-2, I4-3
 created: 2026-11-17
-status: in-progress
+status: review
 priority: P1
 depends_on: [v2-lot-a, v2-lot-c, v2-lot-d]
 branch: v2-lot-f
@@ -74,33 +74,33 @@ contrôles de publication, analyses et profils.
 
 ## Tasks
 
-- [ ] T1: Ticket
+- [x] T1: Ticket
   - **Files**: `.specs/v2-lot-f/spec.md`, `.specs/v2-lot-f/state.md`
   - **Approach**: lecture AGENTS, plan, maquettes, états des lots A/C/D, ADR 0031/0034/0035, `web/src`.
   - **Done when**: spec et état commités.
-- [ ] T2: Budgets dans l'arbre et pourcentage (back)
+- [x] T2: Budgets dans l'arbre et pourcentage (back)
   - **Files**: `internal/bom/budgets.go`, `internal/bom/service.go`, `internal/httpapi/cost_method.go`,
     `internal/httpapi/boms.go`, `boms_json.go`, tests
   - **Approach**: `BudgetStatus.Percent` (coût ÷ budget × 100, arrondi half-even à 1 décimale, nil si
     indisponible ou budget nul) ; `Service.Totals` évalue les budgets sur les mêmes totaux ; `budgets` dans
     `GET /tree` (champ ajouté) et `percent` dans `GET /budgets`.
   - **Done when**: tests table-driven du pourcentage et test HTTP du champ verts.
-- [ ] T3: Budgets dans le front
+- [x] T3: Budgets dans le front
   - **Files**: `web/src/api.ts`, `bom/useBomData.ts`, `bom/BomTree.tsx`, `shell/Summary.tsx`, CSS
   - **Done when**: colonne Budget %, budget sous le total, Hors budget, barres % du budget, couleurs par état.
-- [ ] T4: 3D dans Structurer
+- [x] T4: 3D dans Structurer
   - **Files**: `bom/steps/Structurer.tsx`, `shell/Vehicle3DSlot.tsx` (supprimé), `features/vehicle3d/*`, CSS
   - **Done when**: sélection synchronisée, contrôles et focus, chunk `three` séparé au build.
-- [ ] T5: Méthode de calcul
+- [x] T5: Méthode de calcul
   - **Files**: `api.ts`, `shell/Summary.tsx`, `bom/BomWorkspace.tsx` (Settings)
   - **Done when**: méthode et date affichées ; changement → PUT puis relecture, état de recalcul.
-- [ ] T6: « Pourquoi ce coût ? »
+- [x] T6: « Pourquoi ce coût ? »
   - **Files**: `bom/CostBreakdown.tsx`, `bom/NodePanel.tsx`, `bom/steps/Chiffrer.tsx`
   - **Done when**: cascade brouillon et snapshot, lignes absentes et erreurs explicites.
-- [ ] T7: Tests front
+- [x] T7: Tests front
   - **Files**: `web/e2e/*.spec.ts`, tests unitaires
   - **Done when**: e2e existants à jour, nouveaux e2e (budgets, méthode, cascade, arbre → 3D) verts.
-- [ ] T8: Vérification réelle et captures
+- [x] T8: Vérification réelle et captures
   - **Files**: `docs/v2/captures/lot-f/*`, `.specs/v2-lot-f/state.md`
   - **Done when**: appli lancée sur la base seedée, captures clair / sombre relues, contrôles du plan verts.
 
@@ -116,8 +116,8 @@ contrôles de publication, analyses et profils.
   roue → focus ; Réglages : Complet → Achat → Complet ; cascade de « Porte avant nue ».
 
 ### Acceptance Criteria
-- [ ] AC1 (R1) : clic dans l'arbre → objet 3D sélectionné ; clic 3D → `?node=` et ligne de l'arbre.
-- [ ] AC2 (R2) : % et états identiques à l'API, aucun calcul front ; budget absent → « — ».
-- [ ] AC3 (R3) : le total change avec la méthode, la Synthèse montre la méthode et la date.
-- [ ] AC4 (R4) : cascade = lignes de l'API, total de l'API ; erreur et absence visibles, jamais 0.
-- [ ] AC5 : `three` absent du chunk d'entrée.
+- [x] AC1 (R1) : clic dans l'arbre → objet 3D sélectionné ; clic 3D → `?node=` et ligne de l'arbre.
+- [x] AC2 (R2) : % et états identiques à l'API, aucun calcul front ; budget absent → « — ».
+- [x] AC3 (R3) : le total change avec la méthode, la Synthèse montre la méthode et la date.
+- [x] AC4 (R4) : cascade = lignes de l'API, total de l'API ; erreur et absence visibles, jamais 0.
+- [x] AC5 : `three` absent du chunk d'entrée.
