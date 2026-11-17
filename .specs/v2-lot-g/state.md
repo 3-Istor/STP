@@ -31,6 +31,15 @@ updated: 2026-11-17
   stock, planning, réglages et faits de coût du même état. En prix en direct, le même état est rechiffré avec
   le snapshot de prix créé (deux calculs, aucune relecture du brouillon) ; prix figés : un seul calcul.
 
+### T2: Immuabilité complète (00015) et année du taux budget au rejeu
+- **Status**: completed
+- **Notes**: tests d'abord : `TestPublishedSnapshotRejectsLateInserts` (schéma privé, snapshot commité, INSERT
+  tardif dans les 7 tables figées) acceptait les 7 INSERT ; `TestFrozenCostInputKeepsTheBudgetRatesOfTheCostYear`
+  prenait le taux 2027 (et un taux vers GBP). Migration 00015 : `creation_xid` + trigger d'instruction
+  `guard_bom_snapshot_rows` (table de transition) sur les 7 tables, table `bom_snapshot_target_budgets` et colonne
+  `budgets_frozen` (utilisées par T3). Première version avec une FK vers `bom_snapshot_nodes` : le TRUNCATE des
+  nœuds échouait en 0A000 au lieu de 23001 (test existant) → FK vers `bom_snapshots` seulement. ADR 0038 (Proposé).
+
 ## Decisions
 
 ## Blockers

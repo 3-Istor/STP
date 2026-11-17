@@ -433,7 +433,11 @@ func (s *Service) frozenCostInput(ctx context.Context, h Snapshot) (*bom.CostInp
 	if len(frozen.BudgetRates) > 0 {
 		ci.BudgetRates = make(map[money.Currency]decimal.Decimal, len(frozen.BudgetRates))
 		for _, r := range frozen.BudgetRates {
-			ci.BudgetRates[r.From] = r.Rate
+			// Seulement le taux de l'année de calcul vers la devise du snapshot : une ligne d'une autre année ou
+			// vers une autre devise ne remplace jamais le taux utilisé à la publication (v2-lot-g T2).
+			if h.CostAsOf != nil && int(r.Year) == h.CostAsOf.UTC().Year() && string(r.To) == h.Currency {
+				ci.BudgetRates[r.From] = r.Rate
+			}
 		}
 	}
 	if len(frozen.Offers) > 0 {

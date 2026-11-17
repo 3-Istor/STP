@@ -19,7 +19,7 @@ INSERT INTO bom_snapshots (bom_id, price_snapshot_id, name, currency, volume, pu
     start_on, target_on, destination_country, cost_basis, fx_policy, program_volume, cost_as_of,
     note, proposed_by, validated_by)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
-RETURNING id, bom_id, price_snapshot_id, name, currency, volume, published_at, annual_hours, start_on, target_on, destination_country, cost_basis, fx_policy, program_volume, cost_as_of, note, proposed_by, validated_by
+RETURNING id, bom_id, price_snapshot_id, name, currency, volume, published_at, annual_hours, start_on, target_on, destination_country, cost_basis, fx_policy, program_volume, cost_as_of, note, proposed_by, validated_by, creation_xid, budgets_frozen
 `
 
 type CreateSnapshotParams struct {
@@ -84,12 +84,14 @@ func (q *Queries) CreateSnapshot(ctx context.Context, arg CreateSnapshotParams) 
 		&i.Note,
 		&i.ProposedBy,
 		&i.ValidatedBy,
+		&i.CreationXid,
+		&i.BudgetsFrozen,
 	)
 	return i, err
 }
 
 const getSnapshot = `-- name: GetSnapshot :one
-SELECT id, bom_id, price_snapshot_id, name, currency, volume, published_at, annual_hours, start_on, target_on, destination_country, cost_basis, fx_policy, program_volume, cost_as_of, note, proposed_by, validated_by FROM bom_snapshots WHERE id = $1
+SELECT id, bom_id, price_snapshot_id, name, currency, volume, published_at, annual_hours, start_on, target_on, destination_country, cost_basis, fx_policy, program_volume, cost_as_of, note, proposed_by, validated_by, creation_xid, budgets_frozen FROM bom_snapshots WHERE id = $1
 `
 
 func (q *Queries) GetSnapshot(ctx context.Context, id int64) (BomSnapshot, error) {
@@ -114,6 +116,8 @@ func (q *Queries) GetSnapshot(ctx context.Context, id int64) (BomSnapshot, error
 		&i.Note,
 		&i.ProposedBy,
 		&i.ValidatedBy,
+		&i.CreationXid,
+		&i.BudgetsFrozen,
 	)
 	return i, err
 }
@@ -397,7 +401,7 @@ func (q *Queries) ListSnapshotStock(ctx context.Context, snapshotID int64) ([]Bo
 }
 
 const listSnapshots = `-- name: ListSnapshots :many
-SELECT id, bom_id, price_snapshot_id, name, currency, volume, published_at, annual_hours, start_on, target_on, destination_country, cost_basis, fx_policy, program_volume, cost_as_of, note, proposed_by, validated_by FROM bom_snapshots ORDER BY id
+SELECT id, bom_id, price_snapshot_id, name, currency, volume, published_at, annual_hours, start_on, target_on, destination_country, cost_basis, fx_policy, program_volume, cost_as_of, note, proposed_by, validated_by, creation_xid, budgets_frozen FROM bom_snapshots ORDER BY id
 `
 
 // En-têtes de tous les snapshots (versions d'une famille de BOM), par id.
@@ -429,6 +433,8 @@ func (q *Queries) ListSnapshots(ctx context.Context) ([]BomSnapshot, error) {
 			&i.Note,
 			&i.ProposedBy,
 			&i.ValidatedBy,
+			&i.CreationXid,
+			&i.BudgetsFrozen,
 		); err != nil {
 			return nil, err
 		}

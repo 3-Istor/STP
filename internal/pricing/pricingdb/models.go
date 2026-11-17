@@ -81,6 +81,8 @@ type BomSnapshot struct {
 	Note               pgtype.Text
 	ProposedBy         pgtype.Text
 	ValidatedBy        pgtype.Text
+	CreationXid        pgtype.Uint64
+	BudgetsFrozen      bool
 }
 
 type BomSnapshotBudgetRate struct {
@@ -138,6 +140,13 @@ type BomSnapshotPartStock struct {
 	SnapshotID int64
 	PartID     int64
 	Quantity   decimal.Decimal
+}
+
+type BomSnapshotTargetBudget struct {
+	SnapshotID int64
+	NodeKey    int64
+	Amount     decimal.Decimal
+	Currency   string
 }
 
 type BomSnapshotVehicleProfile struct {
