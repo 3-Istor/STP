@@ -20,4 +20,6 @@ export type Vehicle3DProps = {
   colorBy: ColorBy
   /** 0 = assemblé, 1 = éclaté maximal. */
   explode: number
+  /** Le parent remet aussi son curseur contrôlé à zéro. */
+  onResetView?: () => void
 }

@@ -24,7 +24,7 @@
   "legacy_representations": [
     {
       "id": "v2-generated",
-      "availability": "source_in_v2_reference_only",
+      "availability": "source_in_current_branch",
       "source_path": "web/src/features/vehicle3d/simpleModel.ts",
       "geometry_status": "schematic",
       "verified_geometry": false,
@@ -33,9 +33,11 @@
     },
     {
       "id": "car-concept",
-      "availability": "not_downloaded",
+      "availability": "downloaded_for_validation_only",
       "source_url": "https://github.com/KhronosGroup/glTF-Sample-Assets/tree/main/Models/CarConcept",
       "expected_path": "web/public/models/CarConcept.glb",
+      "downloaded_bytes": 11778688,
+      "downloaded_sha256": "c272098089d78c5cd9fd9f24ff50ee8acf8d932c55f2d55fc10adb6c8998966b",
       "license": "CC-BY-4.0",
       "license_url": "https://creativecommons.org/licenses/by/4.0/",
       "author": "Darmstadt Graphics Group GmbH; Eric Chadwick",

@@ -94,7 +94,7 @@ export function Demo() {
       <main className="demo-view">
         {nodes ? (
           <Vehicle3D bomId={fixture ? FIXTURES[fixture]?.bom_id ?? 0 : bomId} nodes={nodes} selectedNodeId={selected}
-            onSelectNode={setSelected} mode={mode} colorBy={colorBy} explode={explode} />
+            onSelectNode={setSelected} mode={mode} colorBy={colorBy} explode={explode} onResetView={() => setExplode(0)} />
         ) : null}
       </main>
     </div>

@@ -162,3 +162,47 @@ Rien de cela n'est annoncé comme corrigé. La définition de terminé du projet
   identique. GLB absent/invalide produit un message et un repli explicitement schématique.
 - Prochaine unité indépendante : affichage explicite des pièces sans modèle, outils de cadrage/focus
   et transparence, puis proposition d'ADR pour les liaisons exactes par occurrence.
+
+## Point de sauvegarde — sélection explicite et commandes (étapes 2/3/4 partielles)
+
+- Commit précédent : `48a34a4` (transitions et matériaux).
+- Sauvegarde originale des six fichiers désormais aussi dans `docs/3d/audit-initial-backup.tar.gz`,
+  vérifiable par `audit-backup-checksums.json` : elle survivra à la suppression des fichiers `/tmp`.
+- `selection.ts`/test et `Vehicle3DView.tsx` : les pièces physiques sans mesh n'empruntent plus la
+  sélection de leur parent ; commandes désactivées et état explicite. Les groupes ne ciblent que
+  les géométries présentes dans le modèle effectivement chargé. La racine cible ses descendants.
+- `viewer.ts` et contrôles React : cadrage, focus, transparence de la carrosserie, reset synchronisé
+  avec le curseur ; garde contre un focus de boîte vide. Recréation du moteur après erreur WebGL
+  via « Réessayer ». Les sous-ensembles gardent leurs limites schématiques.
+- `vehicle3dNodes.ts`/test : remplacer `part_id` invalide la clé ; changer uniquement `offer_id` ne
+  reconstruit pas la géométrie. Les placements et quantités physiques ne sont pas encore résolus.
+- `BomWorkspace.tsx` : sélectionner un nœud ouvre Détail, y compris depuis l'onglet Réglages.
+- `simpleModel.ts` : vernis limité à la carrosserie, peinture bleue illustrative pour le contraste ;
+  les autres matériaux gardent MeshStandardMaterial. Couleur de démonstration, pas teinte constructeur.
+- `web/e2e/bom-cost-v2.spec.ts` : le parcours existant est conservé et renforcé pour le contrat
+  demandé (pièce sans modèle : sélection vide + message + focus désactivé, groupes : descendants),
+  puis ouverture du panneau depuis Réglages. Aucun test n'a été retiré ou sauté pour passer.
+- Tests unitaires web : 9 fichiers passent ; cas de remplacement physique rouge avant correction.
+  Cas « sous-ensemble absent du GLB » rouge avant correction puis vert.
+- Chromium desktop : **57 parcours passent**, dont 8 nouveaux parcours du visualiseur. Parcours
+  intégré Arbre + 3D vérifié aussi sur Chromium mobile 390×844 (1 PASS).
+- Relecture `relecteur-code`, contexte neuf, 3 tours : 1 Important de focus absent corrigé avec
+  test ; 1 Important sur coordonnées de test mobile corrigé en mesurant après le défilement ;
+  dernier tour « Aucun constat ». L'approbation humaine reste distincte de cette revue.
+- Moulinette `make verify LEVEL=pr` verte : tidy, sqlc, lint, Go -race, govulncheck, tests/build web,
+  audit npm de production (0 vulnérabilité). Gitleaks, osv-scanner, actionlint absents = not_run.
+  Voir `docs/3d/verification-pr.md` pour le libellé PostgreSQL du harnais et la comparaison de risque.
+- Capture réelle de CarConcept : rendu assemblé/éclaté pour les deux fixtures, sans erreur JS.
+  `carconcept-validation.json` : 322 draw calls, 639587 triangles par image, 108 géométries,
+  17 textures ; chargements locaux mesurés 7952 / 6225 ms dans Chromium de cet environnement.
+  C'est le même véhicule conceptuel dans les deux cas, pas la Multipla ni la Valhalla demandées.
+- Schémas : Multipla 201 draw calls / 116894 triangles ; Valhalla 171 / 90902, après chargement.
+  FPS pendant interaction non mesurés ; aucun objectif de fluidité haut de gamme validé.
+- Captures dans `docs/3d/captures/`, inspection visuelle : meilleur contraste, commandes lisibles ;
+  silhouettes et mécanique encore génériques, éclaté CarConcept avec chevauchements visibles.
+- Étapes 2/3 non terminées (assets fidèles et placement manquants). Étape 4 : absence honnête et
+  sélection des sous-ensembles réalisées ; liaison exacte aux pièces en attente de décision.
+  Étape 5 non terminée ; changements de quantités/instances et substitutions géométriques à réaliser.
+  Étape 6 : validation locale partielle ; CI distante, Firefox/WebKit et vraie BOM complète non validés.
+- Prochaine action : présenter le contrat explicite de liaison 3D des occurrences dans une ADR
+  proposée, sans changer API, schéma, dépendances ou snapshots avant l'accord requis.

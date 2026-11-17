@@ -22,7 +22,7 @@ const layout = layoutJson as unknown as { slots: Record<string, Part[]> }
 
 type MaterialDef = { color: string; metal: number; rough: number; paint: boolean; opacity?: number }
 const MATERIALS: Record<string, MaterialDef> = {
-  body: { color: '#dfe3e8', metal: 0.35, rough: 0.45, paint: true },
+  body: { color: '#365b68', metal: 0.55, rough: 0.3, paint: true },
   structure: { color: '#d6dae0', metal: 0.55, rough: 0.35, paint: true },
   dark: { color: '#2b2f35', metal: 0.05, rough: 0.7, paint: true },
   plastic: { color: '#4a5059', metal: 0.1, rough: 0.7, paint: true },
@@ -43,13 +43,15 @@ const MATERIALS: Record<string, MaterialDef> = {
 
 function makeMaterial(name: string): { mat: THREE.MeshStandardMaterial; paint: boolean } {
   const d = MATERIALS[name] ?? MATERIALS.body
-  const mat = new THREE.MeshPhysicalMaterial({
+  const parameters: THREE.MeshStandardMaterialParameters = {
     color: d.color, metalness: d.metal, roughness: d.rough,
-    clearcoat: name === 'body' ? 1 : 0,
-    clearcoatRoughness: 0.18,
     transparent: d.opacity !== undefined, opacity: d.opacity ?? 1,
     side: d.opacity !== undefined ? THREE.DoubleSide : THREE.FrontSide,
-  })
+  }
+  const mat = name === 'body'
+    ? new THREE.MeshPhysicalMaterial({ ...parameters, clearcoat: 1, clearcoatRoughness: 0.18 })
+    : new THREE.MeshStandardMaterial(parameters)
+  mat.name = name
   if (d.opacity !== undefined) mat.depthWrite = false
   return { mat, paint: d.paint }
 }

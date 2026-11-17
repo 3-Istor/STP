@@ -35,3 +35,15 @@ test('clé de scène : stable si seuls les totaux changent, change avec la struc
   assert.notEqual(vehicle3dKey(vehicle3dNodes(nodes, new Map([[3, budget(3, 'over')]]))), k)
   assert.notEqual(vehicle3dKey(vehicle3dNodes(nodes, null)), k)
 })
+
+test('remplacement physique invalide la scène ; offre seule conserve sa géométrie', () => {
+  const baseline = vehicle3dKey(vehicle3dNodes(nodes, null))
+  const cases = [
+    { patch: { part_id: 41 }, changed: true },
+    { patch: { offer_id: 900 }, changed: false },
+  ]
+  for (const c of cases) {
+    const next = nodes.map(n => n.id === 4 ? { ...n, ...c.patch } : n)
+    assert.equal(vehicle3dKey(vehicle3dNodes(next, null)) !== baseline, c.changed)
+  }
+})

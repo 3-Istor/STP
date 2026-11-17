@@ -45,6 +45,7 @@ export class Viewer {
   private focusKey: string | null = null
   private focusKeys = new Set<string>()
   private selection = new Set<string>()
+  private shellTransparent = false
   private selectionFrames: THREE.Box3Helper[] = []
   private colorBy: ColorBy = 'system'
   private palette: StatusPalette
@@ -212,9 +213,23 @@ export class Viewer {
     if (frame && keys.length > 0 && !this.focusKey) this.frameItems(this.itemsOf(new Set(keys)), null)
   }
 
+  frameSelection() {
+    if (this.selection.size > 0) this.frameItems(this.itemsOf(this.selection), null)
+  }
+
+  focusSelection() {
+    if (this.selection.size === 1) this.setFocus([...this.selection][0])
+  }
+
+  setShellTransparency(transparent: boolean) {
+    this.shellTransparent = transparent
+    this.applyStyles()
+  }
+
   /** Focus : le sous-ensemble (et ses associés) s'éclatent dans l'axe, le reste passe en transparence. */
   setFocus(key: string | null) {
     if (!this.index || (key !== null && !this.index.byKey.has(key))) key = null
+    if (key !== null && this.boxOf(this.itemsOf(new Set([key]))).isEmpty()) key = null
     this.focusKey = key
     this.focusKeys = new Set(key ? focusGroup(key, this.index!, this.table) : [])
     this.moveParts(() => {
@@ -318,7 +333,10 @@ export class Viewer {
     for (const it of this.built.items) {
       const ghost = this.focusKey !== null && !(it.obj && this.focusKeys.has(it.obj.key))
       const style = { tint: it.obj ? this.colorOf(it.obj) : null, ghost, estimated: !!it.obj?.estimated }
-      for (const m of it.meshes) styleMesh(m, style)
+      for (const m of it.meshes) {
+        const shell = !Array.isArray(m.material) && /^(body|Paint)/.test(m.material.name)
+        styleMesh(m, { ...style, ghost: ghost || (this.shellTransparent && shell) })
+      }
       for (const l of it.lines) (l.material as THREE.LineBasicMaterial).opacity = ghost ? 0.1 : 0.9
     }
     this.updateSelectionFrames()

@@ -28,7 +28,7 @@ export function vehicle3dNodes(nodes: TreeNode[], budgets: ReadonlyMap<number, N
 export function vehicle3dKey(nodes: Vehicle3DNode[]): string {
   let key = ''
   for (const n of nodes) {
-    key += `${n.id}/${n.parent_id ?? ''}/${n.part_id === null ? n.name : ''}/${n.budget_status === undefined ? '-' : (n.budget_status ?? '0')};`
+    key += `${n.id}/${n.parent_id ?? ''}/${n.part_id ?? ''}/${n.part_id === null ? n.name : ''}/${n.budget_status === undefined ? '-' : (n.budget_status ?? '0')};`
   }
   return key
 }

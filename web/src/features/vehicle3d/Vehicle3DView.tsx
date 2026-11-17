@@ -1,7 +1,8 @@
 // Composant React de la vue 3D (ADR 0035), chargé à la demande avec `three` par index.tsx.
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { budgetColor, DEFAULT_STATUS, resolveColorMode, systemColor, UNAVAILABLE, type StatusPalette } from './colors.ts'
-import { buildVehicleIndex, objectsForNode, type VehicleObject } from './mapping.ts'
+import { buildVehicleIndex, type VehicleObject } from './mapping.ts'
+import { sceneSelection } from './selection.ts'
 import { loadRealistic } from './realistic.ts'
 import { slotTable } from './tables.ts'
 import type { Vehicle3DProps } from './types.ts'
@@ -25,7 +26,7 @@ function readBackground(el: HTMLElement): string {
 
 type Status = { state: 'loading' } | { state: 'ready'; result: LoadResult } | { state: 'error'; message: string }
 
-export default function Vehicle3DView({ bomId, nodes, selectedNodeId, onSelectNode, mode, colorBy, explode }: Vehicle3DProps) {
+export default function Vehicle3DView({ bomId, nodes, selectedNodeId, onSelectNode, mode, colorBy, explode, onResetView }: Vehicle3DProps) {
   const rootRef = useRef<HTMLDivElement>(null)
   const hostRef = useRef<HTMLDivElement>(null)
   const pickedRef = useRef<number | null>(null) // sélection venue d'un clic dans la 3D : pas de recadrage
@@ -35,8 +36,14 @@ export default function Vehicle3DView({ bomId, nodes, selectedNodeId, onSelectNo
   const [hover, setHover] = useState<{ obj: VehicleObject; x: number; y: number } | null>(null)
   const [focus, setFocus] = useState<VehicleObject | null>(null)
   const [palette, setPalette] = useState<StatusPalette>(DEFAULT_STATUS)
+  const [transparent, setTransparent] = useState(false)
+  const [revision, setRevision] = useState(0)
   const index = useMemo(() => buildVehicleIndex(nodes, slotTable), [nodes])
   const color = useMemo(() => resolveColorMode(colorBy, nodes), [colorBy, nodes])
+  const result = status.state === 'ready' ? status.result : null
+  const missingKeys = useMemo(() => new Set(result?.missing.map(o => o.key) ?? []), [result])
+  const selectedNode = nodes.find(n => n.id === selectedNodeId)
+  const selection = useMemo(() => sceneSelection(index, selectedNode, missingKeys), [index, selectedNode, missingKeys])
 
   useEffect(() => { onSelectRef.current = onSelectNode }, [onSelectNode])
 
@@ -44,20 +51,26 @@ export default function Vehicle3DView({ bomId, nodes, selectedNodeId, onSelectNo
   useEffect(() => {
     const p = readPalette(rootRef.current!)
     setPalette(p)
-    const viewer = new Viewer(hostRef.current!, slotTable, p, {
-      onPick: obj => {
-        pickedRef.current = obj.nodeId
-        onSelectRef.current(obj.nodeId)
-      },
-      onHover: (obj, x, y) => setHover(obj ? { obj, x, y } : null),
-      onFocusChange: obj => {
-        setFocus(obj)
-        if (obj) {
+    let viewer: Viewer
+    try {
+      viewer = new Viewer(hostRef.current!, slotTable, p, {
+        onPick: obj => {
           pickedRef.current = obj.nodeId
           onSelectRef.current(obj.nodeId)
-        }
-      },
-    })
+        },
+        onHover: (obj, x, y) => setHover(obj ? { obj, x, y } : null),
+        onFocusChange: obj => {
+          setFocus(obj)
+          if (obj) {
+            pickedRef.current = obj.nodeId
+            onSelectRef.current(obj.nodeId)
+          }
+        },
+      })
+    } catch (error) {
+      setStatus({ state: 'error', message: error instanceof Error ? error.message : String(error) })
+      return
+    }
     viewerRef.current = viewer
     viewer.setBackground(readBackground(rootRef.current!))
     // Bascule de thème (data-theme sur <html>) : couleurs de statut et fond relus, sans reconstruire la scène.
@@ -78,7 +91,7 @@ export default function Vehicle3DView({ bomId, nodes, selectedNodeId, onSelectNo
       viewer.dispose()
       viewerRef.current = null
     }
-  }, [])
+  }, [revision])
 
   // (Re)construction de la scène : changement de BOM, de nœuds ou de rendu.
   useEffect(() => {
@@ -87,24 +100,27 @@ export default function Vehicle3DView({ bomId, nodes, selectedNodeId, onSelectNo
     let live = true
     setStatus({ state: 'loading' })
     setFocus(null)
+    setHover(null)
     viewer.load(mode, index, loadRealistic).then(
       result => { if (live) setStatus({ state: 'ready', result }) },
       err => { if (live) setStatus({ state: 'error', message: err instanceof Error ? err.message : String(err) }) },
     )
     return () => { live = false }
-  }, [bomId, mode, index])
+  }, [bomId, mode, index, revision])
 
   const ready = status.state === 'ready'
   useEffect(() => { if (ready) viewerRef.current?.setColors(color.mode, palette) }, [ready, color.mode, palette])
   useEffect(() => { if (ready) viewerRef.current?.setExplode(explode) }, [ready, explode])
+  useEffect(() => { if (ready) viewerRef.current?.setShellTransparency(transparent) }, [ready, transparent])
   useEffect(() => {
     if (!ready) return
     const fromClick = selectedNodeId !== null && selectedNodeId === pickedRef.current
     pickedRef.current = null
-    viewerRef.current?.setSelection(objectsForNode(index, selectedNodeId), !fromClick)
-  }, [ready, index, selectedNodeId])
+    const viewer = viewerRef.current
+    if (viewer?.focused && !selection.keys.includes(viewer.focused)) viewer.setFocus(null)
+    viewer?.setSelection(selection.keys, !fromClick)
+  }, [ready, selection, selectedNodeId])
 
-  const result = status.state === 'ready' ? status.result : null
   const estimated = result?.mode === 'simple' ? index.objects.filter(o => o.estimated).length : 0
   const missing = result?.missing.length ?? 0
 
@@ -127,11 +143,25 @@ export default function Vehicle3DView({ bomId, nodes, selectedNodeId, onSelectNo
         ) : null}
         {status.state === 'loading' ? <span className="v3d-badge" role="status">Chargement…</span> : null}
         {status.state === 'error' ? <span className="v3d-notice" role="alert">Vue 3D indisponible : {status.message}</span> : null}
+        {status.state === 'error' ? <button type="button" className="v3d-button" onClick={() => setRevision(r => r + 1)}>Réessayer la vue 3D</button> : null}
+        {selection.unavailable ? <span className="v3d-notice" role="status">
+          {selectedNode?.part_id !== null ? 'Modèle 3D de cette pièce indisponible.' : 'Ce sous-ensemble est absent du modèle chargé.'}
+          {' '}Aucun autre composant n’est sélectionné à sa place.
+        </span> : null}
         {result?.fallback ? <span className="v3d-notice" role="alert">{result.fallback}</span> : null}
         {focus ? <span className="v3d-badge">Éclatement dans l’axe · le reste du véhicule en transparence · Échap pour sortir</span> : null}
       </div>
       <div className="v3d-overlay v3d-top-right">
-        <button type="button" className="v3d-button" onClick={() => viewerRef.current?.recenter()}>Recentrer</button>
+        <button type="button" className="v3d-button" disabled={!ready} onClick={() => viewerRef.current?.recenter()}>Recentrer</button>
+        <button type="button" className="v3d-button" disabled={!ready || selection.keys.length === 0} onClick={() => viewerRef.current?.frameSelection()}>Cadrer la sélection</button>
+        <button type="button" className="v3d-button" disabled={!ready || selection.keys.length !== 1} onClick={() => viewerRef.current?.focusSelection()}>Focus sélection</button>
+        {onResetView ? <button type="button" className="v3d-button" disabled={!ready} onClick={() => {
+          setTransparent(false)
+          viewerRef.current?.setExplode(0)
+          viewerRef.current?.setFocus(null)
+          onResetView()
+        }}>Réinitialiser</button> : null}
+        <label className="v3d-transparency"><input type="checkbox" checked={transparent} disabled={!ready} onChange={e => setTransparent(e.target.checked)} />Carrosserie transparente</label>
       </div>
       <div className="v3d-overlay v3d-bottom-left">
         {color.notice ? <span className="v3d-notice">{color.notice}</span> : null}

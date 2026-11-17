@@ -154,7 +154,7 @@ function Vehicle3DPane({ data, selectedID, onSelect }: { data: BomData; selected
       </div>
       <div className="v3d-stage">
         <Vehicle3DBoundary>
-          <Vehicle3D bomId={data.target.id} nodes={stable.nodes} selectedNodeId={selectedID} onSelectNode={onSelect} mode={mode} colorBy={colorBy} explode={explode} />
+          <Vehicle3D bomId={data.target.id} nodes={stable.nodes} selectedNodeId={selectedID} onSelectNode={onSelect} mode={mode} colorBy={colorBy} explode={explode} onResetView={() => setExplode(0)} />
         </Vehicle3DBoundary>
       </div>
     </div>

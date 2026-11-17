@@ -191,17 +191,20 @@ test('Arbre + 3D : clic dans l’arbre → objet sélectionné dans la 3D ; clic
   await row(page, 'Porte avant gauche').click()
   await expect(page).toHaveURL(/node=3/)
   await expect.poll(() => selection3d(page)).toEqual(['door_fl'])
-  // Une pièce (sélection venue de l'URL, sans recharger la page) sélectionne le sous-ensemble qui la
-  // représente ; un système, tous ses objets.
-  await row(page, 'Fiat Multipla').click() // la racine ne sélectionne aucun objet
-  await expect.poll(() => selection3d(page)).toEqual([])
+  // Les groupes sélectionnent leurs descendants. Une pièce sans modèle a un état explicite,
+  // conformément à la refonte 3D : son parent ne doit plus être sélectionné à sa place.
+  await row(page, 'Fiat Multipla').click()
+  await expect.poll(() => selection3d(page)).toEqual(['door_fl', 'hood', 'est:6'])
   await page.evaluate(() => { window.location.hash = '#/boms/1/structurer?tab=arbre-3d&node=4' })
   await expect(page.getByRole('treeitem', { selected: true })).toContainText('Porte avant nue')
-  await expect.poll(() => selection3d(page)).toEqual(['door_fl'])
+  await expect.poll(() => selection3d(page)).toEqual([])
+  await expect(page.getByText('Modèle 3D de cette pièce indisponible.', { exact: false })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Focus sélection', exact: true })).toBeDisabled()
   await row(page, 'Carrosserie et ouvrants').click()
   await expect.poll(() => selection3d(page).then((s) => s.sort())).toEqual(['door_fl', 'hood'])
 
   // Clic au centre projeté du capot (après le recadrage de la caméra) : la sélection revient dans l'URL et l'arbre.
+  await page.getByRole('tab', { name: 'Réglages de calcul', exact: true }).click()
   const canvas = page.locator('.v3d-host canvas')
   await canvas.scrollIntoViewIfNeeded()
   await page.waitForTimeout(1200)
@@ -220,6 +223,8 @@ test('Arbre + 3D : clic dans l’arbre → objet sélectionné dans la 3D ; clic
   await page.mouse.click(box.x + at.x, box.y + at.y)
   await expect(page).toHaveURL(/node=5/)
   await expect(page.getByRole('treeitem', { selected: true })).toContainText('Capot')
+  await expect(page.getByRole('tab', { name: 'Détail', exact: true })).toHaveAttribute('aria-selected', 'true')
+  await expect(page.getByRole('region', { name: 'Détail du nœud', exact: true })).toContainText('Capot')
 })
 
 test('3D sans WebGL : la panne reste dans le panneau 3D, l’arbre et la Synthèse restent utilisables', async ({ page }) => {

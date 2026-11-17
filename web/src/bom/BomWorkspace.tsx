@@ -39,7 +39,10 @@ export function BomWorkspace({ route, data, error, onPublished }: Props) {
   const selected = selectedID !== null ? data.byID.get(selectedID)! : null
   const go = (patch: Partial<Pick<BomRoute, 'step' | 'node' | 'tab' | 'supplier'>>, replace = false) =>
     navigate({ ...route, ...patch }, { replace })
-  const select = (id: number) => go({ node: id }, true)
+  const select = (id: number) => {
+    setTab('detail')
+    go({ node: id }, true)
+  }
   const label = (id: number) => {
     const n = data.byID.get(id)
     return !n ? `#${id}` : n.part_id !== null ? partName(data.catalog, n.part_id) : n.name
