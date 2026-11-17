@@ -1,0 +1,17 @@
+/* Page de démo uniquement (pas livrée dans le shell). */
+html, body, #root { height: 100%; margin: 0; }
+.demo { display: grid; grid-template-columns: 250px 1fr; grid-template-rows: auto 1fr; height: 100%; font: 13px/1.4 system-ui, sans-serif; }
+.demo-bar { grid-column: 1 / 3; display: flex; flex-wrap: wrap; gap: 14px; align-items: center; padding: 8px 12px; border-bottom: 1px solid #d6dde6; background: #fff; }
+.demo-seg { display: inline-flex; gap: 2px; align-items: center; }
+.demo-seg button { font: inherit; padding: 3px 9px; border: 1px solid #b7c2d0; background: #fff; cursor: pointer; }
+.demo-seg button[aria-pressed="true"] { background: #1f5fbf; color: #fff; border-color: #1f5fbf; }
+.demo-sel { margin-left: auto; color: #3b4656; }
+.demo-tree { overflow: auto; border-right: 1px solid #d6dde6; padding: 6px 0; background: #fbfcfd; }
+.demo-tree button { display: block; width: 100%; text-align: left; font: inherit; border: 0; background: none; padding: 3px 12px 3px 26px; cursor: pointer; }
+.demo-tree button.sys { padding-left: 12px; font-weight: 650; margin-top: 4px; }
+.demo-tree button:hover { background: #eaf0f8; }
+.demo-tree button.on { background: #dce8fb; }
+.demo-view { min-height: 0; position: relative; }
+.demo-bar label { display: inline-flex; gap: 6px; align-items: center; margin: 0; font-weight: 400; }
+.demo-bar select { width: auto; padding: 2px 6px; }
+.demo-bar label { white-space: nowrap; }

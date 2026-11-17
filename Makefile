@@ -12,7 +12,7 @@ SIM_YEAR_DURATION ?= 40m
 SIM_FX_PAIRS ?= [{"series_key":"fx:EUR:GBP","base_currency":"EUR","quote_currency":"GBP","reference":"0.855","band_percent":"5"},{"series_key":"fx:EUR:JPY","base_currency":"EUR","quote_currency":"JPY","reference":"161","band_percent":"5"},{"series_key":"fx:EUR:USD","base_currency":"EUR","quote_currency":"USD","reference":"1.087","band_percent":"5"},{"series_key":"fx:GBP:EUR","base_currency":"GBP","quote_currency":"EUR","reference":"1.17","band_percent":"5"},{"series_key":"fx:GBP:JPY","base_currency":"GBP","quote_currency":"JPY","reference":"190","band_percent":"5"},{"series_key":"fx:GBP:USD","base_currency":"GBP","quote_currency":"USD","reference":"1.27","band_percent":"5"},{"series_key":"fx:JPY:EUR","base_currency":"JPY","quote_currency":"EUR","reference":"0.0062","band_percent":"5"},{"series_key":"fx:JPY:GBP","base_currency":"JPY","quote_currency":"GBP","reference":"0.0053","band_percent":"5"},{"series_key":"fx:JPY:USD","base_currency":"JPY","quote_currency":"USD","reference":"0.0067","band_percent":"5"},{"series_key":"fx:USD:EUR","base_currency":"USD","quote_currency":"EUR","reference":"0.92","band_percent":"5"},{"series_key":"fx:USD:GBP","base_currency":"USD","quote_currency":"GBP","reference":"0.787","band_percent":"5"},{"series_key":"fx:USD:JPY","base_currency":"USD","quote_currency":"JPY","reference":"150","band_percent":"5"}]
 export PRICE_API_URL SIM_DATASET_VERSION SIM_SEED SIM_AS_OF SIM_YEAR_DURATION SIM_FX_PAIRS
 
-.PHONY: run priceapi seed test cover sec lint migrate db dev web sqlc up down
+.PHONY: run priceapi seed test cover sec lint migrate db dev web sqlc up down models
 
 run: ## API sur :8080
 	go run ./cmd/server
@@ -64,3 +64,22 @@ down: ## arrête la stack Docker (garde les données ; `docker compose down -v` 
 web/node_modules: web/package-lock.json
 	cd web && npm ci
 	touch $@
+
+# Modèle réaliste de la vue 3D (ADR 0035) : « Car Concept », © 2024 Darmstadt Graphics Group GmbH,
+# Eric Chadwick, CC-BY 4.0. Téléchargé, jamais commité (.gitignore). Compressé (meshopt) si gltfpack est
+# installé, sinon copié tel quel ; le décodeur meshopt est fourni par three, aucune dépendance ajoutée.
+MODEL_URL ?= https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/CarConcept/glTF-Binary/CarConcept.glb
+MODEL_DIR := web/public/models
+
+models: ## modèle 3D réaliste (téléchargement, ~12 Mo)
+	@mkdir -p $(MODEL_DIR)
+	@if [ -s $(MODEL_DIR)/CarConcept.glb ]; then echo "models: $(MODEL_DIR)/CarConcept.glb déjà présent (supprimer pour retélécharger)"; exit 0; fi; \
+	set -e; tmp=$$(mktemp -d); trap 'rm -rf "$$tmp"' EXIT; \
+	curl -fsSL --retry 3 -o "$$tmp/src.glb" "$(MODEL_URL)"; \
+	[ "$$(head -c 4 "$$tmp/src.glb")" = "glTF" ] || { echo "models: le fichier téléchargé n'est pas un .glb" >&2; exit 1; }; \
+	if command -v gltfpack >/dev/null 2>&1 && gltfpack -i "$$tmp/src.glb" -o "$$tmp/packed.glb" -cc -kn -km -ke; then \
+		mv "$$tmp/packed.glb" $(MODEL_DIR)/CarConcept.glb; echo "models: compressé par gltfpack (meshopt)"; \
+	else \
+		mv "$$tmp/src.glb" $(MODEL_DIR)/CarConcept.glb; echo "models: gltfpack absent, modèle copié sans compression"; \
+	fi; \
+	ls -l $(MODEL_DIR)/CarConcept.glb

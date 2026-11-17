@@ -85,6 +85,8 @@ jobs:
           cache-dependency-path: web/package-lock.json
       - run: npm ci
       - run: npm run lint
+      - name: Tests unitaires de logique pure (node --test, vue 3D, ADR 0035)
+        run: npm run test:unit
       - run: npm run build
       - name: Navigateurs de test (ADR 0013)
         run: npx --no-install playwright install --with-deps chromium firefox webkit
