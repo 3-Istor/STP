@@ -237,3 +237,55 @@ func TestReductionIdeas(t *testing.T) {
 		})
 	}
 }
+
+// QUAND le budget de la BOM change après la publication de V1
+// ALORS le % du budget de V1 et les budgets d'un brouillon créé depuis V1 NE DOIVENT PAS bouger : les budgets
+// cibles sont des réglages figés au snapshot (AGENTS §3, v2-lot-g T3).
+func TestSnapshotBudgetsAreFrozen(t *testing.T) {
+	f, a, v1, _ := versionsFixture(t)
+	ctx := t.Context()
+	_, nodes, err := f.boms.Tree(ctx, a.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	root := nodes[0].ID
+	if err := f.boms.SetTargetBudget(ctx, a.ID, bom.TargetBudget{NodeID: root, Amount: dec("1000"), Currency: "EUR"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.boms.SetTargetBudget(ctx, a.ID, bom.TargetBudget{NodeID: nodes[1].ID, Amount: dec("10"), Currency: "EUR"}); err != nil {
+		t.Fatal(err)
+	}
+
+	vs, err := f.snaps.Versions(ctx, a.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, v := range vs {
+		if v.Kind != "snapshot" || v.ID != v1.ID {
+			continue
+		}
+		// 388 € pour le budget figé de 450 € : 86,22 %, pas 38,8 % (budget actuel de 1 000 €).
+		if v.BudgetPercent == nil || !v.BudgetPercent.Round(2).Equal(dec("86.22")) {
+			t.Errorf("V1 budget %% = %v, want 86.22 (budget figé)", v.BudgetPercent)
+		}
+		if v.TargetBudgetRoot == nil || !v.TargetBudgetRoot.Amount().Equal(dec("450")) {
+			t.Errorf("V1 budget global = %v, want 450 EUR", v.TargetBudgetRoot)
+		}
+	}
+
+	c, err := f.snaps.NewDraft(ctx, v1.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	budgets, err := f.boms.TargetBudgetList(ctx, c.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, cn, err := f.boms.Tree(ctx, c.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(budgets) != 1 || budgets[0].NodeID != cn[0].ID || !budgets[0].Amount.Equal(dec("450")) || budgets[0].Currency != "EUR" {
+		t.Fatalf("budgets du brouillon issu de V1 = %+v, want seulement le budget global figé de 450 EUR", budgets)
+	}
+}

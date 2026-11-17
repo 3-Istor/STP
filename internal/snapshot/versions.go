@@ -33,7 +33,7 @@ type Version struct {
 	Cost             *money.Money
 	CostError        string
 	// BudgetPercent : coût ÷ budget global × 100 (exact, arrondi en sortie) ; nil sans budget ou sans coût.
-	// Snapshot : budget global d'aujourd'hui de sa BOM (les budgets ne sont pas figés au snapshot).
+	// Snapshot : budget global figé à la publication (budget actuel de sa BOM s'il a été publié avant 00015).
 	BudgetPercent    *decimal.Decimal
 	PriceSnapshotID  *int64 // nil : prix en direct (brouillon)
 	ProposedBy       *string
@@ -181,11 +181,11 @@ func (s *Service) Versions(ctx context.Context, bomID int64) ([]Version, error) 
 		if err := s.versionCost(&v, p.Totals, rootOf(p.Input.Nodes)); err != nil {
 			return nil, err
 		}
-		rb, err := rootBudget(sn.BOMID)
+		budgets, err := s.frozenBudgets(ctx, sn) // budgets figés à la publication (v2-lot-g T3)
 		if err != nil {
 			return nil, fmt.Errorf("versions of bom %d: %w", bomID, err)
 		}
-		setBudget(&v, rb)
+		setBudget(&v, rootBudgetOf(budgets, rootOf(p.Input.Nodes)))
 		out = append(out, v)
 	}
 	slices.SortStableFunc(out, func(a, b Version) int {
@@ -201,6 +201,16 @@ func rootOf(nodes []bom.CalcNode) int64 {
 		}
 	}
 	return 0
+}
+
+// rootBudgetOf : budget de la racine parmi budgets, ou nil.
+func rootBudgetOf(budgets []bom.TargetBudget, root int64) *bom.TargetBudget {
+	for _, b := range budgets {
+		if b.NodeID == root {
+			return &b
+		}
+	}
+	return nil
 }
 
 func (s *Service) versionCost(v *Version, t bom.Totals, root int64) error {

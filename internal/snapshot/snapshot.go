@@ -42,6 +42,9 @@ type Snapshot struct {
 	// Profile : profil de véhicule figé (ADR 0036) ; nil si la BOM n'en avait pas (ou publié avant).
 	Profile     *bom.VehicleProfile
 	PublishedAt time.Time
+	// BudgetsFrozen : budgets cibles copiés à la publication (v2-lot-g T3) ; false pour un snapshot publié avant
+	// la migration 00015 (ses budgets sont alors ceux, actuels, de sa BOM).
+	BudgetsFrozen bool
 	// Trace de la décision (ADR 0033) : nil pour un snapshot publié avant, ou champ non saisi.
 	Note        *string
 	ProposedBy  *string
@@ -102,9 +105,12 @@ type Part struct {
 // Store est l'accès aux snapshots de BOM. Il n'a aucune méthode de modification ni de suppression
 // (la base les refuse aussi, ADR 0006). L'implémentation Postgres vit dans snapshot/snapshotstore.
 type Store interface {
-	// Create insère l'en-tête, tous les nœuds, le stock et les faits de coût figés dans une même transaction ;
-	// s.ID est ignoré.
-	Create(ctx context.Context, s Snapshot, nodes []Node, stock []bom.PartStock, cost FrozenCost, checks []FrozenCheck) (Snapshot, error)
+	// Create insère l'en-tête, tous les nœuds, le stock, les faits de coût, les contrôles et les budgets cibles
+	// (NodeID = clé du nœud figé) figés dans une même transaction ; s.ID est ignoré.
+	Create(ctx context.Context, s Snapshot, nodes []Node, stock []bom.PartStock, cost FrozenCost, checks []FrozenCheck,
+		budgets []bom.TargetBudget) (Snapshot, error)
+	// TargetBudgets renvoie les budgets cibles figés (NodeID = clé du nœud figé), triés par clé.
+	TargetBudgets(ctx context.Context, id int64) ([]bom.TargetBudget, error)
 	// Checks renvoie les contrôles figés à la publication (ADR 0033), vides pour un snapshot publié avant.
 	Checks(ctx context.Context, id int64) ([]FrozenCheck, error)
 	// List renvoie l'en-tête de tous les snapshots, par id (versions d'une famille de BOM).
@@ -207,7 +213,7 @@ func (s *Service) Publish(ctx context.Context, bomID int64, at time.Time, req Pu
 	header := Snapshot{
 		BOMID: b.ID, PriceSnapshotID: priceSnapID, Name: b.Name, Currency: b.Currency, Volume: b.Volume,
 		AnnualHours: &b.AnnualHours, Schedule: dc.Schedule, DestinationCountry: b.DestinationCountry, PublishedAt: at,
-		Note: trace.Note, ProposedBy: trace.ProposedBy, ValidatedBy: trace.ValidatedBy,
+		Note: trace.Note, ProposedBy: trace.ProposedBy, ValidatedBy: trace.ValidatedBy, BudgetsFrozen: true,
 	}
 	frozen, err := freezeCost(dc, &header)
 	if err != nil {
@@ -216,7 +222,8 @@ func (s *Service) Publish(ctx context.Context, bomID int64, at time.Time, req Pu
 	if header.Profile, err = s.boms.VehicleProfile(ctx, bomID); err != nil && !errors.Is(err, bom.ErrProfilesUnavailable) {
 		return Snapshot{}, fmt.Errorf("publish bom %d: %w", bomID, err)
 	}
-	out, err := s.store.Create(ctx, header, nodes, dc.Stock, frozen, frozenChecks)
+	// Budgets cibles : réglages copiés comme le reste (AGENTS §3) ; chaque budget porte sur un nœud de l'arbre lu.
+	out, err := s.store.Create(ctx, header, nodes, dc.Stock, frozen, frozenChecks, dc.Budgets)
 	if err != nil {
 		return Snapshot{}, fmt.Errorf("publish bom %d: %w", bomID, err)
 	}
@@ -515,7 +522,11 @@ func (s *Service) NewDraft(ctx context.Context, id int64) (bom.BOM, error) {
 			return bom.BOM{}, fmt.Errorf("new draft from snapshot %d: %w", id, err)
 		}
 	}
-	if err := s.copyDraft(ctx, b.ID, h.BOMID, nodes, stock, h.Schedule); err != nil {
+	budgets, err := s.frozenBudgets(ctx, h)
+	if err == nil {
+		err = s.copyDraft(ctx, b.ID, nodes, stock, budgets, h.Schedule)
+	}
+	if err != nil {
 		if delErr := s.boms.DeleteBOM(ctx, b.ID); delErr != nil {
 			err = errors.Join(err, fmt.Errorf("remove partial draft %d: %w", b.ID, delErr))
 		}
@@ -524,15 +535,23 @@ func (s *Service) NewDraft(ctx context.Context, id int64) (bom.BOM, error) {
 	return b, nil
 }
 
-// copyDraft recopie l'arbre, le stock (ADR 0022) et le planning (ADR 0023) figés dans le brouillon bomID, puis
-// les budgets cibles de la BOM source (non figés au snapshot : ceux d'aujourd'hui) des nœuds présents dans le
-// snapshot, pour que le brouillon se compare à la même cible.
-func (s *Service) copyDraft(ctx context.Context, bomID, sourceBOM int64, nodes []Node, stock []bom.PartStock, sch *bom.Schedule) error {
-	newIDs, err := s.copyTree(ctx, bomID, nodes)
-	if err != nil {
-		return err
+// frozenBudgets : budgets cibles du snapshot (NodeID = clé du nœud figé). Snapshot publié avant la migration
+// 00015 (BudgetsFrozen faux) : ses budgets n'ont pas été copiés, on garde l'ancien comportement, les budgets
+// actuels de sa BOM (la racine d'une BOM ne change jamais d'id, les autres nœuds absents du snapshot sont ignorés
+// par l'appelant).
+func (s *Service) frozenBudgets(ctx context.Context, h Snapshot) ([]bom.TargetBudget, error) {
+	if h.BudgetsFrozen {
+		return s.store.TargetBudgets(ctx, h.ID)
 	}
-	budgets, err := s.boms.TargetBudgetList(ctx, sourceBOM)
+	return s.boms.TargetBudgetList(ctx, h.BOMID)
+}
+
+// copyDraft recopie l'arbre, le stock (ADR 0022), le planning (ADR 0023) et les budgets cibles figés du snapshot
+// dans le brouillon bomID, pour que le brouillon se compare à la même cible que le snapshot.
+func (s *Service) copyDraft(ctx context.Context, bomID int64, nodes []Node, stock []bom.PartStock, budgets []bom.TargetBudget,
+	sch *bom.Schedule,
+) error {
+	newIDs, err := s.copyTree(ctx, bomID, nodes)
 	if err != nil {
 		return err
 	}

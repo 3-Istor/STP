@@ -40,6 +40,16 @@ updated: 2026-11-17
   `budgets_frozen` (utilisées par T3). Première version avec une FK vers `bom_snapshot_nodes` : le TRUNCATE des
   nœuds échouait en 0A000 au lieu de 23001 (test existant) → FK vers `bom_snapshots` seulement. ADR 0038 (Proposé).
 
+### T3: Budgets figés au snapshot
+- **Status**: completed
+- **Notes**: test d'abord : `TestSnapshotBudgetsAreFrozen` (budget de la BOM passé de 450 à 1 000 € après V1) :
+  V1 affichait 38,8 % au lieu de 86,22 % et le brouillon issu de V1 recevait 1 000 € + un budget ajouté
+  après coup. `Publish` copie `dc.Budgets` (même lecture que le reste) dans `bom_snapshot_target_budgets`,
+  `budgets_frozen = true` ; `Versions` et `NewDraft` lisent `frozenBudgets` (snapshot publié avant 00015 :
+  budgets actuels de la BOM, comportement précédent, dit dans le code). La date cible était déjà figée
+  (`start_on`/`target_on`, ADR 0023). Cas UPDATE/DELETE/TRUNCATE des budgets figés ajoutés à
+  `TestBomSnapshotRejectsMutations`. `go test -count=1 ./...` vert.
+
 ## Decisions
 
 ## Blockers

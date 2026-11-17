@@ -17,8 +17,8 @@ const createSnapshot = `-- name: CreateSnapshot :one
 
 INSERT INTO bom_snapshots (bom_id, price_snapshot_id, name, currency, volume, published_at, annual_hours,
     start_on, target_on, destination_country, cost_basis, fx_policy, program_volume, cost_as_of,
-    note, proposed_by, validated_by)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+    note, proposed_by, validated_by, budgets_frozen)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
 RETURNING id, bom_id, price_snapshot_id, name, currency, volume, published_at, annual_hours, start_on, target_on, destination_country, cost_basis, fx_policy, program_volume, cost_as_of, note, proposed_by, validated_by, creation_xid, budgets_frozen
 `
 
@@ -40,6 +40,7 @@ type CreateSnapshotParams struct {
 	Note               pgtype.Text
 	ProposedBy         pgtype.Text
 	ValidatedBy        pgtype.Text
+	BudgetsFrozen      bool
 }
 
 // Requêtes du domaine snapshot (sqlc → internal/snapshot/snapshotdb). Voir ADR 0006.
@@ -63,6 +64,7 @@ func (q *Queries) CreateSnapshot(ctx context.Context, arg CreateSnapshotParams) 
 		arg.Note,
 		arg.ProposedBy,
 		arg.ValidatedBy,
+		arg.BudgetsFrozen,
 	)
 	var i BomSnapshot
 	err := row.Scan(
@@ -205,6 +207,13 @@ type InsertSnapshotStockParams struct {
 	SnapshotID int64
 	PartID     int64
 	Quantity   decimal.Decimal
+}
+
+type InsertSnapshotTargetBudgetsParams struct {
+	SnapshotID int64
+	NodeKey    int64
+	Amount     decimal.Decimal
+	Currency   string
 }
 
 const insertSnapshotVehicleProfile = `-- name: InsertSnapshotVehicleProfile :exec
@@ -390,6 +399,35 @@ func (q *Queries) ListSnapshotStock(ctx context.Context, snapshotID int64) ([]Bo
 	for rows.Next() {
 		var i BomSnapshotPartStock
 		if err := rows.Scan(&i.SnapshotID, &i.PartID, &i.Quantity); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listSnapshotTargetBudgets = `-- name: ListSnapshotTargetBudgets :many
+SELECT snapshot_id, node_key, amount, currency FROM bom_snapshot_target_budgets WHERE snapshot_id = $1 ORDER BY node_key
+`
+
+func (q *Queries) ListSnapshotTargetBudgets(ctx context.Context, snapshotID int64) ([]BomSnapshotTargetBudget, error) {
+	rows, err := q.db.Query(ctx, listSnapshotTargetBudgets, snapshotID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []BomSnapshotTargetBudget
+	for rows.Next() {
+		var i BomSnapshotTargetBudget
+		if err := rows.Scan(
+			&i.SnapshotID,
+			&i.NodeKey,
+			&i.Amount,
+			&i.Currency,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

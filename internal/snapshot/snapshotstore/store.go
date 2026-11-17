@@ -42,7 +42,7 @@ func New(db DB) *Store {
 // Create insère l'en-tête puis tous les nœuds (un COPY) dans une même transaction : un snapshot est
 // publié en entier ou pas du tout. Les contraintes différées (parent présent) sont vérifiées au commit.
 func (s *Store) Create(ctx context.Context, h snapshot.Snapshot, nodes []snapshot.Node, stock []bom.PartStock, cost snapshot.FrozenCost,
-	checks []snapshot.FrozenCheck,
+	checks []snapshot.FrozenCheck, budgets []bom.TargetBudget,
 ) (snapshot.Snapshot, error) {
 	tx, err := s.db.Begin(ctx)
 	if err != nil {
@@ -58,6 +58,7 @@ func (s *Store) Create(ctx context.Context, h snapshot.Snapshot, nodes []snapsho
 		StartOn: startOn(h.Schedule), TargetOn: targetOn(h.Schedule), DestinationCountry: optText(h.DestinationCountry),
 		CostBasis: methodText(h.CostMethod, true), FxPolicy: methodText(h.CostMethod, false), ProgramVolume: programVolume(h.CostMethod),
 		CostAsOf: optTime(h.CostAsOf), Note: optText(h.Note), ProposedBy: optText(h.ProposedBy), ValidatedBy: optText(h.ValidatedBy),
+		BudgetsFrozen: h.BudgetsFrozen,
 	})
 	if err != nil {
 		return snapshot.Snapshot{}, fmt.Errorf("create snapshot of bom %d: %w", h.BOMID, err)
@@ -89,6 +90,15 @@ func (s *Store) Create(ctx context.Context, h snapshot.Snapshot, nodes []snapsho
 		}
 		if _, err := q.InsertSnapshotChecks(ctx, rows); err != nil {
 			return snapshot.Snapshot{}, fmt.Errorf("create snapshot of bom %d: checks: %w", h.BOMID, err)
+		}
+	}
+	if len(budgets) > 0 {
+		rows := make([]snapshotdb.InsertSnapshotTargetBudgetsParams, len(budgets))
+		for i, b := range budgets {
+			rows[i] = snapshotdb.InsertSnapshotTargetBudgetsParams{SnapshotID: row.ID, NodeKey: b.NodeID, Amount: b.Amount, Currency: b.Currency}
+		}
+		if _, err := q.InsertSnapshotTargetBudgets(ctx, rows); err != nil {
+			return snapshot.Snapshot{}, fmt.Errorf("create snapshot of bom %d: target budgets: %w", h.BOMID, err)
 		}
 	}
 	if err := insertProfile(ctx, q, row.ID, h.Profile); err != nil {
@@ -255,6 +265,19 @@ func (s *Store) Nodes(ctx context.Context, id int64) ([]snapshot.Node, error) {
 	return out, nil
 }
 
+// TargetBudgets renvoie les budgets cibles figés du snapshot (NodeID = clé du nœud figé), triés par clé.
+func (s *Store) TargetBudgets(ctx context.Context, id int64) ([]bom.TargetBudget, error) {
+	rows, err := s.q.ListSnapshotTargetBudgets(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("target budgets of snapshot %d: %w", id, err)
+	}
+	out := make([]bom.TargetBudget, len(rows))
+	for i, r := range rows {
+		out[i] = bom.TargetBudget{NodeID: r.NodeKey, Amount: r.Amount, Currency: r.Currency}
+	}
+	return out, nil
+}
+
 // Stock renvoie le stock figé du snapshot, trié par pièce (ADR 0022).
 func (s *Store) Stock(ctx context.Context, id int64) ([]bom.PartStock, error) {
 	rows, err := s.q.ListSnapshotStock(ctx, id)
@@ -328,6 +351,7 @@ func toSnapshot(r snapshotdb.BomSnapshot) snapshot.Snapshot {
 		Schedule: toSchedule(r.StartOn, r.TargetOn), DestinationCountry: ptrText(r.DestinationCountry),
 		CostMethod: toMethod(r), CostAsOf: ptrTime(r.CostAsOf),
 		Note: ptrText(r.Note), ProposedBy: ptrText(r.ProposedBy), ValidatedBy: ptrText(r.ValidatedBy),
+		BudgetsFrozen: r.BudgetsFrozen,
 	}
 }
 
