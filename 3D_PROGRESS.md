@@ -2,18 +2,24 @@
 
 Mise à jour : 2026-11-17. Branche active : `feat/3d-pro-v2`.
 Base : `010d4d9e54d0990cbfe0f1368341ae386034107d` (`origin/v2/implementation`).
-Étape active : 2, préparation des outils et première amélioration locale du visualiseur.
-L'audit statique et la vérification de la base sont réalisés ; les validations navigateur restent à faire.
+Étapes 2/3/4 partielles ; validation locale et points de sauvegarde réalisés.
+Liaison fine des pièces en attente de validation de l’ADR 0041 proposée ; aucun travail dépendant
+n'est implémenté. La fidélité automobile reste bloquée par les ressources manquantes.
 
 ## Première action à la reprise
 
-1. Lire ce fichier et `3D_PLAN.md`, vérifier branche, état Git et derniers commits.
-2. Rester exclusivement sur `feat/3d-pro-v2`. Ne modifier aucune branche préexistante.
-3. Vérifier les outils sous `/tmp/stp-3d-toolchain` et leurs résultats ci-dessous ; reprendre les
-   tests de base avant la première modification produit.
-4. Poursuivre le cadrage et les transitions du viewer, puis la validation navigateur des deux fixtures.
-5. Avant de changer le contrat de liaison fine des pièces, proposer l'ADR requise et attendre sa
-   validation. Continuer les améliorations locales indépendantes pendant cette attente.
+1. Lire ce fichier, `3D_PLAN.md`, `docs/3d/VALIDATION.md` et l'ADR 0041 ; vérifier branche et état Git.
+2. Rester exclusivement sur `feat/3d-pro-v2`. Vérifier la réponse humaine à l'ADR 0041, option 1.
+   Sans accord explicite sur ce contrat, ne pas implémenter les nouvelles liaisons d'assets.
+3. Si approuvée, commencer par les tests d'un manifeste lié à l'arbre courant : portée différente,
+   même `part_id` dans plusieurs `node_id`, mesh absent, pièce remplacée, offre seule, placement
+   absent. Garder les quantités en chaîne ; n'inventer aucun ID ni emplacement.
+4. Réutiliser le viewer et son chargement différé ; branche actuelle et commits plus bas. La base
+   `origin/v2/implementation` reste inchangée au commit `010d4d9`.
+5. Continuer la recherche de modèles légaux des bons véhicules, inspecter licence et découpage ;
+   aucune source précise n'est actuellement acquise. Les 12 photos ont échoué (HTTP 429).
+6. Outils temporaires : voir leur PATH plus bas. Recréer uniquement la base de test isolée si nécessaire,
+   sans appliquer les migrations V2 à la base utilisateur. Aucun push, merge, rebase ou reset autorisé.
 
 ## Point de sauvegarde — changement de branche
 
@@ -206,3 +212,28 @@ Rien de cela n'est annoncé comme corrigé. La définition de terminé du projet
   Étape 6 : validation locale partielle ; CI distante, Firefox/WebKit et vraie BOM complète non validés.
 - Prochaine action : présenter le contrat explicite de liaison 3D des occurrences dans une ADR
   proposée, sans changer API, schéma, dépendances ou snapshots avant l'accord requis.
+
+## Point de reprise — décision de liaison fine
+
+- Commits locaux : `0048639` audit ; `48a34a4` transitions/matériaux ; `ba468c4` absence/commandes.
+- ADR 0041 créée au statut **Proposé** : option 1 recommandée (manifestes frontend explicites),
+  alternatives avec persistance catalogue/API ou maintien des seuls schémas. Aucune implémentation
+  de ce nouveau contrat, aucune acceptation d'ADR par l'agent.
+- Autorisation requise par `docs/agents/travail-avec-agents.md` §6–8 et la procédure
+  `.claude/skills/rediger-adr/SKILL.md` : arrêter le travail qui dépend de la décision et présenter les options.
+- Avant cette attente : toutes les modifications frontend de cette livraison sont sauvegardées,
+  testées et relues. L'acceptation globale des étapes 2–6 reste ouverte, pas déclarée terminée.
+
+## Vérification finale et nettoyage de cette session
+
+- Dernière correction de test confirmée sur desktop : 1 PASS ; sur mobile : 1 PASS, sans modification
+  de l'assertion de sélection ni du scénario utilisateur. Suite desktop complète précédente : 57 PASS.
+- Relecteur d'architecture sur l'ADR 0041 proposée : « Aucun constat » ; cela ne vaut pas acceptation.
+- Nouvelle comparaison des références Git : toutes les références préexistantes sont identiques
+  à la sauvegarde d'avant changement de branche. Archive des six fichiers originaux revérifiée par SHA-256.
+- PostgreSQL temporaire `stp-3d-pro-v2-testdb` arrêté et supprimé automatiquement (sans volume).
+  Vite de validation sur 41768 arrêté. Aucun serveur de validation n'est laissé actif.
+- Pour reproduire l'intégration : recréer le conteneur temporaire avec PostgreSQL 18, port 55439,
+  utilisateur `stp3d`, mot de passe de test `stp3d-test`, base `stp3d`, appliquer les migrations existantes,
+  puis `make test DATABASE_URL='postgres://stp3d:stp3d-test@127.0.0.1:55439/stp3d?sslmode=disable'`.
+- Prochaine action dépendante inchangée : validation humaine de l'option 1 de l'ADR 0041.

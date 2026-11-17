@@ -47,9 +47,9 @@ avec le simple surlignage d'un sous-ensemble à la place de l'occurrence demand�
   circuits de refroidissement n'ont pas de parcours constructeur fourni.
 - Les calculs et les snapshots restent sous les règles existantes du backend.
 
-Le passage de l'ADR 0035 (localisation par sous-ensemble) à l'identification de pièces nécessite
-une nouvelle ADR proposée, sans modifier l'ADR acceptée. Son numéro sera déterminé après import
-de V2, qui contient déjà les ADR 0031 à 0040.
+L’ADR 0041 proposée présente les options de liaison fine : manifestes frontend explicites (recommandé),
+identité persistée dans le catalogue/API, ou conservation des seuls schémas. Son option 1 nécessite
+une validation humaine avant implémentation. L’ADR 0035 acceptée n’est pas modifiée.
 
 ## Incréments et sauvegardes
 
@@ -60,3 +60,10 @@ après son import, avant la première modification produit.
 
 En reprise : lire progression et plan, vérifier branche et état Git, contrôler le commit de la base,
 reprendre la première tâche incomplète. Les fichiers temporaires ne sont pas une sauvegarde durable.
+
+## État après les deux incréments
+
+Audit sauvegardé (`0048639`), transitions/matériaux (`48a34a4`), absence et commandes (`ba468c4`).
+La qualité professionnelle et la géométrie fidèle des deux véhicules restent non acquises.
+Les avancées indépendantes sont détaillées dans `docs/3d/VALIDATION.md` et les points de progression.
+La prochaine tâche dépendante est le contrat de l’ADR 0041, au statut Proposé, à faire valider.
