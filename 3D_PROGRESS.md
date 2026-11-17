@@ -2,24 +2,20 @@
 
 Mise à jour : 2026-11-17. Branche active : `feat/3d-pro-v2`.
 Base : `010d4d9e54d0990cbfe0f1368341ae386034107d` (`origin/v2/implementation`).
-Étapes 2/3/4 partielles ; validation locale et points de sauvegarde réalisés.
-Liaison fine des pièces en attente de validation de l’ADR 0041 proposée ; aucun travail dépendant
-n'est implémenté. La fidélité automobile reste bloquée par les ressources manquantes.
+Étape active : liaison des occurrences par manifestes frontend, autorisée par l'utilisateur
+(option 1 de l'ADR 0041, avec les sept conditions explicites de la conversation).
+Les statuts historiques ci-dessous restent un journal ; l'attente d'approbation est levée.
+L'ADR elle-même reste au statut documentaire Proposé : l'agent ne remplit pas le nom du décideur.
 
 ## Première action à la reprise
 
-1. Lire ce fichier, `3D_PLAN.md`, `docs/3d/VALIDATION.md` et l'ADR 0041 ; vérifier branche et état Git.
-2. Rester exclusivement sur `feat/3d-pro-v2`. Vérifier la réponse humaine à l'ADR 0041, option 1.
-   Sans accord explicite sur ce contrat, ne pas implémenter les nouvelles liaisons d'assets.
-3. Si approuvée, commencer par les tests d'un manifeste lié à l'arbre courant : portée différente,
-   même `part_id` dans plusieurs `node_id`, mesh absent, pièce remplacée, offre seule, placement
-   absent. Garder les quantités en chaîne ; n'inventer aucun ID ni emplacement.
-4. Réutiliser le viewer et son chargement différé ; branche actuelle et commits plus bas. La base
-   `origin/v2/implementation` reste inchangée au commit `010d4d9`.
-5. Continuer la recherche de modèles légaux des bons véhicules, inspecter licence et découpage ;
-   aucune source précise n'est actuellement acquise. Les 12 photos ont échoué (HTTP 429).
-6. Outils temporaires : voir leur PATH plus bas. Recréer uniquement la base de test isolée si nécessaire,
-   sans appliquer les migrations V2 à la base utilisateur. Aucun push, merge, rebase ou reset autorisé.
+1. Vérifier `feat/3d-pro-v2`, l'état Git et les derniers points de sauvegarde.
+2. Reprendre le résolveur et le chargeur de manifestes : IDs d'occurrences, variantes, placements
+   connus, invalidation après modification, sélection exacte, classification thermique/électrique.
+3. Garder séparées source du manifeste, validation pure et rendu Three.js ; aucune API Go ni table
+   PostgreSQL modifiée. L'interface de source permettra une autre persistance ultérieure.
+4. Continuer l'acquisition de vrais modèles des bons véhicules ; aucune correspondance par nom,
+   ni géométrie ou emplacement supposé présentés comme vérifiés.
 
 ## Point de sauvegarde — changement de branche
 
@@ -249,3 +245,30 @@ Rien de cela n'est annoncé comme corrigé. La définition de terminé du projet
 - Dernières mesures CarConcept dans le JSON : 13158 / 20938 ms dans cet environnement ; ce sont
   des temps incluant initialisation, chargement et compilation WebGL, pas des garanties de performance.
 - Vite arrêté après recapture. Code produit et résultats fonctionnels inchangés.
+
+## Accord utilisateur reçu — ADR 0041 option 1
+
+L'utilisateur a explicitement validé les manifestes frontend et autorisé leur implémentation automatique.
+Conditions : occurrence exacte même pour une pièce répétée, cohérence après édition, remplacement
+physique distinct de l'offre, absence explicite, source extensible vers PostgreSQL, backend préservé.
+Cette validation constitue l'autorisation requise ; aucune nouvelle demande n'est nécessaire pour ce périmètre.
+La ligne de statut et les Décideurs de l'ADR sont laissés à l'humain selon les règles du projet.
+Plan d'incréments : contrat/résolveur et tests ; chargeur/rendu/import ; instances/variantes/modes ;
+validation fonctionnelle et visuelle sur les assets réellement accessibles.
+
+## Incrément — contrat des manifestes et recherche des véritables assets
+
+- `manifest.ts` : validation pure et résolution sur l'arbre courant, sans réseau ni Three.js.
+  Identités exactes, variantes par nœud/parent/pièce, produit décimal exact des quantités, positions
+  connues seulement, déplacement hiérarchique explicite, portée et révision de snapshot contrôlées.
+- `manifest.test.ts` : répétitions de pièce, variantes, offre seule, ajout/suppression/déplacement,
+  positions insuffisantes, fraction/héritage, IDs imprécis, preuves/chemins invalides, arbre de 30000 nœuds.
+- Tests unitaires : 10 fichiers passent ; build TypeScript/Vite passe. Le module n'est pas encore
+  raccordé au viewer : ce point sauvegarde le contrat et ses preuves avant chargement/rendu.
+- `MANIFEST_FORMAT.md` décrit les données ; `ASSETS_NEEDED.md` précise les modèles et organes manquants.
+- API publique Sketchfab : quatre candidats Multipla/Valhalla avec CC BY 4.0 déclaré. Le téléchargement
+  officiel exige une authentification (401) ; aucun fichier obtenu, aucun contournement du viewer.
+  La provenance et le découpage restent à vérifier ; la fidélité visuelle n'est pas annoncée acquise.
+- Accord ADR 0041 reçu et consigné ; statut documentaire laissé à l'humain. Aucun backend modifié.
+- Prochaine action : source statique/import JSON, chargeur GLB avec contrôle d'empreinte, réutilisation
+  et libération des ressources ; puis liaison au mode Composants, variantes et classification hybride.

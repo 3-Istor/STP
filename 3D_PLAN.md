@@ -48,8 +48,8 @@ avec le simple surlignage d'un sous-ensemble à la place de l'occurrence demand�
 - Les calculs et les snapshots restent sous les règles existantes du backend.
 
 L’ADR 0041 proposée présente les options de liaison fine : manifestes frontend explicites (recommandé),
-identité persistée dans le catalogue/API, ou conservation des seuls schémas. Son option 1 nécessite
-une validation humaine avant implémentation. L’ADR 0035 acceptée n’est pas modifiée.
+identité persistée dans le catalogue/API, ou conservation des seuls schémas. Son option 1 a été
+validée explicitement par l’utilisateur dans la conversation, avec sept conditions de cohérence. L’ADR 0035 acceptée n’est pas modifiée.
 
 ## Incréments et sauvegardes
 
@@ -66,4 +66,4 @@ reprendre la première tâche incomplète. Les fichiers temporaires ne sont pas 
 Audit sauvegardé (`0048639`), transitions/matériaux (`48a34a4`), absence et commandes (`ba468c4`).
 La qualité professionnelle et la géométrie fidèle des deux véhicules restent non acquises.
 Les avancées indépendantes sont détaillées dans `docs/3d/VALIDATION.md` et les points de progression.
-La prochaine tâche dépendante est le contrat de l’ADR 0041, au statut Proposé, à faire valider.
+La prochaine tâche est l’implémentation du contrat de l’ADR 0041, option 1 explicitement autorisée.

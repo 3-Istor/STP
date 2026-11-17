@@ -8,6 +8,7 @@ export type BudgetStatus = 'ok' | 'warn' | 'over'
 
 /** Nœud lu par la 3D : un TreeNode, éventuellement enrichi d'un statut budget quand l'API le fournit. */
 export type Vehicle3DNode = Pick<TreeNode, 'id' | 'parent_id' | 'name' | 'part_id'> & {
+  quantity?: string // quantité par parent ; interprétée exactement seulement pour le rendu lié
   budget_status?: BudgetStatus | null
 }
 
