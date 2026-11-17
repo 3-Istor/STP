@@ -30,9 +30,9 @@ type BudgetStatus struct {
 	// (ADR 0044) ; nil sinon.
 	Converted *money.Money
 	Rate      *pricing.FXQuote
-	// Allocation : les sous-budgets dépassent ce budget au taux courant (change, données héritées) ; signalé, jamais
-	// bloquant (ADR 0044). Vide sinon.
-	Allocation string
+	// Allocation : avertissement de répartition (over : les sous-budgets dépassent ce budget au taux courant ;
+	// unverifiable : un taux manque) ; signalé, jamais bloquant (ADR 0044, ADR 0045). nil sinon.
+	Allocation *Allocation
 }
 
 // EvaluateTargetBudgets compare chaque budget au coût exact de son nœud (pricing.EvaluateBudget, seuil 90 %).
@@ -53,7 +53,10 @@ func EvaluateTargetBudgets(t Totals, nodes []Node, budgets []TargetBudget, fx Bu
 		if err != nil {
 			return nil, fmt.Errorf("budget of node %d: %w", b.NodeID, err)
 		}
-		st := BudgetStatus{NodeID: b.NodeID, Target: target, Allocation: allocation[b.NodeID]}
+		st := BudgetStatus{NodeID: b.NodeID, Target: target}
+		if a, ok := allocation[b.NodeID]; ok {
+			st.Allocation = &a
+		}
 		n, ok := t.Node(b.NodeID)
 		var cost *money.Exact
 		if ok && n.Cost != nil {

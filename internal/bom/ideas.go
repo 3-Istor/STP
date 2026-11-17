@@ -158,11 +158,7 @@ func (s *Service) Ideas(ctx context.Context, bomID int64) (IdeasSummary, error) 
 		return IdeasSummary{}, fmt.Errorf("ideas of bom %d: %w", bomID, err)
 	}
 	root := RootID(dc.Nodes)
-	// Budget global de la même lecture que le coût, converti s'il est dans une autre devise (ADR 0044).
-	budget, reason, err := s.RootBudgetIn(ctx, dc.BOM, dc.Budgets, root)
-	if err != nil {
-		return IdeasSummary{}, fmt.Errorf("ideas of bom %d: %w", bomID, err)
-	}
+	budget := RootBudgetOf(dc.Budgets, root) // même lecture que le coût
 	var cost *money.Money
 	if root, ok := dc.Totals.Node(root); ok {
 		cost = root.Cost
@@ -170,9 +166,6 @@ func (s *Service) Ideas(ctx context.Context, bomID int64) (IdeasSummary, error) 
 	out, err := SummarizeIdeas(money.Currency(dc.BOM.Currency), ideas, cost, budget)
 	if err != nil {
 		return IdeasSummary{}, fmt.Errorf("ideas of bom %d: %w", bomID, err)
-	}
-	if reason != "" {
-		out.GapError = "budget global non converti : " + reason
 	}
 	return out, nil
 }

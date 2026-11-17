@@ -14,14 +14,12 @@ import (
 func TestVersionBudgetPercentIsExact(t *testing.T) {
 	tests := []struct {
 		name, cost, budget, currency string
-		converted                    string // budget converti en EUR (ADR 0044) ; "" : taux absent
 		want                         string // "" : pas de pourcentage
 	}{
-		{"juste sous 100 %", "99.94996", "100", "EUR", "100", "99.94996"},
-		{"exact", "432", "450", "EUR", "450", "96"},
-		{"budget dans une autre devise sans taux : pas de %", "432", "450", "USD", "", ""},
-		{"budget dans une autre devise converti : % sur le montant converti", "432", "500", "USD", "400", "108"},
-		{"budget nul : pas de %", "432", "0", "EUR", "0", ""},
+		{"juste sous 100 %", "99.94996", "100", "EUR", "99.94996"},
+		{"exact", "432", "450", "EUR", "96"},
+		{"budget dans une autre devise : pas de %", "432", "450", "USD", ""},
+		{"budget nul : pas de %", "432", "0", "EUR", ""},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -30,11 +28,7 @@ func TestVersionBudgetPercentIsExact(t *testing.T) {
 				t.Fatal(err)
 			}
 			v := Version{Cost: &cost}
-			var converted *bom.TargetBudget
-			if tt.converted != "" {
-				converted = &bom.TargetBudget{Amount: decimal.RequireFromString(tt.converted), Currency: "EUR"}
-			}
-			setBudget(&v, &bom.TargetBudget{Amount: decimal.RequireFromString(tt.budget), Currency: tt.currency}, converted)
+			setBudget(&v, &bom.TargetBudget{Amount: decimal.RequireFromString(tt.budget), Currency: tt.currency})
 			switch {
 			case tt.want == "" && v.BudgetPercent != nil:
 				t.Fatalf("percent = %s, want none", v.BudgetPercent)

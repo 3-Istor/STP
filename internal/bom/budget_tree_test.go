@@ -79,33 +79,19 @@ func TestCheckBudgetTree(t *testing.T) {
 		})
 	}
 	// Une répartition qui ne peut pas être jugée (taux absent pour un sous-budget) est dite, jamais « tenue ».
+	// Le sous-budget en GBP lui-même n'a pas de répartition (aucun sous-budget) : pas d'avertissement pour lui.
 	unverified := AllocationWarnings(nodes, []TargetBudget{eur(2, "3000"), in(4, "10", "GBP")}, fx)
-	if !strings.Contains(unverified[2], "allocation not verifiable") {
-		t.Fatalf("allocation of node 2 = %q, want it marked as not verifiable", unverified[2])
+	if a, ok := unverified[2]; len(unverified) != 1 || !ok || a.Kind != AllocationUnverifiable || !strings.Contains(a.Reason, "no exchange rate") {
+		t.Fatalf("allocations = %+v, want only node 2, unverifiable for lack of a rate", unverified)
 	}
 	// Dépassement exact sous l'arrondi d'affichage : le refus le dit au lieu d'écrire « over by 0 ».
 	err := CheckBudgetTree(nodes, []TargetBudget{eur(2, "3000"), in(4, "500000.5", "JPY")}, []int64{4}, fx)
 	if !errors.Is(err, ErrBudgetExceedsParent) || !strings.Contains(err.Error(), "less than 1 minor unit of EUR") {
 		t.Fatalf("err %v, want a refusal that names a sub-cent excess", err)
 	}
-	// Budget global converti (pistes, sensibilité au change, versions) : direct, inverse, ou raison si pas de taux.
-	for _, c := range []struct {
-		budget       TargetBudget
-		want, reason string
-	}{
-		{in(1, "500000", "JPY"), "3000", ""},
-		{in(1, "3750", "USD"), "3000", ""},
-		{eur(1, "26500"), "26500", ""},
-		{in(1, "10", "GBP"), "", "no exchange rate"},
-	} {
-		got, reason, err := ConvertTargetBudget(c.budget, fx)
-		if err != nil || !strings.Contains(reason, c.reason) || (c.want != "" && (got.Currency != "EUR" || !got.Amount.Equal(dec(c.want)))) {
-			t.Fatalf("convert %v: %v %q %v, want %s EUR (reason %q)", c.budget, got, reason, err, c.want, c.reason)
-		}
-	}
 	// Après coup, le change peut faire dépasser une répartition déjà acceptée : signalé, pas bloqué.
 	warnings := AllocationWarnings(nodes, []TargetBudget{eur(2, "3000"), in(4, "600000", "JPY"), eur(3, "10")}, fx)
-	if len(warnings) != 1 || !strings.Contains(warnings[2], "over by 600.00 EUR") {
+	if a := warnings[2]; len(warnings) != 1 || a.Kind != AllocationOver || !strings.Contains(a.Reason, "over by 600.00 EUR") {
 		t.Fatalf("allocation warnings %v, want only Moteur over by 600 EUR", warnings)
 	}
 }
@@ -221,7 +207,22 @@ func TestServiceTargetBudgets(t *testing.T) {
 			_, err := svc.PutTargetBudget(ctx, b.ID, cabin, jpy)
 			return err
 		}, pricing.ErrNoRate, nil},
-		{"la BOM passe en USD : rien ne bloque, un déplacement sans rapport passe", func() error {
+		{"budget global en USD sur une BOM en EUR : refusé (ADR 0045)", func() error {
+			_, err := svc.PutTargetBudget(ctx, b.ID, root, usd("5000"))
+			return err
+		}, ErrInvalidInput, func() {
+			if got := budgetOf(root); got != "3500" {
+				t.Fatalf("global budget %s, want 3500 EUR kept", got)
+			}
+		}},
+		{"changer la devise de la BOM avec un budget global : refusé (ADR 0045)", func() error {
+			_, err := svc.UpdateSettings(ctx, b.ID, "USD", 1)
+			return err
+		}, ErrInvalidInput, nil},
+		{"sans budget global, la BOM passe en USD ; un déplacement sans rapport passe", func() error {
+			if err := svc.DeleteTargetBudget(ctx, b.ID, root); err != nil {
+				return err
+			}
 			if _, err := svc.UpdateSettings(ctx, b.ID, "USD", 1); err != nil {
 				return err
 			}

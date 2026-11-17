@@ -185,20 +185,49 @@ func CheckBudgetTree(nodes []Node, budgets []TargetBudget, touched []int64, fx B
 	return nil
 }
 
-// AllocationWarnings : pour chaque ensemble budgété dont les sous-budgets dépassent le budget au taux courant (le
-// change a bougé depuis la saisie, ou données héritées), le message qui le dit ; et pour chaque ensemble dont la
-// répartition n'a pas pu être jugée (taux absent pour lui ou un sous-budget), la raison : une répartition non
-// vérifiée n'est jamais présentée comme tenue (AGENTS §3). Rien n'est bloqué (ADR 0044).
-func AllocationWarnings(nodes []Node, budgets []TargetBudget, fx BudgetFX) map[int64]string {
+// AllocationKind : nature d'un avertissement de répartition (ADR 0044, ADR 0045).
+type AllocationKind string
+
+const (
+	// AllocationOver : les sous-budgets dépassent le budget de l'ensemble au taux courant (le change a bougé depuis la
+	// saisie, ou données héritées).
+	AllocationOver AllocationKind = "over"
+	// AllocationUnverifiable : la répartition n'a pas pu être jugée (taux absent pour l'ensemble ou un sous-budget).
+	AllocationUnverifiable AllocationKind = "unverifiable"
+)
+
+// Allocation : avertissement de répartition d'un ensemble et sa raison (message exact, taux compris).
+type Allocation struct {
+	Kind   AllocationKind
+	Reason string
+}
+
+// AllocationWarnings : pour chaque ensemble budgété qui a au moins un sous-budget, un avertissement s'il dépasse au
+// taux courant (over) ou si sa répartition n'a pas pu être jugée (unverifiable) : une répartition non vérifiée n'est
+// jamais présentée comme tenue (AGENTS §3). Rien n'est bloqué (ADR 0044). Un nœud budgété sans sous-budget n'a pas
+// de répartition : son propre statut dit déjà s'il est évaluable.
+func AllocationWarnings(nodes []Node, budgets []TargetBudget, fx BudgetFX) map[int64]Allocation {
 	t := newBudgetTree(nodes, budgets)
-	out := map[int64]string{}
+	hasSub := map[int64]bool{}
 	for id := range t.byNode {
+		for p, ok := t.parent[id]; ok; p, ok = t.parent[p] {
+			if _, budgeted := t.byNode[p]; budgeted {
+				hasSub[p] = true
+				break
+			}
+		}
+	}
+	out := map[int64]Allocation{}
+	for id := range t.byNode {
+		if !hasSub[id] {
+			continue
+		}
 		switch err := t.judge(id, fx); {
 		case err == nil:
 		case errors.Is(err, ErrBudgetExceedsParent):
-			out[id] = err.Error()
+			out[id] = Allocation{Kind: AllocationOver, Reason: err.Error()}
 		default:
-			out[id] = "allocation not verifiable: " + err.Error()
+			out[id] = Allocation{Kind: AllocationUnverifiable, Reason: err.Error()}
 		}
 	}
 	return out
@@ -293,9 +322,16 @@ func (s *Service) PutTargetBudget(ctx context.Context, bomID, nodeID int64, amou
 		return TargetBudget{}, fmt.Errorf("budget of node %d: %s must be >= 0: %w", nodeID, amount.Amount(), ErrInvalidInput)
 	}
 	tb := TargetBudget{NodeID: nodeID, Amount: amount.Amount(), Currency: string(amount.Currency())}
-	check, err := s.budgetCheck(ctx, b, nodeID, tb.Currency)
+	tree, err := s.budgetCheck(ctx, b, nodeID, tb.Currency)
 	if err != nil {
 		return TargetBudget{}, fmt.Errorf("budget of node %d in bom %d: %w", nodeID, bomID, err)
+	}
+	// ADR 0045 : le budget global (racine) reste dans la devise de la BOM ; jugé dans la transaction, sur l'arbre lu.
+	check := func(nodes []Node, budgets []TargetBudget) error {
+		if tb.Currency != b.Currency && RootID(nodes) == nodeID {
+			return fmt.Errorf("global budget of bom %d must be in %s, not %s (ADR 0045): %w", bomID, b.Currency, tb.Currency, ErrInvalidInput)
+		}
+		return tree(nodes, budgets)
 	}
 	if err := s.store.EditTargetBudget(ctx, bomID, nodeID, &tb, check); err != nil {
 		return TargetBudget{}, err // déjà « edit budget of node … in bom … » (store)
@@ -317,50 +353,25 @@ func (s *Service) DeleteTargetBudget(ctx context.Context, bomID, nodeID int64) e
 	return s.store.EditTargetBudget(ctx, bomID, nodeID, nil, check) // erreur déjà située (store)
 }
 
-// ConvertTargetBudget : budget b exprimé dans la devise de fx, au taux de fx (montant exact gardé à percentPrecision
-// décimales, arrondi seulement en sortie). reason non vide si la conversion est impossible (taux absent) : le budget
-// n'est alors jamais comparé en silence.
-func ConvertTargetBudget(b TargetBudget, fx BudgetFX) (TargetBudget, string, error) {
-	if b.Currency == string(fx.Currency) {
-		return b, "", nil
+// checkGlobalBudgetCurrency refuse de changer la devise d'une BOM qui a un budget global (ADR 0045) : il serait
+// alors dans une autre devise que la BOM. On retire ou on ressaisit d'abord le budget global ; les sous-budgets
+// gardent leur devise et restent convertis (ADR 0044).
+func (s *Service) checkGlobalBudgetCurrency(ctx context.Context, bomID int64, currency string) error {
+	b, err := s.store.GetBOM(ctx, bomID)
+	if err != nil || b.Currency == currency {
+		return err
 	}
-	e, _, err := fx.convert(b)
-	switch {
-	case errors.Is(err, pricing.ErrNoRate), errors.Is(err, pricing.ErrInvalidHistoryData):
-		return TargetBudget{}, err.Error(), nil
-	case err != nil:
-		return TargetBudget{}, "", err
+	budgets, err := s.store.TargetBudgets(ctx, bomID)
+	if err != nil || len(budgets) == 0 {
+		return err
 	}
-	unit, err := money.New(decimal.NewFromInt(1), string(fx.Currency))
+	nodes, err := s.store.Tree(ctx, bomID)
 	if err != nil {
-		return TargetBudget{}, "", err
+		return err
 	}
-	one, err := money.NewExact(unit)
-	if err != nil {
-		return TargetBudget{}, "", err
+	if g := RootBudgetOf(budgets, RootID(nodes)); g != nil {
+		return fmt.Errorf("bom %d has a global budget of %s %s: remove or re-enter it before switching to %s (ADR 0045): %w",
+			bomID, g.Amount, g.Currency, currency, ErrInvalidInput)
 	}
-	r, err := e.Ratio(one)
-	if err != nil {
-		return TargetBudget{}, "", err
-	}
-	return TargetBudget{NodeID: b.NodeID, Amount: decimal.NewFromBigRat(r, percentPrecision), Currency: string(fx.Currency)}, "", nil
-}
-
-// RootBudgetIn : budget global (racine root) de la BOM b dans sa devise, converti au taux du jour ou de son snapshot de
-// prix s'il est dans une autre devise (ADR 0044) ; nil sans budget global ; reason si la conversion est impossible.
-// Une seule définition pour les pistes, la sensibilité au change et les versions.
-func (s *Service) RootBudgetIn(ctx context.Context, b BOM, budgets []TargetBudget, root int64) (*TargetBudget, string, error) {
-	rb := RootBudgetOf(budgets, root)
-	if rb == nil {
-		return nil, "", nil
-	}
-	fx, err := s.budgetFX(ctx, b, []TargetBudget{*rb})
-	if err != nil {
-		return nil, "", err
-	}
-	out, reason, err := ConvertTargetBudget(*rb, fx)
-	if err != nil || reason != "" {
-		return nil, reason, err
-	}
-	return &out, "", nil
+	return nil
 }

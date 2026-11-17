@@ -64,7 +64,7 @@ export function NodePanel(p: Props) {
               <dd title={budgetTitle(p.budget)}>
                 {formatMoney(p.budget.target)}
                 {p.budget.converted && p.budget.rate && (
-                  <span className="muted small"> (≈ {formatMoney(p.budget.converted)} au taux du {formatDate(p.budget.rate.quoted_at)})</span>
+                  <span className="muted small"> (≈ {formatMoney(p.budget.converted)}, taux {p.budget.rate.from}→{p.budget.rate.to} du {formatDate(p.budget.rate.quoted_at)})</span>
                 )}{' '}
                 · <b className={budgetClass(p.budget)}>{budgetPercentText(p.budget)}</b>
               </dd>
@@ -73,8 +73,10 @@ export function NodePanel(p: Props) {
           {p.budget?.allocation && (
             <>
               <dt>Répartition</dt>
-              <dd className="t-warn" title={p.budget.allocation}>
-                sous-budgets au-dessus de ce budget au taux du jour (change)
+              <dd className="t-warn" title={p.budget.allocation.reason}>
+                {p.budget.allocation.kind === 'over'
+                  ? 'sous-budgets au-dessus de ce budget au taux actuel (change)'
+                  : 'répartition non vérifiable : taux de change manquant'}
               </dd>
             </>
           )}
@@ -162,6 +164,7 @@ export function NodePanel(p: Props) {
           key={`budget-${node.id}-${p.budget?.target.amount ?? ''}-${p.budget?.target.currency ?? ''}`}
           current={p.budget?.target ?? null}
           bomCurrency={p.currency}
+          globalBudget={isRoot}
           onSet={p.onSetBudget}
         />
       )}
@@ -197,14 +200,15 @@ const BUDGET_CURRENCIES = ['EUR', 'USD', 'GBP', 'JPY']
 
 // BudgetField : budget cible de l'ensemble et sa devise. La règle « Σ des sous-ensembles ≤ budget de l'ensemble »
 // est vérifiée par l'API ; un refus s'affiche tel quel (data.run), le champ garde la saisie.
-function BudgetField({ current, bomCurrency, onSet }: { current: Money | null; bomCurrency: string; onSet: (amount: string | null, currency: string) => Promise<boolean> }) {
+// globalBudget : racine (budget global), toujours dans la devise de la BOM (ADR 0045).
+function BudgetField({ current, bomCurrency, globalBudget, onSet }: { current: Money | null; bomCurrency: string; globalBudget: boolean; onSet: (amount: string | null, currency: string) => Promise<boolean> }) {
   const [value, setValue] = useState(current?.amount ?? '')
-  const [currency, setCurrency] = useState(current?.currency ?? bomCurrency)
+  const [currency, setCurrency] = useState(globalBudget ? bomCurrency : (current?.currency ?? bomCurrency))
   const amount = decimalInput(value)
   const valid = /^\d+(\.\d+)?$/.test(amount)
   const unchanged = current !== null && sameDecimal(amount, current.amount) && currency === current.currency
   // La devise du budget actuel reste proposée même hors de la liste : le choix affiché est celui qui sera envoyé.
-  const currencies = [...new Set([bomCurrency, ...(current ? [current.currency] : []), ...BUDGET_CURRENCIES])]
+  const currencies = globalBudget ? [bomCurrency] : [...new Set([bomCurrency, ...(current ? [current.currency] : []), ...BUDGET_CURRENCIES])]
   return (
     <form
       className="row"

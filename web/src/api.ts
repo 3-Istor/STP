@@ -210,8 +210,9 @@ export type NodeBudget = {
   // ADR 0044 : budget dans une autre devise que la BOM, converti au taux du jour (taux utilisé) ; null sinon.
   converted?: Money | null
   rate?: Rate | null
-  // Les sous-budgets dépassent ce budget au taux courant (change) : signalé, jamais bloquant ; null sinon.
-  allocation?: string | null
+  // Répartition d'un ensemble (ADR 0045) : over = les sous-budgets dépassent ce budget au taux courant (change) ;
+  // unverifiable = un taux manque, la répartition n'a pas pu être jugée. Signalé, jamais bloquant ; null sinon.
+  allocation?: { kind: 'over' | 'unverifiable'; reason: string } | null
 }
 
 // Ventilation du coût d'un nœud (« Pourquoi ce coût ? », ADR 0031) : lignes additives dans la devise de la

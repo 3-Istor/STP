@@ -81,10 +81,17 @@ type budgetJSON struct {
 	Error   *string `json:"error"`
 	// Converted et Rate : budget converti dans la devise de la BOM au taux du jour et taux utilisé, si sa devise
 	// diffère (ADR 0044) ; null sinon. Allocation : les sous-budgets dépassent ce budget au taux courant (signalé,
-	// non bloquant) ; null sinon.
-	Converted  *money.Money `json:"converted"`
-	Rate       *rateJSON    `json:"rate"`
-	Allocation *string      `json:"allocation"`
+	// non bloquant) ou non vérifiable (taux absent) ; null sinon.
+	Converted  *money.Money    `json:"converted"`
+	Rate       *rateJSON       `json:"rate"`
+	Allocation *allocationJSON `json:"allocation"`
+}
+
+// allocationJSON : {"kind":"over"|"unverifiable","reason":"…"} (ADR 0045) : dépassement dû au change, ou répartition
+// non vérifiable faute de taux.
+type allocationJSON struct {
+	Kind   string `json:"kind"`
+	Reason string `json:"reason"`
 }
 
 func toBudgetsJSON(st []bom.BudgetStatus) []budgetJSON {
@@ -95,9 +102,8 @@ func toBudgetsJSON(st []bom.BudgetStatus) []budgetJSON {
 			out[i].Rate = &rateJSON{From: string(s.Rate.BaseCurrency), To: string(s.Rate.QuoteCurrency), Rate: s.Rate.Rate,
 				Source: s.Rate.Source, QuotedAt: s.Rate.QuotedAt}
 		}
-		if s.Allocation != "" {
-			msg := s.Allocation
-			out[i].Allocation = &msg
+		if s.Allocation != nil {
+			out[i].Allocation = &allocationJSON{Kind: string(s.Allocation.Kind), Reason: s.Allocation.Reason}
 		}
 		if s.Percent != nil {
 			p := s.Percent.StringFixedBank(1)

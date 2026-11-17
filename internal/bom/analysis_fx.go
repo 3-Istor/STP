@@ -56,21 +56,9 @@ func (s *Service) FXSensitivity(ctx context.Context, bomID int64, shockPercent d
 		return FXSensitivity{}, fmt.Errorf("fx sensitivity: %w", err)
 	}
 	root := RootID(dc.Nodes)
-	// Budget global de la même lecture que le coût, converti s'il est dans une autre devise (ADR 0044).
-	converted, reason, err := s.RootBudgetIn(ctx, dc.BOM, dc.Budgets, root)
+	budget, budgetErr, err := GlobalBudget(dc.Budgets, root, dc.BOM.Currency) // même lecture que le coût
 	if err != nil {
 		return FXSensitivity{}, fmt.Errorf("fx sensitivity of bom %d: %w", bomID, err)
-	}
-	var global []TargetBudget
-	if converted != nil {
-		global = []TargetBudget{*converted}
-	}
-	budget, budgetErr, err := GlobalBudget(global, root, dc.BOM.Currency)
-	if err != nil {
-		return FXSensitivity{}, fmt.Errorf("fx sensitivity of bom %d: %w", bomID, err)
-	}
-	if reason != "" {
-		budgetErr = reason
 	}
 	out, err := ComputeFXSensitivity(dc.Input, dc.Totals, root, shockPercent, budget)
 	if err != nil {
