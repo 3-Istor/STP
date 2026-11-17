@@ -262,7 +262,9 @@ func ComputeSourcing(in TotalsInput, t Totals, rootID int64, f SourcingFacts) (S
 			c := mk(a.cost)
 			out = append(out, CostShare{Key: k, Cost: c, SharePercent: share(c), Parts: len(a.parts)})
 		}
-		slices.SortFunc(out, func(a, b CostShare) int { return cmp.Or(b.Cost.Amount().Cmp(a.Cost.Amount()), cmp.Compare(a.Key, b.Key)) })
+		slices.SortFunc(out, func(a, b CostShare) int {
+			return cmp.Or(b.Cost.Amount().Cmp(a.Cost.Amount()), cmp.Compare(a.Key, b.Key))
+		})
 		return out
 	}
 	out.ByCountry, out.ByCurrency = shares(countries), shares(currencies)
@@ -532,4 +534,3 @@ func rateGaps(in TotalsInput, rootID int64, budget map[money.Currency]decimal.De
 	}
 	return out, nil
 }
-
