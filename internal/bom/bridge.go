@@ -133,9 +133,14 @@ func ComputeBridge(from, to BridgeSide) (Bridge, error) {
 	if out.Delta, err = subMoney(toCost, fromCost); err != nil {
 		return Bridge{}, err
 	}
+	out.Diff = b.diff()
 	states := make([]Totals, len(BridgeOrder)+1)
 	costs := make([]money.Money, len(BridgeOrder)+1)
 	for k := range states {
+		if k > 0 && unchanged(BridgeOrder[k-1], out.Diff) { // même entrée que la marche précédente : même calcul
+			states[k], costs[k] = states[k-1], costs[k-1] //nolint:gosec // k > 0 : marche précédente
+			continue
+		}
 		in := b.state(k)
 		t, err := ComputeTotals(in)
 		if err != nil {
@@ -160,11 +165,33 @@ func ComputeBridge(from, to BridgeSide) (Bridge, error) {
 		step.Nodes, step.NodeCount = b.nodeDeltas(states[k], states[k+1])
 		out.Steps = append(out.Steps, step)
 	}
-	out.Diff = b.diff()
 	if out.ChangedParts, err = b.changedParts(); err != nil {
 		return Bridge{}, err
 	}
 	return out, nil
+}
+
+// unchanged dit si la famille kind est identique des deux côtés : la marche ne peut rien changer, on ne la
+// rechiffre pas (le contrôle des extrémités reste fait). La structure est toujours rechiffrée (les attributs
+// des pièces, comme la masse, ne sont pas comparés ici).
+func unchanged(kind CauseKind, d BridgeDiff) bool {
+	switch kind {
+	case CauseOfferChange:
+		return len(d.OfferChanged) == 0
+	case CausePrice:
+		return len(d.PriceOffers) == 0
+	case CauseFX:
+		return len(d.FXCurrencies) == 0
+	case CauseDiscount:
+		return len(d.DiscountOffers) == 0
+	case CauseLogistics:
+		return len(d.LogisticsOffer) == 0
+	case CauseTooling:
+		return len(d.ToolingOffers) == 0 && !d.ProgramVolume
+	case CauseMethod:
+		return !d.Method
+	}
+	return false
 }
 
 func subMoney(a, b money.Money) (money.Money, error) {

@@ -212,7 +212,8 @@ func checkBudgets(in ChecksInput) PublicationCheck {
 			label = fmt.Sprintf("nœud %d", b.NodeID)
 		}
 		if b.Target.Amount().IsPositive() {
-			label += fmt.Sprintf(" %s %%", b.Cost.Amount().Div(b.Target.Amount()).Mul(decimal.NewFromInt(100)).Round(0))
+			pct := b.Cost.Amount().Mul(decimal.NewFromInt(100)).DivRound(b.Target.Amount(), 1)
+			label += " " + strings.Replace(pct.StringFixed(1), ".", ",", 1) + " %"
 		}
 		over = append(over, label)
 	}

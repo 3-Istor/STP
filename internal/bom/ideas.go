@@ -313,3 +313,15 @@ func (s *Service) SetTargetBudget(ctx context.Context, bomID int64, b TargetBudg
 	}
 	return nil
 }
+
+// IdeaList renvoie les pistes de la BOM, sans le calcul de l'écart (lecture légère).
+func (s *Service) IdeaList(ctx context.Context, bomID int64) ([]Idea, error) {
+	if s.ideas == nil {
+		return nil, ErrIdeasUnavailable
+	}
+	out, err := s.ideas.ListIdeas(ctx, bomID)
+	if err != nil {
+		return nil, fmt.Errorf("ideas of bom %d: %w", bomID, err)
+	}
+	return out, nil
+}
