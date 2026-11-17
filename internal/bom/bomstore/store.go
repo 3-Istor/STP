@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -379,7 +380,7 @@ func (s *Store) SetNodeProductionDays(ctx context.Context, bomID, nodeID int64, 
 // MoveNode rattache le nœud à newParentID. Dans une seule transaction : verrou de la BOM (deux
 // déplacements concurrents ne peuvent pas chacun passer le contrôle), contrôle de cycle par CTE
 // récursive, puis UPDATE. Déplacer la racine est toujours un cycle (tout nœud en descend).
-func (s *Store) MoveNode(ctx context.Context, bomID, nodeID, newParentID int64) (bom.Node, error) {
+func (s *Store) MoveNode(ctx context.Context, bomID, nodeID, newParentID int64, check bom.BudgetCheck) (bom.Node, error) {
 	var out bom.Node
 	err := s.inTx(ctx, func(q *bomdb.Queries) error {
 		if _, err := q.LockBOM(ctx, bomID); err != nil {
@@ -406,7 +407,14 @@ func (s *Store) MoveNode(ctx context.Context, bomID, nodeID, newParentID int64) 
 			return err
 		}
 		out = toNode(row)
-		return nil
+		if check == nil {
+			return nil
+		}
+		nodes, budgets, err := treeAndBudgets(ctx, q, bomID)
+		if err != nil {
+			return err
+		}
+		return check(nodes, budgets) // erreur : la transaction est annulée, le nœud reste où il était
 	})
 	if err != nil {
 		return bom.Node{}, fmt.Errorf("move node %d under %d in bom %d: %w", nodeID, newParentID, bomID, err)
@@ -580,6 +588,62 @@ func (s *Store) SetTargetBudget(ctx context.Context, bomID int64, b bom.TargetBu
 		return fmt.Errorf("budget of node %d in bom %d: %w", b.NodeID, bomID, err)
 	}
 	return nil
+}
+
+// EditTargetBudget pose ou retire un budget dans une transaction, BOM verrouillée (LockBOM, comme MoveNode) :
+// deux écritures concurrentes ne peuvent pas chacune passer la règle et la casser ensemble (ADR 0040).
+func (s *Store) EditTargetBudget(ctx context.Context, bomID, nodeID int64, b *bom.TargetBudget, check bom.BudgetCheck) error {
+	err := s.inTx(ctx, func(q *bomdb.Queries) error {
+		if _, err := q.LockBOM(ctx, bomID); err != nil {
+			return notFound(err, bom.ErrBOMNotFound)
+		}
+		if _, err := q.GetNode(ctx, bomdb.GetNodeParams{BomID: bomID, ID: nodeID}); err != nil {
+			return fmt.Errorf("node %d: %w", nodeID, notFound(err, bom.ErrNodeNotFound))
+		}
+		nodes, budgets, err := treeAndBudgets(ctx, q, bomID)
+		if err != nil {
+			return err
+		}
+		budgets = slices.DeleteFunc(budgets, func(x bom.TargetBudget) bool { return x.NodeID == nodeID })
+		if b != nil {
+			budgets = append(budgets, *b)
+		}
+		if check != nil {
+			if err := check(nodes, budgets); err != nil {
+				return err
+			}
+		}
+		if b == nil {
+			return q.DeleteTargetBudget(ctx, bomdb.DeleteTargetBudgetParams{BomID: bomID, NodeID: nodeID})
+		}
+		_, err = q.UpsertTargetBudget(ctx, bomdb.UpsertTargetBudgetParams{BomID: bomID, NodeID: nodeID, Amount: b.Amount, Currency: b.Currency})
+		return err
+	})
+	if err != nil {
+		return fmt.Errorf("edit budget of node %d in bom %d: %w", nodeID, bomID, err)
+	}
+	return nil
+}
+
+// treeAndBudgets lit l'arbre et les budgets dans la transaction q.
+func treeAndBudgets(ctx context.Context, q *bomdb.Queries, bomID int64) ([]bom.Node, []bom.TargetBudget, error) {
+	rows, err := q.ListNodes(ctx, bomID)
+	if err != nil {
+		return nil, nil, fmt.Errorf("tree of bom %d: %w", bomID, err)
+	}
+	nodes := make([]bom.Node, len(rows))
+	for i, r := range rows {
+		nodes[i] = toNode(r)
+	}
+	brows, err := q.ListTargetBudgets(ctx, bomID)
+	if err != nil {
+		return nil, nil, fmt.Errorf("target budgets of bom %d: %w", bomID, err)
+	}
+	budgets := make([]bom.TargetBudget, len(brows))
+	for i, r := range brows {
+		budgets[i] = bom.TargetBudget{NodeID: r.NodeID, Amount: r.Amount, Currency: r.Currency}
+	}
+	return nodes, budgets, nil
 }
 
 // --- Pistes de réduction ----------------------------------------------------------------------------

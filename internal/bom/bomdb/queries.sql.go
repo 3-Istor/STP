@@ -251,6 +251,20 @@ func (q *Queries) DeleteSchedule(ctx context.Context, bomID int64) (int64, error
 	return result.RowsAffected(), nil
 }
 
+const deleteTargetBudget = `-- name: DeleteTargetBudget :exec
+DELETE FROM bom_target_budgets WHERE bom_id = $1 AND node_id = $2
+`
+
+type DeleteTargetBudgetParams struct {
+	BomID  int64
+	NodeID int64
+}
+
+func (q *Queries) DeleteTargetBudget(ctx context.Context, arg DeleteTargetBudgetParams) error {
+	_, err := q.db.Exec(ctx, deleteTargetBudget, arg.BomID, arg.NodeID)
+	return err
+}
+
 const getBOM = `-- name: GetBOM :one
 SELECT id, name, currency, volume, created_at, price_snapshot_id, source_snapshot_id, annual_hours, destination_country, cost_basis, fx_policy, program_volume FROM boms
 WHERE id = $1

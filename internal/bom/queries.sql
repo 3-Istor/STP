@@ -175,6 +175,9 @@ INSERT INTO bom_target_budgets (bom_id, node_id, amount, currency) VALUES ($1, $
 ON CONFLICT (bom_id, node_id) DO UPDATE SET amount = EXCLUDED.amount, currency = EXCLUDED.currency
 RETURNING node_id, amount, currency;
 
+-- name: DeleteTargetBudget :exec
+DELETE FROM bom_target_budgets WHERE bom_id = $1 AND node_id = $2;
+
 -- Pistes de réduction (vision V2 §2).
 -- name: ListReductionIdeas :many
 SELECT * FROM bom_reduction_ideas WHERE bom_id = $1 ORDER BY id;

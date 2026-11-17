@@ -3,6 +3,7 @@ package bomstore_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"testing"
 	"time"
@@ -193,7 +194,7 @@ func TestMoveNode(t *testing.T) {
 			ids["inconnu"] = -1
 			before := parents(t, s, b.ID)
 
-			moved, err := s.MoveNode(t.Context(), b.ID, ids[tt.node], ids[tt.newParent])
+			moved, err := s.MoveNode(t.Context(), b.ID, ids[tt.node], ids[tt.newParent], nil)
 			if !errors.Is(err, tt.wantErr) {
 				t.Fatalf("err = %v, want %v", err, tt.wantErr)
 			}
@@ -496,5 +497,70 @@ func TestStoreCostMethod(t *testing.T) {
 	}
 	if got, err := s.TargetBudgets(ctx, b.ID); err != nil || len(got) != 0 {
 		t.Errorf("budgets = %v, %v", got, err)
+	}
+}
+
+// TestEditTargetBudget : la règle des budgets hiérarchiques (ADR 0040) est jugée dans la transaction ; un refus
+// n'écrit rien (ni pose, ni retrait, ni déplacement).
+func TestEditTargetBudget(t *testing.T) {
+	tx := testDB(t)
+	s := bomstore.New(tx)
+	ctx := t.Context()
+	b, ids := sampleTree(t, s) // R ─ A ─ B ─ C ; R ─ D
+	check := func(nodes []bom.Node, budgets []bom.TargetBudget) error { return bom.CheckBudgetTree(nodes, budgets, "EUR") }
+	eur := func(node, amount string) *bom.TargetBudget {
+		return &bom.TargetBudget{NodeID: ids[node], Amount: decimal.RequireFromString(amount), Currency: "EUR"}
+	}
+	budgets := func() map[int64]string {
+		list, err := s.TargetBudgets(ctx, b.ID)
+		if err != nil {
+			t.Fatal(err)
+		}
+		out := map[int64]string{}
+		for _, x := range list {
+			out[x.NodeID] = x.Amount.String()
+		}
+		return out
+	}
+	steps := []struct {
+		name    string
+		do      func() error
+		wantErr error
+		want    map[string]string // budgets attendus après l'étape
+	}{
+		{"A à 3000", func() error { return s.EditTargetBudget(ctx, b.ID, ids["A"], eur("A", "3000"), check) }, nil, map[string]string{"A": "3000"}},
+		{"C à 3000.01 sous A : refus, rien d'écrit", func() error { return s.EditTargetBudget(ctx, b.ID, ids["C"], eur("C", "3000.01"), check) },
+			bom.ErrBudgetExceedsParent, map[string]string{"A": "3000"}},
+		{"C à 3000", func() error { return s.EditTargetBudget(ctx, b.ID, ids["C"], eur("C", "3000"), check) }, nil, map[string]string{"A": "3000", "C": "3000"}},
+		{"D à 500 et R à 3500", func() error {
+			if err := s.EditTargetBudget(ctx, b.ID, ids["D"], eur("D", "500"), check); err != nil {
+				return err
+			}
+			return s.EditTargetBudget(ctx, b.ID, ids["R"], eur("R", "3500"), check)
+		}, nil, map[string]string{"A": "3000", "C": "3000", "D": "500", "R": "3500"}},
+		{"D déplacé sous B : 3000 + 500 > 3000 dans A, refus, D reste sous R", func() error {
+			_, err := s.MoveNode(ctx, b.ID, ids["D"], ids["B"], check)
+			return err
+		}, bom.ErrBudgetExceedsParent, map[string]string{"A": "3000", "C": "3000", "D": "500", "R": "3500"}},
+		{"retrait de A : C et D remontent sous R, 3500 ≤ 3500", func() error { return s.EditTargetBudget(ctx, b.ID, ids["A"], nil, check) },
+			nil, map[string]string{"C": "3000", "D": "500", "R": "3500"}},
+		{"nœud inconnu", func() error { return s.EditTargetBudget(ctx, b.ID, -1, eur("A", "1"), check) }, bom.ErrNodeNotFound,
+			map[string]string{"C": "3000", "D": "500", "R": "3500"}},
+	}
+	for _, st := range steps {
+		if err := st.do(); !errors.Is(err, st.wantErr) || (st.wantErr == nil && err != nil) {
+			t.Fatalf("%s: err %v, want %v", st.name, err, st.wantErr)
+		}
+		got := budgets()
+		want := map[int64]string{}
+		for k, v := range st.want {
+			want[ids[k]] = v
+		}
+		if fmt.Sprint(got) != fmt.Sprint(want) {
+			t.Fatalf("%s: budgets %v, want %v", st.name, got, want)
+		}
+	}
+	if p := parents(t, s, b.ID); p[ids["D"]] != ids["R"] {
+		t.Fatalf("D under %d after refused move, want R", p[ids["D"]])
 	}
 }
