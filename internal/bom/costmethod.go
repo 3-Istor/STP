@@ -302,22 +302,36 @@ func resolveDiscount(offerID int64, contracts []supplier.Contract, qty decimal.D
 		d.TierMin = &m
 	}
 	if ev.Reason == "no_active_contract" {
-		// Le motif dit pourquoi : un contrat de l'offre a expiré (le plus récent, déterministe).
-		var expired []supplier.Contract
+		// Le motif dit pourquoi : un contrat de l'offre a expiré (le plus récent, déterministe) ; sinon un contrat
+		// n'a pas encore commencé (le plus proche) ; sinon aucun contrat. Expiré d'abord : c'est le contrôle
+		// bloquant expired_contracts, un renouvellement à venir ne le lève pas (v2-lot-g T7).
+		var expired, upcoming []supplier.Contract
 		for _, c := range contracts {
 			if !slices.Contains(c.OfferIDs, offerID) {
 				continue
 			}
-			if st, err := supplier.ContractStatus(c, asOf); err == nil && st == "expired" {
+			switch st, err := supplier.ContractStatus(c, asOf); {
+			case err != nil:
+				continue
+			case st == "expired":
 				expired = append(expired, c)
+			case st == "not_started":
+				upcoming = append(upcoming, c)
 			}
 		}
-		if len(expired) > 0 {
+		switch {
+		case len(expired) > 0:
 			last := slices.MaxFunc(expired, func(a, b supplier.Contract) int {
 				return cmp.Or(cmp.Compare(a.EndsOn, b.EndsOn), cmp.Compare(a.ID, b.ID))
 			})
 			id := last.ID
 			d.Reason, d.ContractID = "contract_expired", &id
+		case len(upcoming) > 0:
+			next := slices.MinFunc(upcoming, func(a, b supplier.Contract) int {
+				return cmp.Or(cmp.Compare(a.StartsOn, b.StartsOn), cmp.Compare(a.ID, b.ID))
+			})
+			id := next.ID
+			d.Reason, d.ContractID = "contract_not_started", &id
 		}
 	}
 	return d, nil

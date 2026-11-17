@@ -83,6 +83,14 @@ updated: 2026-11-17
   dans `checkDemoVersions` (5 sur la Multipla, 1 liée à B, 0 auto-liée). Impact front (lot F) : la branche
   « dans ce brouillon » de `Ideas.tsx` ne se produit plus ; les pistes de la démo s'affichent sur la Multipla.
 
+### T7: `contract_not_started` produit réellement
+- **Status**: completed
+- **Notes**: test d'abord (`TestCostMethodTotals`, date de calcul 2025-12-31, contrat du 2026-01-01) : motif
+  `no_active_contract`. `resolveDiscount` nomme le contrat à venir le plus proche (`contract_not_started`,
+  remise 0, `ContractID` du contrat) quand aucun contrat n'est actif ni expiré ; un contrat expiré reste prioritaire
+  (cas « expiré + renouvellement à venir » testé : `contract_expired`, cohérent avec le contrôle bloquant
+  `expired_contracts`). Le libellé « Contrat pas encore actif : remise non appliquée » n'est plus du code mort.
+
 ## Decisions
 
 ## Blockers
