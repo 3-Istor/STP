@@ -178,6 +178,8 @@ const selection3d = (page: Page) =>
 test('Arbre + 3D : clic dans l’arbre → objet sélectionné dans la 3D ; clic dans la 3D → ligne de l’arbre', async ({ page, browserName }) => {
   const webgl = await page.evaluate(() => !!document.createElement('canvas').getContext('webgl2'))
   test.skip(!webgl, `WebGL2 indisponible dans ce navigateur (${browserName}) : vue 3D non testable ici`)
+  // WebGL logiciel (SwiftShader) en CI : chaque rendu est lent, deux workers en parallèle le ralentissent encore.
+  test.setTimeout(90_000)
   await mockAPI(page)
   await page.goto('/#/boms/1/structurer?tab=arbre-3d')
   await expect(page.locator('.v3d-root')).toHaveAttribute('data-status', 'ready', { timeout: 30_000 })
@@ -186,9 +188,12 @@ test('Arbre + 3D : clic dans l’arbre → objet sélectionné dans la 3D ; clic
   await row(page, 'Porte avant gauche').click()
   await expect(page).toHaveURL(/node=3/)
   await expect.poll(() => selection3d(page)).toEqual(['door_fl'])
-  // Une pièce sélectionne le sous-ensemble qui la représente ; un système, tous ses objets.
-  await page.goto('/#/boms/1/structurer?tab=arbre-3d&node=4')
-  await expect(page.locator('.v3d-root')).toHaveAttribute('data-status', 'ready', { timeout: 30_000 })
+  // Une pièce (sélection venue de l'URL, sans recharger la page) sélectionne le sous-ensemble qui la
+  // représente ; un système, tous ses objets.
+  await row(page, 'Fiat Multipla').click() // la racine ne sélectionne aucun objet
+  await expect.poll(() => selection3d(page)).toEqual([])
+  await page.evaluate(() => { window.location.hash = '#/boms/1/structurer?tab=arbre-3d&node=4' })
+  await expect(page.getByRole('treeitem', { selected: true })).toContainText('Porte avant nue')
   await expect.poll(() => selection3d(page)).toEqual(['door_fl'])
   await row(page, 'Carrosserie et ouvrants').click()
   await expect.poll(() => selection3d(page).then((s) => s.sort())).toEqual(['door_fl', 'hood'])
