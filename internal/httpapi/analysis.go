@@ -423,7 +423,7 @@ type partAnomaliesJSON struct {
 	Parts           []partAnomalyJSON `json:"parts"`
 }
 
-// anomalies : ?method=per_kg|median|offers|history|material (défaut per_kg, ADR 0037 et 0039) & threshold (décimal > 1, défaut de la méthode).
+// anomalies : ?method=per_kg|median|offers|history|material (défaut per_kg, ADR 0037 et 0041) & threshold (décimal > 1, défaut de la méthode).
 func (h analysisHandler) anomalies(w http.ResponseWriter, r *http.Request) {
 	id, err := bomPathID(r, "id")
 	method := bom.AnomalyMethod(r.URL.Query().Get("method"))
