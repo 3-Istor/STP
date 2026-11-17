@@ -1,5 +1,5 @@
 # 0020 — Raccordement de la BOM au vrai catalogue et aux vrais prix
-Statut : Proposé — Date : 2026-11-05 — Décideurs : <à compléter>
+Statut : Accepté — Date : 2026-11-05 — Décideurs : Brian P. (accord explicite dans le chat, 17/11/2026)
 
 ## Contexte
 NLPF-69 (BOM, PR #9) et NLPF-67/68 (catalogue et prix, PR #10) ont été développées en parallèle
