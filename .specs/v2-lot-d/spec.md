@@ -4,7 +4,7 @@ title: V2 lot D — vue 3D par sous-ensemble (rendus Simple et Réaliste)
 source: manual
 source_ref: docs/v2/plan-implementation.md (lot D), docs/v2/vision-cible.md §6
 created: 2026-11-17
-status: in-progress
+status: review
 priority: P2
 depends_on: []
 branch: v2-lot-d
@@ -81,20 +81,20 @@ une page de démo.
 
 ## Tasks
 
-- [ ] **T1 — Ticket et ADR**. Files: `.specs/v2-lot-d/*`, `docs/adr/0035-vue-3d-par-sous-ensemble.md`.
+- [x] **T1 — Ticket et ADR**. Files: `.specs/v2-lot-d/*`, `docs/adr/0035-vue-3d-par-sous-ensemble.md`.
   Approach: spec, état, ADR Proposé. Done when: fichiers commités.
-- [ ] **T2 — Dépendance `three`**. Files: `web/package.json`, `web/package-lock.json`.
+- [x] **T2 — Dépendance `three`**. Files: `web/package.json`, `web/package-lock.json`.
   Approach: `npx npm@11 install three` et `-D @types/three`. Done when: `npm ci` passe.
-- [ ] **T3 — Logique pure et tables**. Files: `features/vehicle3d/{mapping,explode,colors}.ts`, `data/*.json`,
+- [x] **T3 — Logique pure et tables**. Files: `features/vehicle3d/{mapping,explode,colors}.ts`, `data/*.json`,
   tests `*.test.ts`, script `test:unit`. Approach: fonctions sans `three`, testées par `node --test`
   (dont la couverture des noms réels Multipla). Done when: tests verts et capables d'échouer.
-- [ ] **T4 — Moteur 3D et rendu Simple**. Files: `viewer.ts`, `simpleModel.ts`, `Vehicle3DView.tsx`,
+- [x] **T4 — Moteur 3D et rendu Simple**. Files: `viewer.ts`, `simpleModel.ts`, `Vehicle3DView.tsx`,
   `index.ts`, `vehicle3d.css`. Done when: `tsc -b` et lint passent.
-- [ ] **T5 — Rendu Réaliste et `make models`**. Files: `realisticModel.ts`, `Makefile`, `.gitignore`.
+- [x] **T5 — Rendu Réaliste et `make models`**. Files: `realisticModel.ts`, `Makefile`, `.gitignore`.
   Done when: modèle chargé, repli vérifié sans fichier.
-- [ ] **T6 — Page de démo et captures**. Files: `web/vehicle3d-demo.html`, `features/vehicle3d/demo/*`,
+- [x] **T6 — Page de démo et captures**. Files: `web/vehicle3d-demo.html`, `features/vehicle3d/demo/*`,
   `docs/v2/captures/lot-d/*.png`. Done when: captures regardées et commitées.
-- [ ] **T7 — Vérification et livrable §9**. Files: `state.md`. Done when: lint, tsc, build (chunk séparé),
+- [x] **T7 — Vérification et livrable §9**. Files: `state.md`. Done when: lint, tsc, build (chunk séparé),
   `go test ./...` verts.
 
 ## Verification
