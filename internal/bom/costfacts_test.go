@@ -203,14 +203,18 @@ func TestEvaluateTargetBudgets(t *testing.T) {
 		t.Fatal(err)
 	}
 	tests := []struct {
-		name   string
-		budget TargetBudget
-		state  string
+		name    string
+		budget  TargetBudget
+		state   string
+		percent string // "" : pas de pourcentage
 	}{
-		{"coût sous 90 % du budget : vert", TargetBudget{NodeID: nodeID, Amount: dec("500"), Currency: "EUR"}, "ok"},
-		{"entre 90 % et 100 % : orange", TargetBudget{NodeID: nodeID, Amount: dec("380"), Currency: "EUR"}, "warn"},
-		{"au-dessus : rouge", TargetBudget{NodeID: nodeID, Amount: dec("300"), Currency: "EUR"}, "over"},
-		{"autre devise sans taux : indisponible, jamais vert", TargetBudget{NodeID: nodeID, Amount: dec("500"), Currency: "USD"}, "unavailable"},
+		{"coût sous 90 % du budget : vert", TargetBudget{NodeID: nodeID, Amount: dec("500"), Currency: "EUR"}, "ok", "72.0"},
+		{"entre 90 % et 100 % : orange", TargetBudget{NodeID: nodeID, Amount: dec("380"), Currency: "EUR"}, "warn", "94.7"},
+		{"au-dessus : rouge", TargetBudget{NodeID: nodeID, Amount: dec("300"), Currency: "EUR"}, "over", "120.0"},
+		{"pourcentage arrondi half-even (11,25 → 11,2)", TargetBudget{NodeID: nodeID, Amount: dec("3200"), Currency: "EUR"}, "ok", "11.2"},
+		{"pourcentage arrondi half-even (3,75 → 3,8)", TargetBudget{NodeID: nodeID, Amount: dec("9600"), Currency: "EUR"}, "ok", "3.8"},
+		{"budget nul : rouge, pas de pourcentage", TargetBudget{NodeID: nodeID, Amount: dec("0"), Currency: "EUR"}, "over", ""},
+		{"autre devise sans taux : indisponible, jamais vert, pas de pourcentage", TargetBudget{NodeID: nodeID, Amount: dec("500"), Currency: "USD"}, "unavailable", ""},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -221,6 +225,29 @@ func TestEvaluateTargetBudgets(t *testing.T) {
 			if out[0].State != tt.state {
 				t.Errorf("state = %s, want %s", out[0].State, tt.state)
 			}
+			gotPercent := ""
+			if out[0].Percent != nil {
+				gotPercent = out[0].Percent.StringFixedBank(1)
+			}
+			if gotPercent != tt.percent {
+				t.Errorf("percent = %q, want %q", gotPercent, tt.percent)
+			}
 		})
+	}
+}
+
+func TestServiceTotalsCarryBudgetsOfTheSameCalculation(t *testing.T) {
+	svc, bomID, nodeID := costService(t, time.Date(2026, 2, 15, 10, 0, 0, 0, time.UTC), true)
+	svc.store.(*memStore).budgets = map[int64][]TargetBudget{bomID: {{NodeID: nodeID, Amount: dec("380"), Currency: "EUR"}}}
+	got, err := svc.Totals(t.Context(), bomID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got.Budgets) != 1 || got.Budgets[0].State != "warn" || got.Budgets[0].Cost == nil {
+		t.Fatalf("budgets = %+v, want one warn budget", got.Budgets)
+	}
+	n, _ := got.Totals.Node(nodeID)
+	if !got.Budgets[0].Cost.Amount().Equal(n.Cost.Amount()) {
+		t.Errorf("budget cost %s, node cost %s: not the same calculation", got.Budgets[0].Cost, n.Cost)
 	}
 }

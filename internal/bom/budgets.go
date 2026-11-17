@@ -4,9 +4,14 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/shopspring/decimal"
+
 	"bomstudio/internal/money"
 	"bomstudio/internal/pricing"
 )
+
+// percentDigits : décimales du pourcentage de budget renvoyé (arrondi half-even, comme les montants, ADR 0004).
+const percentDigits = 1
 
 // BudgetStatus : budget cible d'un nœud comparé à son coût selon la méthode (ADR 0018, 0031). State :
 // ok (vert), warn (orange, ≥ 90 % du budget), over (rouge), unavailable (coût ou conversion manquant :
@@ -16,8 +21,11 @@ type BudgetStatus struct {
 	Target money.Money
 	Cost   *money.Money
 	Delta  *money.Money // coût − budget, exact ; nil si indisponible
-	State  string
-	Error  string
+	// Percent : coût ÷ budget × 100, arrondi half-even à 1 décimale ; nil si indisponible ou budget nul.
+	// Affichage seulement : l'état (State) est décidé sur les montants exacts, jamais sur ce chiffre arrondi.
+	Percent *decimal.Decimal
+	State   string
+	Error   string
 }
 
 // EvaluateTargetBudgets compare chaque budget au coût exact de son nœud (pricing.EvaluateBudget, seuil 90 %).
@@ -60,9 +68,19 @@ func EvaluateTargetBudgets(t Totals, budgets []TargetBudget) ([]BudgetStatus, er
 				st.Delta = &d
 			}
 		}
+		if ev.State != "unavailable" && st.Cost != nil && !target.Amount().IsZero() {
+			p := budgetPercent(st.Cost.Amount(), target.Amount())
+			st.Percent = &p
+		}
 		out = append(out, st)
 	}
 	return out, nil
+}
+
+// budgetPercent : cost ÷ target × 100, arrondi half-even à percentDigits décimales (division menée avec 16
+// décimales de garde au-delà, seule division non finie).
+func budgetPercent(cost, target decimal.Decimal) decimal.Decimal {
+	return cost.Mul(decimal.NewFromInt(100)).DivRound(target, percentDigits+16).RoundBank(percentDigits)
 }
 
 // TargetBudgets évalue les budgets cibles du brouillon contre ses totaux selon sa méthode.

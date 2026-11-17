@@ -661,6 +661,9 @@ type TreeTotals struct {
 	Stock    []PartStock // stock de la BOM, par pièce (ADR 0022)
 	Totals   Totals
 	Planning Planning // ADR 0023
+	// Budgets : budgets cibles évalués sur ces mêmes totaux (ADR 0018, 0031), pour que coût et % du budget
+	// affichés ensemble viennent du même calcul (en prix en direct, deux requêtes peuvent voir deux cotations).
+	Budgets []BudgetStatus
 }
 
 // Totals calcule les totaux du brouillon (ADR 0007, ADR 0008), avec les prix en direct ou ceux de son
@@ -680,7 +683,15 @@ func (s *Service) Totals(ctx context.Context, bomID int64) (TreeTotals, error) {
 	if err != nil {
 		return TreeTotals{}, fmt.Errorf("totals of bom %d: %w", bomID, err)
 	}
-	return TreeTotals{BOM: dc.BOM, Nodes: dc.Nodes, Stock: dc.Stock, Totals: dc.Totals, Planning: plan}, nil
+	targets, err := s.store.TargetBudgets(ctx, bomID)
+	if err != nil {
+		return TreeTotals{}, fmt.Errorf("totals of bom %d: target budgets: %w", bomID, err)
+	}
+	budgets, err := EvaluateTargetBudgets(dc.Totals, targets)
+	if err != nil {
+		return TreeTotals{}, fmt.Errorf("totals of bom %d: %w", bomID, err)
+	}
+	return TreeTotals{BOM: dc.BOM, Nodes: dc.Nodes, Stock: dc.Stock, Totals: dc.Totals, Planning: plan, Budgets: budgets}, nil
 }
 
 func (s *Service) totalsInput(ctx context.Context, b BOM, nodes []Node, stock []PartStock) (TotalsInput, error) {

@@ -239,7 +239,7 @@ func (a *api) tree(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, http.StatusOK, treeJSON{
 		BOM: toBOMJSON(t.BOM), Nodes: nodes, Explanation: toExplanationJSON(t.Totals.Explanation), Stock: toStockJSON(t.Stock),
-		Planning: toPlanningJSON(t.Planning),
+		Planning: toPlanningJSON(t.Planning), Budgets: toBudgetsJSON(t.Budgets),
 	})
 }
 
