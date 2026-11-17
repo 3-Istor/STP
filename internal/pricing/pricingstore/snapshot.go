@@ -60,6 +60,13 @@ func (u snapshotUnit) Frame(ctx context.Context, dataset string, req pricing.Sna
 			return f, err
 		}
 		f.Targets = []money.Currency{money.Currency(c)}
+		sources, err := u.q.ReadBOMBudgetCurrencies(ctx, *req.ScopeID)
+		if err != nil {
+			return f, err
+		}
+		for _, src := range sources {
+			f.Sources = append(f.Sources, money.Currency(src))
+		}
 		rows, err := u.q.ReadBOMPriceScope(ctx, *req.ScopeID)
 		if err != nil {
 			return f, err

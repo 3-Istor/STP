@@ -138,8 +138,12 @@ func (t budgetTree) judge(id int64, fx BudgetFX) error {
 	if err != nil {
 		return err
 	}
+	overText := shown(over)
+	if m, err := over.Round(); err == nil && m.Amount().IsZero() {
+		overText = "less than 1 minor unit of " + string(fx.Currency) // refus exact, dépassement sous l'arrondi d'affichage
+	}
 	return fmt.Errorf("assembly %q (node %d): sub-budgets total %s, budget %s, over by %s%s: %w",
-		cmp.Or(t.names[id], "?"), id, shown(sum), shown(limit), shown(over), ratesNote(quotes), ErrBudgetExceedsParent)
+		cmp.Or(t.names[id], "?"), id, shown(sum), shown(limit), overText, ratesNote(quotes), ErrBudgetExceedsParent)
 }
 
 // shown : valeur exacte arrondie aux unités mineures, pour le message seulement (ADR 0004).
@@ -182,14 +186,19 @@ func CheckBudgetTree(nodes []Node, budgets []TargetBudget, touched []int64, fx B
 }
 
 // AllocationWarnings : pour chaque ensemble budgété dont les sous-budgets dépassent le budget au taux courant (le
-// change a bougé depuis la saisie, ou données héritées), le message qui le dit. Rien n'est bloqué (ADR 0044) ; un
-// ensemble dont un taux manque n'a pas d'avertissement ici (son état de budget le dit déjà).
+// change a bougé depuis la saisie, ou données héritées), le message qui le dit ; et pour chaque ensemble dont la
+// répartition n'a pas pu être jugée (taux absent pour lui ou un sous-budget), la raison : une répartition non
+// vérifiée n'est jamais présentée comme tenue (AGENTS §3). Rien n'est bloqué (ADR 0044).
 func AllocationWarnings(nodes []Node, budgets []TargetBudget, fx BudgetFX) map[int64]string {
 	t := newBudgetTree(nodes, budgets)
 	out := map[int64]string{}
 	for id := range t.byNode {
-		if err := t.judge(id, fx); errors.Is(err, ErrBudgetExceedsParent) {
+		switch err := t.judge(id, fx); {
+		case err == nil:
+		case errors.Is(err, ErrBudgetExceedsParent):
 			out[id] = err.Error()
+		default:
+			out[id] = "allocation not verifiable: " + err.Error()
 		}
 	}
 	return out
@@ -306,4 +315,52 @@ func (s *Service) DeleteTargetBudget(ctx context.Context, bomID, nodeID int64) e
 		return fmt.Errorf("delete budget of node %d in bom %d: %w", nodeID, bomID, err)
 	}
 	return s.store.EditTargetBudget(ctx, bomID, nodeID, nil, check) // erreur déjà située (store)
+}
+
+// ConvertTargetBudget : budget b exprimé dans la devise de fx, au taux de fx (montant exact gardé à percentPrecision
+// décimales, arrondi seulement en sortie). reason non vide si la conversion est impossible (taux absent) : le budget
+// n'est alors jamais comparé en silence.
+func ConvertTargetBudget(b TargetBudget, fx BudgetFX) (TargetBudget, string, error) {
+	if b.Currency == string(fx.Currency) {
+		return b, "", nil
+	}
+	e, _, err := fx.convert(b)
+	switch {
+	case errors.Is(err, pricing.ErrNoRate), errors.Is(err, pricing.ErrInvalidHistoryData):
+		return TargetBudget{}, err.Error(), nil
+	case err != nil:
+		return TargetBudget{}, "", err
+	}
+	unit, err := money.New(decimal.NewFromInt(1), string(fx.Currency))
+	if err != nil {
+		return TargetBudget{}, "", err
+	}
+	one, err := money.NewExact(unit)
+	if err != nil {
+		return TargetBudget{}, "", err
+	}
+	r, err := e.Ratio(one)
+	if err != nil {
+		return TargetBudget{}, "", err
+	}
+	return TargetBudget{NodeID: b.NodeID, Amount: decimal.NewFromBigRat(r, percentPrecision), Currency: string(fx.Currency)}, "", nil
+}
+
+// RootBudgetIn : budget global (racine root) de la BOM b dans sa devise, converti au taux du jour ou de son snapshot de
+// prix s'il est dans une autre devise (ADR 0044) ; nil sans budget global ; reason si la conversion est impossible.
+// Une seule définition pour les pistes, la sensibilité au change et les versions.
+func (s *Service) RootBudgetIn(ctx context.Context, b BOM, budgets []TargetBudget, root int64) (*TargetBudget, string, error) {
+	rb := RootBudgetOf(budgets, root)
+	if rb == nil {
+		return nil, "", nil
+	}
+	fx, err := s.budgetFX(ctx, b, []TargetBudget{*rb})
+	if err != nil {
+		return nil, "", err
+	}
+	out, reason, err := ConvertTargetBudget(*rb, fx)
+	if err != nil || reason != "" {
+		return nil, reason, err
+	}
+	return &out, "", nil
 }

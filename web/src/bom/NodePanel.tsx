@@ -203,7 +203,8 @@ function BudgetField({ current, bomCurrency, onSet }: { current: Money | null; b
   const amount = decimalInput(value)
   const valid = /^\d+(\.\d+)?$/.test(amount)
   const unchanged = current !== null && sameDecimal(amount, current.amount) && currency === current.currency
-  const currencies = [bomCurrency, ...BUDGET_CURRENCIES.filter((c) => c !== bomCurrency)]
+  // La devise du budget actuel reste proposée même hors de la liste : le choix affiché est celui qui sera envoyé.
+  const currencies = [...new Set([bomCurrency, ...(current ? [current.currency] : []), ...BUDGET_CURRENCIES])]
   return (
     <form
       className="row"

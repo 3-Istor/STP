@@ -739,6 +739,31 @@ func (q *Queries) PricingSupplierExists(ctx context.Context, id int64) (bool, er
 	return column_1, err
 }
 
+const readBOMBudgetCurrencies = `-- name: ReadBOMBudgetCurrencies :many
+SELECT DISTINCT currency::text FROM bom_target_budgets WHERE bom_id=$1 ORDER BY 1
+`
+
+// Devises des budgets cibles d'une BOM (ADR 0044) : leurs taux vers la devise de la BOM sont figés avec ses prix.
+func (q *Queries) ReadBOMBudgetCurrencies(ctx context.Context, bomID int64) ([]string, error) {
+	rows, err := q.db.Query(ctx, readBOMBudgetCurrencies, bomID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var currency string
+		if err := rows.Scan(&currency); err != nil {
+			return nil, err
+		}
+		items = append(items, currency)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const readBOMPriceCurrency = `-- name: ReadBOMPriceCurrency :one
 SELECT currency FROM boms WHERE id=$1
 `

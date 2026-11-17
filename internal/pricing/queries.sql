@@ -175,6 +175,10 @@ WHERE n.bom_id=$1 ORDER BY o.id;
 -- name: ReadBOMPriceCurrency :one
 SELECT currency FROM boms WHERE id=$1;
 
+-- Devises des budgets cibles d'une BOM (ADR 0044) : leurs taux vers la devise de la BOM sont figés avec ses prix.
+-- name: ReadBOMBudgetCurrencies :many
+SELECT DISTINCT currency::text FROM bom_target_budgets WHERE bom_id=$1 ORDER BY 1;
+
 -- name: CreatePriceSnapshot :one
 INSERT INTO price_snapshots(scope,scope_id,taken_at) VALUES ($1,$2,$3) RETURNING *;
 

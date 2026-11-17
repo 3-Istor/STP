@@ -157,7 +157,12 @@ func (s *Service) Versions(ctx context.Context, bomID int64) ([]Version, error) 
 		if err := s.versionCost(&v, dc.Totals, root); err != nil {
 			return nil, err
 		}
-		setBudget(&v, bom.RootBudgetOf(dc.Budgets, root)) // budgets de la même lecture que le coût
+		// Budgets de la même lecture que le coût ; % du budget global converti s'il est dans une autre devise (ADR 0044).
+		converted, _, err := s.boms.RootBudgetIn(ctx, b, dc.Budgets, root)
+		if err != nil {
+			return nil, fmt.Errorf("versions of bom %d: %w", bomID, err)
+		}
+		setBudget(&v, bom.RootBudgetOf(dc.Budgets, root), converted)
 		out = append(out, v)
 	}
 	for _, sn := range f.snaps {
@@ -185,7 +190,12 @@ func (s *Service) Versions(ctx context.Context, bomID int64) ([]Version, error) 
 		if err != nil {
 			return nil, fmt.Errorf("versions of bom %d: %w", bomID, err)
 		}
-		setBudget(&v, bom.RootBudgetOf(budgets, root))
+		priceSnap := sn.PriceSnapshotID
+		converted, _, err := s.boms.RootBudgetIn(ctx, bom.BOM{ID: sn.BOMID, Currency: sn.Currency, PriceSnapshotID: &priceSnap}, budgets, root)
+		if err != nil {
+			return nil, fmt.Errorf("versions of bom %d: %w", bomID, err)
+		}
+		setBudget(&v, bom.RootBudgetOf(budgets, root), converted)
 		out = append(out, v)
 	}
 	slices.SortStableFunc(out, func(a, b Version) int {
@@ -207,7 +217,9 @@ func (s *Service) versionCost(v *Version, t bom.Totals, root int64) error {
 	return nil
 }
 
-func setBudget(v *Version, b *bom.TargetBudget) {
+// setBudget : budget global tel que saisi (b) et son % calculé sur le budget converti dans la devise de la version
+// (converted, nil si le taux manque : pas de pourcentage, jamais une division entre deux devises).
+func setBudget(v *Version, b, converted *bom.TargetBudget) {
 	if b == nil {
 		return
 	}
@@ -216,8 +228,12 @@ func setBudget(v *Version, b *bom.TargetBudget) {
 		return
 	}
 	v.TargetBudgetRoot = &target
-	if v.Cost == nil {
+	if v.Cost == nil || converted == nil {
 		return
 	}
-	v.BudgetPercent = bom.BudgetPercent(*v.Cost, &target) // exact : arrondi une seule fois, en sortie
+	in, err := money.New(converted.Amount, converted.Currency)
+	if err != nil {
+		return
+	}
+	v.BudgetPercent = bom.BudgetPercent(*v.Cost, &in) // exact : arrondi une seule fois, en sortie
 }

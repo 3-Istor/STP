@@ -196,3 +196,23 @@ func TestRunChecksOrderAndCodes(t *testing.T) {
 		t.Errorf("codes = %v, want %v", codes, want)
 	}
 }
+
+// Le contrôle « budgets » reprend le pourcentage du statut, calculé sur le budget converti (ADR 0044) : jamais une
+// division d'un coût en EUR par un budget en USD. 450 EUR pour 500 USD à 0,8 = 400 EUR → 112,5 %, pas 90 %.
+func TestCheckBudgetsUsesTheConvertedPercent(t *testing.T) {
+	in := checksBase(t, nil)
+	usd, err := money.Parse("500", "USD")
+	if err != nil {
+		t.Fatal(err)
+	}
+	cost, err := money.Parse("450", "EUR")
+	if err != nil {
+		t.Fatal(err)
+	}
+	pct := dec("112.5")
+	in.Budgets[0] = BudgetStatus{NodeID: 2, Target: usd, Cost: &cost, State: "over", Percent: &pct}
+	c := byCode(RunChecks(in))[CheckBudgets]
+	if !strings.Contains(c.Detail, "Porte 112,5 %") || strings.Contains(c.Detail, "90,0") {
+		t.Fatalf("detail = %q, want the converted percent 112,5 %%", c.Detail)
+	}
+}
