@@ -3,11 +3,11 @@ import { api, type CostBasis, type CostMethod, type FXPolicy, type NewNode, type
 import { partName } from '../catalog.ts'
 import { CurrencySelect } from '../CurrencySelect.tsx'
 import { bomRoute, navigate, type Route, type Step } from '../router.ts'
-import { Pending } from '../shell/Pending.tsx'
 import { Summary } from '../shell/Summary.tsx'
 import { useAppDialog } from '../useAppDialog.tsx'
 import { AddNodeDialog } from './AddNodeDialog.tsx'
 import { basisHint, basisLabels, fxLabels } from './costMethod.ts'
+import { ProfileSettings } from './ProfileSettings.tsx'
 import { NodePanel } from './NodePanel.tsx'
 import { Arbitrer } from './steps/Arbitrer.tsx'
 import { Chiffrer } from './steps/Chiffrer.tsx'
@@ -174,12 +174,13 @@ export function BomWorkspace({ route, data, error, published, onPublished }: Pro
 }
 
 // Settings : réglages de calcul de la BOM (V1 : en-tête de la vue BOM) — méthode de calcul (ADR 0031),
-// devise de référence, volume, pays de destination. Profil de véhicule : lot E (partie 2).
+// profil de véhicule (ADR 0036), devise de référence, volume, pays de destination.
 function Settings({ data }: { data: BomData }) {
   const bom = data.bom
   if (!bom) {
     return (
       <div className="stack settings">
+        <ProfileSettings data={data} />
         <MethodSettings data={data} />
         <dl className="facts">
           <dt>Devise</dt>
@@ -194,7 +195,7 @@ function Settings({ data }: { data: BomData }) {
   }
   return (
     <div className="stack settings">
-      <Pending title="Profil de véhicule" lot="lot E" />
+      <ProfileSettings data={data} />
       <MethodSettings key={`method-${data.explanation.cost_method?.program_volume ?? ''}`} data={data} />
       <CurrencyVolume
         key={`${bom.currency}-${bom.volume}`}
