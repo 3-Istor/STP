@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"maps"
 	"slices"
-	"time"
 
 	"github.com/shopspring/decimal"
 
@@ -14,14 +13,8 @@ import (
 	"bomstudio/internal/pricing"
 )
 
-// percentPrecision : décimales gardées par les divisions des analyses (parts, % du budget) ; arrondi en sortie.
-const percentPrecision = 28
-
-var (
-	hundred = decimal.NewFromInt(100)
-	// maxShockPercent : un choc de change au-delà de ±100 % n'a pas de sens métier (taux nul ou négatif).
-	maxShockPercent = decimal.NewFromInt(100)
-)
+// maxShockPercent : un choc de change au-delà de ±100 % n'a pas de sens métier (taux nul ou négatif).
+var maxShockPercent = decimal.NewFromInt(100)
 
 // FXExposure : exposition du coût de la voiture à une devise d'origine et effet d'un choc sur son taux.
 type FXExposure struct {
@@ -63,11 +56,12 @@ func (s *Service) FXSensitivity(ctx context.Context, bomID int64, shockPercent d
 	if err != nil {
 		return FXSensitivity{}, fmt.Errorf("fx sensitivity: %w", err)
 	}
-	budget, budgetErr, err := s.rootBudget(ctx, dc)
+	root := RootID(dc.Nodes)
+	budget, budgetErr, err := GlobalBudget(dc.Budgets, root, dc.BOM.Currency) // même lecture que le coût
 	if err != nil {
 		return FXSensitivity{}, fmt.Errorf("fx sensitivity of bom %d: %w", bomID, err)
 	}
-	out, err := ComputeFXSensitivity(dc.Input, dc.Totals, rootOf(dc.Nodes), shockPercent, budget)
+	out, err := ComputeFXSensitivity(dc.Input, dc.Totals, root, shockPercent, budget)
 	if err != nil {
 		return FXSensitivity{}, fmt.Errorf("fx sensitivity of bom %d: %w", bomID, err)
 	}
@@ -104,10 +98,10 @@ func ComputeFXSensitivity(in TotalsInput, base Totals, rootID int64, shockPercen
 			return FXSensitivity{}, err
 		}
 		e := FXExposure{Currency: cur, Exposed: exposed, Impact: impact, CostAfter: after, Rates: ratesFrom(base.Explanation, cur)}
-		if total.Amount().IsPositive() {
-			e.SharePercent = exposed.Amount().Mul(hundred).DivRound(total.Amount(), percentPrecision)
+		if p, ok := PercentOf(exposed.Amount(), total.Amount()); ok {
+			e.SharePercent = p
 		}
-		e.BudgetPercentAfter = budgetPercent(after, budget)
+		e.BudgetPercentAfter = BudgetPercent(after, budget)
 		out.Currencies = append(out.Currencies, e)
 	}
 	slices.SortFunc(out.Currencies, func(a, b FXExposure) int {
@@ -169,16 +163,6 @@ func ratesFrom(e Explanation, cur money.Currency) []pricing.Rate {
 	return out
 }
 
-// rootOf : id de la racine (parent nil) ; 0 si aucune.
-func rootOf(nodes []Node) int64 {
-	for _, n := range nodes {
-		if n.ParentID == nil {
-			return n.ID
-		}
-	}
-	return 0
-}
-
 // rootCost : coût exact de la racine, ou son erreur nommée (ErrMissingCost : une pièce sans coût).
 func analysisRootCost(t Totals, rootID int64) (money.Money, error) {
 	n, ok := t.Node(rootID)
@@ -189,49 +173,4 @@ func analysisRootCost(t Totals, rootID int64) (money.Money, error) {
 		return money.Money{}, fmt.Errorf("car cost (%d parts without cost): %w", len(n.MissingCost), n.CostErr)
 	}
 	return *n.Cost, nil
-}
-
-// rootBudget : budget cible de la racine du brouillon. Absent ou dans une autre devise : nil et la raison.
-func (s *Service) rootBudget(ctx context.Context, dc DraftCost) (*money.Money, string, error) {
-	budgets, err := s.store.TargetBudgets(ctx, dc.BOM.ID)
-	if err != nil {
-		return nil, "", err
-	}
-	root := rootOf(dc.Nodes)
-	for _, b := range budgets {
-		if b.NodeID != root {
-			continue
-		}
-		if b.Currency != dc.BOM.Currency {
-			return nil, fmt.Sprintf("budget in %s, bom in %s: not converted", b.Currency, dc.BOM.Currency), nil
-		}
-		m, err := money.New(b.Amount, b.Currency)
-		if err != nil {
-			return nil, "", err
-		}
-		return &m, "", nil
-	}
-	return nil, "no target budget on the root node", nil
-}
-
-func budgetPercent(cost money.Money, budget *money.Money) *decimal.Decimal {
-	if budget == nil || !budget.Amount().IsPositive() || cost.Currency() != budget.Currency() {
-		return nil
-	}
-	p := cost.Amount().Mul(hundred).DivRound(budget.Amount(), percentPrecision)
-	return &p
-}
-
-// costAsOf : date de calcul du brouillon (cotation la plus récente utilisée, temps simulé) ; zéro sans prix.
-func costAsOf(in TotalsInput) time.Time {
-	if in.Cost != nil && !in.Cost.AsOf.IsZero() {
-		return in.Cost.AsOf
-	}
-	var at time.Time
-	for _, p := range in.Prices {
-		if p.Err == nil && p.Quote.QuotedAt.After(at) {
-			at = p.Quote.QuotedAt.UTC()
-		}
-	}
-	return at
 }

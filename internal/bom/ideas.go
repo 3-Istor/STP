@@ -143,12 +143,10 @@ func (s *Service) Ideas(ctx context.Context, bomID int64) (IdeasSummary, error) 
 	if err != nil {
 		return IdeasSummary{}, fmt.Errorf("ideas of bom %d: %w", bomID, err)
 	}
-	budget, err := s.RootBudget(ctx, bomID)
-	if err != nil {
-		return IdeasSummary{}, fmt.Errorf("ideas of bom %d: %w", bomID, err)
-	}
+	root := RootID(dc.Nodes)
+	budget := RootBudgetOf(dc.Budgets, root) // même lecture que le coût
 	var cost *money.Money
-	if root, ok := dc.Totals.Node(rootID(dc.Nodes)); ok {
+	if root, ok := dc.Totals.Node(root); ok {
 		cost = root.Cost
 	}
 	out, err := SummarizeIdeas(money.Currency(dc.BOM.Currency), ideas, cost, budget)
@@ -156,34 +154,6 @@ func (s *Service) Ideas(ctx context.Context, bomID int64) (IdeasSummary, error) 
 		return IdeasSummary{}, fmt.Errorf("ideas of bom %d: %w", bomID, err)
 	}
 	return out, nil
-}
-
-func rootID(nodes []Node) int64 {
-	for _, n := range nodes {
-		if n.ParentID == nil {
-			return n.ID
-		}
-	}
-	return 0
-}
-
-// RootBudget renvoie le budget global (celui de la racine), ou nil.
-func (s *Service) RootBudget(ctx context.Context, bomID int64) (*TargetBudget, error) {
-	nodes, err := s.store.Tree(ctx, bomID)
-	if err != nil {
-		return nil, err
-	}
-	budgets, err := s.store.TargetBudgets(ctx, bomID)
-	if err != nil {
-		return nil, err
-	}
-	root := rootID(nodes)
-	for _, b := range budgets {
-		if b.NodeID == root {
-			return &b, nil
-		}
-	}
-	return nil, nil //nolint:nilnil // pas de budget global
 }
 
 const maxIdeaText = 200

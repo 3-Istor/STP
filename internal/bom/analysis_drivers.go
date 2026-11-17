@@ -72,7 +72,7 @@ func (s *Service) PriceDrivers(ctx context.Context, bomID int64, limit int) (Pri
 	if err != nil {
 		return PriceDrivers{}, fmt.Errorf("price drivers: %w", err)
 	}
-	asOf := costAsOf(dc.Input)
+	asOf := CostAsOf(dc.Input)
 	if asOf.IsZero() {
 		return PriceDrivers{}, fmt.Errorf("price drivers of bom %d: %w", bomID, ErrNoCostDate)
 	}

@@ -8,8 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/shopspring/decimal"
-
 	"bomstudio/internal/catalog"
 	"bomstudio/internal/money"
 	"bomstudio/internal/pricing"
@@ -225,9 +223,8 @@ func checkBudgets(in ChecksInput) PublicationCheck {
 		}
 		c.NodeIDs = append(c.NodeIDs, b.NodeID)
 		l := label(b.NodeID)
-		if b.Target.Amount().IsPositive() {
-			pct := b.Cost.Amount().Mul(decimal.NewFromInt(100)).DivRound(b.Target.Amount(), 1)
-			l += " " + strings.Replace(pct.StringFixed(1), ".", ",", 1) + " %"
+		if pct, ok := PercentOf(b.Cost.Amount(), b.Target.Amount()); ok { // texte figé : arrondi half-even ici, une fois
+			l += " " + strings.Replace(pct.RoundBank(1).StringFixed(1), ".", ",", 1) + " %"
 		}
 		over = append(over, l)
 	}
@@ -392,14 +389,8 @@ func (s *Service) checksInput(ctx context.Context, dc DraftCost) (ChecksInput, e
 			in.Archived[n.ID] = true
 		}
 	}
-	in.AsOf = dc.Totals.Explanation.CostAsOf
-	if in.AsOf == nil { // méthode historique : date de la cotation la plus récente utilisée
-		for _, t := range dc.Totals.Nodes {
-			if t.Quote != nil && (in.AsOf == nil || t.Quote.QuotedAt.After(*in.AsOf)) {
-				at := t.Quote.QuotedAt.UTC()
-				in.AsOf = &at
-			}
-		}
+	if at := CostAsOf(dc.Input); !at.IsZero() { // date de la méthode, sinon cotation la plus récente utilisée
+		in.AsOf = &at
 	}
 	if s.contracts == nil || in.AsOf == nil {
 		in.ContractsUnavailable = s.contracts == nil

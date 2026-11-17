@@ -58,11 +58,7 @@ func (s *Service) costInput(ctx context.Context, b BOM, offers map[int64]catalog
 	if m == DefaultCostMethod() || (m.Basis == BasisPurchase && m.FX == FXLatest) {
 		return ci, nil // calcul historique : rien d'autre à lire
 	}
-	for _, p := range prices {
-		if p.Err == nil && p.Quote.QuotedAt.After(ci.AsOf) {
-			ci.AsOf = p.Quote.QuotedAt.UTC()
-		}
-	}
+	ci.AsOf = QuotesAsOf(prices)
 	needsTables := st.logistics || st.tooling
 	if s.costParams == nil || (st.discount && s.contracts == nil) {
 		return nil, ErrCostSourcesUnavailable

@@ -140,3 +140,27 @@ func TestAnalysisRoutesNeedTheService(t *testing.T) {
 		t.Fatalf("status %d, want 404", rec.Code)
 	}
 }
+
+// Un pourcentage n'est arrondi qu'une fois, en sortie, half-even (AGENTS §3, ADR 0004, v2-lot-g T5) : 99,94996 %
+// ne devient pas « 100,0 % » par un double arrondi, une égalité va au pair.
+func TestPercentOut(t *testing.T) {
+	tests := []struct {
+		in     string
+		places int32
+		want   string
+	}{
+		{"99.94996", 1, "99.9"},
+		{"99.95", 1, "100.0"},
+		{"11.25", 1, "11.2"},
+		{"11.35", 1, "11.4"},
+		{"0.125", 2, "0.12"},
+		{"21.1249999", 2, "21.12"},
+		{"-3.835", 2, "-3.84"},
+		{"96", 1, "96.0"},
+	}
+	for _, tt := range tests {
+		if got := percentOut(decimal.RequireFromString(tt.in), tt.places); got != tt.want {
+			t.Errorf("percentOut(%s, %d) = %s, want %s", tt.in, tt.places, got, tt.want)
+		}
+	}
+}

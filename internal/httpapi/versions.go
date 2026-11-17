@@ -188,7 +188,7 @@ func (a *api) listVersions(w http.ResponseWriter, r *http.Request) {
 			j.CostError = &e
 		}
 		if v.BudgetPercent != nil {
-			p := v.BudgetPercent.StringFixed(1)
+			p := percentOut(*v.BudgetPercent, 1)
 			j.BudgetPercent = &p
 		}
 		out[i] = j

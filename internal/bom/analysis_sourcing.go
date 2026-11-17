@@ -130,7 +130,7 @@ func (s *Service) Sourcing(ctx context.Context, bomID int64) (Sourcing, error) {
 	if err != nil {
 		return Sourcing{}, fmt.Errorf("sourcing of bom %d: %w", bomID, err)
 	}
-	out, err := ComputeSourcing(dc.Input, dc.Totals, rootOf(dc.Nodes), f)
+	out, err := ComputeSourcing(dc.Input, dc.Totals, RootID(dc.Nodes), f)
 	if err != nil {
 		return Sourcing{}, fmt.Errorf("sourcing of bom %d: %w", bomID, err)
 	}
@@ -193,7 +193,7 @@ func (s *Service) sourcingFacts(ctx context.Context, dc DraftCost) (SourcingFact
 	}
 	if ci := dc.Input.Cost; ci != nil && ci.BudgetRates != nil {
 		f.BudgetRates = ci.BudgetRates
-	} else if asOf := costAsOf(dc.Input); s.costParams != nil && !asOf.IsZero() {
+	} else if asOf := CostAsOf(dc.Input); s.costParams != nil && !asOf.IsZero() {
 		if f.BudgetRates, err = s.costParams.BudgetRates(ctx, asOf.Year(), money.Currency(dc.BOM.Currency)); err != nil {
 			return f, err
 		}
@@ -208,13 +208,11 @@ func ComputeSourcing(in TotalsInput, t Totals, rootID int64, f SourcingFacts) (S
 	if err != nil {
 		return Sourcing{}, err
 	}
-	asOf := costAsOf(in)
+	asOf := CostAsOf(in)
 	out := Sourcing{Currency: in.Currency, AsOf: asOf, Total: total, Explanation: t.Explanation}
 	share := func(m money.Money) decimal.Decimal {
-		if !total.Amount().IsPositive() {
-			return decimal.Zero
-		}
-		return m.Amount().Mul(hundred).DivRound(total.Amount(), percentPrecision)
+		p, _ := PercentOf(m.Amount(), total.Amount()) // total nul : 0
+		return p
 	}
 
 	type acc struct {
@@ -510,8 +508,9 @@ func rateGaps(in TotalsInput, rootID int64, budget map[money.Currency]decimal.De
 			out = append(out, g)
 			continue
 		}
-		gap := g.Latest.Rate.Sub(g.Budget.Rate).Mul(hundred).DivRound(g.Budget.Rate, percentPrecision)
-		g.GapPercent = &gap
+		if gap, ok := PercentOf(g.Latest.Rate.Sub(g.Budget.Rate), g.Budget.Rate); ok {
+			g.GapPercent = &gap
+		}
 		if base == nil {
 			b, err := total(mixed)
 			if err != nil {

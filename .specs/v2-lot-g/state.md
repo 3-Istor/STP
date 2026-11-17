@@ -56,6 +56,19 @@ updated: 2026-11-17
   contrôle était `ok` (« 1 budget(s) »). Un budget `unavailable` (autre devise, coût manquant), racine comprise,
   passe le contrôle en `warn` avec le nœud et la raison dans le détail (justification exigée à la publication).
 
+### T5: Doublons et arrondi unique
+- **Status**: completed
+- **Notes**: test d'abord : `TestVersionBudgetPercentIsExact` (99,94996 % arrondi à 99,95 dans le domaine, puis
+  « 100.0 » en sortie). `internal/bom/rootbudget.go` : `PercentOf` (exact, 28 décimales), `BudgetPercent`,
+  `RootBudgetOf`, `GlobalBudget`, `CalcRootID`, `QuotesAsOf`, `CostAsOf` ; `RootID` dans `draft.go`. Supprimés :
+  `rootOf` (analysis_fx, versions), `rootID` (ideas, snapshot), `rootBudget`/`Service.RootBudget` (relisaient l'arbre),
+  `budgetPercent` (analysis_fx), `costAsOf` et les deux autres déductions de la date de calcul (costfacts, checks).
+  Sortie : `httpapi.percentOut` (half-even, une fois) pour `budget_percent` des versions et les `*_percent` des
+  analyses (`pct`, était half-away) ; textes figés (contrôle budgets, explication de la comparaison) : `PercentOf`
+  puis `RoundBank` une fois. Tests : `TestPercentOf`, `TestBudgetPercentAndGlobalBudget`, `TestCostAsOf`,
+  `TestPercentOut`. Le champ `percent` de `/tree` (lot F, `budgets.go`) n'est pas touché ; après fusion, son
+  `budgetPercent` (DivRound 17 puis RoundBank 1) peut appeler `bom.PercentOf` (même résultat sauf à la 17e décimale).
+
 ## Decisions
 
 ## Blockers
