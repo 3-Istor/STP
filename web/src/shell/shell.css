@@ -135,6 +135,13 @@ input.search { width: 260px; max-width: 100%; }
 .settings .setting { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 8px; font-size: var(--fs-small); }
 .settings .setting input[type='number'] { width: 7rem; }
 .settings .block { margin-top: 6px; }
+.method-settings { display: flex; flex-direction: column; gap: 6px; }
+.method-settings .h3 { margin-top: 4px; font-weight: 600; color: var(--fg); }
+.meth { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 8px; font-size: var(--fs-small); }
+.meth input[type='number'] { width: 7rem; }
+.meth .seg button:disabled { opacity: 1; cursor: default; }
+.meth .seg button.on:disabled { background: var(--accent); }
+.method-settings p { margin: 2px 0; }
 
 /* Toutes les BOM. */
 .boms-table .bom-row td { cursor: pointer; }

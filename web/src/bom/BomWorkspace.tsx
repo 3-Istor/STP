@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react'
-import { api, type NewNode, type NodePatch, type Snapshot } from '../api.ts'
+import { api, type CostBasis, type CostMethod, type FXPolicy, type NewNode, type NodePatch, type Snapshot } from '../api.ts'
 import { partName } from '../catalog.ts'
 import { CurrencySelect } from '../CurrencySelect.tsx'
 import { bomRoute, navigate, type Route, type Step } from '../router.ts'
@@ -7,6 +7,7 @@ import { Pending } from '../shell/Pending.tsx'
 import { Summary } from '../shell/Summary.tsx'
 import { useAppDialog } from '../useAppDialog.tsx'
 import { AddNodeDialog } from './AddNodeDialog.tsx'
+import { basisHint, basisLabels, fxLabels } from './costMethod.ts'
 import { NodePanel } from './NodePanel.tsx'
 import { Arbitrer } from './steps/Arbitrer.tsx'
 import { Chiffrer } from './steps/Chiffrer.tsx'
@@ -166,24 +167,29 @@ export function BomWorkspace({ route, data, error, published, onPublished }: Pro
   )
 }
 
-// Settings : réglages de calcul de la BOM (V1 : en-tête de la vue BOM) — devise de référence, volume,
-// pays de destination. Profil de véhicule et méthode de calcul : lots A et E.
+// Settings : réglages de calcul de la BOM (V1 : en-tête de la vue BOM) — méthode de calcul (ADR 0031),
+// devise de référence, volume, pays de destination. Profil de véhicule : lot E (partie 2).
 function Settings({ data }: { data: BomData }) {
   const bom = data.bom
   if (!bom) {
     return (
-      <dl className="facts">
-        <dt>Devise</dt>
-        <dd>{data.currency}</dd>
-        <dt>Volume</dt>
-        <dd>{data.volume} véhicules</dd>
-        <dt>Destination</dt>
-        <dd>{data.snapshot?.destination_country ?? 'non renseignée'}</dd>
-      </dl>
+      <div className="stack settings">
+        <MethodSettings data={data} />
+        <dl className="facts">
+          <dt>Devise</dt>
+          <dd>{data.currency}</dd>
+          <dt>Volume</dt>
+          <dd>{data.volume} véhicules</dd>
+          <dt>Destination</dt>
+          <dd>{data.snapshot?.destination_country ?? 'non renseignée'}</dd>
+        </dl>
+      </div>
     )
   }
   return (
     <div className="stack settings">
+      <Pending title="Profil de véhicule" lot="lot E" />
+      <MethodSettings key={`method-${data.explanation.cost_method?.program_volume ?? ''}`} data={data} />
       <CurrencyVolume
         key={`${bom.currency}-${bom.volume}`}
         currency={bom.currency}
@@ -195,7 +201,6 @@ function Settings({ data }: { data: BomData }) {
         country={bom.destination_country}
         onApply={(c) => void data.run(() => api.setDestination(bom.id, c), { bomChanged: true })}
       />
-      <Pending title="Profil de véhicule · méthode de calcul" lot="lot E (profils) et le lot A (méthode)" />
     </div>
   )
 }
@@ -251,5 +256,79 @@ function Destination({ country, onApply }: { country: string | null; onApply: (c
         </button>
       )}
     </form>
+  )
+}
+
+const bases: CostBasis[] = ['purchase', 'landed', 'full']
+const fxPolicies: FXPolicy[] = ['budget', 'latest']
+
+// MethodSettings : méthode de calcul (maquette I4-1, onglet « Réglages de calcul »). Chaque changement est
+// envoyé à l'API (PUT /cost-method) puis l'arbre est relu : totaux, budgets et Synthèse suivent la méthode,
+// rien n'est recalculé ici. « Complet » exige le volume programme (outillage amorti) : l'API le refuse sinon.
+function MethodSettings({ data }: { data: BomData }) {
+  const m = data.explanation.cost_method
+  const [volume, setVolume] = useState(m?.program_volume ? String(m.program_volume) : '')
+  if (!m) return <p className="muted small">Méthode de calcul non renvoyée par l’API.</p>
+  const readOnly = data.readOnly || !data.bom
+  const apply = (next: CostMethod) => {
+    if (readOnly) return
+    void data.run(() => api.setCostMethod(data.target.id, next))
+  }
+  const volumeValue = /^[1-9]\d{0,8}$/.test(volume.trim()) ? Number.parseInt(volume.trim(), 10) : null
+  const volumeChanged = volume.trim() !== (m.program_volume ? String(m.program_volume) : '')
+  return (
+    <section className="method-settings" aria-label="Méthode de calcul">
+      <h3 className="h3">Méthode de calcul</h3>
+      <div className="meth">
+        <span>Coût</span>
+        <div className="seg" role="radiogroup" aria-label="Base du coût">
+          {bases.map((b) => (
+            <button key={b} type="button" role="radio" aria-checked={m.basis === b} className={m.basis === b ? 'on' : ''} title={basisHint(b)}
+              disabled={readOnly || data.busy} onClick={() => m.basis !== b && apply({ ...m, basis: b })}>
+              {basisLabels[b]}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="meth">
+        <span>Change</span>
+        <div className="seg" role="radiogroup" aria-label="Taux de change">
+          {fxPolicies.map((f) => (
+            <button key={f} type="button" role="radio" aria-checked={m.fx === f} className={m.fx === f ? 'on' : ''}
+              disabled={readOnly || data.busy} onClick={() => m.fx !== f && apply({ ...m, fx: f })}>
+              {fxLabels[f]}
+            </button>
+          ))}
+        </div>
+      </div>
+      <form
+        className="meth"
+        onSubmit={(e) => {
+          e.preventDefault()
+          if (volumeValue !== null) apply({ ...m, program_volume: volumeValue })
+        }}
+      >
+        <label htmlFor="program-volume">Volume programme</label>
+        <span className="row">
+          <input id="program-volume" type="number" min={1} step={1} value={volume} disabled={readOnly || data.busy}
+            onChange={(e) => setVolume(e.target.value)} placeholder="non défini" />
+          {volumeChanged && !readOnly && (
+            <button type="submit" className="btn pri" disabled={volumeValue === null || data.busy}>
+              Appliquer
+            </button>
+          )}
+        </span>
+      </form>
+      {data.busy && (
+        <p className="small recalc" role="status">
+          Recalcul en cours…
+        </p>
+      )}
+      <p className="muted small">
+        {readOnly
+          ? 'Méthode figée dans ce snapshot publié.'
+          : 'Le snapshot de prix se choisit dans la Synthèse. Méthode et snapshot sont enregistrés dans la version publiée.'}
+      </p>
+    </section>
   )
 }

@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
-import { api, errorMessage, type CostMethod, type PriceSnapshotRef, type TreeNode } from '../api.ts'
+import { api, errorMessage, type PriceSnapshotRef, type TreeNode } from '../api.ts'
 import { partName } from '../catalog.ts'
 import { formatDate, formatDateTime, formatDecimal, formatMoney } from '../money.ts'
 import type { BomData } from '../bom/useBomData.ts'
 import { shareWidths } from './share.ts'
+import { basisHint, costTitle, methodLabel } from '../bom/costMethod.ts'
 import { budgetBarWidth, budgetClass, budgetPercentText, budgetTitle } from '../bom/budget.ts'
 
 // Nombre de snapshots de prix montrés d'emblée ; les autres à la demande (« Tous les snapshots »).
@@ -41,7 +42,7 @@ export function Summary({ data, onSelectNode }: { data: BomData; onSelectNode: (
         </span>
       </p>
       <div className="totals total" aria-busy={data.busy}>
-        <span className="lb">Coût par véhicule</span>
+        <span className="lb">{costTitle(data.explanation.cost_method)}</span>
         <strong className={`vl ${t?.cost_error_code ? 'over' : ''}`} title={t?.cost_error ?? undefined}>
           {t?.cost ? formatMoney(t.cost) : 'incomplet'}
         </strong>
@@ -129,12 +130,7 @@ export function Summary({ data, onSelectNode }: { data: BomData; onSelectNode: (
 
       <Basis data={data} />
 
-      {data.explanation.cost_method && (
-        <>
-          <div className="h3">Méthode</div>
-          <div className="small">{methodLabel(data.explanation.cost_method)}</div>
-        </>
-      )}
+      <Method data={data} />
     </section>
   )
 }
@@ -153,6 +149,28 @@ function RootBudget({ data }: { data: BomData }) {
       <span className="budget-track" aria-hidden="true">
         {width !== null && <i className={`fill-${b.state}`} style={{ width: `${width}%` }} />}
       </span>
+    </>
+  )
+}
+
+// Method : méthode de calcul appliquée par l'API et date de calcul (contrats, année du taux budget), figée
+// pour un snapshot (ADR 0031). Se change dans l'onglet « Réglages de calcul ».
+function Method({ data }: { data: BomData }) {
+  const m = data.explanation.cost_method
+  const asOf = data.explanation.cost_as_of
+  return (
+    <>
+      <div className="h3">Méthode</div>
+      {m ? (
+        <div className="small method" title={basisHint(m.basis)}>
+          {methodLabel(m)}
+        </div>
+      ) : (
+        <div className="small muted">non renvoyée par l’API (snapshot antérieur à la méthode de calcul)</div>
+      )}
+      <div className="small muted">
+        {asOf ? (data.readOnly ? `Calcul figé au ${formatDate(asOf)}` : `Calculé au ${formatDate(asOf)} (cotation la plus récente utilisée)`) : 'Date de calcul non renvoyée'}
+      </div>
     </>
   )
 }
@@ -278,14 +296,12 @@ function Basis({ data }: { data: BomData }) {
           </li>
         ))}
         {e.rates.length === 0 && <li>Aucune conversion de devise</li>}
+        {(e.budget_rates ?? []).map((r) => (
+          <li key={`budget-${r.from}-${r.to}`}>
+            Taux budget : 1 {r.from} = {r.rate} {r.to} ({r.source})
+          </li>
+        ))}
       </ul>
     </details>
   )
-}
-
-function methodLabel(m: CostMethod): string {
-  const basis = { purchase: 'Coût d’achat', landed: 'Coût rendu', full: 'Coût complet' }[m.basis] ?? m.basis
-  const fx = { budget: 'taux budget', latest: 'dernier taux' }[m.fx] ?? m.fx
-  const vol = m.program_volume ? ` · volume programme ${formatDecimal(String(m.program_volume), 0)}` : ''
-  return `${basis} · ${fx}${vol}`
 }
