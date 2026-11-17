@@ -70,7 +70,10 @@ func NewRouter(services ...Services) http.Handler {
 		a := &api{boms: s.BOMs, snapshots: s.Snapshots, now: now}
 		a.costs, _ = s.BOMs.(CostService)
 		a.snapCosts, _ = s.Snapshots.(SnapshotCostService)
+		a.versions, _ = s.Snapshots.(VersionsService)
+		a.review, _ = s.BOMs.(ReviewService)
 		a.routes(mux)
+		a.versionRoutes(mux)
 	}
 	return jsonNotFound(mux)
 }

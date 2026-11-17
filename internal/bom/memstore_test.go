@@ -169,6 +169,19 @@ func (m *memStore) TargetBudgets(_ context.Context, bomID int64) ([]TargetBudget
 	return m.budgets[bomID], nil
 }
 
+func (m *memStore) SetTargetBudget(_ context.Context, bomID int64, b TargetBudget) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if _, err := m.getBOM(bomID); err != nil {
+		return err
+	}
+	if m.budgets == nil {
+		m.budgets = map[int64][]TargetBudget{}
+	}
+	m.budgets[bomID] = append(m.budgets[bomID], b)
+	return nil
+}
+
 func (m *memStore) SetPriceSnapshot(_ context.Context, id int64, snapshotID *int64) (BOM, error) {
 	return m.updateBOM(id, func(b *BOM) { b.PriceSnapshotID = snapshotID })
 }

@@ -149,4 +149,6 @@ type Store interface {
 	SetCostMethod(ctx context.Context, id int64, m CostMethod) (BOM, error)
 	// TargetBudgets renvoie les budgets cibles de la BOM, triés par nœud.
 	TargetBudgets(ctx context.Context, bomID int64) ([]TargetBudget, error)
+	// SetTargetBudget enregistre (ou remplace) le budget cible d'un nœud ; ErrNodeNotFound s'il n'est pas dans la BOM.
+	SetTargetBudget(ctx context.Context, bomID int64, b TargetBudget) error
 }

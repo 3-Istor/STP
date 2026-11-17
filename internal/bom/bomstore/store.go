@@ -15,6 +15,7 @@ import (
 
 	"bomstudio/internal/bom"
 	"bomstudio/internal/bom/bomdb"
+	"bomstudio/internal/money"
 )
 
 // DB est ce dont le store a besoin : exécuter des requêtes et ouvrir une transaction.
@@ -521,4 +522,94 @@ func (s *Store) SetNodePart(ctx context.Context, bomID, nodeID, partID, offerID 
 		}
 	}
 	return nodeOrErr(row, err, fmt.Sprintf("set part of node %d in bom %d", nodeID, bomID))
+}
+
+// fkBudgetNode : budget d'un nœud absent de la BOM (migration 00012).
+const fkBudgetNode = "bom_target_budgets_bom_id_node_id_fkey"
+
+// SetTargetBudget enregistre (ou remplace) le budget cible d'un nœud.
+func (s *Store) SetTargetBudget(ctx context.Context, bomID int64, b bom.TargetBudget) error {
+	_, err := s.q.UpsertTargetBudget(ctx, bomdb.UpsertTargetBudgetParams{BomID: bomID, NodeID: b.NodeID, Amount: b.Amount, Currency: b.Currency})
+	if isConstraint(err, fkBudgetNode) {
+		return fmt.Errorf("budget of node %d in bom %d: %w", b.NodeID, bomID, bom.ErrNodeNotFound)
+	}
+	if err != nil {
+		return fmt.Errorf("budget of node %d in bom %d: %w", b.NodeID, bomID, err)
+	}
+	return nil
+}
+
+// --- Pistes de réduction ----------------------------------------------------------------------------
+
+var _ bom.IdeaStore = (*Store)(nil)
+
+func toIdea(r bomdb.BomReductionIdea) (bom.Idea, error) {
+	gain, err := money.New(r.GainAmount, r.GainCurrency)
+	if err != nil {
+		return bom.Idea{}, fmt.Errorf("idea %d: %w", r.ID, err)
+	}
+	return bom.Idea{ID: r.ID, BOMID: r.BomID, Title: r.Title, Owner: r.Owner, Gain: gain, Status: bom.IdeaStatus(r.Status),
+		DraftBOMID: ptrInt64(r.DraftBomID), CreatedAt: r.CreatedAt}, nil
+}
+
+func ideaOrErr(r bomdb.BomReductionIdea, err error, op string) (bom.Idea, error) {
+	if errors.Is(err, pgx.ErrNoRows) {
+		err = bom.ErrIdeaNotFound
+	}
+	if err != nil {
+		return bom.Idea{}, fmt.Errorf("%s: %w", op, err)
+	}
+	return toIdea(r)
+}
+
+// ListIdeas renvoie les pistes de la BOM, par id.
+func (s *Store) ListIdeas(ctx context.Context, bomID int64) ([]bom.Idea, error) {
+	rows, err := s.q.ListReductionIdeas(ctx, bomID)
+	if err != nil {
+		return nil, fmt.Errorf("ideas of bom %d: %w", bomID, err)
+	}
+	out := make([]bom.Idea, len(rows))
+	for i, r := range rows {
+		if out[i], err = toIdea(r); err != nil {
+			return nil, err
+		}
+	}
+	return out, nil
+}
+
+// GetIdea renvoie une piste de la BOM, ou bom.ErrIdeaNotFound.
+func (s *Store) GetIdea(ctx context.Context, bomID, id int64) (bom.Idea, error) {
+	row, err := s.q.GetReductionIdea(ctx, bomdb.GetReductionIdeaParams{BomID: bomID, ID: id})
+	return ideaOrErr(row, err, fmt.Sprintf("idea %d of bom %d", id, bomID))
+}
+
+// CreateIdea insère une piste ; bom.ErrBOMNotFound si la BOM n'existe pas.
+func (s *Store) CreateIdea(ctx context.Context, bomID int64, in bom.IdeaInput) (bom.Idea, error) {
+	row, err := s.q.CreateReductionIdea(ctx, bomdb.CreateReductionIdeaParams{BomID: bomID, Title: in.Title, Owner: in.Owner,
+		GainAmount: in.Gain.Amount(), GainCurrency: string(in.Gain.Currency()), Status: string(in.Status), DraftBomID: optInt8(in.DraftBOMID)})
+	if isConstraint(err, fkIdeaBOM) {
+		err = bom.ErrBOMNotFound
+	}
+	return ideaOrErr(row, err, fmt.Sprintf("create idea in bom %d", bomID))
+}
+
+const fkIdeaBOM = "bom_reduction_ideas_bom_id_fkey"
+
+// UpdateIdea remplace le contenu d'une piste ; bom.ErrIdeaNotFound si elle n'est pas dans la BOM.
+func (s *Store) UpdateIdea(ctx context.Context, bomID, id int64, in bom.IdeaInput) (bom.Idea, error) {
+	row, err := s.q.UpdateReductionIdea(ctx, bomdb.UpdateReductionIdeaParams{BomID: bomID, ID: id, Title: in.Title, Owner: in.Owner,
+		GainAmount: in.Gain.Amount(), GainCurrency: string(in.Gain.Currency()), Status: string(in.Status), DraftBomID: optInt8(in.DraftBOMID)})
+	return ideaOrErr(row, err, fmt.Sprintf("update idea %d of bom %d", id, bomID))
+}
+
+// DeleteIdea supprime une piste ; bom.ErrIdeaNotFound si elle n'est pas dans la BOM.
+func (s *Store) DeleteIdea(ctx context.Context, bomID, id int64) error {
+	n, err := s.q.DeleteReductionIdea(ctx, bomdb.DeleteReductionIdeaParams{BomID: bomID, ID: id})
+	if err != nil {
+		return fmt.Errorf("delete idea %d of bom %d: %w", id, bomID, err)
+	}
+	if n == 0 {
+		return fmt.Errorf("delete idea %d of bom %d: %w", id, bomID, bom.ErrIdeaNotFound)
+	}
+	return nil
 }

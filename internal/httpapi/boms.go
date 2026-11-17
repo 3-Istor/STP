@@ -55,7 +55,7 @@ type BOMService interface {
 
 // SnapshotService est ce que l'API attend du domaine snapshot ; *snapshot.Service la satisfait.
 type SnapshotService interface {
-	Publish(ctx context.Context, bomID int64, at time.Time) (snapshot.Snapshot, error)
+	Publish(ctx context.Context, bomID int64, at time.Time, req snapshot.PublishRequest) (snapshot.Snapshot, error)
 	Get(ctx context.Context, id int64) (snapshot.Published, error)
 	NewDraft(ctx context.Context, id int64) (bom.BOM, error)
 }
@@ -76,7 +76,10 @@ type api struct {
 	// costs, snapCosts : méthode de coût et ventilation (ADR 0031) ; routes montées seulement si fournies.
 	costs     CostService
 	snapCosts SnapshotCostService
-	now       func() time.Time
+	// versions, review : comparaison, versions, contrôles et pistes (ADR 0032, 0033) ; montées si fournies.
+	versions VersionsService
+	review   ReviewService
+	now      func() time.Time
 }
 
 func (a *api) routes(mux *http.ServeMux) {
@@ -678,7 +681,14 @@ func (a *api) publish(w http.ResponseWriter, r *http.Request) {
 		writeError(w, r, err)
 		return
 	}
-	s, err := a.snapshots.Publish(r.Context(), id, a.now())
+	var req publishRequest
+	if err := decodeOptional(r, &req); err != nil {
+		writeError(w, r, err)
+		return
+	}
+	s, err := a.snapshots.Publish(r.Context(), id, a.now(), snapshot.PublishRequest{
+		Note: req.Note, ProposedBy: req.ProposedBy, ValidatedBy: req.ValidatedBy, Justifications: req.Justifications,
+	})
 	if err != nil {
 		writeError(w, r, err)
 		return
@@ -710,7 +720,7 @@ func (a *api) getSnapshot(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, http.StatusOK, publishedJSON{
 		Snapshot: toSnapshotJSON(p.Snapshot), Nodes: nodes, Explanation: toExplanationJSON(p.Totals.Explanation),
-		Stock: toStockJSON(p.Stock), Planning: toPlanningJSON(p.Planning),
+		Stock: toStockJSON(p.Stock), Planning: toPlanningJSON(p.Planning), Checks: toFrozenChecksJSON(p.Checks),
 	})
 }
 
@@ -754,6 +764,34 @@ func decode(r *http.Request, v any) error {
 	return nil
 }
 
+// publishRequest : corps facultatif de la publication tracée (ADR 0033).
+type publishRequest struct {
+	Note           string            `json:"note"`
+	ProposedBy     string            `json:"proposed_by"`
+	ValidatedBy    string            `json:"validated_by"`
+	Justifications map[string]string `json:"justifications"`
+}
+
+// decodeOptional lit un objet JSON comme decode, mais un corps vide laisse v à sa valeur zéro.
+func decodeOptional(r *http.Request, v any) error {
+	body, err := io.ReadAll(io.LimitReader(r.Body, maxBodyBytes))
+	if err != nil {
+		return fmt.Errorf("read body: %w: %w", err, errBadRequest)
+	}
+	if len(strings.TrimSpace(string(body))) == 0 {
+		return nil
+	}
+	dec := json.NewDecoder(strings.NewReader(string(body)))
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(v); err != nil {
+		return fmt.Errorf("invalid JSON body: %w: %w", err, errBadRequest)
+	}
+	if dec.More() {
+		return fmt.Errorf("invalid JSON body: trailing data: %w", errBadRequest)
+	}
+	return nil
+}
+
 // statusOf traduit une erreur métier en code HTTP. Une erreur inconnue est une erreur serveur.
 func statusOf(err error) int {
 	is := func(targets ...error) bool {
@@ -766,17 +804,20 @@ func statusOf(err error) int {
 	}
 	switch {
 	case is(bom.ErrBOMNotFound, bom.ErrNodeNotFound, snapshot.ErrSnapshotNotFound, pricing.ErrUnknownOffer,
-		pricing.ErrPriceSnapshotNotFound):
+		pricing.ErrPriceSnapshotNotFound, bom.ErrIdeaNotFound):
 		return http.StatusNotFound
 	case is(bom.ErrCycle, bom.ErrHasSnapshots, bom.ErrRootNode, pricing.ErrNoQuote, pricing.ErrNoRate,
 		catalog.ErrMissingAttribute, bom.ErrMissingCost, bom.ErrNoBudgetRate, bom.ErrNoTooling, bom.ErrNoProgramVolume,
 		bom.ErrNoCostDate, bom.ErrNoCostFacts, snapshot.ErrIncompleteCost, supplier.ErrSelectionRequired,
-		pricing.ErrNoCustomsDuty, pricing.ErrNoFreightRate, pricing.ErrNoPackaging, pricing.ErrNoDestination):
+		pricing.ErrNoCustomsDuty, pricing.ErrNoFreightRate, pricing.ErrNoPackaging, pricing.ErrNoDestination,
+		snapshot.ErrPublicationBlocked, bom.ErrBridgeUnavailable, bom.ErrBridgeIncomplete, money.ErrCurrencyMismatch):
 		return http.StatusConflict
+	case is(snapshot.ErrJustificationRequired):
+		return http.StatusUnprocessableEntity
 	case is(errBadRequest, bom.ErrInvalidInput, pricing.ErrInvalidThreshold, bom.ErrOfferNotForPart, bom.ErrNotAPart,
 		catalog.ErrPartNotFound, catalog.ErrOfferNotFound, money.ErrUnknownCurrency):
 		return http.StatusBadRequest
-	case is(bom.ErrSuggestionsUnavailable, bom.ErrLogisticsUnavailable, bom.ErrCostSourcesUnavailable):
+	case is(bom.ErrSuggestionsUnavailable, bom.ErrLogisticsUnavailable, bom.ErrCostSourcesUnavailable, bom.ErrIdeasUnavailable):
 		return http.StatusServiceUnavailable
 	default:
 		return http.StatusInternalServerError
