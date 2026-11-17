@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import type { NodeBudget, TreeNode } from '../api.ts'
-import { vehicle3dKey, vehicle3dNodes } from './vehicle3dNodes.ts'
+import { boundVehicle3dKey, vehicle3dKey, vehicle3dNodes } from './vehicle3dNodes.ts'
 
 const node = (id: number, parent_id: number | null, name: string, part_id: number | null = null): TreeNode => ({
   id, parent_id, name, part_id, offer_id: null, quantity: '1', production_days: 0, strategy: null, totals: null,
@@ -46,4 +46,16 @@ test('remplacement physique invalide la scène ; offre seule conserve sa géomé
     const next = nodes.map(n => n.id === 4 ? { ...n, ...c.patch } : n)
     assert.equal(vehicle3dKey(vehicle3dNodes(next, null)) !== baseline, c.changed)
   }
+})
+
+test('rendu lié : quantités transmises, scène renouvelée pour instances mais stable pour offres/prix', () => {
+  const baseline = boundVehicle3dKey(vehicle3dNodes(nodes, null))
+  for (const [patch, changed] of [
+    [{ quantity: '2' }, true], [{ part_id: 41 }, true], [{ parent_id: 5 }, true],
+    [{ offer_id: 900 }, false], [{ production_days: 10 }, false],
+  ] as const) {
+    const next = nodes.map(n => n.id === 4 ? { ...n, ...patch } : n)
+    assert.equal(boundVehicle3dKey(vehicle3dNodes(next, null)) !== baseline, changed)
+  }
+  assert.equal(vehicle3dNodes(nodes, null)[3].quantity, '1')
 })

@@ -67,3 +67,11 @@ Audit sauvegardé (`0048639`), transitions/matériaux (`48a34a4`), absence et co
 La qualité professionnelle et la géométrie fidèle des deux véhicules restent non acquises.
 Les avancées indépendantes sont détaillées dans `docs/3d/VALIDATION.md` et les points de progression.
 La prochaine tâche est l’implémentation du contrat de l’ADR 0041, option 1 explicitement autorisée.
+
+## État après implémentation de l'option 1
+
+Contrat/résolution, chargeur intègre, source interchangeable et mode Composants implémentés.
+Occurrences, variantes physiques, instances, absence et filtres de motorisation vérifiés sur fixtures.
+Voir les preuves et limites dans `3D_PROGRESS.md`. Les modèles fidèles ne sont toujours pas acquis :
+prochaine tranche dépendante = importer les vrais modèles autorisés, documenter unités, repères et
+placements, puis valider assemblage/éclaté et huit angles de chaque voiture sur la BOM complète.

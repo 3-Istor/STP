@@ -285,3 +285,68 @@ validation fonctionnelle et visuelle sur les assets réellement accessibles.
   cache et libération, empreinte incorrecte, HTTP 404, chemin de mesh absent et URI externe refusée.
   Tests unitaires : 12 fichiers PASS ; build TypeScript/Vite PASS (avertissement de taille Three.js).
 - Raccordement au viewer et aux commandes en cours, validation navigateur à suivre.
+
+## Incrément — vue liée, variantes, instances et modes de motorisation
+
+- Mode **Composants** dans Structurer et la démo, source statique par portée ou import JSON local.
+  L'import est en mémoire ; aucune écriture API, aucun enregistrement PostgreSQL ni publication.
+- Sélection et picking par `node_id`/instance, groupes via leurs descendants réels. La scène courante
+  masque ses anciens objets pendant un chargement ; aucun picking d'une variante périmée.
+- Quantités héritées transmises par l'adapter et prises en compte par la clé du rendu lié. Les
+  placements connus sont utilisés ; quantité non représentable ou placement absent = état explicite.
+- Variantes choisies par occurrence/parent/pièce physique. Une variante connue remplace réellement
+  la géométrie ; une inconnue retire l'ancienne. Offre seule : UUID des objets et nombre de requêtes
+  GLB conservés dans le test intégré. Le backend de remplacement existant n'est pas modifié.
+- Thermique/électrique/hybride : classification explicite, transparence des composants opposés et
+  de la carrosserie, isolation de système. Ce sont des vues des composants disponibles, pas une
+  simulation de flux, et elles ne créent aucune motorisation absente.
+- Couverture affichée en occurrences physiques, placements approximatifs, liste des indisponibles,
+  provenance/licences à la demande. Zéro asset chargé n'est jamais annoncé « exact ».
+- Les snapshots n'ont pas de révision de manifeste publiée dans le contrat existant : rendu lié
+  refusé explicitement sans révision figée ; aucune altération des données immuables.
+
+## Validation de cet incrément et limites restantes
+
+- `make lint` et `make test` PASS contre PostgreSQL 18 temporaire sur 55439, avec migrations
+  existantes appliquées dans cette seule base. Aucun fichier Go/API/migration ou lockfile modifié.
+- `make verify LEVEL=pr` vert : lint, architecture, contrat des routes, sqlc/tidy, tests Go `-race`,
+  govulncheck, tests frontend, build et audit npm de production (0 vulnérabilité).
+  Le harnais étiquette les tests « sans base » et l'intégration `not_run` faute de `pg_isready`
+  installé ; `DATABASE_URL` était bien fourni et les suites avec base ont tourné. Ne pas transformer
+  ce libellé du harnais en preuve d'un check distinct. Gitleaks, osv-scanner, actionlint : `not_run`.
+  Première exécution interrompue au cours des tests race ; relance complète verte (174 s pour race).
+- Après corrections de revue : 12 fichiers de tests unitaires PASS, build et oxlint PASS ;
+  `make verify` rapide vert. Quatre avertissements oxlint préexistants, taille du chunk Three.js
+  toujours avertie ; aucune règle abaissée, aucun test désactivé.
+- Playwright : suite Chromium desktop complète **59 PASS**. Nouveaux scénarios liés desktop/mobile :
+  **4 PASS**, dont arbre relu, occurrence répétée, offre seule, quantité, géométrie de remplacement,
+  ancien rendu masqué pendant l'attente, variante inconnue, trois modes, picking réel et import invalide.
+  La colonne Offre est masquée dans la vue combinée existante : son événement est déclenché par le
+  test pour contrôler la relecture sans démonter le canvas ; ce n'est pas une validation de son accès
+  tactile. Les fixtures restent synthétiques, pas une validation d'assemblage des vraies voitures.
+- Deux bugs trouvés par le navigateur puis corrigés : contexte d'appel de `fetch`, nom accessible
+  des filtres. L'attente du démarrage WebGL et le point de picking mobile ont été rendus explicites,
+  sans retirer les assertions. Captures synthétiques assemblée/éclatée dans `docs/3d/captures/`.
+- Revue selon `revue-par-niveau`, niveau 2 retenu pour le contrat de liaison : 2 tours, relecteur-code
+  et relecteur-architecture. Deux Important vérifiés, corrigés avec tests échouant avant correctif :
+  coloration des composants hors carrosserie ; textures des squelettes clonés non libérées.
+  Tour 2 : aucun constat. La revue humaine et la CI distante restent à faire ; aucun push autorisé.
+- Sauvegarde originale des six fichiers : 6/6 SHA-256 vérifiés dans l'archive. Les dix références
+  de branches/distantes/tags préexistantes restent identiques ; branche de travail exclusivement V2.
+
+## Point de reprise — fidélité automobile toujours prioritaire
+
+- Les aperçus des candidats Betier (Multipla avant restylage) et Kevin Love (Valhalla de série)
+  ont été inspectés ; bons candidats d'extérieur, aucune validation dimensionnelle ou mécanique.
+  Le téléchargement officiel exige une authentification (401). Aucun mesh de ces voitures obtenu.
+- Manques détaillés dans `docs/3d/ASSETS_NEEDED.md` : carrosseries et ouvrants réels, six places
+  Multipla, groupe transversal ; Valhalla monocoque/V8/DCT, deux moteurs avant, moteur arrière,
+  batterie HT, électronique, câblage et refroidissement, avec unités/repères/points de montage.
+- `MANIFEST_FORMAT.md` donne la procédure d'intégration sur les IDs de la BOM réelle, les licences,
+  empreintes et preuves séparées de géométrie/position. Un extérieur complet ne prouve pas ses organes.
+- Étapes 4/5 : infrastructure et comportements contrôlés sur fixtures ; validation sur la BOM complète
+  et les assets fidèles encore ouverte. Étapes 2/3 : fidélité automobile et éclaté mécanique non acquis.
+  Étape 6 : tests locaux solides ; huit angles des modèles fidèles, collisions, FPS, Firefox/WebKit,
+  CI distante et revue humaine non validés. La mission globale n'est pas déclarée terminée.
+- Prochaine action dépendante : obtenir les GLB/CAD autorisés des deux bonnes versions, inspecter
+  et intégrer leurs sous-arbres, produire les vrais manifestes d'assemblage et les captures de référence.

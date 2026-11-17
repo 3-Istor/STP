@@ -129,8 +129,10 @@ export function disposeTree(root: THREE.Object3D): void {
   const geometries = new Set<THREE.BufferGeometry>()
   const materials = new Set<THREE.Material>()
   const textures = new Set<THREE.Texture>()
+  const skeletons = new Set<THREE.Skeleton>()
   root.traverse(o => {
     const m = o as THREE.Mesh
+    if ((m as THREE.SkinnedMesh).isSkinnedMesh) skeletons.add((m as THREE.SkinnedMesh).skeleton)
     if (m.geometry) geometries.add(m.geometry)
     const mats = m.material ? (Array.isArray(m.material) ? m.material : [m.material]) : []
     for (const mat of mats) {
@@ -143,4 +145,5 @@ export function disposeTree(root: THREE.Object3D): void {
   geometries.forEach(g => g.dispose())
   materials.forEach(m => m.dispose())
   textures.forEach(t => t.dispose())
+  skeletons.forEach(s => s.dispose())
 }

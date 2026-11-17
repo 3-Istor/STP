@@ -45,3 +45,38 @@ La portée doit correspondre exactement au brouillon ou au snapshot chargé. Une
 et explicitement figée est nécessaire pour un snapshot ; son absence interdit le rendu lié plutôt
 que de laisser croire que les correspondances ont été publiées avec le snapshot métier.
 Le backend et ses données immuables ne sont jamais modifiés par ce contrat.
+
+## Intégration d'un modèle obtenu et vérifié
+
+1. Exporter un GLB autonome : géométrie et textures embarquées. Le chargeur prend en charge glTF 2
+   et Meshopt déjà fourni par Three.js. Un fichier qui nécessite d'autres fichiers est refusé :
+   l'empreinte doit couvrir le modèle effectivement affiché.
+2. Placer le fichier dans `web/public/models/`, calculer `sha256sum`, conserver source, auteur,
+   licence et références de validation. Les GLB racine sont ignorés par Git ; organiser leur
+   distribution séparément selon leurs droits, sans ajouter un fichier payant au dépôt.
+3. Relever les IDs de la **BOM réelle** avec sa route de lecture existante
+   `GET /api/v1/boms/{id}/tree`. Les petits exports de démonstration ne constituent pas un
+   manifeste de production. Relever également parent, `part_id` et quantités héritées.
+4. Inspecter les noms du graphe glTF, unité, axe, origine, limites et matériaux. Déclarer les
+   sous-arbres et leurs transformations ; ne pas recentrer automatiquement chaque pièce :
+   cela détruirait ses points de montage. Fournir tous les emplacements des pièces répétées.
+5. Déclarer explicitement les variantes physiques disponibles et leur même occurrence BOM.
+   Une offre fournisseur n'est pas une variante géométrique. L'absence de variante ou de
+   placement doit rester visible dans la liste d'indisponibilité.
+6. Déposer le JSON dans `web/public/models/manifests/draft-{id}.json`, ou utiliser
+   « Composants » → « Composants et sources » → « Manifeste d'assemblage ». Cet import reste
+   en mémoire pendant la session de la vue : il ne publie pas de données, ne les enregistre
+   pas dans PostgreSQL et ne les intègre pas aux snapshots métier.
+7. Vérifier l'assemblage et l'éclaté, picking dans les deux sens, variantes, retrait et quantité,
+   puis comparer les huit angles aux références automobiles avant d'annoncer une fidélité.
+
+Les matériaux source restent le mode par défaut. Les couleurs système/budget sont des lectures
+alternatives ; les modes de motorisation rendent les composants opposés transparents et exposent
+la carrosserie. Ils n'inventent ni câblage, ni propulsion électrique dans une Multipla thermique.
+L'application signale la couverture des occurrences physiques, la géométrie déclarée et les
+placements approximatifs. Une URL de preuve ne vaut pas certification constructeur.
+
+Pour les snapshots, le shell actuel ne dispose pas d'une révision de manifeste publiée et figée :
+le mode lié affiche donc l'erreur de révision attendue. Les vues historiques Simple/Réaliste restent
+disponibles. Une future source PostgreSQL peut implémenter `ManifestSource` sans déplacer le résolveur
+vers le stockage ni changer le picking.

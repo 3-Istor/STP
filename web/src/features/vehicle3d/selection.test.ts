@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { buildVehicleIndex } from './mapping.ts'
+import { buildVehicleIndex, type VehicleObject } from './mapping.ts'
 import { sceneSelection } from './selection.ts'
 import { slotTable } from './tables.ts'
 
@@ -38,4 +38,22 @@ test('sous-ensemble absent du GLB chargé : aucune commande vers une boîte vide
   const got = sceneSelection(index, nodes[2], new Set(['wheel_fl']))
   assert.deepEqual(got.keys, [])
   assert.equal(got.unavailable, true)
+})
+
+test('manifeste : sélection par occurrence et descendants, jamais par pièce commune ou nom', () => {
+  const nodes = [
+    { id: 1, parent_id: null, name: 'Auto', part_id: null },
+    { id: 2, parent_id: 1, name: 'Système', part_id: null },
+    { id: 3, parent_id: 2, name: 'Identique', part_id: 40 },
+    { id: 4, parent_id: 2, name: 'Identique', part_id: 40 },
+    { id: 5, parent_id: 2, name: 'Absent', part_id: 40 },
+  ]
+  const objects = [
+    { nodeId: 3, key: '3/left' }, { nodeId: 3, key: '3/right' }, { nodeId: 4, key: '4/only' },
+  ] as VehicleObject[]
+  const index = { ...buildVehicleIndex(nodes, slotTable), representation: 'manifest' as const, objects }
+  for (const [node, keys, unavailable] of [
+    [nodes[2], ['3/left', '3/right'], false], [nodes[3], ['4/only'], false],
+    [nodes[1], ['3/left', '3/right', '4/only'], false], [nodes[4], [], true],
+  ] as const) assert.deepEqual(sceneSelection(index, node), { keys, unavailable })
 })

@@ -6,12 +6,12 @@ import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js'
 import { budgetColor, systemColor, type StatusPalette } from './colors.ts'
 import { axialOffsets, explodeVector, type V3 } from './explode.ts'
 import { explodeOptionsFor, focusGroup, type SlotTable, type VehicleIndex, type VehicleObject } from './mapping.ts'
-import { disposeTree, itemBox, styleMesh, type Built, type Item } from './scene.ts'
+import { disposeBuilt, disposeTree, itemBox, styleMesh, type Built, type Item } from './scene.ts'
 import { buildSimple } from './simpleModel.ts'
 import { motionProgress } from './motion.ts'
-import type { ColorBy, RenderMode } from './types.ts'
+import type { ColorBy, PropulsionMode, RenderMode } from './types.ts'
 
-export type LoadResult = { mode: RenderMode; fallback: string | null; missing: VehicleObject[]; attribution: string | null }
+export type LoadResult = { mode: RenderMode; fallback: string | null; missing: VehicleObject[]; attribution: string | null; index?: VehicleIndex; manifestInfo?: Built['manifestInfo'] }
 
 export type ViewerCallbacks = {
   onPick: (obj: VehicleObject) => void
@@ -57,6 +57,9 @@ export class Viewer {
   private pointerDown: { x: number; y: number; t: number } | null = null
   private hoverFrame = 0
   private disposed = false
+  private loading = false
+  private propulsionMode: PropulsionMode = 'all'
+  private isolatedSystem: number | null = null
   /** Nombre d'images rendues (diagnostic : vérifie l'absence de boucle au repos). */
   renders = 0
 
@@ -119,13 +122,28 @@ export class Viewer {
 
   // ——— Chargement ———
 
-  async load(mode: RenderMode, index: VehicleIndex, realistic: RealisticLoader): Promise<LoadResult> {
+  async load(mode: RenderMode, index: VehicleIndex, realistic: RealisticLoader, bound?: () => Promise<Built>): Promise<LoadResult> {
     const token = ++this.loadToken
+    this.loading = true
+    this.partsTween = null
+    this.tween = null
+    if (this.built) this.built.root.visible = false
+    for (const frame of this.selectionFrames) frame.visible = false
+    this.requestRender()
     let built: Built
     let fallback: string | null = null
     let attribution: string | null = null
     let effective: RenderMode = mode
-    if (mode === 'realistic') {
+    if (mode === 'bound') {
+      if (!bound) throw new Error('Aucun manifeste lié à cette scène.')
+      try { built = await bound() }
+      catch (error) {
+        if (token === this.loadToken && this.built) {
+          this.scene.remove(this.built.root); disposeBuilt(this.built); this.built = null
+        }
+        throw error
+      }
+    } else if (mode === 'realistic') {
       try {
         const r = await realistic(index)
         built = r
@@ -139,18 +157,20 @@ export class Viewer {
       built = buildSimple(index, this.table)
     }
     if (this.disposed || token !== this.loadToken) {
-      disposeTree(built.root)
+      disposeBuilt(built)
       throw new Error('chargement remplacé')
     }
-    this.replace(built, index)
-    return { mode: effective, fallback, missing: built.missing, attribution }
+    const activeIndex = built.index ?? index
+    this.replace(built, activeIndex)
+    this.loading = false
+    return { mode: effective, fallback, missing: built.missing, attribution, index: activeIndex, manifestInfo: built.manifestInfo }
   }
 
   private replace(built: Built, index: VehicleIndex) {
     this.partsTween = null
     if (this.built) {
       this.scene.remove(this.built.root)
-      disposeTree(this.built.root)
+      disposeBuilt(this.built)
     }
     this.built = built
     this.index = index
@@ -226,6 +246,9 @@ export class Viewer {
     this.applyStyles()
   }
 
+  setPropulsion(mode: PropulsionMode) { this.propulsionMode = mode; this.applyStyles() }
+  setIsolatedSystem(id: number | null) { this.isolatedSystem = id; this.applyStyles() }
+
   /** Focus : le sous-ensemble (et ses associés) s'éclatent dans l'axe, le reste passe en transparence. */
   setFocus(key: string | null) {
     if (!this.index || (key !== null && !this.index.byKey.has(key))) key = null
@@ -290,7 +313,13 @@ export class Viewer {
   private applyPositions() {
     if (!this.built) return
     const offsets = new Map<Item, V3>()
-    if (this.focusKey) {
+    if (this.index?.representation === 'manifest') {
+      for (const it of this.built.items) {
+        const k = this.focusKey ? (it.obj && this.focusKeys.has(it.obj.key) ? 1 : 0) : this.explode
+        const v = it.explodeVector ?? [0, 0, 0]
+        offsets.set(it, [v[0] * k, v[1] * k, v[2] * k])
+      }
+    } else if (this.focusKey) {
       const parts = this.built.items.filter(i => i.obj && this.focusKeys.has(i.obj.key))
       const center = this.objectCenters.get(this.focusKey) ?? this.vehicleCenter
       const ax = axialOffsets(parts.map((p, i) => ({ id: String(i), axial: p.axial })), center, this.vehicleCenter, this.vehicleLength)
@@ -331,10 +360,13 @@ export class Viewer {
   private applyStyles() {
     if (!this.built) return
     for (const it of this.built.items) {
-      const ghost = this.focusKey !== null && !(it.obj && this.focusKeys.has(it.obj.key))
+      const system = it.obj?.componentSystem
+      const propulsionGhost = (this.propulsionMode === 'thermal' && system === 'electric') || (this.propulsionMode === 'electric' && system === 'thermal')
+      const ghost = propulsionGhost || (this.focusKey !== null && !(it.obj && this.focusKeys.has(it.obj.key)))
+      if (this.index?.representation === 'manifest') it.node.visible = this.isolatedSystem === null || it.obj?.systemId === this.isolatedSystem
       const style = { tint: it.obj ? this.colorOf(it.obj) : null, ghost, estimated: !!it.obj?.estimated }
       for (const m of it.meshes) {
-        const shell = !Array.isArray(m.material) && /^(body|Paint)/.test(m.material.name)
+        const shell = system === 'body' || (!Array.isArray(m.material) && /^(body|Paint)/.test(m.material.name))
         styleMesh(m, { ...style, ghost: ghost || (this.shellTransparent && shell) })
       }
       for (const l of it.lines) (l.material as THREE.LineBasicMaterial).opacity = ghost ? 0.1 : 0.9
@@ -347,7 +379,7 @@ export class Viewer {
   private updateSelectionFrames() {
     for (const h of this.selectionFrames) { this.scene.remove(h); h.dispose() }
     this.selectionFrames = []
-    if (this.focusKey) return
+    if (this.focusKey || this.loading) return
     for (const key of this.selection) {
       const box = this.boxOf(this.itemsOf(new Set([key])))
       if (box.isEmpty()) continue
@@ -469,12 +501,13 @@ export class Viewer {
   private readonly onNavigationStart = () => { this.tween = null }
 
   private pick(ev: PointerEvent | MouseEvent): VehicleObject | null {
-    if (!this.built) return null
+    if (!this.built || this.loading) return null
     const r = this.renderer.domElement.getBoundingClientRect()
     const ndc = new THREE.Vector2(((ev.clientX - r.left) / r.width) * 2 - 1, -((ev.clientY - r.top) / r.height) * 2 + 1)
     this.raycaster.setFromCamera(ndc, this.camera)
     const meshes: THREE.Object3D[] = []
     for (const it of this.built.items) {
+      if (!it.node.visible) continue
       // en focus, seuls les sous-ensembles éclatés sont cliquables (le reste est un fantôme)
       if (this.focusKey && !(it.obj && this.focusKeys.has(it.obj.key))) continue
       for (const m of it.meshes) if (m.visible) { m.userData.item = it; meshes.push(m) }
@@ -531,6 +564,7 @@ export class Viewer {
     this.controls.removeEventListener('change', this.requestRender)
     this.controls.removeEventListener('start', this.onNavigationStart)
     this.controls.dispose()
+    if (this.built) { this.scene.remove(this.built.root); disposeBuilt(this.built); this.built = null }
     disposeTree(this.scene)
     this.envTexture.dispose()
     this.renderer.dispose()

@@ -5,7 +5,10 @@ import { buildVehicleIndex, type VehicleObject } from './mapping.ts'
 import { sceneSelection } from './selection.ts'
 import { loadRealistic } from './realistic.ts'
 import { slotTable } from './tables.ts'
-import type { Vehicle3DProps } from './types.ts'
+import type { PropulsionMode, Vehicle3DProps } from './types.ts'
+import { BoundAssetStore, buildBoundScene } from './boundModel.ts'
+import { parseManifest, resolveManifest, type SceneManifest } from './manifest.ts'
+import { staticManifestSource } from './manifestSource.ts'
 import { Viewer, type LoadResult } from './viewer.ts'
 import './vehicle3d.css'
 
@@ -26,11 +29,12 @@ function readBackground(el: HTMLElement): string {
 
 type Status = { state: 'loading' } | { state: 'ready'; result: LoadResult } | { state: 'error'; message: string }
 
-export default function Vehicle3DView({ bomId, nodes, selectedNodeId, onSelectNode, mode, colorBy, explode, onResetView }: Vehicle3DProps) {
+export default function Vehicle3DView({ bomId, nodes, selectedNodeId, onSelectNode, mode, colorBy, explode, onResetView, sceneScope }: Vehicle3DProps) {
   const rootRef = useRef<HTMLDivElement>(null)
   const hostRef = useRef<HTMLDivElement>(null)
   const pickedRef = useRef<number | null>(null) // sélection venue d'un clic dans la 3D : pas de recadrage
   const viewerRef = useRef<Viewer | null>(null)
+  const storeRef = useRef<BoundAssetStore | null>(null)
   const onSelectRef = useRef(onSelectNode)
   const [status, setStatus] = useState<Status>({ state: 'loading' })
   const [hover, setHover] = useState<{ obj: VehicleObject; x: number; y: number } | null>(null)
@@ -38,12 +42,23 @@ export default function Vehicle3DView({ bomId, nodes, selectedNodeId, onSelectNo
   const [palette, setPalette] = useState<StatusPalette>(DEFAULT_STATUS)
   const [transparent, setTransparent] = useState(false)
   const [revision, setRevision] = useState(0)
+  const [imported, setImported] = useState<SceneManifest | null>(null)
+  const [importError, setImportError] = useState<string | null>(null)
+  const [propulsion, setPropulsion] = useState<PropulsionMode>('all')
+  const [isolation, setIsolation] = useState<number | null>(null)
+  const scopeKind = sceneScope?.kind ?? 'draft', scopeId = sceneScope?.id ?? bomId, scopeRevision = sceneScope?.revision
   const index = useMemo(() => buildVehicleIndex(nodes, slotTable), [nodes])
   const color = useMemo(() => resolveColorMode(colorBy, nodes), [colorBy, nodes])
   const result = status.state === 'ready' ? status.result : null
+  const activeIndex = result?.index ?? index
+  const info = result?.manifestInfo
   const missingKeys = useMemo(() => new Set(result?.missing.map(o => o.key) ?? []), [result])
   const selectedNode = nodes.find(n => n.id === selectedNodeId)
-  const selection = useMemo(() => sceneSelection(index, selectedNode, missingKeys), [index, selectedNode, missingKeys])
+  const selection = useMemo(() => {
+    const value = sceneSelection(activeIndex, selectedNode, missingKeys)
+    if (mode !== 'bound' || isolation === null) return value
+    return { ...value, keys: value.keys.filter(k => activeIndex.byKey.get(k)?.systemId === isolation) }
+  }, [activeIndex, selectedNode, missingKeys, mode, isolation])
 
   useEffect(() => { onSelectRef.current = onSelectNode }, [onSelectNode])
 
@@ -72,6 +87,8 @@ export default function Vehicle3DView({ bomId, nodes, selectedNodeId, onSelectNo
       return
     }
     viewerRef.current = viewer
+    const store = new BoundAssetStore()
+    storeRef.current = store
     viewer.setBackground(readBackground(rootRef.current!))
     // Bascule de thème (data-theme sur <html>) : couleurs de statut et fond relus, sans reconstruire la scène.
     const themeObserver = new MutationObserver(() => {
@@ -89,7 +106,9 @@ export default function Vehicle3DView({ bomId, nodes, selectedNodeId, onSelectNo
       themeObserver.disconnect()
       window.removeEventListener('keydown', onKey)
       viewer.dispose()
+      store.dispose()
       viewerRef.current = null
+      storeRef.current = null
     }
   }, [revision])
 
@@ -98,20 +117,30 @@ export default function Vehicle3DView({ bomId, nodes, selectedNodeId, onSelectNo
     const viewer = viewerRef.current
     if (!viewer) return
     let live = true
+    const controller = new AbortController()
+    const store = storeRef.current!
     setStatus({ state: 'loading' })
     setFocus(null)
     setHover(null)
-    viewer.load(mode, index, loadRealistic).then(
+    const loadBound = async () => {
+      const scope = { kind: scopeKind, id: scopeId, revision: scopeRevision }
+      const raw = imported ?? await staticManifestSource.load(scope, controller.signal)
+      if (!raw) throw new Error('Aucun manifeste pour cette BOM. Importez un manifeste d’assemblage et ses modèles locaux.')
+      return buildBoundScene(resolveManifest(parseManifest(raw), scope, nodes), nodes, store, controller.signal)
+    }
+    viewer.load(mode, index, loadRealistic, loadBound).then(
       result => { if (live) setStatus({ state: 'ready', result }) },
       err => { if (live) setStatus({ state: 'error', message: err instanceof Error ? err.message : String(err) }) },
     )
-    return () => { live = false }
-  }, [bomId, mode, index, revision])
+    return () => { live = false; controller.abort() }
+  }, [bomId, mode, index, nodes, revision, imported, scopeKind, scopeId, scopeRevision])
 
   const ready = status.state === 'ready'
   useEffect(() => { if (ready) viewerRef.current?.setColors(color.mode, palette) }, [ready, color.mode, palette])
   useEffect(() => { if (ready) viewerRef.current?.setExplode(explode) }, [ready, explode])
   useEffect(() => { if (ready) viewerRef.current?.setShellTransparency(transparent) }, [ready, transparent])
+  useEffect(() => { if (ready) viewerRef.current?.setPropulsion(propulsion) }, [ready, propulsion])
+  useEffect(() => { if (ready) viewerRef.current?.setIsolatedSystem(isolation) }, [ready, isolation])
   useEffect(() => {
     if (!ready) return
     const fromClick = selectedNodeId !== null && selectedNodeId === pickedRef.current
@@ -121,7 +150,7 @@ export default function Vehicle3DView({ bomId, nodes, selectedNodeId, onSelectNo
     viewer?.setSelection(selection.keys, !fromClick)
   }, [ready, selection, selectedNodeId])
 
-  const estimated = result?.mode === 'simple' ? index.objects.filter(o => o.estimated).length : 0
+  const estimated = result?.mode === 'simple' ? activeIndex.objects.filter(o => o.estimated).length : 0
   const missing = result?.missing.length ?? 0
 
   return (
@@ -141,10 +170,12 @@ export default function Vehicle3DView({ bomId, nodes, selectedNodeId, onSelectNo
         {result?.mode === 'realistic' ? (
           <span className="v3d-badge"><strong>SIMILAIRE</strong> — pas le modèle exact du véhicule</span>
         ) : null}
+        {info ? <span className="v3d-badge"><strong>{info.vehicleLabel}</strong> · {info.representedNodes}/{info.physicalNodes} occurrences physiques représentées</span> : null}
+        {info ? <span className="v3d-badge">Géométrie : {info.assets.length === 0 ? 'aucun modèle chargé' : info.assets.some(a => a.geometry_status === 'schematic') ? 'schématique' : info.assets.some(a => a.geometry_status === 'approximation') ? 'approximative' : 'exactitude déclarée par l’auteur, à contrôler'} · {info.approximatePlacements} placement(s) approximatif(s)</span> : null}
         {status.state === 'loading' ? <span className="v3d-badge" role="status">Chargement…</span> : null}
         {status.state === 'error' ? <span className="v3d-notice" role="alert">Vue 3D indisponible : {status.message}</span> : null}
         {status.state === 'error' ? <button type="button" className="v3d-button" onClick={() => setRevision(r => r + 1)}>Réessayer la vue 3D</button> : null}
-        {selection.unavailable ? <span className="v3d-notice" role="status">
+        {ready && selection.unavailable ? <span className="v3d-notice" role="status">
           {selectedNode?.part_id !== null ? 'Modèle 3D de cette pièce indisponible.' : 'Ce sous-ensemble est absent du modèle chargé.'}
           {' '}Aucun autre composant n’est sélectionné à sa place.
         </span> : null}
@@ -157,11 +188,44 @@ export default function Vehicle3DView({ bomId, nodes, selectedNodeId, onSelectNo
         <button type="button" className="v3d-button" disabled={!ready || selection.keys.length !== 1} onClick={() => viewerRef.current?.focusSelection()}>Focus sélection</button>
         {onResetView ? <button type="button" className="v3d-button" disabled={!ready} onClick={() => {
           setTransparent(false)
+          setPropulsion('all')
+          setIsolation(null)
           viewerRef.current?.setExplode(0)
           viewerRef.current?.setFocus(null)
           onResetView()
         }}>Réinitialiser</button> : null}
         <label className="v3d-transparency"><input type="checkbox" checked={transparent} disabled={!ready} onChange={e => setTransparent(e.target.checked)} />Carrosserie transparente</label>
+        {mode === 'bound' ? <details className="v3d-settings">
+          <summary>Composants et sources</summary>
+          <label>Manifeste d’assemblage<input type="file" accept=".json,application/json" onChange={async e => {
+            const file = e.target.files?.[0]
+            if (!file) return
+            try {
+              if (file.size > 2_000_000) throw new Error('Manifeste supérieur à 2 Mo.')
+              const manifest = parseManifest(JSON.parse(await file.text()))
+              resolveManifest(manifest, { kind: scopeKind, id: scopeId, revision: scopeRevision }, nodes)
+              setImported(manifest); setImportError(null)
+            } catch (error) { setImportError(error instanceof Error ? error.message : String(error)) }
+            e.target.value = ''
+          }} /></label>
+          {importError ? <p role="alert">{importError}</p> : null}
+          {imported ? <button type="button" className="v3d-button" onClick={() => setImported(null)}>Recharger la source du projet</button> : null}
+          <label>Motorisation<select aria-label="Motorisation" value={propulsion} disabled={!ready} onChange={e => {
+            setPropulsion(e.target.value as PropulsionMode)
+            if (e.target.value !== 'all') setTransparent(true)
+          }}>
+            <option value="all">Véhicule complet</option><option value="thermal">Thermique</option><option value="electric">Électrique</option><option value="hybrid">Hybride</option>
+          </select></label>
+          <p>Lecture des composants déclarés ; aucune simulation de fonctionnement ou de flux d’énergie.</p>
+          <label>Isoler un système<select aria-label="Isoler un système" value={isolation ?? ''} disabled={!ready} onChange={e => setIsolation(e.target.value ? Number(e.target.value) : null)}>
+            <option value="">Tous les systèmes</option>{activeIndex.systems.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </select></label>
+          {info ? <>
+            <p>Révision : {info.revision}. Correspondances contrôlées sur l’arbre courant.</p>
+            <details><summary>Occurrences indisponibles ({info.unavailable.size})</summary><ul>{[...info.unavailable].map(([id, reason]) => <li key={id}><button type="button" onClick={() => onSelectNode(id)}>#{id} {nodes.find(n => n.id === id)?.name}</button> : {({ no_binding: 'liaison absente', part_changed: 'variante physique sans modèle', parent_changed: 'placement du nouveau parent absent', invalid_quantity: 'quantité non représentable', positions_missing: 'positions d’instances insuffisantes' } as Record<string, string>)[reason] ?? reason}</li>)}</ul></details>
+            <details><summary>Provenance et licences</summary><ul>{info.assets.map(a => <li key={a.key}><a href={a.source_url} target="_blank" rel="noreferrer">{a.key}</a> — {a.author}, <a href={a.license_url} target="_blank" rel="noreferrer">{a.license}</a> ({a.geometry_status}){a.geometry_evidence_url ? <> · <a href={a.geometry_evidence_url} target="_blank" rel="noreferrer">preuve déclarée</a></> : null}</li>)}</ul></details>
+          </> : null}
+        </details> : null}
       </div>
       <div className="v3d-overlay v3d-bottom-left">
         {color.notice ? <span className="v3d-notice">{color.notice}</span> : null}
@@ -175,7 +239,7 @@ export default function Vehicle3DView({ bomId, nodes, selectedNodeId, onSelectNo
               <span><i style={{ background: budgetColor('over', palette) }} />dépassé</span>
               <span><i style={{ background: UNAVAILABLE }} />sans budget ou indisponible</span>
             </>
-          ) : color.mode === 'material' ? <span>Matériaux du modèle · aucune indication de budget</span> : index.systems.map(s => (
+          ) : color.mode === 'material' ? <span>Matériaux du modèle · aucune indication de budget</span> : activeIndex.systems.map(s => (
             <span key={s.id}><i style={{ background: systemColor(s.index) }} />{s.name}</span>
           ))}
         </div>

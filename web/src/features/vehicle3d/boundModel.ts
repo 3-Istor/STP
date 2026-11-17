@@ -54,7 +54,7 @@ export class BoundAssetStore {
   private readonly fetcher: typeof fetch
   private readonly parser: Parser
 
-  constructor(fetcher: typeof fetch = fetch, parser: Parser = parseGLB) { this.fetcher = fetcher; this.parser = parser }
+  constructor(fetcher: typeof fetch = (...args) => fetch(...args), parser: Parser = parseGLB) { this.fetcher = fetcher; this.parser = parser }
 
   async acquire(asset: AssetDefinition, signal: AbortSignal): Promise<Lease> {
     if (this.closed || signal.aborted) throw new DOMException('Chargement annulé', 'AbortError')
@@ -123,7 +123,7 @@ function findMeshRoot(scene: THREE.Object3D, path: string[]): THREE.Object3D {
 }
 
 export async function buildBoundScene(resolution: ManifestResolution, nodes: Vehicle3DNode[], store: BoundAssetStore, signal: AbortSignal): Promise<Built> {
-  const root = new THREE.Group(), items: Item[] = [], materials = new Set<THREE.Material>()
+  const root = new THREE.Group(), items: Item[] = [], materials = new Set<THREE.Material>(), skeletons = new Set<THREE.Skeleton>()
   root.name = 'vehicle3d-bound'
   const unavailable = new Map<number, string>(resolution.unavailable)
   const activeAssets = new Map(resolution.instances.map(instance => [instance.asset.key, instance.asset]))
@@ -133,7 +133,7 @@ export async function buildBoundScene(resolution: ManifestResolution, nodes: Veh
     try { leases.set(key, await store.acquire(asset, signal)) }
     catch (error) { failures.set(key, error instanceof Error ? error.message : String(error)) }
   }))
-  const release = () => { materials.forEach(m => m.dispose()); leases.forEach(lease => lease.release()) }
+  const release = () => { skeletons.forEach(s => s.dispose()); materials.forEach(m => m.dispose()); leases.forEach(lease => lease.release()) }
   if (signal.aborted) { release(); throw new DOMException('Chargement annulé', 'AbortError') }
   const byId = new Map(nodes.map(n => [n.id, n]))
   const rootNode = nodes.find(n => n.parent_id === null)
@@ -182,10 +182,11 @@ export async function buildBoundScene(resolution: ManifestResolution, nodes: Veh
         clone.traverse(o => {
           const mesh = o as THREE.Mesh
           if (!mesh.isMesh) return
+          if ((mesh as THREE.SkinnedMesh).isSkinnedMesh) skeletons.add((mesh as THREE.SkinnedMesh).skeleton)
           const copies = (Array.isArray(mesh.material) ? mesh.material : [mesh.material]).map(m => { const copy = m.clone(); materials.add(copy); return copy })
           mesh.material = Array.isArray(mesh.material) ? copies : copies[0]
           mesh.castShadow = true; mesh.receiveShadow = true
-          rememberMaterial(mesh, instance.binding.system === 'body')
+          rememberMaterial(mesh, true) // la lecture budget/système concerne chaque composant ; le mode Matériaux restaure la source
           item.meshes.push(mesh)
         })
         root.add(group)

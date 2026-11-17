@@ -4,6 +4,7 @@ import * as THREE from 'three'
 import { BoundAssetStore, buildBoundScene, validateGLB } from './boundModel.ts'
 import { parseManifest, resolveManifest } from './manifest.ts'
 import { disposeBuilt, styleMesh } from './scene.ts'
+import type { ComponentSystem } from './manifest.ts'
 
 function glb(json: object = { asset: { version: '2.0' } }): ArrayBuffer {
   const bytes = new TextEncoder().encode(JSON.stringify(json)), length = Math.ceil(bytes.length / 4) * 4
@@ -91,4 +92,43 @@ test('GLB autonome : refuse HTML, version erronée et ressources hors empreinte'
   validateGLB(glb())
   const cases = [new ArrayBuffer(3), glb({ buffers: [{ uri: 'other.bin' }] }), glb({ images: [{ uri: 'https://example.test/image.jpg' }] })]
   for (const data of cases) assert.throws(() => validateGLB(data))
+})
+
+test('couleurs budget/système puis matériaux natifs, pour chaque classification du composant', async () => {
+  const f = await fixture()
+  for (const system of ['body', 'thermal', 'electric', 'shared', 'other'] as ComponentSystem[]) {
+    const source = sourceScene()
+    const manifest = { ...f.manifest, bindings: f.manifest.bindings.map(b => ({ ...b, system })) }
+    const store = new BoundAssetStore(async () => new Response(f.buffer), async () => source.root)
+    const built = await buildBoundScene(resolveManifest(manifest, { kind: 'draft', id: 1 }, f.nodes), f.nodes, store, new AbortController().signal)
+    const mesh = built.items[0].meshes[0], material = mesh.material as THREE.MeshStandardMaterial
+    const original = material.color.getHexString(), map = material.map
+    styleMesh(mesh, { tint: '#b83240', ghost: false, estimated: false })
+    assert.equal(material.color.getHexString(), 'b83240', system)
+    assert.equal(material.map, null, system)
+    styleMesh(mesh, { tint: null, ghost: false, estimated: false })
+    assert.equal(material.color.getHexString(), original, system)
+    assert.equal(material.map, map, system)
+    disposeBuilt(built); store.dispose()
+  }
+})
+
+test('GLB articulé : squelettes indépendants et textures de peau libérées à la destruction', async () => {
+  const f = await fixture(), source = sourceScene()
+  const parts = source.root.children[0], original = parts.children[0] as THREE.Mesh
+  const bone = new THREE.Bone(), skeleton = new THREE.Skeleton([bone])
+  const mesh = new THREE.SkinnedMesh(original.geometry, original.material)
+  mesh.name = 'Mesh'; mesh.bind(skeleton)
+  parts.remove(original); parts.add(bone, mesh)
+  const manifest = { ...f.manifest, bindings: f.manifest.bindings.map(b => ({ ...b, mesh_path: ['Parts'] })) }
+  const store = new BoundAssetStore(async () => new Response(f.buffer), async () => source.root)
+  const built = await buildBoundScene(resolveManifest(manifest, { kind: 'draft', id: 1 }, f.nodes), f.nodes, store, new AbortController().signal)
+  const skeletons = built.items.map(i => (i.meshes[0] as THREE.SkinnedMesh).skeleton)
+  assert.notEqual(skeletons[0], skeletons[1])
+  assert.notEqual(skeletons[0], skeleton)
+  let disposed = 0
+  for (const own of skeletons) { own.computeBoneTexture(); own.boneTexture!.addEventListener('dispose', () => disposed++) }
+  disposeBuilt(built); store.dispose()
+  assert.equal(disposed, 2)
+  assert.ok(skeletons.every(own => own.boneTexture === null))
 })

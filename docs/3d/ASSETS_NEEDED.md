@@ -23,6 +23,13 @@ Les géométries de Multipla ayant des nombres de faces très proches d'autres m
 faire l'objet d'une vérification de provenance avant redistribution. Aucun candidat n'est embarqué.
 La Fiat 600 Multipla 1956/1957, la 1000tipla et la Valhalla concept 2019 sont hors version demandée.
 
+Aperçus publics inspectés visuellement durant cette session (sans les redistribuer dans le produit) :
+le candidat Betier montre bien le bandeau et les trois étages de feux de la Multipla avant restylage ;
+le candidat Kevin Love montre une silhouette de Valhalla de série, le pavillon, les ouvertures latérales
+et les projecteurs. Ce sont de bons candidats d'extérieur, pas des preuves de dimensions ou de
+mécanique exacte. L'aperçu de Grzesiek2229 est une image d'attente, donc n'apporte aucune validation.
+Les fichiers complets, le découpage des ouvrants et les droits d'origine restent à contrôler.
+
 ## Manques précis pour un résultat fidèle
 
 - **Multipla I 1.6 16V** : carrosserie avant restylage, ses trois niveaux de feux, vitrage/bandeau,

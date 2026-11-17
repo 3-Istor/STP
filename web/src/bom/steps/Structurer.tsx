@@ -3,7 +3,7 @@ import { api } from '../../api.ts'
 import { Vehicle3D, type ColorBy, type RenderMode, type Vehicle3DNode } from '../../features/vehicle3d/index.tsx'
 import { BomTree } from '../BomTree.tsx'
 import type { BomData } from '../useBomData.ts'
-import { vehicle3dKey, vehicle3dNodes } from '../vehicle3dNodes.ts'
+import { boundVehicle3dKey, vehicle3dKey, vehicle3dNodes } from '../vehicle3dNodes.ts'
 
 export type TreeView = 'arbre' | 'arbre-3d' | '3d'
 const treeViews: { id: TreeView; label: string }[] = [
@@ -108,6 +108,7 @@ export function Structurer(p: Props) {
 const renderModes: { id: RenderMode; label: string }[] = [
   { id: 'simple', label: 'Simple' },
   { id: 'realistic', label: 'Réaliste' },
+  { id: 'bound', label: 'Composants' },
 ]
 const colorModes: { id: ColorBy; label: string }[] = [
   { id: 'material', label: 'Matériaux' },
@@ -123,7 +124,7 @@ function Vehicle3DPane({ data, selectedID, onSelect }: { data: BomData; selected
   const [explode, setExplode] = useState(0)
   const budgets = data.budgets.unavailable === null ? data.budgets.byNode : null
   const next = useMemo(() => vehicle3dNodes(data.nodes, budgets), [data.nodes, budgets])
-  const key = useMemo(() => vehicle3dKey(next), [next])
+  const key = useMemo(() => mode === 'bound' ? boundVehicle3dKey(next) : vehicle3dKey(next), [next, mode])
   // Même scène tant que la structure et les statuts ne changent pas (les totaux, eux, changent à chaque relecture).
   const [stable, setStable] = useState<{ key: string; nodes: Vehicle3DNode[] }>({ key, nodes: next })
   if (stable.key !== key) setStable({ key, nodes: next })
@@ -154,7 +155,7 @@ function Vehicle3DPane({ data, selectedID, onSelect }: { data: BomData; selected
       </div>
       <div className="v3d-stage">
         <Vehicle3DBoundary>
-          <Vehicle3D bomId={data.target.id} nodes={stable.nodes} selectedNodeId={selectedID} onSelectNode={onSelect} mode={mode} colorBy={colorBy} explode={explode} onResetView={() => setExplode(0)} />
+          <Vehicle3D bomId={data.target.id} sceneScope={data.target} nodes={stable.nodes} selectedNodeId={selectedID} onSelectNode={onSelect} mode={mode} colorBy={colorBy} explode={explode} onResetView={() => setExplode(0)} />
         </Vehicle3DBoundary>
       </div>
     </div>

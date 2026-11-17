@@ -1,7 +1,9 @@
 // Contrat public de la vue 3D (voir ADR 0035). Aucun import de `three` ici : ce fichier est chargé avec le shell.
 import type { TreeNode } from '../../api.ts'
+import type { SceneScope } from './manifest.ts'
 
-export type RenderMode = 'simple' | 'realistic'
+export type RenderMode = 'simple' | 'realistic' | 'bound'
+export type PropulsionMode = 'all' | 'thermal' | 'electric' | 'hybrid'
 export type ColorBy = 'budget' | 'system' | 'material'
 /** Statut budget d'un nœud, calculé par le back (ADR 0018) ; la 3D ne le calcule jamais. */
 export type BudgetStatus = 'ok' | 'warn' | 'over'
@@ -23,4 +25,5 @@ export type Vehicle3DProps = {
   explode: number
   /** Le parent remet aussi son curseur contrôlé à zéro. */
   onResetView?: () => void
+  sceneScope?: SceneScope
 }
