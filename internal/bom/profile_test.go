@@ -39,7 +39,9 @@ func (m *memProfiles) SetVehicleProfile(ctx context.Context, bomID int64, p Vehi
 }
 
 func TestNewVehicleProfile(t *testing.T) {
-	w := func(c, co2, l, m, q int) *Weights { return &Weights{Cost: c, CO2: co2, LeadTime: l, Mass: m, Quality: q} }
+	w := func(c, co2, l, m, q int) *Weights {
+		return &Weights{Cost: c, CO2: co2, LeadTime: l, Mass: m, Quality: q}
+	}
 	tests := []struct {
 		name    string
 		preset  string

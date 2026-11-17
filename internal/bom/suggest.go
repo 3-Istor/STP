@@ -26,7 +26,7 @@ type Suggestions struct {
 	// Profile : profil de véhicule de la BOM qui classe, quand aucune stratégie de nœud ne s'applique (ADR 0036).
 	Profile *VehicleProfile
 	// Weights : poids effectivement appliqués (stratégie, profil, ou tous nuls).
-	Weights Weights
+	Weights      Weights
 	RealQuantity decimal.Decimal
 	Currency     money.Currency
 	// PriceSnapshotID : nil = prix en direct ; sinon les prix figés du brouillon (mêmes que ses totaux).
