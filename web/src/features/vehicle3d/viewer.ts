@@ -22,6 +22,7 @@ export type ViewerCallbacks = {
 export type RealisticLoader = (index: VehicleIndex) => Promise<Built & { attribution: string }>
 
 const BACKGROUND = '#eef0f3'
+const SELECTION_COLOR = new THREE.Color('#1f5fbf')
 const DEFAULT_VIEW = new THREE.Vector3(-0.62, 0.36, 0.7).normalize() // avant-gauche, en surplomb
 
 export class Viewer {
@@ -43,6 +44,7 @@ export class Viewer {
   private focusKey: string | null = null
   private focusKeys = new Set<string>()
   private selection = new Set<string>()
+  private selectionFrames: THREE.Box3Helper[] = []
   private colorBy: ColorBy = 'system'
   private palette: StatusPalette
   private frame = 0
@@ -186,7 +188,7 @@ export class Viewer {
 
   setExplode(k: number) {
     this.explode = Math.min(Math.max(k, 0), 1)
-    if (!this.focusKey) { this.applyPositions(); this.requestRender() }
+    if (!this.focusKey) { this.applyPositions(); this.updateSelectionFrames(); this.requestRender() }
   }
 
   setSelection(keys: string[], frame: boolean) {
@@ -269,13 +271,27 @@ export class Viewer {
     if (!this.built) return
     for (const it of this.built.items) {
       const ghost = this.focusKey !== null && !(it.obj && this.focusKeys.has(it.obj.key))
-      // en focus, l'éclatement suffit à désigner l'objet : pas de surbrillance, les couleurs budget restent lisibles
-      const selected = !!it.obj && this.focusKey === null && this.selection.has(it.obj.key)
-      const style = { tint: it.obj ? this.colorOf(it.obj) : null, selected, ghost, estimated: !!it.obj?.estimated }
+      const style = { tint: it.obj ? this.colorOf(it.obj) : null, ghost, estimated: !!it.obj?.estimated }
       for (const m of it.meshes) styleMesh(m, style)
       for (const l of it.lines) (l.material as THREE.LineBasicMaterial).opacity = ghost ? 0.1 : 0.9
     }
+    this.updateSelectionFrames()
     this.requestRender()
+  }
+
+  /** Cadre bleu autour de chaque objet sélectionné (hors focus : l'éclatement désigne déjà l'objet). */
+  private updateSelectionFrames() {
+    for (const h of this.selectionFrames) { this.scene.remove(h); h.dispose() }
+    this.selectionFrames = []
+    if (this.focusKey) return
+    for (const key of this.selection) {
+      const box = this.boxOf(this.itemsOf(new Set([key])))
+      if (box.isEmpty()) continue
+      box.expandByScalar(0.03)
+      const h = new THREE.Box3Helper(box, SELECTION_COLOR)
+      this.scene.add(h)
+      this.selectionFrames.push(h)
+    }
   }
 
   // ——— Caméra ———

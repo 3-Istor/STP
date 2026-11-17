@@ -56,9 +56,9 @@ export function rememberMaterial(mesh: THREE.Mesh, paint: boolean): void {
   mesh.userData.v3d = base
 }
 
-export type MeshStyle = { tint: string | null; selected: boolean; ghost: boolean; estimated: boolean }
-
-const SELECT_EMISSIVE = new THREE.Color('#2f6fd0')
+// La sélection n'altère pas la couleur (un rouge teinté de bleu se lirait comme une autre information) :
+// elle est montrée par un cadre autour de l'objet (viewer.ts).
+export type MeshStyle = { tint: string | null; ghost: boolean; estimated: boolean }
 
 export function styleMesh(mesh: THREE.Mesh, s: MeshStyle): void {
   const base = mesh.userData.v3d as MaterialBase | undefined
@@ -73,8 +73,8 @@ export function styleMesh(mesh: THREE.Mesh, s: MeshStyle): void {
     if ((m.map ?? null) !== base.map) { m.map = base.map; dirty = true }
   }
   if (m.emissive && base.emissive) {
-    m.emissive.copy(s.selected ? SELECT_EMISSIVE : base.emissive)
-    m.emissiveIntensity = s.selected ? 0.3 : base.emissiveIntensity
+    m.emissive.copy(base.emissive)
+    m.emissiveIntensity = base.emissiveIntensity
   }
   const transparent = s.ghost || base.transparent || s.estimated
   if (m.transparent !== transparent) { m.transparent = transparent; dirty = true }
