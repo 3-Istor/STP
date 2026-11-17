@@ -4,7 +4,7 @@ title: V2 lot G — corrections de la relecture indépendante du backend V2 (pub
 source: manual
 source_ref: relecture indépendante du backend V2 (lots A, B, D, E, C) relayée par l'agent orchestrateur
 created: 2026-11-17
-status: in-progress
+status: review
 priority: P1
 depends_on: [v2-lot-a, v2-lot-b, v2-lot-e]
 branch: v2-lot-g
@@ -69,7 +69,7 @@ ajoute `BudgetStatus.Percent` et `budgetPercent`), le champ `percent` de `/tree`
 
 ## Tasks
 
-- [ ] **T1: Publication atomique**
+- [x] **T1: Publication atomique**
   - Files: `internal/bom/draft.go` (nouveau), `store.go`, `bomstore/store.go`, `memstore_test.go`, `costfacts.go`,
     `checks.go`, `internal/snapshot/snapshot.go`, test `internal/snapshot/atomic_publish_integration_test.go`
   - Approach: `Store.Draft` lit BOM, arbre, stock, planning et budgets en une transaction en lecture seule
@@ -77,40 +77,40 @@ ajoute `BudgetStatus.Percent` et `budgetPercent`), le champ `percent` de `/tree`
     seul `DraftCost` (rechiffré avec le snapshot de prix créé, sans relire le brouillon).
   - Done when: un test qui modifie le brouillon après la première lecture prouve que le snapshot publié est
     celui de cette lecture (échoue sur l'ancien code).
-- [ ] **T2: Immuabilité complète (migration 00015) et année du taux budget au rejeu**
+- [x] **T2: Immuabilité complète (migration 00015) et année du taux budget au rejeu**
   - Files: `migrations/00015_snapshot_closure_and_budgets.sql`, `internal/snapshot/snapshot.go`, tests
   - Approach: `bom_snapshots.creation_xid` posé à l'insertion ; trigger d'instruction sur chaque table figée qui
     refuse une ligne d'un snapshot créé par une autre transaction (modèle 00005) ; `frozenBudgetRates` ne garde
     que l'année de `cost_as_of` et la devise de la BOM.
   - Done when: INSERT tardif refusé dans chaque table figée (schéma privé, transactions commitées) ; rejeu
     inchangé avec un taux d'une autre année.
-- [ ] **T3: Budgets figés au snapshot**
+- [x] **T3: Budgets figés au snapshot**
   - Files: `00015`, `internal/snapshot/queries.sql`, `snapshotstore`, `snapshot.go`, `versions.go`
   - Approach: table `bom_snapshot_target_budgets` (clé de nœud figé), colonne `budgets_frozen` ; `versions` et
     `NewDraft` lisent les budgets figés (snapshot antérieur : budgets actuels de la BOM, comme avant).
   - Done when: modifier le budget de la BOM après publication ne change ni le % de V1 ni les budgets d'un
     brouillon créé depuis V1.
-- [ ] **T4: Contrôle budgets non évaluable → warn**
+- [x] **T4: Contrôle budgets non évaluable → warn**
   - Files: `internal/bom/checks.go`, `checks_test.go`
   - Done when: un budget `unavailable` donne `warn` avec la raison.
-- [ ] **T5: Doublons et arrondi unique**
+- [x] **T5: Doublons et arrondi unique**
   - Files: `internal/bom/rootbudget.go` (nouveau), `analysis_fx.go`, `ideas.go`, `checks.go`, `costfacts.go`,
     `analysis_sourcing.go`, `snapshot/versions.go`, `compare.go`, `httpapi/versions.go`, `analysis.go`
   - Approach: `RootID`, `RootBudgetOf`, `CostAsOf`, `PercentOf` (exact) dans le domaine ; sortie
     `RoundBank` une seule fois.
   - Done when: 99,94996 % sort « 99.9 » ; tests des fonctions et de la sortie.
-- [ ] **T6: Pistes de réduction : famille et bornes**
+- [x] **T6: Pistes de réduction : famille et bornes**
   - Files: `internal/bom/ideas.go`, `snapshot/versions.go` (famille), `cmd/server/main.go` (câblage), tests
   - Done when: brouillon d'une autre famille, BOM elle-même, gain ≥ 1e9 → `ErrInvalidInput` (400).
-- [ ] **T7: `contract_not_started`**
+- [x] **T7: `contract_not_started`**
   - Files: `internal/bom/costmethod.go`, `costmethod_test.go`
   - Done when: un contrat qui commence après la date de calcul donne le motif `contract_not_started`, sans remise.
-- [ ] **T8: Performances**
+- [x] **T8: Performances**
   - Files: `analysis_fx.go`, `analysis_sourcing.go`, `snapshot/versions.go`, `compare.go`, `costfacts.go`
   - Approach: exposition par devise en une passe (coût linéaire en chaque taux), effet taux budget/dernier taux
     idem, un seul `DraftCost` par requête, famille lue une fois, contrats lus en une requête.
   - Done when: tests d'égalité avec le recalcul complet ; mesures avant/après < 1 s.
-- [ ] **T9: Vérification et livrable §9**
+- [x] **T9: Vérification et livrable §9**
 
 ## Verification
 

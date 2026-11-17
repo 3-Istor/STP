@@ -1,8 +1,8 @@
 ---
 id: v2-lot-g
-status: in-progress
+status: review
 branch: v2-lot-g
-current_task: T1
+current_task: null
 started: 2026-11-17
 updated: 2026-11-17
 ---
@@ -11,7 +11,7 @@ updated: 2026-11-17
 
 ## Progress
 
-- Tasks: 0/9 completed
+- Tasks: 9/9 completed (relecture humaine, ADR 0038 à accepter)
 - Branch: `v2-lot-g` (contient les lots A, B, D, E, C) ; rien n'est poussé
 
 ## Task Log
@@ -129,10 +129,70 @@ updated: 2026-11-17
   Publication en prix en direct : toujours deux calculs (prix en direct pour les contrôles, prix figés pour le gel),
   chacun moins cher ; prix figés : un seul.
 
+### T9: Vérification et livrable §9
+- **Status**: completed
+
 ## Decisions
+
+- D1 (T1) : une lecture cohérente (REPEATABLE READ) plutôt qu'un verrou `FOR UPDATE` pris par toutes les écritures
+  de brouillon : le snapshot est l'état d'un instant, l'édition n'est pas bloquée (ADR 0038, Proposé).
+- D2 (T2) : garde par trigger d'instruction (table de transition) plutôt que par ligne : une requête par COPY.
+- D3 (T3) : snapshot publié avant 00015 (`budgets_frozen = false`) : budgets actuels de la BOM (comportement
+  précédent) ; aucune ligne d'un snapshot existant n'est écrite.
+- D4 (T6) : « positif » = ≥ 0 (contrainte de base existante), borne haute exclue 1e9 ; pistes de démo déplacées sur la
+  Multipla (une piste liée à sa propre BOM est maintenant refusée).
+- D5 (T7) : contrat expiré prioritaire sur un contrat à venir pour le motif (cohérent avec le contrôle bloquant).
+- D6 (T8) : parallélisme réservé aux calculs purs (`bom.parallel`), jamais aux lectures (store sur transaction).
 
 ## Blockers
 
 Aucun.
 
 ## Verification Report(s)
+
+### 2026-11-17 — T9 (exécuté localement)
+| Check | Résultat |
+|---|---|
+| `go vet ./...` | PASS |
+| `go tool golangci-lint run ./...` | PASS — `0 issues.` |
+| `go test -race -count=1 ./...` (`DATABASE_URL` = `stp_lot_g`, version 15) | PASS — 18 paquets `ok` |
+| `go mod tidy -diff` | PASS |
+| `go tool sqlc generate` puis `git status` | PASS — aucun écart |
+| `goose up` / `reset` / `up` (base neuve `stp_lot_g_reset`) | PASS — version 15 |
+| Front | NON EXÉCUTÉ (`web/` non touché) |
+| CI GitHub | NON EXÉCUTÉE (rien n'est poussé) |
+
+Mesures : voir T8 (base `stp_lot_g_seed`, seedée par le code d'avant puis migrée en 15 ; son V1 a donc
+`budgets_frozen = false`). Serveurs (:8088, API de prix :8098) arrêtés.
+
+**Livrable §9**
+1. *Ce que fait le changement* — `internal/bom/draft.go` (état d'un brouillon lu une fois, `RootID`) ;
+   `bom/store.go` + `bomstore/store.go` (`Store.Draft`, transaction REPEATABLE READ lecture seule) ;
+   `bom/costfacts.go` (`DraftCost` sur `Draft`, `CostOfDraft`, `contractsBySupplier`) ; `bom/checks.go`
+   (`PublicationChecksOf`, budgets non évaluables en warn) ; `bom/rootbudget.go` (`PercentOf`, `BudgetPercent`,
+   `GlobalBudget`, `RootBudgetOf`, `CalcRootID`, `CostAsOf`, `QuotesAsOf`) ; `bom/ideas.go` (famille, bornes) ;
+   `bom/costmethod.go` (`contract_not_started`, détails de ligne partagés) ; `bom/analysis_fx.go`,
+   `analysis_sourcing.go` (une passe) ; `bom/bridge.go` + `parallel.go` (marches en parallèle) ; `bom/totals.go`,
+   `costcalc.go` (lignes mémorisées, capacités, accumulation) ; `snapshot/snapshot.go` (publication d'une lecture,
+   budgets figés, taux budget de l'année) ; `snapshot/versions.go` (budgets figés, `InSameFamily`) ;
+   `snapshot/compare.go` ; `snapshotstore` (budgets figés) ; `supplier` (`ListAllContracts`) ; `httpapi`
+   (`percentOut`, arrondi unique) ; `sampledata/versions.go` (pistes sur la Multipla) ; `cmd/server/main.go`
+   (câblage de la famille) ; `migrations/00015` ; ADR 0038.
+2. *Cas de panne prévisible* — un snapshot publié avant 00015 garde ses budgets « vivants » (D3) ; une table figée
+   ajoutée plus tard sans le trigger `guard_bom_snapshot_rows` rouvrirait l'INSERT tardif ; une BOM dont les nœuds
+   ont tous des quantités réelles distinctes ne profite pas de la mémorisation (compare repasse vers 2 s sur 30 000
+   nœuds) ; une piste liée à un brouillon échoue en 503 si `WithDraftFamily` n'est pas câblé.
+3. *Tests qui le mettent en défaut* — `TestPublishReadsTheDraftOnce`, `TestPublishedSnapshotRejectsLateInserts`,
+   `TestFrozenCostInputKeepsTheBudgetRatesOfTheCostYear`, `TestSnapshotBudgetsAreFrozen`, cas budgets de
+   `TestPublicationChecks` + `TestCheckBudgetsNamesTheUnavailableReason`, `TestVersionBudgetPercentIsExact`,
+   `TestPercentOut`, `TestPercentOf`, `TestReductionIdeas` (+ cas HTTP 400), `TestIdeaDraftLinkNeedsTheFamilyCheck`,
+   cas `contract_not_started` de `TestCostMethodTotals`, `TestFXSensitivityEqualsFullRecompute`,
+   `TestRateGapsEqualFullRecompute`, `TestPartLinesSharedBetweenIdenticalNodes`, `TestOfferContractsReadAllAtOnce`.
+   Chaque test de comportement a été vu rouge sur l'ancien code avant la correction (Task Log).
+4. *Pas fait / pas vérifié* — compare V1→B : médiane 1,0 s, premier appel à froid 1,35 s (objectif < 1 s tenu de
+   justesse seulement à chaud) ; le profil de véhicule est encore lu hors de la lecture cohérente (autre store) ;
+   en prix en direct la publication calcule toujours deux fois ; `budgetPercent` du lot F (`budgets.go`, non touché)
+   devrait appeler `bom.PercentOf` après fusion ; le front du lot F affiche les pistes de démo sur la Multipla et sa
+   branche « dans ce brouillon » ne se produit plus ; trois effets de taux ont des zéros de fin en plus (valeur
+   égale) ; ADR 0038 au statut Proposé ; CI non exécutée.
+
