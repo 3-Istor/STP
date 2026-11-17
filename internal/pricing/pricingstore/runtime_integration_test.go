@@ -253,9 +253,9 @@ func TestRuntimeConflictRollsBackAndSeedUsesCallerTransaction(t *testing.T) {
 	pool := runtimeDB(t)
 	id, _ := runtimeOffer(t, pool)
 	cfg := runtimeConfig()
-	cfg.Pairs = nil
-	// Préexistence contradictoire : même clé source/date, autre prix. Elle doit survivre au refus.
-	_, err := pool.Exec(t.Context(), `INSERT INTO price_quotes(offer_id,amount,currency,source,quoted_at) VALUES ($1,999,'USD',$2,$3)`, id, pricing.SourceName(pricing.SimulationContext{GeneratorVersion: cfg.GeneratorVersion, DatasetVersion: cfg.DatasetVersion}), cfg.InitialAsOf)
+	// Préexistence contradictoire : même clé source/date, autre taux. Elle doit survivre au refus.
+	// (Pour les prix, la cotation en base fait foi : ADR 0046.)
+	_, err := pool.Exec(t.Context(), `INSERT INTO fx_quotes(base_currency,quote_currency,rate,source,quoted_at) VALUES ('USD','EUR',9.99,$1,$2)`, pricing.SourceName(pricing.SimulationContext{GeneratorVersion: cfg.GeneratorVersion, DatasetVersion: cfg.DatasetVersion}), cfg.InitialAsOf)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -263,7 +263,7 @@ func TestRuntimeConflictRollsBackAndSeedUsesCallerTransaction(t *testing.T) {
 	if _, _, err := pricing.NewRuntime(pricesim.Simulator{}, repo, nil).Initialize(t.Context(), cfg); !errors.Is(err, pricing.ErrRuntimeDataConflict) {
 		t.Fatalf("immutable conflict=%v", err)
 	}
-	if runtimeCount(t, pool, "SELECT count(*) FROM price_quotes") != 1 || runtimeCount(t, pool, "SELECT count(*) FROM pricing_runs") != 0 {
+	if runtimeCount(t, pool, "SELECT count(*) FROM price_quotes") != 0 || runtimeCount(t, pool, "SELECT count(*) FROM fx_quotes") != 1 || runtimeCount(t, pool, "SELECT count(*) FROM pricing_runs") != 0 {
 		t.Fatal("partial bootstrap committed")
 	}
 	tx, err := pool.Begin(t.Context())
@@ -283,7 +283,7 @@ func TestRuntimeConflictRollsBackAndSeedUsesCallerTransaction(t *testing.T) {
 	if err := tx.Rollback(t.Context()); err != nil {
 		t.Fatal(err)
 	}
-	if runtimeCount(t, pool, "SELECT count(*) FROM price_quotes") != 1 || runtimeCount(t, pool, "SELECT count(*) FROM pricing_runs") != 0 {
+	if runtimeCount(t, pool, "SELECT count(*) FROM price_quotes") != 0 || runtimeCount(t, pool, "SELECT count(*) FROM pricing_runs") != 0 {
 		t.Fatal("seed escaped caller rollback")
 	}
 }
@@ -455,5 +455,42 @@ func TestRuntimeLoopsOverOneYear(t *testing.T) {
 	}
 	if n := runtimeCount(t, pool, "SELECT count(*) FROM pricing_ticks WHERE as_of=$1", cfg.InitialAsOf.AddDate(0, 0, 1)); n != 2 {
 		t.Fatalf("ticks for a replayed day %d, want one per pass (2)", n)
+	}
+}
+
+// TestRuntimeLoopKeepsStoredQuoteWhenBoundsChanged : la fourchette d'une offre change pendant le tour 1 ; au
+// rebouclage, la cotation déjà en base fait foi, le tick avance et rien n'est réécrit (ADR 0046).
+func TestRuntimeLoopKeepsStoredQuoteWhenBoundsChanged(t *testing.T) {
+	pool := runtimeDB(t)
+	id, _ := runtimeOffer(t, pool)
+	cfg := runtimeConfig()
+	repo := &RuntimeStore{pool: pool, scoped: true, offerIDs: []int64{id}}
+	r := pricing.NewRuntime(pricesim.Simulator{}, repo, nil)
+	if _, _, err := r.Initialize(t.Context(), cfg); err != nil {
+		t.Fatal(err)
+	}
+	var before string
+	if err := pool.QueryRow(t.Context(), `SELECT amount::text FROM price_quotes WHERE offer_id=$1 AND quoted_at=$2`, id, cfg.InitialAsOf).Scan(&before); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(t.Context(), `UPDATE offers SET price_min=200, price_max=210 WHERE id=$1`, id); err != nil {
+		t.Fatal(err)
+	}
+	var s pricing.RunState
+	for day := 1; day <= 366; day++ { // tour 1 avec la nouvelle fourchette, puis rebouclage et 1er jour rejoué
+		var err error
+		if s, _, err = r.Advance(t.Context(), cfg); err != nil {
+			t.Fatalf("advance %d: %v", day, err)
+		}
+	}
+	if s.Tick != 366 || s.Status != "ready" {
+		t.Fatalf("after loop: tick %d status %s", s.Tick, s.Status)
+	}
+	var after string
+	if err := pool.QueryRow(t.Context(), `SELECT amount::text FROM price_quotes WHERE offer_id=$1 AND quoted_at=$2`, id, cfg.InitialAsOf).Scan(&after); err != nil || after != before {
+		t.Fatalf("stored quote %s -> %s (%v), want unchanged", before, after, err)
+	}
+	if n := runtimeCount(t, pool, "SELECT count(*) FROM price_quotes WHERE offer_id=$1 AND amount BETWEEN 200 AND 210", id); n == 0 {
+		t.Fatal("new days were not quoted with the new bounds")
 	}
 }
