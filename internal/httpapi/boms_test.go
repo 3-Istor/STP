@@ -203,7 +203,11 @@ func (f *fakeSnapshots) record(format string, args ...any) error {
 var published = snapshot.Snapshot{ID: 4, BOMID: 7, PriceSnapshotID: 5, Name: "Citadine", Currency: "EUR",
 	Volume: 1000, PublishedAt: testNow}
 
-func (f *fakeSnapshots) Publish(_ context.Context, bomID int64, at time.Time) (snapshot.Snapshot, error) {
+func (f *fakeSnapshots) Publish(_ context.Context, bomID int64, at time.Time, req snapshot.PublishRequest) (snapshot.Snapshot, error) {
+	if req.Note != "" || req.ProposedBy != "" || req.ValidatedBy != "" || len(req.Justifications) > 0 {
+		return published, f.record("Publish %d %s note=%q proposed=%q validated=%q justifications=%v", bomID, at.Format(time.RFC3339),
+			req.Note, req.ProposedBy, req.ValidatedBy, req.Justifications)
+	}
 	return published, f.record("Publish %d %s", bomID, at.Format(time.RFC3339))
 }
 func (f *fakeSnapshots) Get(_ context.Context, id int64) (snapshot.Published, error) {
@@ -316,6 +320,10 @@ func TestRoutes(t *testing.T) {
 		{"use unknown price snapshot", "PUT", "/api/v1/boms/7/freeze-prices", `{"price_snapshot_id":404}`, 404, "", `price snapshot not found`},
 		{"use price snapshot not covering the bom", "PUT", "/api/v1/boms/7/freeze-prices", `{"price_snapshot_id":409}`, 409, "", `offers [11]`},
 		{"publish", "POST", "/api/v1/boms/7/publish", "", 201, "Publish 7 " + at, `"published_at":"` + at + `"`},
+		{"publish with trace", "POST", "/api/v1/boms/7/publish",
+			`{"note":"Jalon","proposed_by":"Arthur P.","validated_by":"Joe","justifications":{"budgets":"revue en V3"}}`, 201,
+			`Publish 7 ` + at + ` note="Jalon" proposed="Arthur P." validated="Joe" justifications=map[budgets:revue en V3]`, `"id":4`},
+		{"publish unknown field", "POST", "/api/v1/boms/7/publish", `{"notes":"x"}`, 400, "", "unknown field"},
 		{"get snapshot", "GET", "/api/v1/snapshots/4", "", 200, "Get 4", `"snapshot":`},
 		{"new draft from snapshot", "POST", "/api/v1/snapshots/4/drafts", "", 201, "NewDraft 4", `"id":7`},
 		{"unknown field rejected", "POST", "/api/v1/boms", `{"name":"C","currency":"EUR","volume":1,"colour":"red"}`,
@@ -372,6 +380,8 @@ func TestErrorMapping(t *testing.T) {
 		{"root node", bom.ErrRootNode, 409, "root node cannot be deleted"},
 		{"missing price at freeze", pricing.ErrNoQuote, 409, "no price quote"},
 		{"missing rate at publish", pricing.ErrNoRate, 409, "no exchange rate"},
+		{"publication blocked", snapshot.ErrPublicationBlocked, 409, "publication blocked"},
+		{"warning not justified", snapshot.ErrJustificationRequired, 422, "justification"},
 		{"invalid input", bom.ErrInvalidInput, 400, "invalid bom input"},
 		{"offer of another part", bom.ErrOfferNotForPart, 400, "offer does not sell this part"},
 		{"not a part", bom.ErrNotAPart, 400, "node is not a part"},

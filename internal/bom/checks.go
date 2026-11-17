@@ -46,6 +46,9 @@ type PublicationCheck struct {
 	Title   string
 	Detail  string
 	NodeIDs []int64
+	// Err : pour un contrôle bloqué par des coûts manquants, les erreurs nommées des pièces (errors.Is reste
+	// possible sur ErrNoQuote, ErrNoRate, ErrNoTooling…) ; nil sinon.
+	Err error
 }
 
 // ExpiredContractUse : offre utilisée dont aucun contrat n'est actif et dont un contrat a expiré à la date de calcul.
@@ -82,9 +85,10 @@ func RunChecks(in ChecksInput) []PublicationCheck {
 	}
 }
 
-// partCostErrors : nœuds pièce sans coût propre, triés, avec leur erreur.
-func partCostErrors(in ChecksInput, match func(error) bool) []int64 {
+// partCostErrors : nœuds pièce sans coût propre dont l'erreur correspond, triés, et leurs erreurs jointes.
+func partCostErrors(in ChecksInput, match func(error) bool) ([]int64, error) {
 	var out []int64
+	var errs []error
 	for _, n := range in.Nodes {
 		if !n.IsPart() {
 			continue
@@ -95,9 +99,10 @@ func partCostErrors(in ChecksInput, match func(error) bool) []int64 {
 		}
 		if match(t.CostErr) {
 			out = append(out, n.ID)
+			errs = append(errs, t.CostErr)
 		}
 	}
-	return out
+	return out, errors.Join(errs...)
 }
 
 func isPriceErr(err error) bool { return errors.Is(err, pricing.ErrNoQuote) }
@@ -108,7 +113,8 @@ func isFXErr(err error) bool {
 // checkOffersActive : chaque pièce a une offre non archivée (pièce comprise) et une cotation.
 func checkOffersActive(in ChecksInput) PublicationCheck {
 	c := PublicationCheck{Code: CheckOffersActive, Title: "Toutes les pièces ont une offre active"}
-	ids := partCostErrors(in, isPriceErr)
+	ids, err := partCostErrors(in, isPriceErr)
+	c.Err = err
 	for id, archived := range in.Archived {
 		if archived && !slices.Contains(ids, id) {
 			ids = append(ids, id)
@@ -127,8 +133,8 @@ func checkOffersActive(in ChecksInput) PublicationCheck {
 // checkFXComplete : aucune conversion manquante (dernier taux ou taux budget).
 func checkFXComplete(in ChecksInput) PublicationCheck {
 	c := PublicationCheck{Code: CheckFXComplete, Title: "Aucune conversion de devise manquante"}
-	if ids := partCostErrors(in, isFXErr); len(ids) > 0 {
-		c.Level, c.NodeIDs = CheckBlock, ids
+	if ids, err := partCostErrors(in, isFXErr); len(ids) > 0 {
+		c.Level, c.NodeIDs, c.Err = CheckBlock, ids, err
 		c.Detail = fmt.Sprintf("%d pièce(s) sans taux de change", len(ids))
 		return c
 	}
@@ -156,10 +162,10 @@ func checkPricesFrozen(in ChecksInput) PublicationCheck {
 func checkMethodComplete(in ChecksInput) PublicationCheck {
 	m := in.Totals.Explanation.Method.OrDefault()
 	c := PublicationCheck{Code: CheckMethodComplete, Title: "Composantes de la méthode présentes"}
-	ids := partCostErrors(in, func(err error) bool { return !isPriceErr(err) && !isFXErr(err) })
+	ids, err := partCostErrors(in, func(err error) bool { return !isPriceErr(err) && !isFXErr(err) })
 	if len(ids) > 0 {
 		t, _ := in.Totals.Node(ids[0])
-		c.Level, c.NodeIDs = CheckBlock, ids
+		c.Level, c.NodeIDs, c.Err = CheckBlock, ids, err
 		c.Detail = fmt.Sprintf("%d pièce(s) incomplètes, ex. %s", len(ids), t.CostErr)
 		return c
 	}

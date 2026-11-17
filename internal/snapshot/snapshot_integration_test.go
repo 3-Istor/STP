@@ -23,6 +23,12 @@ import (
 	"bomstudio/internal/snapshot/snapshotstore"
 )
 
+// anyWarning justifie tout avertissement possible : ces tests portent sur ce qui est figé, pas sur les
+// contrôles avant publication (testés dans publication_integration_test.go).
+var anyWarning = snapshot.PublishRequest{Justifications: map[string]string{
+	bom.CheckPricesFrozen: "test", bom.CheckTargetDate: "test", bom.CheckBudgets: "test", bom.CheckExpiredContracts: "test",
+}}
+
 func dec(s string) decimal.Decimal { return decimal.RequireFromString(s) }
 
 var (
@@ -228,7 +234,7 @@ func (f fixture) addPart(t *testing.T, bomID, parent, partID, offerID int64, qty
 
 func (f fixture) publish(t *testing.T, bomID int64) snapshot.Snapshot {
 	t.Helper()
-	s, err := f.snaps.Publish(t.Context(), bomID, t1)
+	s, err := f.snaps.Publish(t.Context(), bomID, t1, anyWarning)
 	if err != nil {
 		t.Fatalf("publish: %v", err)
 	}
@@ -379,7 +385,7 @@ func TestPublishPriceSnapshot(t *testing.T) {
 			b, roue := f.newDraft(t)
 			wantPriceSnap := tt.prepare(t, f, b, roue)
 
-			s, err := f.snaps.Publish(t.Context(), b.ID, t1)
+			s, err := f.snaps.Publish(t.Context(), b.ID, t1, anyWarning)
 			if !errors.Is(err, tt.wantErr) {
 				t.Fatalf("err = %v, want %v", err, tt.wantErr)
 			}
@@ -526,7 +532,7 @@ func TestUnknownSnapshot(t *testing.T) {
 	if _, err := f.snaps.NewDraft(t.Context(), -1); !errors.Is(err, snapshot.ErrSnapshotNotFound) {
 		t.Fatalf("new draft : err = %v, want ErrSnapshotNotFound", err)
 	}
-	if _, err := f.snaps.Publish(t.Context(), -1, t1); !errors.Is(err, bom.ErrBOMNotFound) {
+	if _, err := f.snaps.Publish(t.Context(), -1, t1, anyWarning); !errors.Is(err, bom.ErrBOMNotFound) {
 		t.Fatalf("publish : err = %v, want ErrBOMNotFound", err)
 	}
 }
@@ -540,7 +546,7 @@ func TestPublishRefusesPartWithMissingAttribute(t *testing.T) {
 	if _, err := f.boms.Totals(t.Context(), b.ID); !errors.Is(err, catalog.ErrMissingAttribute) {
 		t.Fatalf("totals : err = %v, want ErrMissingAttribute", err)
 	}
-	if _, err := f.snaps.Publish(t.Context(), b.ID, t1); !errors.Is(err, catalog.ErrMissingAttribute) {
+	if _, err := f.snaps.Publish(t.Context(), b.ID, t1, anyWarning); !errors.Is(err, catalog.ErrMissingAttribute) {
 		t.Fatalf("publish : err = %v, want ErrMissingAttribute", err)
 	}
 	if n := f.snapshotCount(t, b.ID); n != 0 {

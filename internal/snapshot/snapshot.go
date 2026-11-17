@@ -40,6 +40,17 @@ type Snapshot struct {
 	// CostAsOf : date de calcul figée (contrats, année du taux budget) ; nil avec la méthode par défaut.
 	CostAsOf    *time.Time
 	PublishedAt time.Time
+	// Trace de la décision (ADR 0033) : nil pour un snapshot publié avant, ou champ non saisi.
+	Note        *string
+	ProposedBy  *string
+	ValidatedBy *string
+}
+
+// FrozenCheck : contrôle avant publication tel qu'évalué au moment de publier (ADR 0033) ; Justification
+// porte le texte saisi pour un avertissement.
+type FrozenCheck struct {
+	Code, Level, Title, Detail string
+	Justification              *string
 }
 
 // BudgetRate : taux budget figé, 1 From = Rate To pour l'année Year.
@@ -91,7 +102,11 @@ type Part struct {
 type Store interface {
 	// Create insère l'en-tête, tous les nœuds, le stock et les faits de coût figés dans une même transaction ;
 	// s.ID est ignoré.
-	Create(ctx context.Context, s Snapshot, nodes []Node, stock []bom.PartStock, cost FrozenCost) (Snapshot, error)
+	Create(ctx context.Context, s Snapshot, nodes []Node, stock []bom.PartStock, cost FrozenCost, checks []FrozenCheck) (Snapshot, error)
+	// Checks renvoie les contrôles figés à la publication (ADR 0033), vides pour un snapshot publié avant.
+	Checks(ctx context.Context, id int64) ([]FrozenCheck, error)
+	// List renvoie l'en-tête de tous les snapshots, par id (versions d'une famille de BOM).
+	List(ctx context.Context) ([]Snapshot, error)
 	// CostFacts renvoie les faits de coût figés (ADR 0031), vides pour un snapshot publié avant.
 	CostFacts(ctx context.Context, id int64) (FrozenCost, error)
 	// Get renvoie l'en-tête, ou ErrSnapshotNotFound.
@@ -123,6 +138,9 @@ type Published struct {
 	Stock    []bom.PartStock
 	Totals   bom.Totals
 	Planning bom.Planning
+	Checks   []FrozenCheck
+	// Input : entrée du calcul (pont de coût, ADR 0032).
+	Input bom.TotalsInput
 }
 
 // Publish fige le brouillon bomID (R10) : structure, quantités, offres, attributs des pièces (CO2, masse,
@@ -130,7 +148,23 @@ type Published struct {
 // du brouillon s'il est figé, sinon un snapshot de prix est créé à l'instant at (fourni par l'appelant,
 // pas d'horloge dans le domaine). S'il manque un prix ou un taux, rien n'est publié : l'erreur liste tout
 // ce qui manque (pricing.ErrNoQuote / ErrNoRate), pour ne pas graver un trou dans un snapshot immuable.
-func (s *Service) Publish(ctx context.Context, bomID int64, at time.Time) (Snapshot, error) {
+//
+// Avant tout, les contrôles avant publication sont recalculés (ADR 0033) : un contrôle block refuse
+// (ErrPublicationBlocked), un warn sans justification refuse (ErrJustificationRequired). Note, noms saisis,
+// contrôles et justifications sont copiés dans le snapshot.
+func (s *Service) Publish(ctx context.Context, bomID int64, at time.Time, req PublishRequest) (Snapshot, error) {
+	trace, err := req.normalize()
+	if err != nil {
+		return Snapshot{}, fmt.Errorf("publish bom %d: %w", bomID, err)
+	}
+	checks, err := s.boms.PublicationChecks(ctx, bomID)
+	if err != nil {
+		return Snapshot{}, fmt.Errorf("publish bom %d: %w", bomID, err)
+	}
+	frozenChecks, err := gate(checks, trace.Justifications)
+	if err != nil {
+		return Snapshot{}, fmt.Errorf("publish bom %d: %w", bomID, err)
+	}
 	b, draft, err := s.boms.Tree(ctx, bomID)
 	if err != nil {
 		return Snapshot{}, fmt.Errorf("publish bom %d: %w", bomID, err)
@@ -166,12 +200,13 @@ func (s *Service) Publish(ctx context.Context, bomID int64, at time.Time) (Snaps
 	header := Snapshot{
 		BOMID: b.ID, PriceSnapshotID: priceSnapID, Name: b.Name, Currency: b.Currency, Volume: b.Volume,
 		AnnualHours: &b.AnnualHours, Schedule: sch, DestinationCountry: b.DestinationCountry, PublishedAt: at,
+		Note: trace.Note, ProposedBy: trace.ProposedBy, ValidatedBy: trace.ValidatedBy,
 	}
 	frozen, err := s.freezeCost(ctx, bomID, priceSnapID, &header)
 	if err != nil {
 		return Snapshot{}, fmt.Errorf("publish bom %d: %w", bomID, err)
 	}
-	out, err := s.store.Create(ctx, header, nodes, stock, frozen)
+	out, err := s.store.Create(ctx, header, nodes, stock, frozen, frozenChecks)
 	if err != nil {
 		return Snapshot{}, fmt.Errorf("publish bom %d: %w", bomID, err)
 	}
@@ -363,12 +398,13 @@ func (s *Service) Get(ctx context.Context, id int64) (Published, error) {
 	if err := bom.AddFactRates(ctx, s.pricing, &h.PriceSnapshotID, ci, currency, rates); err != nil {
 		return Published{}, fmt.Errorf("get snapshot %d: %w", id, err)
 	}
-	t, err := bom.ComputeTotals(bom.TotalsInput{
+	in := bom.TotalsInput{
 		Nodes: calc, Currency: currency, Prices: prices, Rates: rates, PriceSnapshotID: &h.PriceSnapshotID,
 		Volume: h.Volume, AnnualHours: h.AnnualHours, Stock: bom.StockMap(stock),
 		LaborNotFrozen: h.AnnualHours == nil, // publié avant ADR 0024 : heures non figées
 		Cost:           ci,
-	})
+	}
+	t, err := bom.ComputeTotals(in)
 	if err != nil {
 		return Published{}, fmt.Errorf("get snapshot %d: %w", id, err)
 	}
@@ -376,7 +412,11 @@ func (s *Service) Get(ctx context.Context, id int64) (Published, error) {
 	if err != nil {
 		return Published{}, fmt.Errorf("get snapshot %d: %w", id, err)
 	}
-	return Published{Snapshot: h, Nodes: nodes, Stock: stock, Totals: t, Planning: plan}, nil
+	checks, err := s.store.Checks(ctx, id)
+	if err != nil {
+		return Published{}, fmt.Errorf("get snapshot %d: %w", id, err)
+	}
+	return Published{Snapshot: h, Nodes: nodes, Stock: stock, Totals: t, Planning: plan, Checks: checks, Input: in}, nil
 }
 
 // frozenCostInput reconstruit l'entrée de la méthode depuis les seules copies du snapshot (ADR 0031) : ni

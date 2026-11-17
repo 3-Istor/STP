@@ -173,7 +173,7 @@ func TestPublishRefusesIncompleteCost(t *testing.T) {
 			if _, err := f.tx.Exec(t.Context(), tt.sql, f.roueUSD); err != nil {
 				t.Fatal(err)
 			}
-			_, err := f.snaps.Publish(t.Context(), b.ID, t1)
+			_, err := f.snaps.Publish(t.Context(), b.ID, t1, anyWarning)
 			if !errors.Is(err, snapshot.ErrIncompleteCost) || !errors.Is(err, tt.wantErr) {
 				t.Fatalf("publish err = %v, want ErrIncompleteCost and %v", err, tt.wantErr)
 			}
