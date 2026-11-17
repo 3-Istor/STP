@@ -32,7 +32,7 @@ export function mixHex(a: string, b: string, t: number): string {
  */
 export function budgetColor(status: BudgetStatus | null, palette: StatusPalette = DEFAULT_STATUS): string {
   switch (status) {
-    case 'ok': return mixHex(palette.ok, NEUTRAL_BODY, 0.55)
+    case 'ok': return mixHex(palette.ok, NEUTRAL_BODY, 0.7)
     case 'warn': return palette.warn
     case 'over': return palette.over
     default: return UNAVAILABLE

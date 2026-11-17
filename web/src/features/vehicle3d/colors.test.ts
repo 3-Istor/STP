@@ -16,7 +16,7 @@ test('budgetColor : warn/over exacts, ok adouci, absent jamais vert', () => {
   const p = { ok: '#00ff00', warn: '#ff8800', over: '#ff0000' }
   assert.equal(budgetColor('warn', p), '#ff8800')
   assert.equal(budgetColor('over', p), '#ff0000')
-  assert.equal(budgetColor('ok', p), mixHex('#00ff00', '#d3d7dd', 0.55))
+  assert.equal(budgetColor('ok', p), mixHex('#00ff00', '#d3d7dd', 0.7))
   assert.equal(budgetColor(null, p), UNAVAILABLE)
   assert.notEqual(budgetColor(null, DEFAULT_STATUS), budgetColor('ok', DEFAULT_STATUS))
 })
