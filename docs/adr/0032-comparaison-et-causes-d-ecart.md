@@ -1,5 +1,5 @@
 # 0032 — Comparaison de deux versions et causes d'écart de coût (pont de coût)
-Statut : Proposé — Date : 2026-11-17 — Décideurs : (à compléter par un humain)
+Statut : Accepté — Date : 2026-11-17 — Décideurs : Brian P. (accord explicite dans le chat)
 
 ## Contexte
 Vision V2 §2 (« pont de coût entre deux versions », priorité 1) et §3 étape 5 : expliquer l'écart de coût entre

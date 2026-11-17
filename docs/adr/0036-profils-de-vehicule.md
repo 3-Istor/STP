@@ -1,5 +1,5 @@
 # 0036 — Profils de véhicule : pondérations du classement des alternatives
-Statut : Proposé — Date : 2026-11-17 — Décideurs : (à compléter par un humain)
+Statut : Accepté — Date : 2026-11-17 — Décideurs : Brian P. (accord explicite dans le chat)
 
 ## Contexte
 Vision V2 §4 (étape Structurer, onglet Réglages, maquette `I4-1-Explorateur`) et plan V2 lot E : « ce qui compte

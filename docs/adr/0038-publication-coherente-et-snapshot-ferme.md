@@ -1,5 +1,5 @@
 # 0038 — Publication cohérente, snapshot de BOM fermé au commit et budgets figés
-Statut : Proposé — Date : 2026-11-17 — Décideurs : (à compléter par un humain)
+Statut : Accepté — Date : 2026-11-17 — Décideurs : Brian P. (accord explicite dans le chat)
 
 ## Contexte
 Relecture indépendante du backend V2 (ticket `v2-lot-g`). AGENTS §3 : un snapshot copie structure, quantités,

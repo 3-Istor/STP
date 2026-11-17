@@ -1,5 +1,5 @@
 # 0034 — Navigation en 5 étapes, routeur maison et thème clair / sombre
-Statut : Proposé — Date : 2026-11-17 — Décideurs : à compléter (un membre de l'équipe suffit)
+Statut : Accepté — Date : 2026-11-17 — Décideurs : Brian P. (accord explicite dans le chat)
 
 ## Contexte
 La V1 a deux espaces (BOM, Fournisseurs) avec deux mises en page et deux feuilles de style ; l'état de navigation

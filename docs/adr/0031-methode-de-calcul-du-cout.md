@@ -1,5 +1,5 @@
 # 0031 — Méthode de calcul du coût (base × change), ordre d'application et gel au snapshot
-Statut : Proposé — Date : 2026-11-17 — Décideurs : (à compléter par un humain)
+Statut : Accepté — Date : 2026-11-17 — Décideurs : Brian P. (accord explicite dans le chat)
 
 ## Contexte
 Vision V2 §2 et §5 (socle « coût complet et figé ») : le total d'une BOM = dernière cotation × quantité × dernier

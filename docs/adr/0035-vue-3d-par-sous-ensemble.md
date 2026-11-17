@@ -1,5 +1,5 @@
 # 0035 — Vue 3D par sous-ensemble, rendus Simple et Réaliste
-Statut : Proposé — Date : 2026-11-17 — Décideurs : (à compléter par un humain)
+Statut : Accepté — Date : 2026-11-17 — Décideurs : Brian P. (accord explicite dans le chat)
 
 ## Contexte
 Vision V2 §6 et maquettes I4-2 / I4-3 : la 3D sert à **localiser** (clic → nœud de BOM, sélection → mise en
