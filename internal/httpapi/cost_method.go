@@ -79,12 +79,26 @@ type budgetJSON struct {
 	Percent *string `json:"percent"`
 	State   string  `json:"state"` // ok | warn | over | unavailable
 	Error   *string `json:"error"`
+	// Converted et Rate : budget converti dans la devise de la BOM au taux du jour et taux utilisé, si sa devise
+	// diffère (ADR 0044) ; null sinon. Allocation : les sous-budgets dépassent ce budget au taux courant (signalé,
+	// non bloquant) ; null sinon.
+	Converted  *money.Money `json:"converted"`
+	Rate       *rateJSON    `json:"rate"`
+	Allocation *string      `json:"allocation"`
 }
 
 func toBudgetsJSON(st []bom.BudgetStatus) []budgetJSON {
 	out := make([]budgetJSON, len(st))
 	for i, s := range st {
-		out[i] = budgetJSON{NodeID: s.NodeID, Target: s.Target, Cost: s.Cost, Delta: s.Delta, State: s.State}
+		out[i] = budgetJSON{NodeID: s.NodeID, Target: s.Target, Cost: s.Cost, Delta: s.Delta, State: s.State, Converted: s.Converted}
+		if s.Rate != nil {
+			out[i].Rate = &rateJSON{From: string(s.Rate.BaseCurrency), To: string(s.Rate.QuoteCurrency), Rate: s.Rate.Rate,
+				Source: s.Rate.Source, QuotedAt: s.Rate.QuotedAt}
+		}
+		if s.Allocation != "" {
+			msg := s.Allocation
+			out[i].Allocation = &msg
+		}
 		if s.Percent != nil {
 			p := s.Percent.StringFixedBank(1)
 			out[i].Percent = &p

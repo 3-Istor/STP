@@ -351,7 +351,7 @@ func (s *Service) checksInput(ctx context.Context, dc DraftCost) (ChecksInput, e
 	if err != nil {
 		return ChecksInput{}, err
 	}
-	budgets, err := EvaluateTargetBudgets(dc.Totals, dc.Budgets)
+	budgets, err := s.budgetStatuses(ctx, dc.BOM, dc.Nodes, dc.Totals, dc.Budgets)
 	if err != nil {
 		return ChecksInput{}, err
 	}

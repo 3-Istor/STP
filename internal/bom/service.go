@@ -445,10 +445,14 @@ func (s *Service) MoveNode(ctx context.Context, bomID, nodeID, newParentID int64
 	if err != nil {
 		return Node{}, fmt.Errorf("move node %d in bom %d: %w", nodeID, bomID, err)
 	}
-	// Un ensemble budgété déplacé sous un autre compte dans ses sous-budgets (ADR 0042).
-	out, err := s.store.MoveNode(ctx, bomID, nodeID, newParentID, s.budgetCheck(b))
+	// Un ensemble budgété déplacé sous un autre compte dans ses sous-budgets (ADR 0042, ADR 0044).
+	check, err := s.budgetCheck(ctx, b, nodeID)
 	if err != nil {
 		return Node{}, fmt.Errorf("move node %d in bom %d: %w", nodeID, bomID, err)
+	}
+	out, err := s.store.MoveNode(ctx, bomID, nodeID, newParentID, check)
+	if err != nil {
+		return Node{}, err // déjà « move node … under … in bom … » (store)
 	}
 	return out, nil
 }
@@ -701,7 +705,7 @@ func (s *Service) Totals(ctx context.Context, bomID int64) (TreeTotals, error) {
 	if err != nil {
 		return TreeTotals{}, fmt.Errorf("totals of bom %d: target budgets: %w", bomID, err)
 	}
-	budgets, err := EvaluateTargetBudgets(dc.Totals, targets)
+	budgets, err := s.budgetStatuses(ctx, dc.BOM, dc.Nodes, dc.Totals, targets)
 	if err != nil {
 		return TreeTotals{}, fmt.Errorf("totals of bom %d: %w", bomID, err)
 	}

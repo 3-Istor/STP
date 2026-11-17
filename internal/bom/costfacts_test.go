@@ -215,11 +215,17 @@ func TestEvaluateTargetBudgets(t *testing.T) {
 		{"pourcentage arrondi half-even (11,25 → 11,2)", TargetBudget{NodeID: nodeID, Amount: dec("3200"), Currency: "EUR"}, "ok", "11.2"},
 		{"pourcentage arrondi half-even (3,75 → 3,8)", TargetBudget{NodeID: nodeID, Amount: dec("9600"), Currency: "EUR"}, "ok", "3.8"},
 		{"budget nul : rouge, pas de pourcentage", TargetBudget{NodeID: nodeID, Amount: dec("0"), Currency: "EUR"}, "over", ""},
-		{"autre devise sans taux : indisponible, jamais vert, pas de pourcentage", TargetBudget{NodeID: nodeID, Amount: dec("500"), Currency: "USD"}, "unavailable", ""},
+		{"autre devise sans taux : indisponible, jamais vert, pas de pourcentage", TargetBudget{NodeID: nodeID, Amount: dec("500"), Currency: "GBP"}, "unavailable", ""},
+		// ADR 0044 : 500 USD × 0,8 = 400 EUR au taux du jour ; 360 EUR = 90 % : orange.
+		{"autre devise avec taux : converti au taux du jour", TargetBudget{NodeID: nodeID, Amount: dec("500"), Currency: "USD"}, "warn", "90.0"},
 	}
+	day := time.Date(2026, 2, 15, 0, 0, 0, 0, time.UTC)
+	fx := BudgetFX{Currency: "EUR", Context: pricing.PriceContext{Mode: "live", AsOf: day}, Rates: []pricing.FXQuote{
+		{ID: 1, BaseCurrency: "USD", QuoteCurrency: "EUR", Rate: "0.8", Source: "sim", QuotedAt: day},
+	}}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			out, err := EvaluateTargetBudgets(got.Totals, []TargetBudget{tt.budget})
+			out, err := EvaluateTargetBudgets(got.Totals, got.Nodes, []TargetBudget{tt.budget}, fx)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -232,6 +238,10 @@ func TestEvaluateTargetBudgets(t *testing.T) {
 			}
 			if gotPercent != tt.percent {
 				t.Errorf("percent = %q, want %q", gotPercent, tt.percent)
+			}
+			if tt.budget.Currency == "USD" && (out[0].Converted == nil || out[0].Converted.String() != "400.00 EUR" || out[0].Rate == nil ||
+				out[0].Delta == nil || out[0].Delta.Amount().String() != "-40") {
+				t.Errorf("converted %v rate %v delta %v, want 400.00 EUR at USD/EUR 0.8, delta -40", out[0].Converted, out[0].Rate, out[0].Delta)
 			}
 		})
 	}

@@ -507,8 +507,11 @@ func TestEditTargetBudget(t *testing.T) {
 	s := bomstore.New(tx)
 	ctx := t.Context()
 	b, ids := sampleTree(t, s) // R ─ A ─ B ─ C ; R ─ D
-	check := func(nodes []bom.Node, budgets []bom.TargetBudget) error {
-		return bom.CheckBudgetTree(nodes, budgets, "EUR")
+	// La règle ne juge que les ensembles touchés par l'écriture (ADR 0044) : touched = nœud écrit ou déplacé.
+	checkOn := func(node string) bom.BudgetCheck {
+		return func(nodes []bom.Node, budgets []bom.TargetBudget) error {
+			return bom.CheckBudgetTree(nodes, budgets, []int64{ids[node]}, bom.BudgetFX{Currency: "EUR"})
+		}
 	}
 	eur := func(node, amount string) *bom.TargetBudget {
 		return &bom.TargetBudget{NodeID: ids[node], Amount: decimal.RequireFromString(amount), Currency: "EUR"}
@@ -530,23 +533,23 @@ func TestEditTargetBudget(t *testing.T) {
 		wantErr error
 		want    map[string]string // budgets attendus après l'étape
 	}{
-		{"A à 3000", func() error { return s.EditTargetBudget(ctx, b.ID, ids["A"], eur("A", "3000"), check) }, nil, map[string]string{"A": "3000"}},
-		{"C à 3000.01 sous A : refus, rien d'écrit", func() error { return s.EditTargetBudget(ctx, b.ID, ids["C"], eur("C", "3000.01"), check) },
+		{"A à 3000", func() error { return s.EditTargetBudget(ctx, b.ID, ids["A"], eur("A", "3000"), checkOn("A")) }, nil, map[string]string{"A": "3000"}},
+		{"C à 3000.01 sous A : refus, rien d'écrit", func() error { return s.EditTargetBudget(ctx, b.ID, ids["C"], eur("C", "3000.01"), checkOn("C")) },
 			bom.ErrBudgetExceedsParent, map[string]string{"A": "3000"}},
-		{"C à 3000", func() error { return s.EditTargetBudget(ctx, b.ID, ids["C"], eur("C", "3000"), check) }, nil, map[string]string{"A": "3000", "C": "3000"}},
+		{"C à 3000", func() error { return s.EditTargetBudget(ctx, b.ID, ids["C"], eur("C", "3000"), checkOn("C")) }, nil, map[string]string{"A": "3000", "C": "3000"}},
 		{"D à 500 et R à 3500", func() error {
-			if err := s.EditTargetBudget(ctx, b.ID, ids["D"], eur("D", "500"), check); err != nil {
+			if err := s.EditTargetBudget(ctx, b.ID, ids["D"], eur("D", "500"), checkOn("D")); err != nil {
 				return err
 			}
-			return s.EditTargetBudget(ctx, b.ID, ids["R"], eur("R", "3500"), check)
+			return s.EditTargetBudget(ctx, b.ID, ids["R"], eur("R", "3500"), checkOn("R"))
 		}, nil, map[string]string{"A": "3000", "C": "3000", "D": "500", "R": "3500"}},
 		{"D déplacé sous B : 3000 + 500 > 3000 dans A, refus, D reste sous R", func() error {
-			_, err := s.MoveNode(ctx, b.ID, ids["D"], ids["B"], check)
+			_, err := s.MoveNode(ctx, b.ID, ids["D"], ids["B"], checkOn("D"))
 			return err
 		}, bom.ErrBudgetExceedsParent, map[string]string{"A": "3000", "C": "3000", "D": "500", "R": "3500"}},
-		{"retrait de A : C et D remontent sous R, 3500 ≤ 3500", func() error { return s.EditTargetBudget(ctx, b.ID, ids["A"], nil, check) },
+		{"retrait de A : C et D remontent sous R, 3500 ≤ 3500", func() error { return s.EditTargetBudget(ctx, b.ID, ids["A"], nil, checkOn("A")) },
 			nil, map[string]string{"C": "3000", "D": "500", "R": "3500"}},
-		{"nœud inconnu", func() error { return s.EditTargetBudget(ctx, b.ID, -1, eur("A", "1"), check) }, bom.ErrNodeNotFound,
+		{"nœud inconnu", func() error { return s.EditTargetBudget(ctx, b.ID, -1, eur("A", "1"), checkOn("A")) }, bom.ErrNodeNotFound,
 			map[string]string{"C": "3000", "D": "500", "R": "3500"}},
 	}
 	for _, st := range steps {
