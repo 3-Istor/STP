@@ -4,7 +4,6 @@ import (
 	"cmp"
 	"context"
 	"fmt"
-	"maps"
 	"slices"
 
 	"github.com/shopspring/decimal"
@@ -45,9 +44,9 @@ type FXSensitivity struct {
 	Currencies  []FXExposure // par part décroissante, puis par devise
 }
 
-// FXSensitivity rechiffre le brouillon, devise par devise, avec le moteur des totaux : le taux de la devise
-// (dernier taux et taux budget, selon la méthode) est multiplié par (1 + choc ÷ 100), tout le reste identique.
-// Le choc est un pourcentage décimal non nul, dans ]-100 ; 100].
+// FXSensitivity : sensibilité du coût du brouillon au change, devise par devise d'origine : le taux de la devise
+// (dernier taux et taux budget, selon la méthode) multiplié par (1 + choc ÷ 100), tout le reste identique. Le choc
+// est un pourcentage décimal non nul, dans ]-100 ; 100]. Un seul calcul des totaux (ComputeFXSensitivity).
 func (s *Service) FXSensitivity(ctx context.Context, bomID int64, shockPercent decimal.Decimal) (FXSensitivity, error) {
 	if err := validateShock(shockPercent); err != nil {
 		return FXSensitivity{}, fmt.Errorf("fx sensitivity of bom %d: %w", bomID, err)
@@ -76,20 +75,26 @@ func validateShock(p decimal.Decimal) error {
 	return nil
 }
 
-// ComputeFXSensitivity est le calcul pur : base = totaux de in, une devise choquée à la fois.
+// ComputeFXSensitivity est le calcul pur, en une passe sur les lignes de coût de base (v2-lot-g T8). Le coût est
+// linéaire en chaque taux : chaque ligne propre d'une pièce convertit un montant d'une seule devise d'origine
+// (exposureByCurrency) et rien d'autre ne dépend du taux (la remise se résout sur la quantité et le prix en devise
+// d'origine). Rechiffrer avec les taux de c × f ajoute donc Exposed(c) × (f − 1) (exact, sauf la division à 28
+// décimales de l'outillage, qui peut différer au-delà de la 28e décimale) : Exposed(c) = coût
+// rechiffré au taux doublé − coût de base, Impact = Exposed(c) × choc ÷ 100. TestFXSensitivityEqualsFullRecompute
+// le vérifie contre le recalcul complet par le moteur des totaux.
 func ComputeFXSensitivity(in TotalsInput, base Totals, rootID int64, shockPercent decimal.Decimal, budget *money.Money) (FXSensitivity, error) {
 	total, err := analysisRootCost(base, rootID)
 	if err != nil {
 		return FXSensitivity{}, err
 	}
 	out := FXSensitivity{ShockPercent: shockPercent, Total: total, Budget: budget, Explanation: base.Explanation}
-	factor := decimal.NewFromInt(1).Add(shockPercent.Shift(-2))
+	exposures := exposureByCurrency(base, in.Currency)
 	for _, cur := range foreignCurrencies(base.Explanation) {
-		exposed, err := costDelta(in, rootID, total, cur, decimal.NewFromInt(2))
+		exposed, err := money.New(exposures[cur], string(in.Currency))
 		if err != nil {
 			return FXSensitivity{}, err
 		}
-		impact, err := costDelta(in, rootID, total, cur, factor)
+		impact, err := money.New(exposed.Amount().Mul(shockPercent).Shift(-2), string(in.Currency))
 		if err != nil {
 			return FXSensitivity{}, err
 		}
@@ -110,35 +115,29 @@ func ComputeFXSensitivity(in TotalsInput, base Totals, rootID int64, shockPercen
 	return out, nil
 }
 
-// costDelta : coût de la racine avec les taux de cur multipliés par factor − coût de base.
-func costDelta(in TotalsInput, rootID int64, base money.Money, cur money.Currency, factor decimal.Decimal) (money.Money, error) {
-	t, err := ComputeTotals(scaleRates(in, cur, factor))
-	if err != nil {
-		return money.Money{}, err
-	}
-	shocked, err := analysisRootCost(t, rootID)
-	if err != nil {
-		return money.Money{}, fmt.Errorf("%s rates × %s: %w", cur, factor, err)
-	}
-	return shocked.Add(base.Mul(decimal.NewFromInt(-1)))
-}
-
-// scaleRates copie l'entrée en multipliant par factor le dernier taux et le taux budget de cur (les maps
-// partagées ne sont pas modifiées).
-func scaleRates(in TotalsInput, cur money.Currency, factor decimal.Decimal) TotalsInput {
-	out := in
-	out.Rates = maps.Clone(in.Rates)
-	if rr, ok := out.Rates[cur]; ok && rr.Err == nil {
-		rr.Rate.Rate = rr.Rate.Rate.Mul(factor)
-		out.Rates[cur] = rr
-	}
-	if in.Cost != nil {
-		c := *in.Cost
-		c.BudgetRates = maps.Clone(in.Cost.BudgetRates)
-		if r, ok := c.BudgetRates[cur]; ok {
-			c.BudgetRates[cur] = r.Mul(factor)
+// exposureByCurrency : somme des lignes propres des pièces chiffrées, par devise d'origine convertie (autre que
+// cur, la devise de la BOM). Prix, écart de change, remise et douane portent sur la cotation (sa devise) ;
+// transport, emballage et outillage sur leur fait (sa devise). Sommes exactes, indépendantes de l'ordre.
+func exposureByCurrency(t Totals, cur money.Currency) map[money.Currency]decimal.Decimal {
+	out := map[money.Currency]decimal.Decimal{}
+	for _, n := range t.Nodes {
+		if n.OwnCost == nil {
+			continue
 		}
-		out.Cost = &c
+		for _, l := range n.OwnLines {
+			from := l.d.unit.Currency() // transport, emballage, outillage
+			switch l.Kind {
+			case KindPrice, KindFX, KindDiscount, KindCustoms:
+				if n.Quote == nil {
+					continue
+				}
+				from = n.Quote.Price.Currency()
+			}
+			if from == "" || from == cur {
+				continue
+			}
+			out[from] = out[from].Add(l.Amount.Amount())
+		}
 	}
 	return out
 }

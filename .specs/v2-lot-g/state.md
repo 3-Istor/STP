@@ -91,6 +91,44 @@ updated: 2026-11-17
   (cas « expiré + renouvellement à venir » testé : `contract_expired`, cohérent avec le contrôle bloquant
   `expired_contracts`). Le libellé « Contrat pas encore actif : remise non appliquée » n'est plus du code mort.
 
+### T8: Performances
+- **Status**: completed (compare au seuil : médiane 1,0 s, premier appel à froid 1,35 s)
+- **Notes**: tests d'égalité d'abord, l'implémentation d'avant gardée comme référence dans le test :
+  `TestFXSensitivityEqualsFullRecompute` et `TestRateGapsEqualFullRecompute` (6 méthodes × 1 ou 2 devises
+  étrangères, faits en GBP, taux budget sans dernier taux, 2 chocs) ; `TestOfferContractsReadAllAtOnce`,
+  `TestPartLinesSharedBetweenIdenticalNodes`, cas `ListAllContracts` dans le test du store fournisseurs.
+  Changements : (1) `ComputeFXSensitivity` en une passe (`exposureByCurrency` : chaque ligne propre rattachée à la
+  devise qu'elle convertit ; impact = exposition × choc) au lieu de 2 recalculs par devise ; (2) `rateGaps` : un
+  calcul à taux 1 donne K(c), effet = K(c) × (dernier − budget) au lieu de 1 + n recalculs ; (3) pont de coût :
+  marches indépendantes chiffrées en parallèle (`bom.parallel`, calcul pur seulement) ; (4) `Compare` ne relit pas
+  la famille si « vers » y est déjà ; (5) `ComputeTotals` : capacité des lignes fixée (la recopie de lignes lourdes
+  prenait la moitié du pont), taux/cotations/remises partagés par pointeur, totaux par nature accumulés en décimaux,
+  lignes d'une pièce calculées une fois par (offre, masse, quantité réelle) ; (6) contrats lus en une requête
+  (`supplier.ListAllContracts`, interface facultative `bom.AllContracts`) pour la méthode et le sourcing ;
+  (7) `Versions` : budgets de la même lecture (plus de relecture de l'arbre par `RootBudget`, T5).
+  **Résultats inchangés** : sur deux copies identiques de la base seedée (version 14 pour l'ancien code, 15 pour le
+  nouveau, sans worker de prix), dump de fx-sensitivity, sourcing, compare bom:1→bom:3, de toutes les lignes de
+  coût des 29 977 nœuds de la Multipla et des versions : 158 803 lignes identiques sauf 3 (effets taux budget/dernier
+  taux de valeur égale, zéros de fin en plus : `-42.2301300553777602600982721912001200000000000000` contre
+  `…12000`). `GET /snapshots/1` (30 000 nœuds, coût complet) octet pour octet identique avant/après.
+
+  Mesures HTTP réelles (Multipla seedée, demo-v4 seed 42, serveur :8088, 3 appels, secondes, machine 2 cœurs) :
+
+  | Route | Avant | Après |
+  |---|---|---|
+  | `compare?from=snapshot:1&to=bom:3` | 3,17 / 3,10 / 4,07 | 1,35 / 1,00 / 0,88 |
+  | `compare?from=bom:1&to=bom:3` | 2,24 / 3,20 / 1,75 | 0,74 / 0,73 / 0,71 |
+  | `analysis/fx-sensitivity?shock_percent=5` | 1,52 / 1,54 / 1,39 | 0,19 / 0,24 / 0,22 |
+  | `analysis/sourcing` | 1,21 / 1,52 / 1,14 | 0,47 / 0,32 / 0,30 |
+  | `versions` (3 versions) | 0,95 / 1,08 / 1,21 | 0,90 / 0,74 / 0,63 |
+  | `tree` | 0,63 / 0,59 / 0,57 | 0,48 / 0,51 / 0,64 |
+  | `publication-checks` | 0,35 / 0,36 / 0,34 | 0,20 / 0,32 / 0,31 |
+  | `snapshots/1` | 0,71 / 0,51 / 0,60 | 0,56 / 0,52 / 0,42 |
+  | `POST publish` (bom 1, prix en direct, copie de la base) | 1,84 | 1,30 |
+
+  Publication en prix en direct : toujours deux calculs (prix en direct pour les contrôles, prix figés pour le gel),
+  chacun moins cher ; prix figés : un seul.
+
 ## Decisions
 
 ## Blockers

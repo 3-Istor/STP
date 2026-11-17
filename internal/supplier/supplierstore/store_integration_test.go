@@ -126,6 +126,19 @@ func TestContractsRoundTripAndIndependentLists(t *testing.T) {
 			}
 			return all[0], nil
 		}},
+		{"all contracts (v2-lot-g T8)", func() (supplier.Contract, error) {
+			all, err := svc.ListAllContracts(t.Context())
+			if err != nil {
+				return supplier.Contract{}, err
+			}
+			for _, c := range all {
+				if c.ID == created.ID {
+					return c, nil
+				}
+			}
+			t.Fatalf("contract %d missing from %d contracts", created.ID, len(all))
+			return supplier.Contract{}, nil
+		}},
 		{"offer list", func() (supplier.Contract, error) {
 			all, err := supplierstore.New(tx).ListOfferContracts(t.Context(), oid)
 			if err != nil {

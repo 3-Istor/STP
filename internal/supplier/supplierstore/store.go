@@ -92,6 +92,23 @@ func (r *reader) ListContracts(ctx context.Context, supplierID int64) ([]supplie
 	}
 	return out, nil
 }
+
+// ListAllContracts lit tous les contrats en une requête, par fournisseur puis par id.
+func (r *reader) ListAllContracts(ctx context.Context) ([]supplier.Contract, error) {
+	rows, err := r.queries.ReadAllContracts(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("list all contracts: %w", err)
+	}
+	out := make([]supplier.Contract, 0, len(rows))
+	for _, row := range rows {
+		c, err := decodeComplete(supplierdb.ReadCompleteContractRow(row))
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, c)
+	}
+	return out, nil
+}
 func (r *reader) ListOfferContracts(ctx context.Context, offerID int64) ([]supplier.Contract, error) {
 	rows, err := r.queries.ReadOfferContracts(ctx, offerID)
 	if err != nil {

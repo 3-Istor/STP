@@ -3,6 +3,7 @@ package bom
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -222,5 +223,53 @@ func TestEvaluateTargetBudgets(t *testing.T) {
 				t.Errorf("state = %s, want %s", out[0].State, tt.state)
 			}
 		})
+	}
+}
+
+// countingContracts : source de contrats qui compte ses appels ; all : elle sait tout lire en une fois.
+type countingContracts struct {
+	byID          fakeContracts
+	perSupplier   *int
+	allAtOnceCall *int
+}
+
+func (c countingContracts) ListContracts(ctx context.Context, id int64) ([]supplier.Contract, error) {
+	*c.perSupplier++
+	return c.byID.ListContracts(ctx, id)
+}
+
+type allContracts struct{ countingContracts }
+
+func (c allContracts) ListAllContracts(context.Context) ([]supplier.Contract, error) {
+	*c.allAtOnceCall++
+	var out []supplier.Contract
+	for _, sup := range []int64{1, 2, 3} {
+		out = append(out, c.byID[sup]...)
+	}
+	return out, nil
+}
+
+// Les contrats se lisent en une fois si la source le permet (v2-lot-g T8), avec le même résultat qu'un appel par
+// fournisseur ; les contrats d'un fournisseur sans offre utilisée sont ignorés.
+func TestOfferContractsReadAllAtOnce(t *testing.T) {
+	c1 := contract10()
+	c2 := supplier.Contract{ID: 9, SupplierID: 2, StartsOn: "2026-01-01", EndsOn: "2026-12-31", OfferIDs: []int64{20, 21}}
+	c3 := supplier.Contract{ID: 11, SupplierID: 3, StartsOn: "2026-01-01", EndsOn: "2026-12-31", OfferIDs: []int64{30}}
+	src := fakeContracts{1: {c1}, 2: {c2}, 3: {c3}}
+	offers := map[int64]catalog.Offer{10: {ID: 10, SupplierID: 1}, 20: {ID: 20, SupplierID: 2}}
+	var per, all int
+	slow := &Service{contracts: countingContracts{byID: src, perSupplier: &per}}
+	want, err := slow.offerContracts(t.Context(), []int64{10, 20}, offers)
+	if err != nil || per != 2 {
+		t.Fatalf("per supplier: %v, %d calls", err, per)
+	}
+	per = 0
+	fast := &Service{contracts: allContracts{countingContracts{byID: src, perSupplier: &per, allAtOnceCall: &all}}}
+	got, err := fast.offerContracts(t.Context(), []int64{10, 20}, offers)
+	if err != nil || all != 1 || per != 0 {
+		t.Fatalf("all at once: %v, %d bulk and %d per-supplier calls, want 1 and 0", err, all, per)
+	}
+	if fmt.Sprint(got) != fmt.Sprint(want) {
+		t.Fatalf("contracts %v, want %v", got, want)
 	}
 }

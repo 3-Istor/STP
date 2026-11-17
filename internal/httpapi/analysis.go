@@ -81,7 +81,9 @@ func writeAnalysisError(w http.ResponseWriter, r *http.Request, err error) {
 func pct(d decimal.Decimal) string { return percentOut(d, 2) }
 
 // percentOut : seul arrondi d'un pourcentage, en sortie : half-even à places décimales (AGENTS §3, ADR 0004).
-func percentOut(d decimal.Decimal, places int32) string { return d.RoundBank(places).StringFixed(places) }
+func percentOut(d decimal.Decimal, places int32) string {
+	return d.RoundBank(places).StringFixed(places)
+}
 
 func pctPtr(d *decimal.Decimal) *string {
 	if d == nil {

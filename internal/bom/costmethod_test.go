@@ -134,13 +134,13 @@ func TestCostMethodTotals(t *testing.T) {
 			lines3: map[CostKind]string{KindDiscount: "0.00", KindCustoms: "9.60"},
 		},
 		{
-			name: "contrat pas encore commencé à la date de calcul : remise non appliquée, motif contract_not_started (v2-lot-g T7)",
+			name:   "contrat pas encore commencé à la date de calcul : remise non appliquée, motif contract_not_started (v2-lot-g T7)",
 			method: full(FXLatest), asOf: time.Date(2025, 12, 31, 0, 0, 0, 0, time.UTC),
 			node3: "294.00 EUR", reason10: "contract_not_started",
 			lines3: map[CostKind]string{KindDiscount: "0.00", KindCustoms: "9.60"},
 		},
 		{
-			name: "contrat expiré et son renouvellement pas encore commencé : le motif reste contract_expired",
+			name:   "contrat expiré et son renouvellement pas encore commencé : le motif reste contract_expired",
 			method: full(FXLatest), asOf: expiredDay,
 			edit: func(ci *CostInput) {
 				next := contract10()

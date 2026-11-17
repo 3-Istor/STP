@@ -239,13 +239,24 @@ func ComputeTotals(in TotalsInput) (Totals, error) {
 		n, t := nodes[i], &out[i]
 		cost := zero
 		var ownErr error
+		// Totaux par nature accumulés en décimaux (tout est dans in.Currency, vérifié par partLines et Money.Add),
+		// une seule Money par nature et par nœud à la fin (v2-lot-g T8 : moins d'allocations sur 30 000 nœuds).
+		var kinds [numCostKinds]decimal.Decimal
+		var hasKind [numCostKinds]bool
+		addKinds := func(k int, m money.Money) error {
+			if m.Currency() != in.Currency {
+				return fmt.Errorf("%s in %s: %w", m, in.Currency, money.ErrCurrencyMismatch)
+			}
+			kinds[k], hasKind[k] = kinds[k].Add(m.Amount()), true
+			return nil
+		}
 		t.OwnLeadTimeDays = n.ProductionDays
 		if n.Part != nil {
 			ownErr = partOwnTotals(t, n, c)
 			if ownErr == nil {
 				cost = *t.OwnCost
 				for _, l := range t.OwnLines {
-					if err := addKind(&t.KindTotals, l.Kind, l.Amount); err != nil {
+					if err := addKinds(kindIndex(l.Kind), l.Amount); err != nil {
 						return Totals{}, fmt.Errorf("node %d: %w", n.ID, err)
 					}
 				}
@@ -278,7 +289,7 @@ func ComputeTotals(in TotalsInput) (Totals, error) {
 					if m == nil {
 						continue
 					}
-					if err := addKind(&t.KindTotals, CostKinds[k], *m); err != nil {
+					if err := addKinds(k, *m); err != nil {
 						return Totals{}, fmt.Errorf("node %d: %w", n.ID, err)
 					}
 				}
@@ -303,8 +314,16 @@ func ComputeTotals(in TotalsInput) (Totals, error) {
 		default:
 			t.Cost = &cost
 		}
-		if t.Cost == nil {
-			t.KindTotals = [numCostKinds]*money.Money{}
+		if t.Cost != nil {
+			for k := range kinds {
+				if hasKind[k] {
+					m, err := money.New(kinds[k], string(in.Currency))
+					if err != nil {
+						return Totals{}, fmt.Errorf("node %d: %w", n.ID, err)
+					}
+					t.KindTotals[k] = &m
+				}
+			}
 		}
 	}
 
@@ -314,22 +333,6 @@ func ComputeTotals(in TotalsInput) (Totals, error) {
 		Discounts:   c.resolvedDiscounts(),
 		index:       index,
 	}, nil
-}
-
-// addKind ajoute m au total de la nature k.
-func addKind(totals *[numCostKinds]*money.Money, k CostKind, m money.Money) error {
-	i := kindIndex(k)
-	if totals[i] == nil {
-		v := m
-		totals[i] = &v
-		return nil
-	}
-	v, err := totals[i].Add(m)
-	if err != nil {
-		return err
-	}
-	totals[i] = &v
-	return nil
 }
 
 // allocateStock répartit le stock de chaque pièce entre ses nœuds, par id de nœud croissant (déterministe,
@@ -385,18 +388,48 @@ func partOwnTotals(t *NodeTotals, n CalcNode, c *costCalc) error {
 		t.OwnLeadTimeDays = 0
 	}
 
-	lines, err := c.partLines(t, p)
-	if err != nil {
-		t.MissingCost = []int64{n.ID}
-		return err
-	}
-	cost := lines[0].Amount
-	for _, l := range lines[1:] {
-		if cost, err = cost.Add(l.Amount); err != nil {
-			return err
+	// Les lignes d'une pièce ne dépendent que de son offre, de sa masse et de sa quantité réelle (le reste est par
+	// offre ou par calcul) : deux nœuds identiques partagent le même calcul (v2-lot-g T8 ; 30 000 nœuds de la
+	// Multipla, beaucoup moins de combinaisons distinctes). Les lignes partagées ne sont jamais modifiées.
+	key := partLinesKey{offer: p.OfferID, qty: t.RealQuantity.String(), mass: p.MassKg.String()}
+	m, ok := c.partMemo[key]
+	if !ok {
+		m = &partLinesMemo{}
+		lines, err := c.partLines(t, p)
+		m.quote, m.rate, m.err = t.Quote, t.Rate, err
+		if err == nil {
+			cost := lines[0].Amount
+			for _, l := range lines[1:] {
+				if cost, err = cost.Add(l.Amount); err != nil {
+					return err
+				}
+			}
+			m.lines, m.cost = slices.Clip(lines), cost
 		}
+		c.partMemo[key] = m
 	}
-	t.OwnLines = lines
+	t.Quote, t.Rate = m.quote, m.rate
+	if m.err != nil {
+		t.MissingCost = []int64{n.ID}
+		return m.err
+	}
+	cost := m.cost
+	t.OwnLines = m.lines
 	t.OwnCost = &cost
 	return nil
+}
+
+// partLinesKey : ce dont dépendent les lignes propres d'une pièce dans un calcul.
+type partLinesKey struct {
+	offer     int64
+	qty, mass string
+}
+
+// partLinesMemo : lignes, coût propre, cotation et taux d'une pièce pour une clé, ou l'erreur nommée.
+type partLinesMemo struct {
+	lines []CostLine
+	cost  money.Money
+	quote *pricing.Quote
+	rate  *pricing.Rate
+	err   error
 }

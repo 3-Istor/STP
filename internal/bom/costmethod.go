@@ -149,15 +149,17 @@ type CostLine struct {
 
 // lineDetail : données brutes d'une ligne, pour son libellé et sa source.
 type lineDetail struct {
-	qty         decimal.Decimal
-	unit        money.Money // prix coté, tarif au kg, emballage, outillage
-	mass        decimal.Decimal
-	rate, other pricing.Rate // rate : taux appliqué ; other : dernier taux comparé (fx)
+	qty  decimal.Decimal
+	unit money.Money // prix coté, tarif au kg, emballage, outillage
+	mass decimal.Decimal
+	// rate : taux appliqué ; other : dernier taux comparé (fx). Pointeurs partagés par toutes les lignes d'un calcul
+	// (costCalc.rateRef) : une ligne reste légère sur 30 000 nœuds (v2-lot-g T8) ; jamais modifiés.
+	rate, other *pricing.Rate
 	converted   bool
 	noLatest    bool
 	pct         decimal.Decimal
 	origin      string
-	discount    Discount
+	discount    *Discount // partagée par les lignes de l'offre (costCalc.discountRef), jamais modifiée
 	volume      int32
 	offerQty    decimal.Decimal
 	source      string // provenance de la cotation ou des faits (« tables », « snapshot N »)
@@ -189,7 +191,7 @@ func (l CostLine) Label() string {
 		return fmt.Sprintf("Écart de change : %s %s→%s %s au lieu du dernier taux %s", d.rate.Source, d.rate.From, d.rate.To,
 			d.rate.Rate, d.other.Rate)
 	case KindDiscount:
-		return discountLabel(d.discount)
+		return discountLabel(*d.discount)
 	case KindCustoms:
 		return fmt.Sprintf("Douane (origine %s) : %s %% du prix net de remise", d.origin, d.pct)
 	case KindFreight:

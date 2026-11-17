@@ -163,6 +163,9 @@ func (s *Service) loadSide(ctx context.Context, ref Ref, labels map[string]strin
 func (s *Service) Compare(ctx context.Context, from, to Ref) (Comparison, error) {
 	labels := map[string]string{}
 	for _, r := range []Ref{from, to} {
+		if _, known := labels[r.String()]; known {
+			continue // même famille que « de » : déjà lue (v2-lot-g T8)
+		}
 		f, err := s.familyOf(ctx, r)
 		if err != nil {
 			return Comparison{}, fmt.Errorf("compare %s → %s: %w", from, to, err)

@@ -86,21 +86,58 @@ func (s *Service) costInput(ctx context.Context, b BOM, offers map[int64]catalog
 	return ci, nil
 }
 
-// offerContracts : contrats couvrant chaque offre, lus une fois par fournisseur.
-func (s *Service) offerContracts(ctx context.Context, ids []int64, offers map[int64]catalog.Offer) (map[int64][]supplier.Contract, error) {
-	bySupplier := map[int64][]supplier.Contract{}
-	out := make(map[int64][]supplier.Contract, len(ids))
-	for _, id := range ids {
-		sup := offers[id].SupplierID
-		cs, ok := bySupplier[sup]
-		if !ok {
-			var err error
-			if cs, err = s.contracts.ListContracts(ctx, sup); err != nil {
-				return nil, fmt.Errorf("contracts of supplier %d: %w", sup, err)
-			}
-			bySupplier[sup] = cs
+// AllContracts : tous les contrats en une lecture ; *supplier.Service la satisfait. Facultatif : sans, les contrats
+// sont lus fournisseur par fournisseur (ContractSource).
+type AllContracts interface {
+	ListAllContracts(ctx context.Context) ([]supplier.Contract, error)
+}
+
+// contractsBySupplier : contrats de chaque fournisseur de suppliers, en une lecture si la source le permet
+// (v2-lot-g T8), sinon un appel par fournisseur. Un fournisseur sans contrat a une liste vide.
+func (s *Service) contractsBySupplier(ctx context.Context, suppliers []int64) (map[int64][]supplier.Contract, error) {
+	out := make(map[int64][]supplier.Contract, len(suppliers))
+	if all, ok := s.contracts.(AllContracts); ok {
+		cs, err := all.ListAllContracts(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, sup := range suppliers {
+			out[sup] = []supplier.Contract{}
 		}
 		for _, c := range cs {
+			if _, wanted := out[c.SupplierID]; wanted {
+				out[c.SupplierID] = append(out[c.SupplierID], c)
+			}
+		}
+		return out, nil
+	}
+	for _, sup := range suppliers {
+		if _, done := out[sup]; done {
+			continue
+		}
+		cs, err := s.contracts.ListContracts(ctx, sup)
+		if err != nil {
+			return nil, fmt.Errorf("contracts of supplier %d: %w", sup, err)
+		}
+		out[sup] = cs
+	}
+	return out, nil
+}
+
+// offerContracts : contrats couvrant chaque offre (contractsBySupplier).
+func (s *Service) offerContracts(ctx context.Context, ids []int64, offers map[int64]catalog.Offer) (map[int64][]supplier.Contract, error) {
+	sups := make([]int64, 0, len(ids))
+	for _, id := range ids {
+		sups = append(sups, offers[id].SupplierID)
+	}
+	slices.Sort(sups)
+	bySupplier, err := s.contractsBySupplier(ctx, slices.Compact(sups))
+	if err != nil {
+		return nil, err
+	}
+	out := make(map[int64][]supplier.Contract, len(ids))
+	for _, id := range ids {
+		for _, c := range bySupplier[offers[id].SupplierID] {
 			if slices.Contains(c.OfferIDs, id) {
 				out[id] = append(out[id], c)
 			}

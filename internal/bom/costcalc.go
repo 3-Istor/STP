@@ -28,6 +28,22 @@ type costCalc struct {
 	// offerQty : quantité par voiture de chaque offre dans la BOM (Σ quantités réelles de ses nœuds).
 	offerQty  map[int64]decimal.Decimal
 	discounts map[int64]discountResult
+	// Valeurs partagées par les lignes et les nœuds du calcul (une allocation par taux, cotation ou remise, pas
+	// une par nœud) ; lues seulement (v2-lot-g T8).
+	rateRefs     map[pricing.Rate]*pricing.Rate
+	quoteRefs    map[int64]*pricing.Quote
+	discountRefs map[int64]*Discount
+	partMemo     map[partLinesKey]*partLinesMemo
+}
+
+// rateRef : pointeur partagé vers un taux égal à r.
+func (c *costCalc) rateRef(r pricing.Rate) *pricing.Rate {
+	if p, ok := c.rateRefs[r]; ok {
+		return p
+	}
+	p := &r
+	c.rateRefs[r] = p
+	return p
 }
 
 type discountResult struct {
@@ -39,6 +55,8 @@ func newCostCalc(in TotalsInput) (*costCalc, error) {
 	c := &costCalc{
 		in: in, method: DefaultCostMethod(), usedRates: map[money.Currency]pricing.Rate{},
 		usedBudget: map[money.Currency]pricing.Rate{}, offerQty: map[int64]decimal.Decimal{}, discounts: map[int64]discountResult{},
+		rateRefs: map[pricing.Rate]*pricing.Rate{}, quoteRefs: map[int64]*pricing.Quote{}, discountRefs: map[int64]*Discount{},
+		partMemo: map[partLinesKey]*partLinesMemo{},
 	}
 	if in.Cost != nil {
 		c.cost = *in.Cost
@@ -96,8 +114,15 @@ func (c *costCalc) partLines(t *NodeTotals, p *PartFacts) ([]CostLine, error) {
 		return nil, fmt.Errorf("offer %d: %w", p.OfferID, pr.Err)
 	}
 	q := pr.Quote
-	t.Quote = &q
-	lines := make([]CostLine, 0, 2)
+	qp, ok := c.quoteRefs[p.OfferID]
+	if !ok {
+		qp = &q
+		c.quoteRefs[p.OfferID] = qp
+	}
+	t.Quote = qp
+	// Une ligne par nature au plus : capacité fixée d'emblée, sans recopie des lignes (lourdes) quand la tranche
+	// grandit (v2-lot-g T8 : la moitié du temps du pont de coût sur 30 000 nœuds).
+	lines := make([]CostLine, 0, numCostKinds)
 	net, err := c.priceLines(t, q, &lines)
 	if err != nil {
 		return nil, err
@@ -142,8 +167,8 @@ func (c *costCalc) priceLines(t *NodeTotals, q pricing.Quote, lines *[]CostLine)
 		if err != nil {
 			return money.Money{}, err
 		}
-		t.Rate = &r
-		d.rate = r
+		t.Rate = c.rateRef(r)
+		d.rate = t.Rate
 		*lines = append(*lines, CostLine{Kind: KindPrice, Amount: conv, AsOf: &at, d: d})
 		return conv, nil
 	}
@@ -151,10 +176,10 @@ func (c *costCalc) priceLines(t *NodeTotals, q pricing.Quote, lines *[]CostLine)
 	if err != nil {
 		return money.Money{}, err
 	}
-	t.Rate = &br
+	t.Rate = c.rateRef(br)
 	latest, lr, lerr := c.latest(gross)
 	if lerr != nil { // pas de comparaison possible : le prix est au taux budget, sans ligne d'écart
-		d.rate, d.noLatest = br, true
+		d.rate, d.noLatest = t.Rate, true
 		*lines = append(*lines, CostLine{Kind: KindPrice, Amount: budget, AsOf: &at, d: d})
 		return budget, nil
 	}
@@ -163,8 +188,8 @@ func (c *costCalc) priceLines(t *NodeTotals, q pricing.Quote, lines *[]CostLine)
 		return money.Money{}, err
 	}
 	lat := lr.QuotedAt
-	d.rate = lr
-	fx := lineDetail{rate: br, other: lr}
+	d.rate = c.rateRef(lr)
+	fx := lineDetail{rate: t.Rate, other: d.rate}
 	*lines = append(*lines, CostLine{Kind: KindPrice, Amount: latest, AsOf: &at, d: d}, CostLine{Kind: KindFX, Amount: delta, AsOf: &lat, d: fx})
 	return budget, nil
 }
@@ -180,7 +205,12 @@ func (c *costCalc) discountLine(offerID int64, price, net money.Money, lines *[]
 	if err != nil {
 		return net, err
 	}
-	ld := lineDetail{discount: d}
+	dp, ok := c.discountRefs[offerID]
+	if !ok {
+		dp = &d
+		c.discountRefs[offerID] = dp
+	}
+	ld := lineDetail{discount: dp}
 	if c.cost.Offers[offerID].Discount != nil { // remise figée : dire d'où
 		ld.source = c.cost.FactsSource
 	}

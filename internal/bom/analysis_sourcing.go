@@ -180,16 +180,13 @@ func (s *Service) sourcingFacts(ctx context.Context, dc DraftCost) (SourcingFact
 	for _, sp := range sups {
 		f.Suppliers[sp.ID] = sp.Name
 	}
+	var used []int64
 	for _, id := range offerIDs(dc.Nodes) {
-		sup := f.Offers[id].SupplierID
-		if _, ok := f.Contracts[sup]; ok {
-			continue
-		}
-		cs, err := s.contracts.ListContracts(ctx, sup)
-		if err != nil {
-			return f, fmt.Errorf("contracts of supplier %d: %w", sup, err)
-		}
-		f.Contracts[sup] = cs
+		used = append(used, f.Offers[id].SupplierID)
+	}
+	slices.Sort(used)
+	if f.Contracts, err = s.contractsBySupplier(ctx, slices.Compact(used)); err != nil {
+		return f, err
 	}
 	if ci := dc.Input.Cost; ci != nil && ci.BudgetRates != nil {
 		f.BudgetRates = ci.BudgetRates
@@ -441,9 +438,11 @@ func lostDiscount(calc *costCalc, in TotalsInput, o catalog.Offer, c supplier.Co
 	return l
 }
 
-// rateGaps : pour chaque devise convertie, effet sur la voiture du dernier taux au lieu du taux budget, par le
-// moteur des totaux en taux budget (les devises sans taux budget y gardent leur dernier taux : seul l'écart de
-// la devise étudiée change entre les deux calculs).
+// rateGaps : pour chaque devise convertie, effet sur la voiture du dernier taux au lieu du taux budget. Le coût
+// est linéaire en chaque taux (voir ComputeFXSensitivity) : un seul calcul des totaux, en taux budget avec tous les
+// taux à 1, donne pour chaque devise c la somme K(c) de ses lignes en devise d'origine (exposureByCurrency) ; l'effet
+// est K(c) × (dernier taux − taux budget), l'écart des deux rechiffrages complets d'avant (v2-lot-g T8,
+// TestRateGapsEqualFullRecompute), exact sauf l'outillage : sa division à 28 décimales peut différer au-delà.
 func rateGaps(in TotalsInput, rootID int64, budget map[money.Currency]decimal.Decimal, asOf time.Time) ([]RateGap, error) {
 	var curs []money.Currency
 	for c, rr := range in.Rates {
@@ -459,34 +458,30 @@ func rateGaps(in TotalsInput, rootID int64, budget map[money.Currency]decimal.De
 	if len(curs) == 0 {
 		return nil, nil
 	}
-	mixed := map[money.Currency]decimal.Decimal{}
-	for _, c := range curs {
-		if r, ok := budget[c]; ok {
-			mixed[c] = r
-		} else if rr := in.Rates[c]; rr.Err == nil && rr.Rate.Rate.IsPositive() {
-			mixed[c] = rr.Rate.Rate
+	var unit map[money.Currency]decimal.Decimal // K(c), calculé au premier besoin
+	unitAmounts := func() (map[money.Currency]decimal.Decimal, error) {
+		ones := make(map[money.Currency]decimal.Decimal, len(curs))
+		for _, c := range curs {
+			ones[c] = decimal.NewFromInt(1)
 		}
-	}
-	withBudget := func(rates map[money.Currency]decimal.Decimal) TotalsInput {
-		out := in
+		u := in
 		var ci CostInput
 		if in.Cost != nil {
 			ci = *in.Cost
 		} else {
 			ci = CostInput{Method: DefaultCostMethod(), FactsSource: "tables"}
 		}
-		ci.Method.FX, ci.AsOf, ci.BudgetRates = FXBudget, asOf, rates
-		out.Cost = &ci
-		return out
-	}
-	total := func(rates map[money.Currency]decimal.Decimal) (money.Money, error) {
-		t, err := ComputeTotals(withBudget(rates))
+		ci.Method.FX, ci.AsOf, ci.BudgetRates = FXBudget, asOf, ones
+		u.Cost = &ci
+		t, err := ComputeTotals(u)
 		if err != nil {
-			return money.Money{}, err
+			return nil, err
 		}
-		return analysisRootCost(t, rootID)
+		if _, err := analysisRootCost(t, rootID); err != nil {
+			return nil, err
+		}
+		return exposureByCurrency(t, in.Currency), nil
 	}
-	var base *money.Money
 	out := make([]RateGap, 0, len(curs))
 	for _, c := range curs {
 		g := RateGap{Currency: c}
@@ -511,20 +506,13 @@ func rateGaps(in TotalsInput, rootID int64, budget map[money.Currency]decimal.De
 		if gap, ok := PercentOf(g.Latest.Rate.Sub(g.Budget.Rate), g.Budget.Rate); ok {
 			g.GapPercent = &gap
 		}
-		if base == nil {
-			b, err := total(mixed)
-			if err != nil {
+		if unit == nil {
+			var err error
+			if unit, err = unitAmounts(); err != nil {
 				return nil, fmt.Errorf("cost at budget rates: %w", err)
 			}
-			base = &b
 		}
-		swapped := maps.Clone(mixed)
-		swapped[c] = g.Latest.Rate
-		latest, err := total(swapped)
-		if err != nil {
-			return nil, fmt.Errorf("cost with the latest %s rate: %w", c, err)
-		}
-		effect, err := latest.Add(base.Mul(decimal.NewFromInt(-1)))
+		effect, err := money.New(unit[c].Mul(g.Latest.Rate.Sub(g.Budget.Rate)), string(in.Currency))
 		if err != nil {
 			return nil, err
 		}

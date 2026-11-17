@@ -136,21 +136,32 @@ func ComputeBridge(from, to BridgeSide) (Bridge, error) {
 	out.Diff = b.diff()
 	states := make([]Totals, len(BridgeOrder)+1)
 	costs := make([]money.Money, len(BridgeOrder)+1)
+	// Les marches à chiffrer sont indépendantes (calculs purs) : chiffrées en parallèle, résultats rangés par marche
+	// (v2-lot-g T8) ; une marche identique à la précédente reprend son calcul.
+	var todo []int
+	for k := range states {
+		if k == 0 || !unchanged(BridgeOrder[k-1], out.Diff) {
+			todo = append(todo, k)
+		}
+	}
+	errs := make([]error, len(states))
+	parallel(len(todo), func(i int) {
+		k := todo[i]
+		states[k], errs[k] = ComputeTotals(b.state(k))
+	})
 	for k := range states {
 		if k > 0 && unchanged(BridgeOrder[k-1], out.Diff) { // même entrée que la marche précédente : même calcul
 			states[k], costs[k] = states[k-1], costs[k-1] //nolint:gosec // k > 0 : marche précédente
 			continue
 		}
-		in := b.state(k)
-		t, err := ComputeTotals(in)
-		if err != nil {
-			return Bridge{}, fmt.Errorf("cost bridge step %d: %w", k, err)
+		if errs[k] != nil {
+			return Bridge{}, fmt.Errorf("cost bridge step %d: %w", k, errs[k])
 		}
-		root, _ := t.Node(b.rootID())
+		root, _ := states[k].Node(b.rootID())
 		if root.Cost == nil {
 			return Bridge{}, fmt.Errorf("cost bridge step %d: %w: %w", k, ErrBridgeIncomplete, root.CostErr)
 		}
-		states[k], costs[k] = t, *root.Cost
+		costs[k] = *root.Cost
 	}
 	if !costs[0].Amount().Equal(fromCost.Amount()) || !costs[len(costs)-1].Amount().Equal(toCost.Amount()) {
 		return Bridge{}, fmt.Errorf("first step %s vs %s, last step %s vs %s: %w",
