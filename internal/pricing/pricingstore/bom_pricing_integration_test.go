@@ -84,7 +84,21 @@ func TestBOMPricingFreezesBOMScopeAndReadsFrozenFacts(t *testing.T) {
 			_, err := adapter.FreezePrices(t.Context(), newBOM("EUR"), []int64{offer, other + 1000}, []money.Currency{"EUR"}, wallClock)
 			return err
 		}, pricing.ErrNoQuote, ""},
+		{"BOM inconnue : refus nommé, aucun lot", func() error {
+			before := runtimeCount(t, pool, "SELECT count(*) FROM price_snapshots")
+			_, err := adapter.FreezePrices(t.Context(), 987654321, nil, []money.Currency{"EUR"}, wallClock)
+			if n := runtimeCount(t, pool, "SELECT count(*) FROM price_snapshots"); n != before {
+				t.Fatalf("%d snapshot(s) written for an unknown BOM", n-before)
+			}
+			return err
+		}, pricing.ErrPriceEntityNotFound, ""},
 		{"devise de budget sans taux : le gel du catalogue la refuse aussi", func() error {
+			before := runtimeCount(t, pool, "SELECT count(*) FROM price_snapshots")
+			defer func() {
+				if n := runtimeCount(t, pool, "SELECT count(*) FROM price_snapshots"); n != before {
+					t.Fatalf("%d snapshot(s) written by a refused freeze", n-before)
+				}
+			}()
 			bom := newBOM("EUR")
 			if _, err := pool.Exec(t.Context(), "INSERT INTO bom_target_budgets(bom_id,node_id,amount,currency) SELECT $1,id,100,'JPY' FROM bom_nodes WHERE bom_id=$1 AND parent_id IS NULL", bom); err != nil {
 				t.Fatal(err)
@@ -96,6 +110,15 @@ func TestBOMPricingFreezesBOMScopeAndReadsFrozenFacts(t *testing.T) {
 			_, err := adapter.FreezePrices(t.Context(), newBOM("JPY"), []int64{offer}, []money.Currency{"JPY"}, wallClock)
 			return err
 		}, pricing.ErrNoRate, "USD->JPY"},
+		{"offre du catalogue sans cotation, hors BOM : le gel est refusé, aucun lot", func() error {
+			before := runtimeCount(t, pool, "SELECT count(*) FROM price_snapshots")
+			_, _ = runtimeOffer(t, pool) // créée après le démarrage de la source : aucune cotation
+			_, err := adapter.FreezePrices(t.Context(), newBOM("EUR"), []int64{offer}, []money.Currency{"EUR"}, wallClock)
+			if n := runtimeCount(t, pool, "SELECT count(*) FROM price_snapshots"); n != before {
+				t.Fatalf("%d snapshot(s) written by a refused freeze", n-before)
+			}
+			return err
+		}, pricing.ErrNoQuote, ""},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

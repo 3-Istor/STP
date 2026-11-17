@@ -76,6 +76,12 @@ func (u snapshotUnit) Frame(ctx context.Context, dataset string, req pricing.Sna
 		}
 	} else {
 		if req.Scope == "catalog" && req.BudgetBOMID != nil { // gel d'une BOM : ses devises de budget (ADR 0048)
+			if _, err := u.q.ReadBOMPriceCurrency(ctx, *req.BudgetBOMID); errors.Is(err, pgx.ErrNoRows) {
+				f.ScopeExists = false // BOM inconnue : rien n'est figé
+				return f, nil
+			} else if err != nil {
+				return f, err
+			}
 			sources, err := u.q.ReadBOMBudgetCurrencies(ctx, *req.BudgetBOMID)
 			if err != nil {
 				return f, err

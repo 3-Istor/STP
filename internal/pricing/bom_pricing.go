@@ -72,9 +72,13 @@ func (p *BOMPricing) FreezePrices(ctx context.Context, bomID int64, offerIDs []i
 	}
 	data := res.PriceSnapshotData
 	// Le lot couvre tout le catalogue ; une offre attendue qui n'y est pas n'existe pas au catalogue.
+	frozen := make(map[int64]struct{}, len(data.Quotes))
+	for _, q := range data.Quotes {
+		frozen[q.OfferID] = struct{}{}
+	}
 	var missing []int64
 	for _, id := range offerIDs {
-		if !slices.ContainsFunc(data.Quotes, func(q HistoricalQuote) bool { return q.OfferID == id }) {
+		if _, ok := frozen[id]; !ok {
 			missing = append(missing, id)
 		}
 	}
