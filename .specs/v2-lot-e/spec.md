@@ -4,7 +4,7 @@ title: V2 lot E — analyses (change, pièces influentes, sourcing, anomalies �
 source: manual
 source_ref: docs/v2/plan-implementation.md (lot E)
 created: 2026-11-17
-status: in-progress
+status: review
 priority: P2
 depends_on: [v2-lot-a]
 branch: v2-lot-e
@@ -78,28 +78,28 @@ Pas de front dans ce lot.
 
 ## Tasks
 
-- [ ] T1 Ticket, ADR 0036 et 0037 (Proposé).
+- [x] T1 Ticket, ADR 0036 et 0037 (Proposé).
   Files: `.specs/v2-lot-e/*`, `docs/adr/0036-*.md`, `docs/adr/0037-*.md`. Done when: relus, cohérents avec le plan.
-- [ ] T2 Migration 00014 et requêtes sqlc des profils (brouillon et snapshot).
+- [x] T2 Migration 00014 et requêtes sqlc des profils (brouillon et snapshot).
   Files: `migrations/00014_vehicle_profiles.sql`, `internal/bom/queries.sql`, `internal/snapshot/queries.sql`, code
   généré. Approach: tables dédiées, CHECK somme = 100, triggers d'immutabilité. Done when: goose up/down/up, sqlc à jour.
-- [ ] T3 Profils dans le domaine et classement pondéré.
+- [x] T3 Profils dans le domaine et classement pondéré.
   Files: `internal/bom/profile.go`, `strategy.go`, `suggest.go`, `bomstore/profiles.go`, tests.
   Approach: `strategyWeights` seul point de choix, score pondéré ; priorité nœud > profil > aucun.
   Done when: tests existants verts, tests table-driven des poids, préréglages et validation.
-- [ ] T4 Gel du profil au snapshot et reprise par un nouveau brouillon.
+- [x] T4 Gel du profil au snapshot et reprise par un nouveau brouillon.
   Files: `internal/snapshot/snapshot.go`, `snapshotstore/store.go`, test d'intégration.
-- [ ] T5 Sensibilité au change. Files: `internal/bom/analysis.go`, `analysis_fx.go`, tests.
+- [x] T5 Sensibilité au change. Files: `internal/bom/analysis.go`, `analysis_fx.go`, tests.
   Done when: un test prouve impact = rechiffrage exact et part = exposition ÷ total.
-- [ ] T6 Pièces qui pèsent le plus. Files: `internal/bom/analysis_drivers.go`, tests.
-- [ ] T7 Sourcing. Files: `internal/bom/analysis_sourcing.go`, tests.
-- [ ] T8 Anomalies €/kg. Files: `internal/pricing/anomaly.go`, `anomaly_perkg.go`, `internal/bom/anomalies.go`,
+- [x] T6 Pièces qui pèsent le plus. Files: `internal/bom/analysis_drivers.go`, tests.
+- [x] T7 Sourcing. Files: `internal/bom/analysis_sourcing.go`, tests.
+- [x] T8 Anomalies €/kg. Files: `internal/pricing/anomaly.go`, `anomaly_perkg.go`, `internal/bom/anomalies.go`,
   `analysis_anomalies.go`, tests.
-- [ ] T9 API. Files: `internal/httpapi/analysis.go`, `profiles.go`, une ligne dans `router.go`, JSON des
+- [x] T9 API. Files: `internal/httpapi/analysis.go`, `profiles.go`, une ligne dans `router.go`, JSON des
   suggestions, câblage `cmd/server/main.go`, tests.
-- [ ] T10 Données de démo : Multipla « familiale ». Files: `internal/sampledata/profiles.go`,
+- [x] T10 Données de démo : Multipla « familiale ». Files: `internal/sampledata/profiles.go`,
   `seedstore/profiles.go`, test d'intégration du seed.
-- [ ] T11 Vérification : vet, lint, tests, goose, sqlc ; réponses réelles sur la Multipla seedée.
+- [x] T11 Vérification : vet, lint, tests, goose, sqlc ; réponses réelles sur la Multipla seedée.
 
 ## Verification
 
