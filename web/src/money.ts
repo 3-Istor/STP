@@ -98,3 +98,24 @@ export function formatPercent(value: string | null | undefined, digits = 1): str
   }
   return `${f.format(value as Decimal)}\u00a0%`
 }
+
+function scaledPair(a: string, b: string): [bigint, bigint] | null {
+  const re = /^(-?)(\d+)(?:\.(\d+))?$/
+  const ma = re.exec(a), mb = re.exec(b)
+  if (!ma || !mb) return null
+  const scale = Math.max((ma[3] ?? '').length, (mb[3] ?? '').length)
+  const big = (m: RegExpExecArray) => BigInt(`${m[2]}${(m[3] ?? '').padEnd(scale, '0')}`)
+  return [big(ma), big(mb)]
+}
+
+/** Compare |a| et |b| (chaînes décimales) exactement, sans `number` : < 0 si |a| < |b|. */
+export function compareAbsDecimal(a: string, b: string): number {
+  const p = scaledPair(a, b)
+  if (!p) return 0
+  return p[0] < p[1] ? -1 : p[0] > p[1] ? 1 : 0
+}
+
+/** Montant sans son signe (affichage d'une marge : « budget tenu, marge de 510,60 € »). */
+export function absMoney(m: Money): Money {
+  return { amount: m.amount.replace(/^-/, ''), currency: m.currency }
+}

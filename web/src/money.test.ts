@@ -26,3 +26,12 @@ test('pourcentage de l’API mis en forme, « n/d » absent', () => {
   assert.equal(plain(formatPercent('-0.09', 2)), '-0,09 %')
   assert.equal(formatPercent(null), 'n/d')
 })
+
+test('tri par valeur absolue exacte (causes d’écart), sans conversion en nombre', async () => {
+  const { compareAbsDecimal } = await import('./money.ts')
+  const amounts = ['73.3191773', '-170.035', '28.299', '60.29310132295939616885', '-0.5']
+  const sorted = [...amounts].sort((a, b) => compareAbsDecimal(b, a))
+  assert.deepEqual(sorted, ['-170.035', '73.3191773', '60.29310132295939616885', '28.299', '-0.5'])
+  // Au-delà de la précision d'un double : 0.10000000000000000001 > 0.1
+  assert.equal(compareAbsDecimal('0.10000000000000000001', '-0.1'), 1)
+})

@@ -256,3 +256,24 @@ details.fold[open] > summary { border-bottom: 1px solid var(--line); }
 .weights .sl input { padding: 0; border: 0; accent-color: var(--accent); }
 .weights .sl b { text-align: right; }
 .weights p { margin: 4px 0; }
+
+/* Arbitrer : comparaison, causes, pistes (maquette I4-6). */
+.vsel { display: inline-flex; align-items: center; gap: 4px; font-weight: 400; }
+.vsel select { padding: 2px 6px; }
+.causes { padding: 4px 12px 8px; border-top: 1px solid var(--line); }
+.causes h4 { margin: 8px 0 4px; font-size: var(--fs); font-weight: 600; }
+.causes ul { list-style: none; margin: 0; padding: 0; }
+.causes li { display: grid; grid-template-columns: 1fr auto; gap: 12px; padding: 7px 0; border-bottom: 1px solid var(--line-soft); }
+.causes li .n { text-align: right; white-space: nowrap; font-weight: 600; }
+.cause-nodes { margin-top: 2px; }
+.ideas { border-bottom: 1px solid var(--line); }
+.ideas-h { margin: 0 0 6px; font-size: 14px; font-weight: 600; }
+.idea-list { list-style: none; margin: 0; padding: 0; }
+.idea-list li { display: grid; grid-template-columns: 1fr auto auto auto; gap: 6px; align-items: center; padding: 4px 0; border-bottom: 1px solid var(--line-soft); font-size: var(--fs-small); }
+.idea-list li.dropped .idea-title { text-decoration: line-through; color: var(--muted); }
+.idea-list select { padding: 1px 4px; font-size: var(--fs-small); }
+.idea-list .ib { width: 22px; height: 22px; border: 1px solid var(--control-line); border-radius: 3px; background: var(--surface); color: var(--fg-2); padding: 0; }
+.idea-list .n { white-space: nowrap; }
+.ideas-totals { margin-top: 8px; }
+.new-idea { margin-top: 8px; font-size: var(--fs-small); }
+.new-idea input { min-width: 0; flex: 1; }

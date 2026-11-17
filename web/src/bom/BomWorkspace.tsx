@@ -6,6 +6,7 @@ import { bomRoute, navigate, type Route, type Step } from '../router.ts'
 import { Summary } from '../shell/Summary.tsx'
 import { useAppDialog } from '../useAppDialog.tsx'
 import { AddNodeDialog } from './AddNodeDialog.tsx'
+import { Ideas } from './Ideas.tsx'
 import { basisHint, basisLabels, fxLabels } from './costMethod.ts'
 import { ProfileSettings } from './ProfileSettings.tsx'
 import { NodePanel } from './NodePanel.tsx'
@@ -95,7 +96,7 @@ export function BomWorkspace({ route, data, error, published, onPublished }: Pro
       )
       break
     case 'arbitrer':
-      main = <Arbitrer data={data} selectedID={selectedID} />
+      main = <Arbitrer data={data} selectedID={selectedID} onSelect={select} />
       break
     case 'publier':
       main = (
@@ -118,6 +119,7 @@ export function BomWorkspace({ route, data, error, published, onPublished }: Pro
       </main>
       <aside className="col" aria-label="Synthèse et détail">
         <Summary data={data} onSelectNode={select} />
+        {route.step === 'arbitrer' && <Ideas data={data} />}
         <div className="tabs2" role="tablist" aria-label="Détail ou réglages">
           <button type="button" role="tab" aria-selected={tab === 'detail'} className={tab === 'detail' ? 'on' : ''} onClick={() => setTab('detail')}>
             Détail

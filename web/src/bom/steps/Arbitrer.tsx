@@ -1,16 +1,18 @@
 import { partName } from '../../catalog.ts'
 import { api } from '../../api.ts'
-import { Pending } from '../../shell/Pending.tsx'
+import { ComparisonPanel } from '../Comparison.tsx'
 import { StrategyPanel } from '../StrategyPanel.tsx'
 import type { BomData } from '../useBomData.ts'
 
-// Arbitrer (maquette I4-6) : « Que garder ? ». Fonction existante : stratégie d'un nœud (ADR 0028) et
-// alternatives classées, appliquées au brouillon après confirmation. Comparaison de versions, pont de coût
-// et pistes de réduction : lots B et F.
-export function Arbitrer({ data, selectedID }: { data: BomData; selectedID: number | null }) {
+// Arbitrer (maquette I4-6) : « Que garder ? ». Comparaison de deux versions (par défaut la dernière publiée →
+// la version ouverte) avec les causes de l'écart (ADR 0032) et les pièces modifiées ; puis la stratégie d'un
+// nœud (ADR 0028) et ses alternatives classées (stratégie, sinon profil de véhicule, ADR 0036), appliquées au
+// brouillon après confirmation. Les pistes de réduction sont dans la colonne de droite.
+export function Arbitrer({ data, selectedID, onSelect }: { data: BomData; selectedID: number | null; onSelect: (id: number) => void }) {
   const node = selectedID !== null ? data.byID.get(selectedID) : undefined
   return (
     <>
+      <ComparisonPanel data={data} onSelect={onSelect} />
       <section className="block" aria-label="Stratégie et alternatives">
         <h3>Stratégie et alternatives{node ? ` · ${node.part_id !== null ? partName(data.catalog, node.part_id) : node.name}` : ''}</h3>
         <div className="in">
@@ -24,16 +26,10 @@ export function Arbitrer({ data, selectedID }: { data: BomData; selectedID: numb
               onPatch={(p) => data.run(() => api.patchNode(data.target.id, node.id, p))}
             />
           ) : (
-            <p className="muted">Sélectionnez un nœud : sa stratégie (coût, délai, CO₂, équilibrée) classe les offres de ses pièces.</p>
+            <p className="muted">Sélectionnez un nœud (arbre, causes ci-dessus) : sa stratégie ou le profil de véhicule classe les offres de ses pièces.</p>
           )}
         </div>
       </section>
-      <Pending title="Comparer deux versions · pourquoi le coût a bougé" lot="lot B">
-        Comparaison brouillon / snapshot avec les causes d’écart (change, contrats, hausses, structure, offres).
-      </Pending>
-      <Pending title="Pistes de réduction" lot="lot B">
-        Idées, gain estimé, statut et brouillon associé.
-      </Pending>
     </>
   )
 }
