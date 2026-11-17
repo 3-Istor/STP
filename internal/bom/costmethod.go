@@ -275,6 +275,8 @@ type CostInput struct {
 	Contracts map[int64][]supplier.Contract
 	// FactsSource : provenance des faits (« tables » ou « snapshot N »), reprise dans les lignes.
 	FactsSource string
+	// Frozen : faits figés d'un snapshot ; une remise non figée est alors une erreur, jamais recalculée.
+	Frozen bool
 }
 
 // resolveDiscount évalue les contrats de l'offre (supplier.EvaluateContracts : palier atteint sur toute la

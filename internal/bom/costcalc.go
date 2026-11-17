@@ -222,6 +222,8 @@ func (c *costCalc) discount(offerID int64, price money.Money) (Discount, error) 
 	switch oc, ok := c.cost.Offers[offerID]; {
 	case ok && oc.Discount != nil:
 		r.d = *oc.Discount
+	case c.cost.Frozen:
+		r.err = fmt.Errorf("frozen discount of offer %d: %w", offerID, ErrNoCostFacts)
 	case c.cost.AsOf.IsZero():
 		r.err = fmt.Errorf("discount of offer %d: %w", offerID, ErrNoCostDate)
 	default:

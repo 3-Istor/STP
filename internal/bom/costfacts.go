@@ -194,6 +194,12 @@ func extraRateCurrencies(ci *CostInput, to money.Currency, have map[money.Curren
 	return out
 }
 
+// AddFactRates ajoute à rates les derniers taux des devises des faits de ci (transport, emballage, outillage)
+// qui n'y sont pas encore, lus en direct ou dans le snapshot de prix snapID.
+func AddFactRates(ctx context.Context, p pricing.Pricing, snapID *int64, ci *CostInput, to money.Currency, rates map[money.Currency]RateResult) error {
+	return addRates(ctx, p, snapID, extraRateCurrencies(ci, to, rates), to, rates)
+}
+
 // addRates lit (en direct ou dans le snapshot de prix) les taux des devises from vers to et les ajoute à rates ;
 // un taux absent reste pricing.ErrNoRate pour le nœud qui en aurait besoin.
 func addRates(ctx context.Context, p pricing.Pricing, snapID *int64, from []money.Currency, to money.Currency, rates map[money.Currency]RateResult) error {
@@ -225,9 +231,22 @@ type DraftCost struct {
 
 // DraftCost calcule les totaux du brouillon selon sa méthode et rend aussi l'entrée du calcul.
 func (s *Service) DraftCost(ctx context.Context, bomID int64) (DraftCost, error) {
+	return s.draftCost(ctx, bomID, nil)
+}
+
+// DraftCostWithPrices calcule le brouillon avec les prix et taux du snapshot de prix priceSnapshotID au lieu
+// des siens : la publication chiffre exactement ce qu'elle fige.
+func (s *Service) DraftCostWithPrices(ctx context.Context, bomID, priceSnapshotID int64) (DraftCost, error) {
+	return s.draftCost(ctx, bomID, &priceSnapshotID)
+}
+
+func (s *Service) draftCost(ctx context.Context, bomID int64, priceSnapshotID *int64) (DraftCost, error) {
 	b, err := s.store.GetBOM(ctx, bomID)
 	if err != nil {
 		return DraftCost{}, fmt.Errorf("cost of bom %d: %w", bomID, err)
+	}
+	if priceSnapshotID != nil {
+		b.PriceSnapshotID = priceSnapshotID
 	}
 	nodes, err := s.store.Tree(ctx, bomID)
 	if err != nil {

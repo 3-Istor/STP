@@ -13,6 +13,7 @@ import (
 	"github.com/shopspring/decimal"
 
 	"bomstudio/internal/bom"
+	"bomstudio/internal/money"
 	"bomstudio/internal/snapshot"
 	"bomstudio/internal/snapshot/snapshotdb"
 )
@@ -40,7 +41,7 @@ func New(db DB) *Store {
 
 // Create insère l'en-tête puis tous les nœuds (un COPY) dans une même transaction : un snapshot est
 // publié en entier ou pas du tout. Les contraintes différées (parent présent) sont vérifiées au commit.
-func (s *Store) Create(ctx context.Context, h snapshot.Snapshot, nodes []snapshot.Node, stock []bom.PartStock) (snapshot.Snapshot, error) {
+func (s *Store) Create(ctx context.Context, h snapshot.Snapshot, nodes []snapshot.Node, stock []bom.PartStock, cost snapshot.FrozenCost) (snapshot.Snapshot, error) {
 	tx, err := s.db.Begin(ctx)
 	if err != nil {
 		return snapshot.Snapshot{}, fmt.Errorf("create snapshot of bom %d: begin: %w", h.BOMID, err)
@@ -53,6 +54,8 @@ func (s *Store) Create(ctx context.Context, h snapshot.Snapshot, nodes []snapsho
 		BomID: h.BOMID, PriceSnapshotID: h.PriceSnapshotID, Name: h.Name,
 		Currency: h.Currency, Volume: h.Volume, PublishedAt: h.PublishedAt, AnnualHours: optDecimal(h.AnnualHours),
 		StartOn: startOn(h.Schedule), TargetOn: targetOn(h.Schedule), DestinationCountry: optText(h.DestinationCountry),
+		CostBasis: methodText(h.CostMethod, true), FxPolicy: methodText(h.CostMethod, false), ProgramVolume: programVolume(h.CostMethod),
+		CostAsOf: optTime(h.CostAsOf),
 	})
 	if err != nil {
 		return snapshot.Snapshot{}, fmt.Errorf("create snapshot of bom %d: %w", h.BOMID, err)
@@ -73,10 +76,129 @@ func (s *Store) Create(ctx context.Context, h snapshot.Snapshot, nodes []snapsho
 			return snapshot.Snapshot{}, fmt.Errorf("create snapshot of bom %d: stock: %w", h.BOMID, err)
 		}
 	}
+	if err := insertCost(ctx, q, row.ID, cost); err != nil {
+		return snapshot.Snapshot{}, fmt.Errorf("create snapshot of bom %d: %w", h.BOMID, err)
+	}
 	if err := tx.Commit(ctx); err != nil {
 		return snapshot.Snapshot{}, fmt.Errorf("create snapshot of bom %d: commit: %w", h.BOMID, err)
 	}
 	return toSnapshot(row), nil
+}
+
+// insertCost copie les taux budget et les faits de coût par offre (ADR 0031), chacun en un COPY.
+func insertCost(ctx context.Context, q *snapshotdb.Queries, id int64, cost snapshot.FrozenCost) error {
+	if len(cost.BudgetRates) > 0 {
+		rows := make([]snapshotdb.InsertSnapshotBudgetRatesParams, len(cost.BudgetRates))
+		for i, r := range cost.BudgetRates {
+			rows[i] = snapshotdb.InsertSnapshotBudgetRatesParams{SnapshotID: id, Year: r.Year, FromCurrency: string(r.From),
+				ToCurrency: string(r.To), Rate: r.Rate}
+		}
+		if _, err := q.InsertSnapshotBudgetRates(ctx, rows); err != nil {
+			return fmt.Errorf("budget rates: %w", err)
+		}
+	}
+	if len(cost.Offers) == 0 {
+		return nil
+	}
+	rows := make([]snapshotdb.InsertSnapshotOfferCostsParams, len(cost.Offers))
+	for i, o := range cost.Offers {
+		r := snapshotdb.InsertSnapshotOfferCostsParams{SnapshotID: id, OfferID: o.OfferID, OriginCountry: o.Origin,
+			CustomsPercent: optDecimal(o.CustomsPercent)}
+		r.FreightAmountPerKg, r.FreightCurrency = optMoney(o.FreightPerKg)
+		r.PackagingAmount, r.PackagingCurrency = optMoney(o.Packaging)
+		r.ToolingAmount, r.ToolingCurrency = optMoney(o.Tooling)
+		if d := o.Discount; d != nil {
+			r.DiscountPercent = decimal.NullDecimal{Decimal: d.Percent, Valid: true}
+			r.DiscountReason = pgtype.Text{String: d.Reason, Valid: true}
+			r.DiscountContractID = optInt8(d.ContractID)
+			r.DiscountTierMin = optDecimal(d.TierMin)
+		}
+		rows[i] = r
+	}
+	if _, err := q.InsertSnapshotOfferCosts(ctx, rows); err != nil {
+		return fmt.Errorf("offer costs: %w", err)
+	}
+	return nil
+}
+
+// CostFacts relit les faits de coût figés du snapshot (ADR 0031).
+func (s *Store) CostFacts(ctx context.Context, id int64) (snapshot.FrozenCost, error) {
+	var out snapshot.FrozenCost
+	rates, err := s.q.ListSnapshotBudgetRates(ctx, id)
+	if err != nil {
+		return out, fmt.Errorf("cost facts of snapshot %d: %w", id, err)
+	}
+	for _, r := range rates {
+		out.BudgetRates = append(out.BudgetRates, snapshot.BudgetRate{Year: r.Year, From: money.Currency(r.FromCurrency),
+			To: money.Currency(r.ToCurrency), Rate: r.Rate})
+	}
+	offers, err := s.q.ListSnapshotOfferCosts(ctx, id)
+	if err != nil {
+		return out, fmt.Errorf("cost facts of snapshot %d: %w", id, err)
+	}
+	for _, r := range offers {
+		o := snapshot.FrozenOffer{OfferID: r.OfferID, OfferCost: bom.OfferCost{Origin: r.OriginCountry, CustomsPercent: ptrDecimal(r.CustomsPercent)}}
+		if o.FreightPerKg, err = ptrMoney(r.FreightAmountPerKg, r.FreightCurrency); err != nil {
+			return out, fmt.Errorf("offer %d of snapshot %d: %w", r.OfferID, id, err)
+		}
+		if o.Packaging, err = ptrMoney(r.PackagingAmount, r.PackagingCurrency); err != nil {
+			return out, fmt.Errorf("offer %d of snapshot %d: %w", r.OfferID, id, err)
+		}
+		if o.Tooling, err = ptrMoney(r.ToolingAmount, r.ToolingCurrency); err != nil {
+			return out, fmt.Errorf("offer %d of snapshot %d: %w", r.OfferID, id, err)
+		}
+		if r.DiscountPercent.Valid {
+			d := bom.Discount{Percent: r.DiscountPercent.Decimal, Reason: r.DiscountReason.String, TierMin: ptrDecimal(r.DiscountTierMin)}
+			if r.DiscountContractID.Valid {
+				d.ContractID = &r.DiscountContractID.Int64
+			}
+			o.Discount = &d
+		}
+		out.Offers = append(out.Offers, o)
+	}
+	return out, nil
+}
+
+func optMoney(m *money.Money) (decimal.NullDecimal, pgtype.Text) {
+	if m == nil {
+		return decimal.NullDecimal{}, pgtype.Text{}
+	}
+	return decimal.NullDecimal{Decimal: m.Amount(), Valid: true}, pgtype.Text{String: string(m.Currency()), Valid: true}
+}
+
+func ptrMoney(amount decimal.NullDecimal, currency pgtype.Text) (*money.Money, error) {
+	if !amount.Valid || !currency.Valid {
+		return nil, nil //nolint:nilnil // NULL : composante non figée
+	}
+	m, err := money.New(amount.Decimal, currency.String)
+	if err != nil {
+		return nil, err
+	}
+	return &m, nil
+}
+
+func methodText(m *bom.CostMethod, basis bool) pgtype.Text {
+	if m == nil {
+		return pgtype.Text{}
+	}
+	if basis {
+		return pgtype.Text{String: string(m.Basis), Valid: true}
+	}
+	return pgtype.Text{String: string(m.FX), Valid: true}
+}
+
+func programVolume(m *bom.CostMethod) pgtype.Int4 {
+	if m == nil || m.ProgramVolume == nil {
+		return pgtype.Int4{}
+	}
+	return pgtype.Int4{Int32: *m.ProgramVolume, Valid: true}
+}
+
+func optTime(t *time.Time) pgtype.Timestamptz {
+	if t == nil {
+		return pgtype.Timestamptz{}
+	}
+	return pgtype.Timestamptz{Time: *t, Valid: true}
 }
 
 // Get renvoie l'en-tête, ou snapshot.ErrSnapshotNotFound.
@@ -183,7 +305,27 @@ func toSnapshot(r snapshotdb.BomSnapshot) snapshot.Snapshot {
 		ID: r.ID, BOMID: r.BomID, PriceSnapshotID: r.PriceSnapshotID, Name: r.Name,
 		Currency: r.Currency, Volume: r.Volume, PublishedAt: r.PublishedAt, AnnualHours: ptrDecimal(r.AnnualHours),
 		Schedule: toSchedule(r.StartOn, r.TargetOn), DestinationCountry: ptrText(r.DestinationCountry),
+		CostMethod: toMethod(r), CostAsOf: ptrTime(r.CostAsOf),
 	}
+}
+
+func toMethod(r snapshotdb.BomSnapshot) *bom.CostMethod {
+	if !r.CostBasis.Valid || !r.FxPolicy.Valid {
+		return nil
+	}
+	m := bom.CostMethod{Basis: bom.CostBasis(r.CostBasis.String), FX: bom.FXPolicy(r.FxPolicy.String)}
+	if r.ProgramVolume.Valid {
+		m.ProgramVolume = &r.ProgramVolume.Int32
+	}
+	return &m
+}
+
+func ptrTime(t pgtype.Timestamptz) *time.Time {
+	if !t.Valid {
+		return nil
+	}
+	v := t.Time.UTC()
+	return &v
 }
 
 func optText(s *string) pgtype.Text {
