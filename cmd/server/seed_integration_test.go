@@ -11,6 +11,15 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+
+	"bomstudio/internal/bom"
+	"bomstudio/internal/bom/bomstore"
+	"bomstudio/internal/catalog"
+	"bomstudio/internal/catalog/catalogstore"
+	"bomstudio/internal/pricing"
+	"bomstudio/internal/pricing/pricingstore"
+	"bomstudio/internal/supplier"
+	"bomstudio/internal/supplier/supplierstore"
 )
 
 // seedTestDB crée un schéma privé migré (supprimé à la fin du test) : le test ne touche pas la base partagée.
@@ -78,7 +87,7 @@ func seedCounts(t *testing.T, pool *pgxpool.Pool) map[string]int {
 	t.Helper()
 	out := map[string]int{}
 	for _, table := range []string{"suppliers", "parts", "offers", "boms", "bom_nodes", "price_quotes", "fx_quotes",
-		"pricing_runs", "seed_loads"} {
+		"pricing_runs", "seed_loads", "customs_duties", "freight_rates", "budget_rates", "bom_target_budgets", "bom_schedule"} {
 		var n int
 		if err := pool.QueryRow(t.Context(), "SELECT count(*) FROM "+table).Scan(&n); err != nil {
 			t.Fatal(err)
@@ -108,14 +117,47 @@ func TestRunSeedTwiceWithSameParametersAddsNothing(t *testing.T) {
 			t.Fatalf("first seed left %s empty: %v", table, first)
 		}
 	}
-	if first["boms"] != 2 || first["seed_loads"] != 1 {
-		t.Fatalf("first seed: %v, want 2 BOM and 1 seed_load", first)
+	if first["boms"] != 2 || first["seed_loads"] != 1 || first["bom_target_budgets"] != 10 || first["bom_schedule"] != 1 ||
+		first["budget_rates"] != 6 || first["customs_duties"] != 24 {
+		t.Fatalf("first seed: %v, want 2 BOM, 1 seed_load, 10 budgets, 1 schedule, 6 budget rates, 24 customs duties", first)
 	}
+	checkMultiplaPilot(t, pool)
 
 	if err := runSeed(t.Context(), pool); err != nil {
 		t.Fatal("second seed:", err)
 	}
 	if second := seedCounts(t, pool); fmt.Sprint(second) != fmt.Sprint(first) {
 		t.Fatalf("second seed with the same parameters changed the base:\n%v\n%v", first, second)
+	}
+}
+
+// checkMultiplaPilot : la Multipla seedée est en full + budget (volume programme 60 000) et sa date cible laisse
+// 2 jours de marge sur la disponibilité calculée (ADR 0023, 0031) ; le délai ne dépend pas des prix.
+func checkMultiplaPilot(t *testing.T, pool *pgxpool.Pool) {
+	t.Helper()
+	ctx := t.Context()
+	catalogService := catalog.NewService(catalogstore.New(pool), time.Now)
+	boms := bom.NewService(bomstore.New(pool), catalogService, pricing.NewStub(nil, nil)).
+		WithCostSources(pricingstore.NewLogistics(pool), supplier.NewService(supplierstore.New(pool)))
+	var id int64
+	if err := pool.QueryRow(ctx, `SELECT id FROM boms WHERE name = 'Fiat Multipla 1.6 16V'`).Scan(&id); err != nil {
+		t.Fatal(err)
+	}
+	tt, err := boms.Totals(ctx, id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	m := tt.BOM.CostMethod
+	if m.Basis != bom.BasisFull || m.FX != bom.FXBudget || m.ProgramVolume == nil || *m.ProgramVolume != 60000 {
+		t.Errorf("Multipla method = %+v, want full + budget, 60 000", m)
+	}
+	p := tt.Planning
+	if p.AllowedDays == nil || *p.AllowedDays-p.LeadTimeDays != 2 || p.TargetMet == nil || !*p.TargetMet {
+		t.Errorf("Multipla planning: lead %d days, allowed %v, met %v; want a 2-day margin", p.LeadTimeDays, p.AllowedDays, p.TargetMet)
+	}
+	var arden string
+	if err := pool.QueryRow(ctx, `SELECT c.ends_on::text FROM contracts c JOIN suppliers s ON s.id = c.supplier_id
+		WHERE s.name = 'Arden Composites'`).Scan(&arden); err != nil || arden != "2026-03-31" {
+		t.Errorf("Arden contract ends on %q (%v), want 2026-03-31", arden, err)
 	}
 }

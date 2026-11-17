@@ -60,7 +60,7 @@ Le simulateur et l'ingestion de NLPF-68 sont disponibles. `make dev` démarre au
 8090 ; `make priceapi` le lance seul. L'écran consulte les cotations
 persistées et s’actualise par SSE après chaque tick validé, avec repli daté en cas de panne.
 
-Le Makefile et Compose fixent des entrées **synthétiques** reproductibles : dataset `demo-v3`,
+Le Makefile et Compose fixent des entrées **synthétiques** reproductibles : dataset `demo-v4`,
 graine `42`, date initiale `2026-01-01T00:00:00Z`, 12 paires directes EUR/USD/GBP/JPY dans ±5 %, 40 minutes
 par année de 365 jours. Ces valeurs ne sont pas des cours réels. Surcharger `SIM_DATASET_VERSION`,
 `SIM_SEED`, `SIM_AS_OF`, `SIM_FX_PAIRS`, `SIM_YEAR_DURATION` pour une autre simulation ;
@@ -73,7 +73,11 @@ transaction. Un prix aberrant ou une panne ne valide pas le tick ; les anciennes
 `make seed` (ou `docker compose run --rm back seed` avec la stack Docker) charge le jeu sample-dataset
 avec ces mêmes paramètres `SIM_*` : 27 fournisseurs fictifs, ~420 pièces, ~1 000 offres en 4 devises,
 contrats à paliers, alternatives, et les BOM Fiat Multipla (EUR) et Aston Martin Valhalla (GBP), avec
-leurs 365 jours de cotations initiales. Noms et valeurs sont **fictifs** (ADR 0021). Relancer ne change
+leurs 365 jours de cotations initiales. Depuis `demo-v4` (ADR 0031), le jeu porte aussi le coût complet :
+tables de douane et de transport vers l'Italie et le Royaume-Uni, emballage de chaque offre, outillage des
+pièces Multipla, taux budget 2026, et la Multipla chiffrée en `full` + `budget` (volume programme 60 000)
+avec ses budgets cibles et une date cible ; le contrat d'Arden Composites expire au 2026-03-31 (visible
+quand l'horloge simulée a dépassé cette date). Noms et valeurs sont **fictifs** (ADR 0021). Relancer ne change
 rien ; si une donnée du jeu a été modifiée (une BOM éditée, par exemple), le seed refuse et n'écrit rien :
 changer `SIM_DATASET_VERSION` ou repartir d'une base neuve (`docker compose down -v`).
 

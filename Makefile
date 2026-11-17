@@ -4,7 +4,7 @@ export DATABASE_URL
 # Entrées synthétiques explicites et reproductibles, jamais des taux réels téléchargés.
 PRICE_API_PORT ?= 8090
 PRICE_API_URL ?= http://127.0.0.1:$(PRICE_API_PORT)
-SIM_DATASET_VERSION ?= demo-v3
+SIM_DATASET_VERSION ?= demo-v4
 SIM_SEED ?= 42
 SIM_AS_OF ?= 2026-01-01T00:00:00Z
 SIM_YEAR_DURATION ?= 40m
