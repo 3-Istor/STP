@@ -22,7 +22,7 @@ test('signe d’une chaîne décimale', () => {
 })
 
 test('pourcentage de l’API mis en forme, « n/d » absent', () => {
-  assert.equal(formatPercent('43.16'), '43,2 %')
-  assert.equal(formatPercent('-0.09', 2), '-0,09 %')
+  assert.equal(plain(formatPercent('43.16')), '43,2 %')
+  assert.equal(plain(formatPercent('-0.09', 2)), '-0,09 %')
   assert.equal(formatPercent(null), 'n/d')
 })

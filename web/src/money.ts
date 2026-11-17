@@ -96,5 +96,5 @@ export function formatPercent(value: string | null | undefined, digits = 1): str
     f = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: digits, minimumFractionDigits: digits, roundingMode: 'halfEven' })
     percentFormats.set(digits, f)
   }
-  return `${f.format(value as Decimal)} %`
+  return `${f.format(value as Decimal)}\u00a0%`
 }

@@ -243,3 +243,4 @@ a.btn { text-decoration: none; }
 details.fold > summary { padding: 9px 12px; font-weight: 600; font-size: var(--fs); list-style-position: inside; color: var(--fg-2); }
 details.fold[open] > summary { border-bottom: 1px solid var(--line); }
 .block > h3 .seg { font-weight: 400; }
+.wrap { white-space: normal; }

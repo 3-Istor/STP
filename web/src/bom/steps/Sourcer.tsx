@@ -1,11 +1,15 @@
 import SuppliersPage from '../../suppliers/SuppliersPage.tsx'
-import { Pending } from '../../shell/Pending.tsx'
+import { SourcingOverview } from '../analysis/SourcingOverview.tsx'
 
 type Props = {
   tab: string | null
   onTab: (tab: string) => void
   supplier: number | null
   onSupplier: (id: number) => void
+  bomID: number
+  version: number
+  onOpenSupplier: (id: number) => void // onglet Fournisseurs, fournisseur choisi (une seule navigation)
+  readOnly: boolean // snapshot publié : les analyses se calculent sur un brouillon (E12)
 }
 
 const SOURCER_TABS = [
@@ -15,7 +19,7 @@ const SOURCER_TABS = [
 
 // Sourcer (maquettes I4-5, I4-5b) : « Chez qui, à quelles conditions ? ». L'onglet Fournisseurs reprend
 // toute la page Fournisseurs de la V1 (création, offres, contrats et remises, historique des prix).
-export function Sourcer({ tab, onTab, supplier, onSupplier }: Props) {
+export function Sourcer({ tab, onTab, supplier, onSupplier, onOpenSupplier, bomID, version, readOnly }: Props) {
   const current = tab === 'fournisseurs' ? 'fournisseurs' : 'apercu'
   return (
     <>
@@ -27,15 +31,15 @@ export function Sourcer({ tab, onTab, supplier, onSupplier }: Props) {
         ))}
       </div>
       {current === 'apercu' ? (
-        <>
-          <Pending title="Origine du coût par pays · poids des 5 premiers fournisseurs · pièces mono-source" lot="lot E">
-            Parts par pays et par fournisseur, contrats expirés encore utilisés.{' '}
-            <button type="button" className="link" onClick={() => onTab('fournisseurs')}>
-              Voir les fournisseurs, offres et contrats
-            </button>
-          </Pending>
-          <Pending title="Change · taux budget et taux courant" lot="lot E" />
-        </>
+        readOnly ? (
+          <p className="notice">Snapshot publié : la vue d’ensemble du sourcing se calcule sur un brouillon.</p>
+        ) : (
+          <SourcingOverview
+            bomID={bomID}
+            version={version}
+            onSupplier={onOpenSupplier}
+          />
+        )
       ) : (
         <SuppliersPage selectedID={supplier} onSelect={onSupplier} />
       )}

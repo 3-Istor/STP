@@ -89,7 +89,10 @@ export function BomWorkspace({ route, data, error, published, onPublished }: Pro
       main = <Chiffrer data={data} selectedID={selectedID} onSelect={select} />
       break
     case 'sourcer':
-      main = <Sourcer tab={route.tab} onTab={(t) => go({ tab: t })} supplier={route.supplier} onSupplier={(s) => go({ supplier: s }, true)} />
+      main = (
+        <Sourcer tab={route.tab} onTab={(t) => go({ tab: t })} supplier={route.supplier} onSupplier={(s) => go({ supplier: s }, true)}
+          onOpenSupplier={(s) => go({ tab: 'fournisseurs', supplier: s })} bomID={data.target.id} version={data.version} readOnly={data.readOnly} />
+      )
       break
     case 'arbitrer':
       main = <Arbitrer data={data} selectedID={selectedID} />
