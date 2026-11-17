@@ -13,6 +13,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/shopspring/decimal"
 
 	"bomstudio/internal/pricesim"
 	"bomstudio/internal/pricing"
@@ -473,6 +474,9 @@ func TestRuntimeLoopKeepsStoredQuoteWhenBoundsChanged(t *testing.T) {
 	if err := pool.QueryRow(t.Context(), `SELECT amount::text FROM price_quotes WHERE offer_id=$1 AND quoted_at=$2`, id, cfg.InitialAsOf).Scan(&before); err != nil {
 		t.Fatal(err)
 	}
+	if b, err := decimal.NewFromString(before); err != nil || b.GreaterThanOrEqual(decimal.NewFromInt(200)) {
+		t.Fatalf("stored quote %s must lie outside the new bounds (%v)", before, err)
+	}
 	if _, err := pool.Exec(t.Context(), `UPDATE offers SET price_min=200, price_max=210 WHERE id=$1`, id); err != nil {
 		t.Fatal(err)
 	}
@@ -490,7 +494,7 @@ func TestRuntimeLoopKeepsStoredQuoteWhenBoundsChanged(t *testing.T) {
 	if err := pool.QueryRow(t.Context(), `SELECT amount::text FROM price_quotes WHERE offer_id=$1 AND quoted_at=$2`, id, cfg.InitialAsOf).Scan(&after); err != nil || after != before {
 		t.Fatalf("stored quote %s -> %s (%v), want unchanged", before, after, err)
 	}
-	if n := runtimeCount(t, pool, "SELECT count(*) FROM price_quotes WHERE offer_id=$1 AND amount BETWEEN 200 AND 210", id); n == 0 {
+	if n := runtimeCount(t, pool, "SELECT count(*) FROM price_quotes WHERE offer_id=$1 AND amount BETWEEN 200 AND 210 AND quoted_at > $2", id, cfg.InitialAsOf); n == 0 {
 		t.Fatal("new days were not quoted with the new bounds")
 	}
 }

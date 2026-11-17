@@ -95,9 +95,6 @@ INSERT INTO pricing_ticks (dataset_version, tick, as_of, manifest_hash) VALUES (
 INSERT INTO price_quotes (offer_id, amount, currency, source, quoted_at) VALUES ($1, $2, $3, $4, $5)
 ON CONFLICT (offer_id, source, quoted_at) DO NOTHING RETURNING id;
 
--- name: RuntimePrice :one
-SELECT * FROM price_quotes WHERE offer_id = $1 AND source = $2 AND quoted_at = $3;
-
 -- name: InsertRuntimeFX :one
 INSERT INTO fx_quotes (base_currency, quote_currency, rate, source, quoted_at) VALUES ($1, $2, $3, $4, $5)
 ON CONFLICT (base_currency, quote_currency, source, quoted_at) DO NOTHING RETURNING id;

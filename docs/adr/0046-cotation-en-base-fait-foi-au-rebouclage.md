@@ -21,7 +21,7 @@ en direct sans intervention manuelle.
    propres cotations ; les lectures « dernière cotation ≤ as_of » devraient trier ou filtrer par source. Lourd.
 4. **Interdire la modification de fourchette** après le premier tick — casse une fonction existante.
 
-## Décision (proposée)
+## Décision
 **Option 2.** Une cotation écrite est un fait historique : on ne la compare plus, on ne la remplace pas.
 - `insertRuntimePrice` : sur conflit, retourne `nil` (plus de lecture de comparaison, plus d'erreur).
 - Les **taux de change** gardent leur comparaison : leur définition (référence, bande) fait partie de la config
@@ -38,6 +38,12 @@ en direct sans intervention manuelle.
   d'une même date n'est plus reproductible par le seul simulateur. « Même entrée + même snapshot = même résultat »
   reste vrai : les lectures et snapshots portent sur les cotations stockées, pas sur un rejeu.
 - Une vraie divergence (corruption) n'est plus détectée sur les prix ; acceptable pour un simulateur de démonstration.
+- Une cotation déjà écrite garde sa devise d'origine si l'offre change de devise : le manifeste (devise comprise)
+  change alors de hash et `Apply` refuse tout plan périmé ; l'historique reste un fait daté.
 - Retour arrière : remettre la comparaison dans `insertRuntimePrice` (aucune migration).
-- À faire par un humain (ADR acceptée) : ajouter « Remplacée par 0043 » sur la règle d'horloge dans l'en-tête de
-  l'ADR 0015, et « Règle de comparaison remplacée par 0046 » dans celle de l'ADR 0043.
+- Portée : l'exception ne vaut que pour les **cotations de prix** du runtime. « Contenu divergent : refus sans
+  écrasement » (ADR 0015) reste vrai pour les taux de change, la configuration et le manifeste.
+- La règle remplacée est celle d'ADR 0015 (« une clé existante n'est acceptée que si le contenu est identique »),
+  reprise par 0043 qui la croit sans conséquence. À faire par un humain (ADR acceptées) : en-tête de 0015 =
+  « Règle d'horloge remplacée par 0043 ; règle de comparaison des cotations de prix remplacée par 0046 » ;
+  en-tête de 0043 = « Fait faux sur la pureté du simulateur corrigé par 0046 ».

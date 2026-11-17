@@ -1283,31 +1283,6 @@ func (q *Queries) RuntimeManifest(ctx context.Context, hash string) (PricingMani
 	return i, err
 }
 
-const runtimePrice = `-- name: RuntimePrice :one
-SELECT id, offer_id, amount, currency, source, quoted_at, recorded_at FROM price_quotes WHERE offer_id = $1 AND source = $2 AND quoted_at = $3
-`
-
-type RuntimePriceParams struct {
-	OfferID  int64
-	Source   string
-	QuotedAt time.Time
-}
-
-func (q *Queries) RuntimePrice(ctx context.Context, arg RuntimePriceParams) (PriceQuote, error) {
-	row := q.db.QueryRow(ctx, runtimePrice, arg.OfferID, arg.Source, arg.QuotedAt)
-	var i PriceQuote
-	err := row.Scan(
-		&i.ID,
-		&i.OfferID,
-		&i.Amount,
-		&i.Currency,
-		&i.Source,
-		&i.QuotedAt,
-		&i.RecordedAt,
-	)
-	return i, err
-}
-
 const runtimeRun = `-- name: RuntimeRun :one
 SELECT dataset_version, config_hash, config, tick, as_of, status, error_text FROM pricing_runs WHERE dataset_version = $1
 `
