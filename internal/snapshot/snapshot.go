@@ -156,12 +156,21 @@ type Published struct {
 // Avant tout, les contrôles avant publication sont recalculés (ADR 0033) : un contrôle block refuse
 // (ErrPublicationBlocked), un warn sans justification refuse (ErrJustificationRequired). Note, noms saisis,
 // contrôles et justifications sont copiés dans le snapshot.
+//
+// Le brouillon est lu une seule fois (bom.Store.Draft, lecture cohérente) : contrôles, nœuds figés, stock,
+// planning, réglages, budgets et faits de coût viennent tous de cet état, même si un PATCH arrive pendant la
+// publication (v2-lot-g T1, ADR 0038). En prix en direct, le même état est rechiffré avec le snapshot de prix
+// créé, sans relire le brouillon.
 func (s *Service) Publish(ctx context.Context, bomID int64, at time.Time, req PublishRequest) (Snapshot, error) {
 	trace, err := req.normalize()
 	if err != nil {
 		return Snapshot{}, fmt.Errorf("publish bom %d: %w", bomID, err)
 	}
-	checks, err := s.boms.PublicationChecks(ctx, bomID)
+	dc, err := s.boms.DraftCost(ctx, bomID)
+	if err != nil {
+		return Snapshot{}, fmt.Errorf("publish bom %d: %w", bomID, err)
+	}
+	checks, err := s.boms.PublicationChecksOf(ctx, dc)
 	if err != nil {
 		return Snapshot{}, fmt.Errorf("publish bom %d: %w", bomID, err)
 	}
@@ -169,19 +178,8 @@ func (s *Service) Publish(ctx context.Context, bomID int64, at time.Time, req Pu
 	if err != nil {
 		return Snapshot{}, fmt.Errorf("publish bom %d: %w", bomID, err)
 	}
-	b, draft, err := s.boms.Tree(ctx, bomID)
-	if err != nil {
-		return Snapshot{}, fmt.Errorf("publish bom %d: %w", bomID, err)
-	}
-	sch, err := s.boms.Schedule(ctx, bomID)
-	if err != nil {
-		return Snapshot{}, fmt.Errorf("publish bom %d: %w", bomID, err)
-	}
-	nodes, err := s.freezeNodes(ctx, draft)
-	if err != nil {
-		return Snapshot{}, fmt.Errorf("publish bom %d: %w", bomID, err)
-	}
-	stock, err := s.boms.Stock(ctx, bomID)
+	b := dc.BOM
+	nodes, err := s.freezeNodes(ctx, dc.Nodes)
 	if err != nil {
 		return Snapshot{}, fmt.Errorf("publish bom %d: %w", bomID, err)
 	}
@@ -196,24 +194,29 @@ func (s *Service) Publish(ctx context.Context, bomID int64, at time.Time, req Pu
 		if err := s.checkCovered(ctx, priceSnapID, offers, currency); err != nil {
 			return Snapshot{}, fmt.Errorf("publish bom %d with price snapshot %d: %w", bomID, priceSnapID, err)
 		}
-	} else if priceSnapID, err = s.pricing.FreezePrices(ctx, bomID, offers, []money.Currency{currency}, at); err != nil {
-		return Snapshot{}, fmt.Errorf("publish bom %d: %w", bomID, err)
+	} else {
+		if priceSnapID, err = s.pricing.FreezePrices(ctx, bomID, offers, []money.Currency{currency}, at); err != nil {
+			return Snapshot{}, fmt.Errorf("publish bom %d: %w", bomID, err)
+		}
+		// Même état du brouillon, chiffré avec les prix figés : ce qui est publié est ce qui est copié.
+		if dc, err = s.boms.CostOfDraft(ctx, dc.Draft(), &priceSnapID); err != nil {
+			return Snapshot{}, fmt.Errorf("publish bom %d: %w", bomID, err)
+		}
 	}
 
-	// Coût de la méthode (ADR 0031), chiffré avec les prix figés : ce qui est publié est ce qui est copié.
 	header := Snapshot{
 		BOMID: b.ID, PriceSnapshotID: priceSnapID, Name: b.Name, Currency: b.Currency, Volume: b.Volume,
-		AnnualHours: &b.AnnualHours, Schedule: sch, DestinationCountry: b.DestinationCountry, PublishedAt: at,
+		AnnualHours: &b.AnnualHours, Schedule: dc.Schedule, DestinationCountry: b.DestinationCountry, PublishedAt: at,
 		Note: trace.Note, ProposedBy: trace.ProposedBy, ValidatedBy: trace.ValidatedBy,
 	}
-	frozen, err := s.freezeCost(ctx, bomID, priceSnapID, &header)
+	frozen, err := freezeCost(dc, &header)
 	if err != nil {
 		return Snapshot{}, fmt.Errorf("publish bom %d: %w", bomID, err)
 	}
 	if header.Profile, err = s.boms.VehicleProfile(ctx, bomID); err != nil && !errors.Is(err, bom.ErrProfilesUnavailable) {
 		return Snapshot{}, fmt.Errorf("publish bom %d: %w", bomID, err)
 	}
-	out, err := s.store.Create(ctx, header, nodes, stock, frozen, frozenChecks)
+	out, err := s.store.Create(ctx, header, nodes, dc.Stock, frozen, frozenChecks)
 	if err != nil {
 		return Snapshot{}, fmt.Errorf("publish bom %d: %w", bomID, err)
 	}
@@ -224,20 +227,16 @@ func (s *Service) Publish(ctx context.Context, bomID int64, at time.Time, req Pu
 // publié, pour ne pas graver un trou dans un snapshot immuable.
 var ErrIncompleteCost = errors.New("cost under the bom's method is incomplete")
 
-// freezeCost chiffre le brouillon avec le snapshot de prix et copie méthode, date de calcul, taux budget de
-// l'année et faits de chaque offre (remise retenue comprise). Méthode par défaut : rien d'autre à figer.
-func (s *Service) freezeCost(ctx context.Context, bomID, priceSnapID int64, h *Snapshot) (FrozenCost, error) {
-	dc, err := s.boms.DraftCostWithPrices(ctx, bomID, priceSnapID)
-	if err != nil {
-		return FrozenCost{}, err
-	}
+// freezeCost copie, depuis le calcul dc fait avec le snapshot de prix publié, méthode, date de calcul, taux
+// budget de l'année et faits de chaque offre (remise retenue comprise). Méthode par défaut : rien d'autre à figer.
+func freezeCost(dc bom.DraftCost, h *Snapshot) (FrozenCost, error) {
 	ci := dc.Input.Cost
 	m := dc.BOM.CostMethod.OrDefault()
 	h.CostMethod = &m
 	if ci == nil || m == bom.DefaultCostMethod() || (m.Basis == bom.BasisPurchase && m.FX == bom.FXLatest) {
 		return FrozenCost{}, nil
 	}
-	if root, ok := dc.Totals.Node(rootID(dc.Nodes)); ok && root.CostErr != nil {
+	if root, ok := dc.Totals.Node(bom.RootID(dc.Nodes)); ok && root.CostErr != nil {
 		errs := []error{root.CostErr}
 		for _, id := range root.MissingCost { // la cause de chaque pièce sans coût, nommée
 			if n, ok := dc.Totals.Node(id); ok && n.CostErr != nil {
@@ -272,15 +271,6 @@ func (s *Service) freezeCost(ctx context.Context, bomID, priceSnapID int64, h *S
 		out.Offers = append(out.Offers, FrozenOffer{OfferID: id, OfferCost: oc})
 	}
 	return out, nil
-}
-
-func rootID(nodes []bom.Node) int64 {
-	for _, n := range nodes {
-		if n.ParentID == nil {
-			return n.ID
-		}
-	}
-	return 0
 }
 
 // freezeNodes copie l'arbre du brouillon avec les attributs courants du catalogue ; chaque pièce et

@@ -220,51 +220,58 @@ func addRates(ctx context.Context, p pricing.Pricing, snapID *int64, from []mone
 	return nil
 }
 
-// DraftCost : tout ce qu'un calcul de brouillon a lu et produit ; la publication en fige les faits.
+// DraftCost : tout ce qu'un calcul de brouillon a lu (une seule lecture, Draft) et produit ; la publication en
+// fige les faits.
 type DraftCost struct {
-	BOM    BOM
-	Nodes  []Node
-	Stock  []PartStock
-	Input  TotalsInput
-	Totals Totals
+	BOM      BOM
+	Nodes    []Node
+	Stock    []PartStock
+	Schedule *Schedule
+	Budgets  []TargetBudget
+	Input    TotalsInput
+	Totals   Totals
+	draft    Draft // état lu, BOM d'origine (sans substitution du snapshot de prix)
 }
+
+// Draft rend l'état du brouillon sur lequel repose ce calcul (BOM d'origine, prix non substitués).
+func (dc DraftCost) Draft() Draft { return dc.draft }
 
 // DraftCost calcule les totaux du brouillon selon sa méthode et rend aussi l'entrée du calcul.
 func (s *Service) DraftCost(ctx context.Context, bomID int64) (DraftCost, error) {
-	return s.draftCost(ctx, bomID, nil)
+	d, err := s.store.Draft(ctx, bomID)
+	if err != nil {
+		return DraftCost{}, fmt.Errorf("cost of bom %d: %w", bomID, err)
+	}
+	return s.CostOfDraft(ctx, d, nil)
 }
 
 // DraftCostWithPrices calcule le brouillon avec les prix et taux du snapshot de prix priceSnapshotID au lieu
 // des siens : la publication chiffre exactement ce qu'elle fige.
 func (s *Service) DraftCostWithPrices(ctx context.Context, bomID, priceSnapshotID int64) (DraftCost, error) {
-	return s.draftCost(ctx, bomID, &priceSnapshotID)
-}
-
-func (s *Service) draftCost(ctx context.Context, bomID int64, priceSnapshotID *int64) (DraftCost, error) {
-	b, err := s.store.GetBOM(ctx, bomID)
+	d, err := s.store.Draft(ctx, bomID)
 	if err != nil {
 		return DraftCost{}, fmt.Errorf("cost of bom %d: %w", bomID, err)
 	}
+	return s.CostOfDraft(ctx, d, &priceSnapshotID)
+}
+
+// CostOfDraft chiffre un état de brouillon déjà lu, sans relire le brouillon : avec ses propres prix
+// (priceSnapshotID nil) ou ceux du snapshot de prix priceSnapshotID. DraftCost.BOM porte alors ce snapshot
+// de prix ; DraftCost.Draft() rend l'état d'origine.
+func (s *Service) CostOfDraft(ctx context.Context, d Draft, priceSnapshotID *int64) (DraftCost, error) {
+	b := d.BOM
 	if priceSnapshotID != nil {
 		b.PriceSnapshotID = priceSnapshotID
 	}
-	nodes, err := s.store.Tree(ctx, bomID)
+	in, err := s.totalsInput(ctx, b, d.Nodes, d.Stock)
 	if err != nil {
-		return DraftCost{}, fmt.Errorf("cost of bom %d: %w", bomID, err)
-	}
-	stock, err := s.store.Stock(ctx, bomID)
-	if err != nil {
-		return DraftCost{}, fmt.Errorf("cost of bom %d: %w", bomID, err)
-	}
-	in, err := s.totalsInput(ctx, b, nodes, stock)
-	if err != nil {
-		return DraftCost{}, fmt.Errorf("cost of bom %d: %w", bomID, err)
+		return DraftCost{}, fmt.Errorf("cost of bom %d: %w", b.ID, err)
 	}
 	t, err := ComputeTotals(in)
 	if err != nil {
-		return DraftCost{}, fmt.Errorf("cost of bom %d: %w", bomID, err)
+		return DraftCost{}, fmt.Errorf("cost of bom %d: %w", b.ID, err)
 	}
-	return DraftCost{BOM: b, Nodes: nodes, Stock: stock, Input: in, Totals: t}, nil
+	return DraftCost{BOM: b, Nodes: d.Nodes, Stock: d.Stock, Schedule: d.Schedule, Budgets: d.Budgets, Input: in, Totals: t, draft: d}, nil
 }
 
 // Breakdown : lignes de coût d'un nœud (ADR 0031). Pièce sans enfant : ses lignes détaillées ; sous-ensemble

@@ -308,31 +308,29 @@ type SupplierNames interface {
 
 // PublicationChecks évalue les contrôles avant publication du brouillon (ADR 0033) sur ses totaux selon sa méthode.
 func (s *Service) PublicationChecks(ctx context.Context, bomID int64) ([]PublicationCheck, error) {
-	in, err := s.checksInput(ctx, bomID)
+	dc, err := s.DraftCost(ctx, bomID)
 	if err != nil {
 		return nil, fmt.Errorf("publication checks of bom %d: %w", bomID, err)
+	}
+	return s.PublicationChecksOf(ctx, dc)
+}
+
+// PublicationChecksOf évalue les contrôles sur un calcul déjà fait : la publication passe le même DraftCost
+// aux contrôles, aux nœuds figés et aux faits de coût (une seule lecture du brouillon, v2-lot-g T1).
+func (s *Service) PublicationChecksOf(ctx context.Context, dc DraftCost) ([]PublicationCheck, error) {
+	in, err := s.checksInput(ctx, dc)
+	if err != nil {
+		return nil, fmt.Errorf("publication checks of bom %d: %w", dc.BOM.ID, err)
 	}
 	return RunChecks(in), nil
 }
 
-func (s *Service) checksInput(ctx context.Context, bomID int64) (ChecksInput, error) {
-	dc, err := s.DraftCost(ctx, bomID)
+func (s *Service) checksInput(ctx context.Context, dc DraftCost) (ChecksInput, error) {
+	plan, err := PlanSchedule(dc.Input.Nodes, dc.Totals, dc.Schedule)
 	if err != nil {
 		return ChecksInput{}, err
 	}
-	sch, err := s.store.Schedule(ctx, bomID)
-	if err != nil {
-		return ChecksInput{}, err
-	}
-	plan, err := PlanSchedule(dc.Input.Nodes, dc.Totals, sch)
-	if err != nil {
-		return ChecksInput{}, err
-	}
-	targets, err := s.store.TargetBudgets(ctx, bomID)
-	if err != nil {
-		return ChecksInput{}, err
-	}
-	budgets, err := EvaluateTargetBudgets(dc.Totals, targets)
+	budgets, err := EvaluateTargetBudgets(dc.Totals, dc.Budgets)
 	if err != nil {
 		return ChecksInput{}, err
 	}

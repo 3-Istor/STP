@@ -204,6 +204,28 @@ func (m *memStore) DeleteBOM(_ context.Context, id int64) error {
 	return nil
 }
 
+// Draft : en mémoire, chaque lecture est déjà cohérente (un seul verrou).
+func (m *memStore) Draft(ctx context.Context, bomID int64) (Draft, error) {
+	b, err := m.GetBOM(ctx, bomID)
+	if err != nil {
+		return Draft{}, err
+	}
+	d := Draft{BOM: b}
+	if d.Nodes, err = m.Tree(ctx, bomID); err != nil {
+		return Draft{}, err
+	}
+	if d.Stock, err = m.Stock(ctx, bomID); err != nil {
+		return Draft{}, err
+	}
+	if d.Schedule, err = m.Schedule(ctx, bomID); err != nil {
+		return Draft{}, err
+	}
+	if d.Budgets, err = m.TargetBudgets(ctx, bomID); err != nil {
+		return Draft{}, err
+	}
+	return d, nil
+}
+
 func (m *memStore) Tree(_ context.Context, bomID int64) ([]Node, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()

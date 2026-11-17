@@ -115,6 +115,9 @@ type Store interface {
 	// DeleteBOM supprime la BOM et son arbre ; ErrHasSnapshots si un snapshot existe.
 	DeleteBOM(ctx context.Context, id int64) error
 
+	// Draft lit la BOM, son arbre, son stock, son planning et ses budgets cibles dans une même lecture
+	// cohérente (une transaction en lecture seule) ; ErrBOMNotFound si elle n'existe pas.
+	Draft(ctx context.Context, bomID int64) (Draft, error)
 	// Tree renvoie tous les nœuds de la BOM en une requête, triés par id ; ErrBOMNotFound si elle n'existe pas.
 	Tree(ctx context.Context, bomID int64) ([]Node, error)
 	// AddNode ajoute un nœud ; ErrNodeNotFound si le parent n'est pas dans cette BOM.
