@@ -38,6 +38,8 @@ type Service struct {
 	// costParams et contracts : faits de la méthode de calcul du coût (ADR 0031) ; nil → méthode par défaut seulement.
 	costParams pricing.CostParamsStore
 	contracts  ContractSource
+	// ideas : pistes de réduction (vision V2 §2) ; nil → indisponible.
+	ideas IdeaStore
 }
 
 // WithLogistics branche les tables du coût total rendu (ADR 0025).

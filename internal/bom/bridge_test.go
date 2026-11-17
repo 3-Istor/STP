@@ -136,7 +136,9 @@ func TestComputeBridgeCausesAddUpToDelta(t *testing.T) {
 		},
 		{
 			name: "offre 10 → 11 sur le nœud 3 : seulement offer_change (outillage de la nouvelle offre compris)",
-			edit: func(s *bridgeSpec) { s.nodes[2].Part = &PartFacts{PartID: 100, OfferID: 11, CO2Kg: dec("1"), MassKg: dec("2")} },
+			edit: func(s *bridgeSpec) {
+				s.nodes[2].Part = &PartFacts{PartID: 100, OfferID: 11, CO2Kg: dec("1"), MassKg: dec("2")}
+			},
 			only: []CauseKind{CauseOfferChange},
 		},
 		{

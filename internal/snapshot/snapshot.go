@@ -124,6 +124,8 @@ type Service struct {
 	boms    *bom.Service
 	catalog catalog.Catalog
 	pricing pricing.Pricing
+	// suppliers : noms des fournisseurs pour les explications de la comparaison ; nil → « fournisseur <id> ».
+	suppliers bom.SupplierNames
 }
 
 // NewService câble le service. pricing doit être la même source que celle de boms.
@@ -504,7 +506,7 @@ func (s *Service) NewDraft(ctx context.Context, id int64) (bom.BOM, error) {
 		}
 		b = withMethod
 	}
-	if err := s.copyDraft(ctx, b.ID, nodes, stock, h.Schedule); err != nil {
+	if err := s.copyDraft(ctx, b.ID, h.BOMID, nodes, stock, h.Schedule); err != nil {
 		if delErr := s.boms.DeleteBOM(ctx, b.ID); delErr != nil {
 			err = errors.Join(err, fmt.Errorf("remove partial draft %d: %w", b.ID, delErr))
 		}
@@ -513,10 +515,27 @@ func (s *Service) NewDraft(ctx context.Context, id int64) (bom.BOM, error) {
 	return b, nil
 }
 
-// copyDraft recopie l'arbre, le stock (ADR 0022) et le planning (ADR 0023) figés dans le brouillon bomID.
-func (s *Service) copyDraft(ctx context.Context, bomID int64, nodes []Node, stock []bom.PartStock, sch *bom.Schedule) error {
-	if err := s.copyTree(ctx, bomID, nodes); err != nil {
+// copyDraft recopie l'arbre, le stock (ADR 0022) et le planning (ADR 0023) figés dans le brouillon bomID, puis
+// les budgets cibles de la BOM source (non figés au snapshot : ceux d'aujourd'hui) des nœuds présents dans le
+// snapshot, pour que le brouillon se compare à la même cible.
+func (s *Service) copyDraft(ctx context.Context, bomID, sourceBOM int64, nodes []Node, stock []bom.PartStock, sch *bom.Schedule) error {
+	newIDs, err := s.copyTree(ctx, bomID, nodes)
+	if err != nil {
 		return err
+	}
+	budgets, err := s.boms.TargetBudgetList(ctx, sourceBOM)
+	if err != nil {
+		return err
+	}
+	for _, b := range budgets {
+		id, ok := newIDs[b.NodeID]
+		if !ok {
+			continue
+		}
+		b.NodeID = id
+		if err := s.boms.SetTargetBudget(ctx, bomID, b); err != nil {
+			return fmt.Errorf("copy budget: %w", err)
+		}
 	}
 	for _, st := range stock {
 		if _, err := s.boms.SetPartStock(ctx, bomID, st.PartID, st.Quantity); err != nil {
@@ -532,14 +551,14 @@ func (s *Service) copyDraft(ctx context.Context, bomID int64, nodes []Node, stoc
 }
 
 // copyTree recopie l'arbre figé sous la racine du brouillon bomID, parents avant enfants, par Key croissante
-// parmi les nœuds prêts (ordre déterministe des nouveaux ids).
-func (s *Service) copyTree(ctx context.Context, bomID int64, nodes []Node) error {
+// parmi les nœuds prêts (ordre déterministe des nouveaux ids). Rend la correspondance clé figée → nouvel id.
+func (s *Service) copyTree(ctx context.Context, bomID int64, nodes []Node) (map[int64]int64, error) {
 	_, draft, err := s.boms.Tree(ctx, bomID)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if len(draft) != 1 {
-		return fmt.Errorf("new bom %d has %d nodes, want only its root", bomID, len(draft))
+		return nil, fmt.Errorf("new bom %d has %d nodes, want only its root", bomID, len(draft))
 	}
 	draftRoot := draft[0]
 
@@ -554,21 +573,22 @@ func (s *Service) copyTree(ctx context.Context, bomID int64, nodes []Node) error
 		children[*n.ParentKey] = append(children[*n.ParentKey], n)
 	}
 	if root == nil {
-		return errors.New("snapshot has no root")
+		return nil, errors.New("snapshot has no root")
 	}
+	newIDs := map[int64]int64{root.Key: draftRoot.ID}
 	if !root.Quantity.Equal(draftRoot.Quantity) {
 		if _, err := s.boms.SetNodeQuantity(ctx, bomID, draftRoot.ID, root.Quantity); err != nil {
-			return fmt.Errorf("root: %w", err)
+			return nil, fmt.Errorf("root: %w", err)
 		}
 	}
 	if root.Part == nil && root.ProductionDays != draftRoot.ProductionDays {
 		if _, err := s.boms.SetNodeProductionDays(ctx, bomID, draftRoot.ID, root.ProductionDays); err != nil {
-			return fmt.Errorf("root: %w", err)
+			return nil, fmt.Errorf("root: %w", err)
 		}
 	}
 	if root.Strategy != nil {
 		if _, err := s.boms.SetNodeStrategy(ctx, bomID, draftRoot.ID, root.Strategy); err != nil {
-			return fmt.Errorf("root: %w", err)
+			return nil, fmt.Errorf("root: %w", err)
 		}
 	}
 
@@ -593,16 +613,17 @@ func (s *Service) copyTree(ctx context.Context, bomID int64, nodes []Node) error
 		}
 		added, err := s.boms.AddNode(ctx, bomID, nn)
 		if err != nil {
-			return fmt.Errorf("copy node %d: %w", c.Key, err)
+			return nil, fmt.Errorf("copy node %d: %w", c.Key, err)
 		}
+		newIDs[c.Key] = added.ID
 		if c.Strategy != nil {
 			if _, err := s.boms.SetNodeStrategy(ctx, bomID, added.ID, c.Strategy); err != nil {
-				return fmt.Errorf("copy strategy of node %d: %w", c.Key, err)
+				return nil, fmt.Errorf("copy strategy of node %d: %w", c.Key, err)
 			}
 		}
 		push(c.Key, added.ID)
 	}
-	return nil
+	return newIDs, nil
 }
 
 // readyNode : nœud figé dont le parent est déjà recréé sous newParent.
