@@ -2,6 +2,7 @@ package pricing
 
 import (
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/shopspring/decimal"
@@ -183,5 +184,30 @@ func TestPerKgDetectorByFamily(t *testing.T) {
 				t.Fatalf("status %s family %q err %v, want %s %q %v", a.Status, a.Family, a.Err, tt.wantStatus, tt.wantFamily, tt.wantErr)
 			}
 		})
+	}
+}
+
+// Une raison « trop peu de… » dit ce qui a été écarté : cotations en autre devise, offres archivées.
+func TestTooFewReasonsNameWhatWasDropped(t *testing.T) {
+	usd := func(a string) money.Money {
+		m, err := money.Parse(a, "USD")
+		if err != nil {
+			t.Fatal(err)
+		}
+		return m
+	}
+	h, err := HistoryDetector{MinQuotes: 5}.Detect([]CostSample{{PartID: 1, Cost: eur(t, "120"),
+		Trail: &PriceTrail{Current: usd("120"), Past: []money.Money{usd("100"), usd("100")}, OtherCurrency: 3}}}, nil, DefaultHistoryThreshold)
+	if err != nil || !errors.Is(h[0].Err, ErrTooFewQuotes) || !strings.Contains(h[0].Err.Error(), "3 in another currency") {
+		t.Fatalf("history reason %v (%v), want ErrTooFewQuotes naming 3 quotes in another currency", h[0].Err, err)
+	}
+	o, err := OfferSpreadDetector{MinOffers: 2}.Detect([]CostSample{{PartID: 1, Cost: eur(t, "150"), OfferCosts: eurs(t, "150"), ArchivedOffers: 2}}, nil, DefaultOfferSpreadThreshold)
+	if err != nil || !errors.Is(o[0].Err, ErrTooFewOffers) || !strings.Contains(o[0].Err.Error(), "2 archived") {
+		t.Fatalf("offers reason %v (%v), want ErrTooFewOffers naming 2 archived offers", o[0].Err, err)
+	}
+	// Pièce archivée : hors population active, jamais « 0 of 2 required ».
+	a, err := OfferSpreadDetector{MinOffers: 2}.Detect([]CostSample{{PartID: 1, Cost: eur(t, "150"), Err: ErrPartArchived}}, nil, DefaultOfferSpreadThreshold)
+	if err != nil || !errors.Is(a[0].Err, ErrPartArchived) {
+		t.Fatalf("archived part reason %v (%v), want ErrPartArchived", a[0].Err, err)
 	}
 }

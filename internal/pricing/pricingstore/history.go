@@ -60,3 +60,34 @@ func (s *Store) ReadHistory(ctx context.Context, offerID int64, from, to time.Ti
 	}
 	return quotes, nil
 }
+
+// ReadWindows lit en une requête les cotations de la fenêtre de chaque offre (ADR 0041, méthode « historique »).
+// Contrairement à ReadHistory, la dernière cotation d'avant la fenêtre n'est pas rendue : le détecteur n'en a
+// pas besoin. Une offre sans cotation dans sa fenêtre n'a pas d'entrée.
+func (s *Store) ReadWindows(ctx context.Context, windows []pricing.HistoryWindow) (map[int64][]pricing.HistoricalQuote, error) {
+	out := map[int64][]pricing.HistoricalQuote{}
+	if len(windows) == 0 {
+		return out, nil
+	}
+	p := pricingdb.HistoricalPriceQuotesBatchParams{}
+	for _, w := range windows {
+		if w.OfferID <= 0 || w.From.IsZero() || w.To.IsZero() || w.From.After(w.To) {
+			return nil, fmt.Errorf("invalid offer or historical interval: %w", pricing.ErrInvalidHistoryRequest)
+		}
+		p.OfferIds, p.WindowStarts, p.AsOfs = append(p.OfferIds, w.OfferID), append(p.WindowStarts, w.From.UTC()), append(p.AsOfs, w.To.UTC())
+	}
+	rows, err := s.queries.HistoricalPriceQuotesBatch(ctx, p)
+	if err != nil {
+		return nil, fmt.Errorf("read %d offers historical quotes: %w", len(windows), err)
+	}
+	for _, row := range rows {
+		price, err := money.New(row.Amount, row.Currency)
+		if err != nil {
+			return nil, fmt.Errorf("decode quote %d price: %w: %w", row.ID, pricing.ErrInvalidHistoryData, err)
+		}
+		out[row.OfferID] = append(out[row.OfferID], pricing.HistoricalQuote{
+			ID: row.ID, OfferID: row.OfferID, Price: price, Source: row.Source, QuotedAt: row.QuotedAt.UTC(),
+		})
+	}
+	return out, nil
+}

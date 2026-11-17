@@ -207,6 +207,53 @@ func (q *Queries) HistoricalPriceQuotes(ctx context.Context, arg HistoricalPrice
 	return items, nil
 }
 
+const historicalPriceQuotesBatch = `-- name: HistoricalPriceQuotesBatch :many
+SELECT q.id, q.offer_id, q.amount, q.currency, q.source, q.quoted_at, q.recorded_at FROM price_quotes q
+WHERE q.offer_id = ANY($1::bigint[])
+    AND EXISTS (
+        SELECT 1 FROM generate_subscripts($1::bigint[], 1) AS i
+        WHERE ($1::bigint[])[i] = q.offer_id
+            AND q.quoted_at >= ($2::timestamptz[])[i]
+            AND q.quoted_at <= ($3::timestamptz[])[i]
+    )
+ORDER BY q.offer_id, q.quoted_at, q.id
+`
+
+type HistoricalPriceQuotesBatchParams struct {
+	OfferIds     []int64
+	WindowStarts []time.Time
+	AsOfs        []time.Time
+}
+
+// Les trois tableaux sont parallèles : la fenêtre i est celle de l'offre offer_ids[i].
+func (q *Queries) HistoricalPriceQuotesBatch(ctx context.Context, arg HistoricalPriceQuotesBatchParams) ([]PriceQuote, error) {
+	rows, err := q.db.Query(ctx, historicalPriceQuotesBatch, arg.OfferIds, arg.WindowStarts, arg.AsOfs)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []PriceQuote
+	for rows.Next() {
+		var i PriceQuote
+		if err := rows.Scan(
+			&i.ID,
+			&i.OfferID,
+			&i.Amount,
+			&i.Currency,
+			&i.Source,
+			&i.QuotedAt,
+			&i.RecordedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const insertPriceQuote = `-- name: InsertPriceQuote :one
 
 INSERT INTO price_quotes (offer_id, amount, currency, source, quoted_at)

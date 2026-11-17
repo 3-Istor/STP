@@ -42,7 +42,7 @@ func (d OfferSpreadDetector) Detect(subjects, _ []CostSample, threshold decimal.
 		case s.Err != nil || s.Cost == nil:
 			a.Err = cmp.Or(s.Err, ErrNoQuote)
 		case len(s.OfferCosts) < d.MinOffers:
-			a.Err = fmt.Errorf("%d of %d required (%d without price or rate): %w", len(s.OfferCosts), d.MinOffers, s.MissingOffers, ErrTooFewOffers)
+			a.Err = fmt.Errorf("%d of %d required (%d without price or rate, %d archived): %w", len(s.OfferCosts), d.MinOffers, s.MissingOffers, s.ArchivedOffers, ErrTooFewOffers)
 		default:
 			costs := slices.Clone(s.OfferCosts)
 			slices.SortFunc(costs, func(x, y money.Money) int { return x.Amount().Cmp(y.Amount()) })
@@ -97,7 +97,11 @@ func (d HistoryDetector) Detect(subjects, _ []CostSample, threshold decimal.Deci
 		case s.Err != nil || s.Cost == nil:
 			a.Err = cmp.Or(s.Err, ErrNoQuote)
 		case s.Trail == nil || len(s.Trail.Past) < d.MinQuotes:
-			a.Err = fmt.Errorf("%d of %d required: %w", a.Peers, d.MinQuotes, ErrTooFewQuotes)
+			other := 0
+			if s.Trail != nil {
+				other = s.Trail.OtherCurrency
+			}
+			a.Err = fmt.Errorf("%d of %d required (%d in another currency): %w", a.Peers, d.MinQuotes, other, ErrTooFewQuotes)
 		default:
 			past := slices.Clone(s.Trail.Past)
 			slices.SortFunc(past, func(x, y money.Money) int { return x.Amount().Cmp(y.Amount()) })

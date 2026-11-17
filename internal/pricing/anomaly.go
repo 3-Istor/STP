@@ -32,6 +32,8 @@ var (
 	ErrTooFewQuotes = errors.New("too few quotes in the last 12 months")
 	// ErrNoMaterial : la pièce n'a pas de matière au catalogue, sa famille de comparaison est inconnue.
 	ErrNoMaterial = errors.New("part has no material")
+	// ErrPartArchived : la pièce est archivée, donc hors de la population active : ses offres ne sont pas comparées.
+	ErrPartArchived = errors.New("part is archived")
 )
 
 // DefaultAnomalyThreshold : 3× la médiane de la catégorie (docs/features.md, cost-anomalies).
@@ -47,10 +49,13 @@ type CostSample struct {
 	Err    error
 	// Family : clé de comparaison de la méthode « matière » (catégorie × matière, ADR 0041) ; vide si inconnue.
 	Family string
-	// OfferCosts : coût unitaire de toutes les offres actives de la pièce (devise commune), l'offre retenue
-	// comprise ; MissingOffers : offres écartées faute de prix ou de taux (méthode « offres », ADR 0041).
-	OfferCosts    []money.Money
-	MissingOffers int
+	// OfferCosts : coût unitaire de toutes les offres actives de la pièce (devise commune). L'offre retenue y est
+	// comprise tant qu'elle est active : une offre retenue archivée n'y figure pas (ArchivedOffers la compte).
+	// MissingOffers : offres actives écartées faute de prix ou de taux ; ArchivedOffers : offres archivées
+	// ignorées (méthode « offres », ADR 0041).
+	OfferCosts     []money.Money
+	MissingOffers  int
+	ArchivedOffers int
 	// Trail : prix coté de l'offre retenue et ses cotations des 12 derniers mois, dans la devise de l'offre
 	// (méthode « historique », ADR 0041) ; nil si non lu.
 	Trail *PriceTrail
@@ -61,6 +66,8 @@ type CostSample struct {
 type PriceTrail struct {
 	Current money.Money
 	Past    []money.Money
+	// OtherCurrency : cotations de la fenêtre écartées parce qu'elles sont dans une autre devise que la courante.
+	OtherCurrency int
 }
 
 // AnomalyStatus : verdict d'une pièce. NotEvaluable n'est jamais lu comme « normal ».

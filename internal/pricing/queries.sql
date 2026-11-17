@@ -34,6 +34,18 @@ SELECT * FROM annual_quotes
 UNION ALL SELECT * FROM reference_quote
 ORDER BY quoted_at, id;
 
+-- name: HistoricalPriceQuotesBatch :many
+-- Les trois tableaux sont parallèles : la fenêtre i est celle de l'offre offer_ids[i].
+SELECT q.* FROM price_quotes q
+WHERE q.offer_id = ANY(sqlc.arg(offer_ids)::bigint[])
+    AND EXISTS (
+        SELECT 1 FROM generate_subscripts(sqlc.arg(offer_ids)::bigint[], 1) AS i
+        WHERE (sqlc.arg(offer_ids)::bigint[])[i] = q.offer_id
+            AND q.quoted_at >= (sqlc.arg(window_starts)::timestamptz[])[i]
+            AND q.quoted_at <= (sqlc.arg(as_ofs)::timestamptz[])[i]
+    )
+ORDER BY q.offer_id, q.quoted_at, q.id;
+
 -- name: RuntimeLock :exec
 SELECT pg_advisory_xact_lock(hashtextextended(sqlc.arg(lock_key)::text, 0));
 
