@@ -82,7 +82,7 @@ func ValidateCostMethod(m CostMethod) error {
 		return fmt.Errorf("program volume %d must be > 0: %w", *m.ProgramVolume, ErrInvalidInput)
 	}
 	if m.Basis == BasisFull && m.ProgramVolume == nil {
-		return fmt.Errorf("basis full needs a program volume: %w: %w", ErrNoProgramVolume, ErrInvalidInput)
+		return fmt.Errorf("basis full needs a program volume (amortization base of tooling): %w", ErrInvalidInput)
 	}
 	return nil
 }

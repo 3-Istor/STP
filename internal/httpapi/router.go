@@ -67,7 +67,10 @@ func NewRouter(services ...Services) http.Handler {
 		if now == nil {
 			now = func() time.Time { return time.Now().UTC() }
 		}
-		(&api{boms: s.BOMs, snapshots: s.Snapshots, now: now}).routes(mux)
+		a := &api{boms: s.BOMs, snapshots: s.Snapshots, now: now}
+		a.costs, _ = s.BOMs.(CostService)
+		a.snapCosts, _ = s.Snapshots.(SnapshotCostService)
+		a.routes(mux)
 	}
 	return jsonNotFound(mux)
 }
