@@ -46,6 +46,45 @@ func (q *Queries) InsertSnapshotBudgetRates(ctx context.Context, arg []InsertSna
 	return q.db.CopyFrom(ctx, []string{"bom_snapshot_budget_rates"}, []string{"snapshot_id", "year", "from_currency", "to_currency", "rate"}, &iteratorForInsertSnapshotBudgetRates{rows: arg})
 }
 
+// iteratorForInsertSnapshotChecks implements pgx.CopyFromSource.
+type iteratorForInsertSnapshotChecks struct {
+	rows                 []InsertSnapshotChecksParams
+	skippedFirstNextCall bool
+}
+
+func (r *iteratorForInsertSnapshotChecks) Next() bool {
+	if len(r.rows) == 0 {
+		return false
+	}
+	if !r.skippedFirstNextCall {
+		r.skippedFirstNextCall = true
+		return true
+	}
+	r.rows = r.rows[1:]
+	return len(r.rows) > 0
+}
+
+func (r iteratorForInsertSnapshotChecks) Values() ([]interface{}, error) {
+	return []interface{}{
+		r.rows[0].SnapshotID,
+		r.rows[0].Position,
+		r.rows[0].Code,
+		r.rows[0].Level,
+		r.rows[0].Title,
+		r.rows[0].Detail,
+		r.rows[0].Justification,
+	}, nil
+}
+
+func (r iteratorForInsertSnapshotChecks) Err() error {
+	return nil
+}
+
+// Contrôles avant publication et justifications figés (ADR 0033).
+func (q *Queries) InsertSnapshotChecks(ctx context.Context, arg []InsertSnapshotChecksParams) (int64, error) {
+	return q.db.CopyFrom(ctx, []string{"bom_snapshot_checks"}, []string{"snapshot_id", "position", "code", "level", "title", "detail", "justification"}, &iteratorForInsertSnapshotChecks{rows: arg})
+}
+
 // iteratorForInsertSnapshotNodes implements pgx.CopyFromSource.
 type iteratorForInsertSnapshotNodes struct {
 	rows                 []InsertSnapshotNodesParams

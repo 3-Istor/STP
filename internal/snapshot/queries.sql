@@ -3,8 +3,9 @@
 
 -- name: CreateSnapshot :one
 INSERT INTO bom_snapshots (bom_id, price_snapshot_id, name, currency, volume, published_at, annual_hours,
-    start_on, target_on, destination_country, cost_basis, fx_policy, program_volume, cost_as_of)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+    start_on, target_on, destination_country, cost_basis, fx_policy, program_volume, cost_as_of,
+    note, proposed_by, validated_by)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
 RETURNING *;
 
 -- Tous les nœuds en un COPY : 30 000 nœuds ne font pas 30 000 allers-retours. La FK vers le parent est
@@ -44,3 +45,15 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14);
 
 -- name: ListSnapshotOfferCosts :many
 SELECT * FROM bom_snapshot_offer_costs WHERE snapshot_id = $1 ORDER BY offer_id;
+
+-- Contrôles avant publication et justifications figés (ADR 0033).
+-- name: InsertSnapshotChecks :copyfrom
+INSERT INTO bom_snapshot_checks (snapshot_id, position, code, level, title, detail, justification)
+VALUES ($1, $2, $3, $4, $5, $6, $7);
+
+-- name: ListSnapshotChecks :many
+SELECT * FROM bom_snapshot_checks WHERE snapshot_id = $1 ORDER BY position;
+
+-- En-têtes de tous les snapshots (versions d'une famille de BOM), par id.
+-- name: ListSnapshots :many
+SELECT * FROM bom_snapshots ORDER BY id;

@@ -44,6 +44,18 @@ type BomPartStock struct {
 	Quantity decimal.Decimal
 }
 
+type BomReductionIdea struct {
+	ID           int64
+	BomID        int64
+	Title        string
+	Owner        string
+	GainAmount   decimal.Decimal
+	GainCurrency string
+	Status       string
+	DraftBomID   pgtype.Int8
+	CreatedAt    time.Time
+}
+
 type BomSchedule struct {
 	BomID    int64
 	StartOn  pgtype.Date
@@ -66,6 +78,9 @@ type BomSnapshot struct {
 	FxPolicy           pgtype.Text
 	ProgramVolume      pgtype.Int4
 	CostAsOf           pgtype.Timestamptz
+	Note               pgtype.Text
+	ProposedBy         pgtype.Text
+	ValidatedBy        pgtype.Text
 }
 
 type BomSnapshotBudgetRate struct {
@@ -74,6 +89,16 @@ type BomSnapshotBudgetRate struct {
 	FromCurrency string
 	ToCurrency   string
 	Rate         decimal.Decimal
+}
+
+type BomSnapshotCheck struct {
+	SnapshotID    int64
+	Position      int32
+	Code          string
+	Level         string
+	Title         string
+	Detail        string
+	Justification pgtype.Text
 }
 
 type BomSnapshotNode struct {
@@ -277,6 +302,12 @@ type PricingTick struct {
 	Tick           int64
 	AsOf           time.Time
 	ManifestHash   string
+}
+
+type SeedDemoStep struct {
+	DatasetVersion string
+	Step           string
+	EntityID       int64
 }
 
 type SeedEntity struct {

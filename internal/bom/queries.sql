@@ -174,3 +174,24 @@ SELECT node_id, amount, currency FROM bom_target_budgets WHERE bom_id = $1 ORDER
 INSERT INTO bom_target_budgets (bom_id, node_id, amount, currency) VALUES ($1, $2, $3, $4)
 ON CONFLICT (bom_id, node_id) DO UPDATE SET amount = EXCLUDED.amount, currency = EXCLUDED.currency
 RETURNING node_id, amount, currency;
+
+-- Pistes de réduction (vision V2 §2).
+-- name: ListReductionIdeas :many
+SELECT * FROM bom_reduction_ideas WHERE bom_id = $1 ORDER BY id;
+
+-- name: CreateReductionIdea :one
+INSERT INTO bom_reduction_ideas (bom_id, title, owner, gain_amount, gain_currency, status, draft_bom_id)
+VALUES ($1, $2, $3, $4, $5, $6, sqlc.narg(draft_bom_id))
+RETURNING *;
+
+-- name: UpdateReductionIdea :one
+UPDATE bom_reduction_ideas
+SET title = $3, owner = $4, gain_amount = $5, gain_currency = $6, status = $7, draft_bom_id = sqlc.narg(draft_bom_id)
+WHERE bom_id = $1 AND id = $2
+RETURNING *;
+
+-- name: GetReductionIdea :one
+SELECT * FROM bom_reduction_ideas WHERE bom_id = $1 AND id = $2;
+
+-- name: DeleteReductionIdea :execrows
+DELETE FROM bom_reduction_ideas WHERE bom_id = $1 AND id = $2;
