@@ -40,6 +40,8 @@ type Service struct {
 	contracts  ContractSource
 	// ideas : pistes de réduction (vision V2 §2) ; nil → indisponible.
 	ideas IdeaStore
+	// family : famille de versions du brouillon lié à une piste (v2-lot-g T6) ; nil → lien refusé.
+	family DraftFamily
 	// profiles : profils de véhicule (ADR 0036) ; nil → aucun profil, classement par stratégie de nœud seulement.
 	profiles ProfileStore
 	// history et suppliers : historique des cotations et annuaire des fournisseurs, pour les analyses (lot E).

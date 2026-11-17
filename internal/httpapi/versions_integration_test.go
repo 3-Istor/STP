@@ -87,6 +87,7 @@ func TestVersionsAndPublicationRoutes(t *testing.T) {
 	sup := supplier.NewService(supplierstore.New(tx))
 	boms := bom.NewService(bomstore.New(tx), cat, prices).WithCostSources(pricingstore.NewLogistics(tx), sup).WithIdeas(bomstore.New(tx))
 	snaps := snapshot.NewService(snapshotstore.New(tx), boms, cat, prices).WithSupplierNames(sup)
+	boms.WithDraftFamily(snaps)
 	h := NewRouter(Services{BOMs: boms, Snapshots: snaps, Now: func() time.Time { return at }})
 
 	var a bomJSON
@@ -199,9 +200,13 @@ func TestVersionsAndPublicationRoutes(t *testing.T) {
 		var i1 ideaJSON
 		if err := json.Unmarshal(apiCall(t, h, "POST", ideas, fmt.Sprintf(
 			`{"title":"Portes nues → Tier 1 PL","owner":"Brian P.","estimated_gain":{"amount":"20","currency":"EUR"},"status":"in_progress","draft_bom_id":%d}`,
-			b.ID), http.StatusCreated).Body.Bytes(), &i1); err != nil {
+			a.ID), http.StatusCreated).Body.Bytes(), &i1); err != nil {
 			t.Fatal(err)
 		}
+		// Brouillon lié = la BOM elle-même, ou gain d'un milliard : 400 (v2-lot-g T6).
+		apiCall(t, h, "POST", ideas, fmt.Sprintf(`{"title":"x","estimated_gain":{"amount":"5","currency":"EUR"},"draft_bom_id":%d}`, b.ID),
+			http.StatusBadRequest)
+		apiCall(t, h, "POST", ideas, `{"title":"x","estimated_gain":{"amount":"1000000000","currency":"EUR"}}`, http.StatusBadRequest)
 		apiCall(t, h, "POST", ideas, `{"title":"Jante","estimated_gain":{"amount":"5","currency":"EUR"}}`, http.StatusCreated)
 		apiCall(t, h, "POST", ideas, `{"title":"x"}`, http.StatusBadRequest)
 		apiCall(t, h, "POST", ideas, `{"title":"x","estimated_gain":{"amount":"5","currency":"USD"}}`, http.StatusBadRequest)

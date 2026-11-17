@@ -43,7 +43,8 @@ type DemoAddition struct {
 	Want              int
 }
 
-// DemoIdea : piste de réduction du brouillon B ; LinkDraft : chiffrée dans B.
+// DemoIdea : piste de réduction de la Multipla (écart à son budget global) ; LinkDraft : chiffrée dans le brouillon
+// B (une piste ne se lie jamais à sa propre BOM, son gain y serait déjà compté, v2-lot-g T6).
 type DemoIdea struct {
 	Title, Owner, Gain, Status string
 	LinkDraft                  bool
@@ -220,10 +221,10 @@ func ApplyDemo(ctx context.Context, steps DemoSteps, boms DemoBOMs, snaps DemoSn
 	if _, done, err = steps.Step(ctx, stepIdeas); err != nil || done {
 		return res, err
 	}
-	if err := addIdeas(ctx, boms, draft, p); err != nil {
+	if err := addIdeas(ctx, boms, multipla, draft, p); err != nil {
 		return res, err
 	}
-	return res, steps.RecordStep(ctx, stepIdeas, draft)
+	return res, steps.RecordStep(ctx, stepIdeas, multipla)
 }
 
 // justify : la publication de V1 reprend les contrôles du moment ; un avertissement sans texte prévu ou un
@@ -313,8 +314,8 @@ func editDraft(ctx context.Context, boms DemoBOMs, draft int64, p DemoPlan, part
 	return nil
 }
 
-func addIdeas(ctx context.Context, boms DemoBOMs, draft int64, p DemoPlan) error {
-	existing, err := boms.IdeaList(ctx, draft)
+func addIdeas(ctx context.Context, boms DemoBOMs, bomID, draft int64, p DemoPlan) error {
+	existing, err := boms.IdeaList(ctx, bomID)
 	if err != nil {
 		return err
 	}
@@ -330,7 +331,7 @@ func addIdeas(ctx context.Context, boms DemoBOMs, draft int64, p DemoPlan) error
 		if i.LinkDraft {
 			in.DraftBOMID = &draft
 		}
-		if _, err := boms.CreateIdea(ctx, draft, in); err != nil {
+		if _, err := boms.CreateIdea(ctx, bomID, in); err != nil {
 			return fmt.Errorf("demo: idea %q: %w", i.Title, err)
 		}
 	}

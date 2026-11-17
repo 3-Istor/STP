@@ -169,12 +169,13 @@ func TestVersionsOfFamily(t *testing.T) {
 }
 
 func TestReductionIdeas(t *testing.T) {
-	f, _, _, b := versionsFixture(t)
+	f, a, _, b := versionsFixture(t)
 	ctx := t.Context()
-	f.boms.WithIdeas(bomstore.New(f.tx))
+	f.boms.WithIdeas(bomstore.New(f.tx)).WithDraftFamily(f.snaps)
 	eur := func(s string) money.Money { return m(t, s, "EUR") }
+	// Piste de B chiffrée dans un autre brouillon de la famille (A) : jamais B lui-même (v2-lot-g T6).
 	i1, err := f.boms.CreateIdea(ctx, b.ID, bom.IdeaInput{Title: "Roue → offre EUR", Owner: "Brian P.", Gain: eur("12"),
-		Status: bom.IdeaInProgress, DraftBOMID: &b.ID})
+		Status: bom.IdeaInProgress, DraftBOMID: &a.ID})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -220,6 +221,26 @@ func TestReductionIdeas(t *testing.T) {
 			_, err := f.boms.UpdateIdea(ctx, b.ID, i1.ID, bom.IdeaPatch{DraftBOMID: &bad})
 			return err
 		}, bom.ErrInvalidInput},
+		{"brouillon lié = la BOM elle-même (son gain serait compté deux fois)", func() error {
+			_, err := f.boms.UpdateIdea(ctx, b.ID, i1.ID, bom.IdeaPatch{DraftBOMID: &b.ID})
+			return err
+		}, bom.ErrInvalidInput},
+		{"brouillon lié d'une autre famille", func() error {
+			other, err := f.boms.CreateBOM(ctx, bom.NewBOM{Name: "Autre voiture", Currency: "EUR", Volume: 10})
+			if err != nil {
+				return err
+			}
+			_, err = f.boms.CreateIdea(ctx, b.ID, bom.IdeaInput{Title: "x", Gain: eur("1"), DraftBOMID: &other.ID})
+			return err
+		}, bom.ErrInvalidInput},
+		{"gain d'un milliard ou plus", func() error {
+			_, err := f.boms.CreateIdea(ctx, b.ID, bom.IdeaInput{Title: "x", Gain: eur("1000000000")})
+			return err
+		}, bom.ErrInvalidInput},
+		{"gain juste sous la borne : accepté", func() error {
+			_, err := f.boms.CreateIdea(ctx, b.ID, bom.IdeaInput{Title: "x", Gain: eur("999999999.99"), DraftBOMID: &a.ID})
+			return err
+		}, nil},
 		{"piste d'une autre BOM", func() error { return f.boms.DeleteIdea(ctx, b.ID+1000, i1.ID) }, bom.ErrIdeaNotFound},
 		{"suppression puis relecture", func() error {
 			if err := f.boms.DeleteIdea(ctx, b.ID, i1.ID); err != nil {

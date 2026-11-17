@@ -122,6 +122,16 @@ func (s *Service) familyOf(ctx context.Context, ref Ref) (family, error) {
 	return f, nil
 }
 
+// InSameFamily dit si le brouillon draftID est une version de la famille de bomID (bom.DraftFamily, pistes de
+// réduction) ; ErrBOMNotFound si bomID n'existe pas.
+func (s *Service) InSameFamily(ctx context.Context, bomID, draftID int64) (bool, error) {
+	f, err := s.familyOf(ctx, Ref{Kind: RefBOM, ID: bomID})
+	if err != nil {
+		return false, fmt.Errorf("family of bom %d: %w", bomID, err)
+	}
+	return slices.ContainsFunc(f.drafts, func(b bom.BOM) bool { return b.ID == draftID }), nil
+}
+
 // Versions renvoie les brouillons et snapshots de la famille de la BOM bomID, par date puis par id, chacun
 // chiffré selon sa méthode. Un coût indisponible est dit (CostError), il ne fait pas échouer la liste.
 func (s *Service) Versions(ctx context.Context, bomID int64) ([]Version, error) {

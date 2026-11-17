@@ -69,6 +69,20 @@ updated: 2026-11-17
   `TestPercentOut`. Le champ `percent` de `/tree` (lot F, `budgets.go`) n'est pas touché ; après fusion, son
   `budgetPercent` (DivRound 17 puis RoundBank 1) peut appeler `bom.PercentOf` (même résultat sauf à la 17e décimale).
 
+### T6: Pistes de réduction : famille et bornes
+- **Status**: completed
+- **Notes**: tests d'abord (`TestReductionIdeas`) : brouillon lié = la BOM elle-même, brouillon d'une autre famille
+  et gain de 1e9 étaient acceptés. `validateIdea` : brouillon ≠ BOM, existant, de la même famille
+  (`bom.DraftFamily`, satisfait par `snapshot.Service.InSameFamily`, câblé dans `domainServices`), 0 ≤ gain < 1e9 ;
+  toutes ces erreurs sont `ErrInvalidInput` → 400 ; famille non câblée → `ErrIdeasUnavailable` (503), jamais
+  accepté en silence (`TestIdeaDraftLinkNeedsTheFamilyCheck`). Cas 400 ajoutés au test HTTP. Le test existant liait
+  la piste de B à B : elle est maintenant liée à A (même famille), seule correction de fixture.
+  **Seed** : les 5 pistes de démo étaient sur B et la piste chiffrée liée à B (refusé désormais, et son gain
+  compterait deux fois dans le reste à trouver de B) : elles sont créées sur la Multipla (écart à son budget,
+  comme la maquette I4-6 : écart 826, pistes 640), la piste « Portes avant nues » liée au brouillon B. Vérifié
+  dans `checkDemoVersions` (5 sur la Multipla, 1 liée à B, 0 auto-liée). Impact front (lot F) : la branche
+  « dans ce brouillon » de `Ideas.tsx` ne se produit plus ; les pistes de la démo s'affichent sur la Multipla.
+
 ## Decisions
 
 ## Blockers
