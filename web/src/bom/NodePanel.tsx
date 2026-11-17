@@ -7,12 +7,15 @@ import { AddNodeDialog } from './AddNodeDialog.tsx'
 import { AnomalyFacts } from './Anomalies.tsx'
 import { budgetClass, budgetPercentText, budgetTitle } from './budget.ts'
 import { CostBreakdown } from './CostBreakdown.tsx'
+import { MissingCost } from './MissingCost.tsx'
 import { productionDaysInput, quantityChanged } from './nodeEdit.ts'
 import type { Target } from '../router.ts'
 import { StockPanel } from './StockPanel.tsx'
 
 type Props = {
   node: TreeNode
+  byID: ReadonlyMap<number, TreeNode> // causes propres des pièces sans coût (rubrique « Sans prix »)
+  onSelectNode: (id: number) => void
   explanation: Explanation
   volume: number
   catalog: Catalog
@@ -84,7 +87,9 @@ export function NodePanel(p: Props) {
           {t.missing_cost.length > 0 && (
             <>
               <dt>Sans prix</dt>
-              <dd className="over">nœuds {t.missing_cost.join(', ')}</dd>
+              <dd className="over">
+                <MissingCost ids={t.missing_cost} byID={p.byID} catalog={catalog} onSelect={p.onSelectNode} />
+              </dd>
             </>
           )}
           {t.own_cost && (

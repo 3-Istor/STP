@@ -96,7 +96,7 @@ export function BomWorkspace({ route, data, error, onPublished }: Props) {
       )
       break
     case 'arbitrer':
-      main = <Arbitrer data={data} selectedID={selectedID} onSelect={select} />
+      main = <Arbitrer data={data} selectedID={selectedID} onSelect={select} onGoStructurer={() => go({ step: 'structurer' })} />
       break
     case 'publier':
       main = (
@@ -139,6 +139,8 @@ export function BomWorkspace({ route, data, error, onPublished }: Props) {
               <NodePanel
                 key={selected.id}
                 node={selected}
+                byID={data.byID}
+                onSelectNode={select}
                 parentName={selected.parent_id !== null ? label(selected.parent_id) : undefined}
                 explanation={data.explanation}
                 volume={data.volume}

@@ -8,7 +8,7 @@ import type { BomData } from '../useBomData.ts'
 // la version ouverte) avec les causes de l'écart (ADR 0032) et les pièces modifiées ; puis la stratégie d'un
 // nœud (ADR 0028) et ses alternatives classées (stratégie, sinon profil de véhicule, ADR 0036), appliquées au
 // brouillon après confirmation. Les pistes de réduction sont dans la colonne de droite.
-export function Arbitrer({ data, selectedID, onSelect }: { data: BomData; selectedID: number | null; onSelect: (id: number) => void }) {
+export function Arbitrer({ data, selectedID, onSelect, onGoStructurer }: { data: BomData; selectedID: number | null; onSelect: (id: number) => void; onGoStructurer: () => void }) {
   const node = selectedID !== null ? data.byID.get(selectedID) : undefined
   return (
     <>
@@ -26,7 +26,14 @@ export function Arbitrer({ data, selectedID, onSelect }: { data: BomData; select
               onPatch={(p) => data.run(() => api.patchNode(data.target.id, node.id, p))}
             />
           ) : (
-            <p className="muted">Sélectionnez un nœud (arbre, causes ci-dessus) : sa stratégie ou le profil de véhicule classe les offres de ses pièces.</p>
+            <p className="muted">
+              Aucun nœud n’est sélectionné : sa stratégie ou le profil de véhicule classe les offres de ses pièces. Choisissez un nœud dans les causes
+              ci-dessus, ou{' '}
+              <button type="button" className="link" onClick={onGoStructurer}>
+                ouvrez l’arbre dans Structurer
+              </button>
+              .
+            </p>
           )}
         </div>
       </section>
