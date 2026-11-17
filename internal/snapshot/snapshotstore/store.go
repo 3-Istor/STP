@@ -79,10 +79,15 @@ func (s *Store) Create(ctx context.Context, h snapshot.Snapshot, nodes []snapsho
 	if err := insertCost(ctx, q, row.ID, cost); err != nil {
 		return snapshot.Snapshot{}, fmt.Errorf("create snapshot of bom %d: %w", h.BOMID, err)
 	}
+	if err := insertProfile(ctx, q, row.ID, h.Profile); err != nil {
+		return snapshot.Snapshot{}, fmt.Errorf("create snapshot of bom %d: %w", h.BOMID, err)
+	}
 	if err := tx.Commit(ctx); err != nil {
 		return snapshot.Snapshot{}, fmt.Errorf("create snapshot of bom %d: commit: %w", h.BOMID, err)
 	}
-	return toSnapshot(row), nil
+	out := toSnapshot(row)
+	out.Profile = h.Profile
+	return out, nil
 }
 
 // insertCost copie les taux budget et les faits de coût par offre (ADR 0031), chacun en un COPY.
@@ -210,7 +215,11 @@ func (s *Store) Get(ctx context.Context, id int64) (snapshot.Snapshot, error) {
 	if err != nil {
 		return snapshot.Snapshot{}, fmt.Errorf("get snapshot %d: %w", id, err)
 	}
-	return toSnapshot(row), nil
+	out := toSnapshot(row)
+	if out.Profile, err = s.profile(ctx, id); err != nil {
+		return snapshot.Snapshot{}, fmt.Errorf("get snapshot %d: %w", id, err)
+	}
+	return out, nil
 }
 
 // Nodes renvoie tous les nœuds du snapshot en une requête, triés par clé ; ErrSnapshotNotFound si aucun

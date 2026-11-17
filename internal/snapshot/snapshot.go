@@ -38,7 +38,9 @@ type Snapshot struct {
 	// CostMethod : méthode de calcul figée (ADR 0031) ; nil pour un snapshot publié avant (purchase + latest).
 	CostMethod *bom.CostMethod
 	// CostAsOf : date de calcul figée (contrats, année du taux budget) ; nil avec la méthode par défaut.
-	CostAsOf    *time.Time
+	CostAsOf *time.Time
+	// Profile : profil de véhicule figé (ADR 0036) ; nil si la BOM n'en avait pas (ou publié avant).
+	Profile     *bom.VehicleProfile
 	PublishedAt time.Time
 }
 
@@ -169,6 +171,9 @@ func (s *Service) Publish(ctx context.Context, bomID int64, at time.Time) (Snaps
 	}
 	frozen, err := s.freezeCost(ctx, bomID, priceSnapID, &header)
 	if err != nil {
+		return Snapshot{}, fmt.Errorf("publish bom %d: %w", bomID, err)
+	}
+	if header.Profile, err = s.boms.VehicleProfile(ctx, bomID); err != nil && !errors.Is(err, bom.ErrProfilesUnavailable) {
 		return Snapshot{}, fmt.Errorf("publish bom %d: %w", bomID, err)
 	}
 	out, err := s.store.Create(ctx, header, nodes, stock, frozen)
@@ -463,6 +468,16 @@ func (s *Service) NewDraft(ctx context.Context, id int64) (bom.BOM, error) {
 			return bom.BOM{}, fmt.Errorf("new draft from snapshot %d: %w", id, err)
 		}
 		b = withMethod
+	}
+	if p := h.Profile; p != nil { // le brouillon garde le profil figé (ADR 0036)
+		w := p.Weights
+		if _, err := s.boms.SetVehicleProfile(ctx, b.ID, string(p.Preset), &w); err != nil {
+			err = fmt.Errorf("copy vehicle profile: %w", err)
+			if delErr := s.boms.DeleteBOM(ctx, b.ID); delErr != nil {
+				err = errors.Join(err, delErr)
+			}
+			return bom.BOM{}, fmt.Errorf("new draft from snapshot %d: %w", id, err)
+		}
 	}
 	if err := s.copyDraft(ctx, b.ID, nodes, stock, h.Schedule); err != nil {
 		if delErr := s.boms.DeleteBOM(ctx, b.ID); delErr != nil {
