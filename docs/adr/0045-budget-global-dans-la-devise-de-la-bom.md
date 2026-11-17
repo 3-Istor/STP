@@ -1,5 +1,5 @@
 # 0045 — Le budget global reste dans la devise de la BOM
-Statut : Proposé — Date : 2026-11-17 — Décideurs : (à renseigner par l'humain qui accepte)
+Statut : Accepté — Date : 2026-11-17 — Décideurs : Arthur.presle (accord explicite dans le chat)
 
 ## Contexte
 ADR 0044 permet un budget dans n'importe quelle devise, converti au taux du jour. Relecture de la PR #26 (tours 1
