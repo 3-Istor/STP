@@ -439,8 +439,43 @@ func toBOM(r bomdb.Bom) bom.BOM {
 		DestinationCountry: ptrText(r.DestinationCountry),
 		PriceSnapshotID:    ptrInt64(r.PriceSnapshotID),
 		SourceSnapshotID:   ptrInt64(r.SourceSnapshotID),
-		CreatedAt:          r.CreatedAt,
+		CostMethod: bom.CostMethod{
+			Basis: bom.CostBasis(r.CostBasis), FX: bom.FXPolicy(r.FxPolicy), ProgramVolume: ptrInt32(r.ProgramVolume),
+		},
+		CreatedAt: r.CreatedAt,
 	}
+}
+
+func ptrInt32(v pgtype.Int4) *int32 {
+	if !v.Valid {
+		return nil
+	}
+	return &v.Int32
+}
+
+// SetCostMethod enregistre la méthode de calcul du coût (ADR 0031).
+func (s *Store) SetCostMethod(ctx context.Context, id int64, m bom.CostMethod) (bom.BOM, error) {
+	var pv pgtype.Int4
+	if m.ProgramVolume != nil {
+		pv = pgtype.Int4{Int32: *m.ProgramVolume, Valid: true}
+	}
+	row, err := s.q.SetBOMCostMethod(ctx, bomdb.SetBOMCostMethodParams{
+		ID: id, CostBasis: string(m.Basis), FxPolicy: string(m.FX), ProgramVolume: pv,
+	})
+	return bomOrErr(row, err, fmt.Sprintf("set cost method of bom %d", id))
+}
+
+// TargetBudgets renvoie les budgets cibles de la BOM, triés par nœud (ADR 0018, 0031).
+func (s *Store) TargetBudgets(ctx context.Context, bomID int64) ([]bom.TargetBudget, error) {
+	rows, err := s.q.ListTargetBudgets(ctx, bomID)
+	if err != nil {
+		return nil, fmt.Errorf("target budgets of bom %d: %w", bomID, err)
+	}
+	out := make([]bom.TargetBudget, len(rows))
+	for i, r := range rows {
+		out[i] = bom.TargetBudget{NodeID: r.NodeID, Amount: r.Amount, Currency: r.Currency}
+	}
+	return out, nil
 }
 
 func toNode(r bomdb.BomNode) bom.Node {

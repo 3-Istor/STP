@@ -456,3 +456,45 @@ func TestStoreStrategyAndReplacePart(t *testing.T) {
 		t.Fatalf("set part of unknown node: err %v, want ErrNodeNotFound", err)
 	}
 }
+
+// ADR 0031 : la méthode de coût se relit telle qu'enregistrée ; la base refuse full sans volume programme.
+func TestStoreCostMethod(t *testing.T) {
+	tx := testDB(t)
+	ctx := t.Context()
+	s := bomstore.New(tx)
+	b, err := s.CreateBOM(ctx, bom.NewBOM{Name: "M", Currency: "EUR", Volume: 10})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if b.CostMethod != (bom.CostMethod{Basis: bom.BasisPurchase, FX: bom.FXLatest}) {
+		t.Fatalf("default method = %+v", b.CostMethod)
+	}
+	pv := int32(60000)
+	tests := []struct {
+		name    string
+		m       bom.CostMethod
+		wantErr bool
+	}{
+		{"full + budget avec volume programme", bom.CostMethod{Basis: bom.BasisFull, FX: bom.FXBudget, ProgramVolume: &pv}, false},
+		{"full sans volume : refus de la base", bom.CostMethod{Basis: bom.BasisFull, FX: bom.FXLatest}, true},
+		{"base inconnue : refus de la base", bom.CostMethod{Basis: "gross", FX: bom.FXLatest}, true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			sp := savepoint(t, tx)
+			got, err := bomstore.New(sp).SetCostMethod(ctx, b.ID, tt.m)
+			if (err != nil) != tt.wantErr {
+				t.Fatalf("err = %v, wantErr %v", err, tt.wantErr)
+			}
+			if err == nil && (got.CostMethod.Basis != tt.m.Basis || *got.CostMethod.ProgramVolume != pv) {
+				t.Errorf("method = %+v", got.CostMethod)
+			}
+		})
+	}
+	if _, err := s.SetCostMethod(ctx, 1<<40, bom.CostMethod{Basis: bom.BasisPurchase, FX: bom.FXLatest}); !errors.Is(err, bom.ErrBOMNotFound) {
+		t.Errorf("unknown bom: %v", err)
+	}
+	if got, err := s.TargetBudgets(ctx, b.ID); err != nil || len(got) != 0 {
+		t.Errorf("budgets = %v, %v", got, err)
+	}
+}

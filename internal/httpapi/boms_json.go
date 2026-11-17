@@ -10,6 +10,7 @@ import (
 	"bomstudio/internal/money"
 	"bomstudio/internal/pricing"
 	"bomstudio/internal/snapshot"
+	"bomstudio/internal/supplier"
 )
 
 // Représentations JSON de l'API : champs en snake_case, montants en {"amount": "92.00", "currency": "EUR"}
@@ -17,21 +18,23 @@ import (
 // Les montants sont exacts (non arrondis) : l'arrondi se fait à l'affichage (ADR 0004).
 
 type bomJSON struct {
-	ID               int64     `json:"id"`
-	Name             string    `json:"name"`
-	Currency         string    `json:"currency"`
-	Volume           int32     `json:"volume"`
-	AnnualHours      string    `json:"annual_hours"`
-	Destination      *string   `json:"destination_country"` // null : non renseigné (ADR 0025)
-	PriceSnapshotID  *int64    `json:"price_snapshot_id"`   // null : prix en direct
-	SourceSnapshotID *int64    `json:"source_snapshot_id"`
-	CreatedAt        time.Time `json:"created_at"`
+	ID               int64          `json:"id"`
+	Name             string         `json:"name"`
+	Currency         string         `json:"currency"`
+	Volume           int32          `json:"volume"`
+	AnnualHours      string         `json:"annual_hours"`
+	Destination      *string        `json:"destination_country"` // null : non renseigné (ADR 0025)
+	PriceSnapshotID  *int64         `json:"price_snapshot_id"`   // null : prix en direct
+	SourceSnapshotID *int64         `json:"source_snapshot_id"`
+	CostMethod       costMethodJSON `json:"cost_method"` // ADR 0031
+	CreatedAt        time.Time      `json:"created_at"`
 }
 
 func toBOMJSON(b bom.BOM) bomJSON {
 	return bomJSON{
 		ID: b.ID, Name: b.Name, Currency: b.Currency, Volume: b.Volume, AnnualHours: b.AnnualHours.String(),
-		Destination: b.DestinationCountry, PriceSnapshotID: b.PriceSnapshotID, SourceSnapshotID: b.SourceSnapshotID, CreatedAt: b.CreatedAt,
+		Destination: b.DestinationCountry, PriceSnapshotID: b.PriceSnapshotID, SourceSnapshotID: b.SourceSnapshotID,
+		CostMethod: toCostMethodJSON(b.CostMethod), CreatedAt: b.CreatedAt,
 	}
 }
 
@@ -227,15 +230,32 @@ func nodeTotals(t bom.Totals, id int64) *totalsJSON {
 	return out
 }
 
+// costErrorCode : code stable de la cause d'un coût absent, pour l'écran ; "missing_cost" = un descendant.
 func costErrorCode(err error) string {
-	switch {
-	case errors.Is(err, pricing.ErrNoQuote):
-		return "no_quote"
-	case errors.Is(err, pricing.ErrNoRate):
-		return "no_rate"
-	default:
-		return "missing_cost"
+	codes := []struct {
+		target error
+		code   string
+	}{
+		{bom.ErrMissingCost, "missing_cost"},
+		{pricing.ErrNoQuote, "no_quote"},
+		{pricing.ErrNoRate, "no_rate"},
+		{bom.ErrNoBudgetRate, "no_budget_rate"},
+		{bom.ErrNoTooling, "no_tooling"},
+		{bom.ErrNoProgramVolume, "no_program_volume"},
+		{bom.ErrNoCostDate, "no_cost_date"},
+		{bom.ErrNoCostFacts, "no_cost_facts"},
+		{supplier.ErrSelectionRequired, "contract_selection_required"},
+		{pricing.ErrNoDestination, "no_destination"},
+		{pricing.ErrNoCustomsDuty, "no_customs_duty"},
+		{pricing.ErrNoFreightRate, "no_freight_rate"},
+		{pricing.ErrNoPackaging, "no_packaging"},
 	}
+	for _, c := range codes {
+		if errors.Is(err, c.target) {
+			return c.code
+		}
+	}
+	return "missing_cost"
 }
 
 type treeNodeJSON struct {
@@ -245,18 +265,27 @@ type treeNodeJSON struct {
 
 // explanationJSON dit sur quoi reposent tous les totaux : devise, prix en direct (price_snapshot_id null)
 // ou snapshot de prix, taux utilisés et leur date.
+// cost_method : méthode appliquée (ADR 0031) ; cost_as_of : date de calcul (contrats, année du taux budget),
+// null pour purchase + latest ; budget_rates : taux budget utilisés.
 type explanationJSON struct {
-	Currency        string     `json:"currency"`
-	PriceSnapshotID *int64     `json:"price_snapshot_id"`
-	Rates           []rateJSON `json:"rates"`
+	Currency        string         `json:"currency"`
+	PriceSnapshotID *int64         `json:"price_snapshot_id"`
+	Rates           []rateJSON     `json:"rates"`
+	CostMethod      costMethodJSON `json:"cost_method"`
+	CostAsOf        *time.Time     `json:"cost_as_of"`
+	BudgetRates     []rateJSON     `json:"budget_rates"`
 }
 
 func toExplanationJSON(e bom.Explanation) explanationJSON {
-	rates := make([]rateJSON, len(e.Rates))
-	for i, r := range e.Rates {
-		rates[i] = toRateJSON(r)
+	conv := func(in []pricing.Rate) []rateJSON {
+		out := make([]rateJSON, len(in))
+		for i, r := range in {
+			out[i] = toRateJSON(r)
+		}
+		return out
 	}
-	return explanationJSON{Currency: string(e.Currency), PriceSnapshotID: e.PriceSnapshotID, Rates: rates}
+	return explanationJSON{Currency: string(e.Currency), PriceSnapshotID: e.PriceSnapshotID, Rates: conv(e.Rates),
+		CostMethod: toCostMethodJSON(e.Method), CostAsOf: e.CostAsOf, BudgetRates: conv(e.BudgetRates)}
 }
 
 type treeJSON struct {

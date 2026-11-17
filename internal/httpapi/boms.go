@@ -19,6 +19,7 @@ import (
 	"bomstudio/internal/money"
 	"bomstudio/internal/pricing"
 	"bomstudio/internal/snapshot"
+	"bomstudio/internal/supplier"
 )
 
 // BOMService est ce que l'API attend du domaine bom ; *bom.Service la satisfait.
@@ -72,6 +73,9 @@ const maxBodyBytes = 1 << 20
 type api struct {
 	boms      BOMService
 	snapshots SnapshotService
+	// costs, snapCosts : méthode de coût et ventilation (ADR 0031) ; routes montées seulement si fournies.
+	costs     CostService
+	snapCosts SnapshotCostService
 	now       func() time.Time
 }
 
@@ -98,6 +102,15 @@ func (a *api) routes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/v1/boms/{id}/publish", a.publish)
 	mux.HandleFunc("GET /api/v1/snapshots/{id}", a.getSnapshot)
 	mux.HandleFunc("POST /api/v1/snapshots/{id}/drafts", a.newDraft)
+	if a.costs != nil {
+		mux.HandleFunc("GET /api/v1/boms/{id}/cost-method", a.getCostMethod)
+		mux.HandleFunc("PUT /api/v1/boms/{id}/cost-method", a.putCostMethod)
+		mux.HandleFunc("GET /api/v1/boms/{id}/nodes/{nodeID}/cost-breakdown", a.costBreakdown)
+		mux.HandleFunc("GET /api/v1/boms/{id}/budgets", a.budgets)
+	}
+	if a.snapCosts != nil {
+		mux.HandleFunc("GET /api/v1/snapshots/{id}/nodes/{nodeID}/cost-breakdown", a.snapshotCostBreakdown)
+	}
 }
 
 // --- BOM ---------------------------------------------------------------------------------------------
@@ -756,12 +769,14 @@ func statusOf(err error) int {
 		pricing.ErrPriceSnapshotNotFound):
 		return http.StatusNotFound
 	case is(bom.ErrCycle, bom.ErrHasSnapshots, bom.ErrRootNode, pricing.ErrNoQuote, pricing.ErrNoRate,
-		catalog.ErrMissingAttribute):
+		catalog.ErrMissingAttribute, bom.ErrMissingCost, bom.ErrNoBudgetRate, bom.ErrNoTooling, bom.ErrNoProgramVolume,
+		bom.ErrNoCostDate, bom.ErrNoCostFacts, snapshot.ErrIncompleteCost, supplier.ErrSelectionRequired,
+		pricing.ErrNoCustomsDuty, pricing.ErrNoFreightRate, pricing.ErrNoPackaging, pricing.ErrNoDestination):
 		return http.StatusConflict
 	case is(errBadRequest, bom.ErrInvalidInput, pricing.ErrInvalidThreshold, bom.ErrOfferNotForPart, bom.ErrNotAPart,
 		catalog.ErrPartNotFound, catalog.ErrOfferNotFound, money.ErrUnknownCurrency):
 		return http.StatusBadRequest
-	case is(bom.ErrSuggestionsUnavailable, bom.ErrLogisticsUnavailable):
+	case is(bom.ErrSuggestionsUnavailable, bom.ErrLogisticsUnavailable, bom.ErrCostSourcesUnavailable):
 		return http.StatusServiceUnavailable
 	default:
 		return http.StatusInternalServerError

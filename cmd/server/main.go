@@ -82,9 +82,11 @@ func run() error {
 		prices = pricing.NewStub(nil, nil)
 		slog.Warn("PRICE_API_URL is not set: BOM prices are an empty in-memory stub")
 	}
-	logistics := pricing.NewLogisticsService(pricingstore.NewLogistics(pool))
+	logisticsStore := pricingstore.NewLogistics(pool)
+	logistics := pricing.NewLogisticsService(logisticsStore)
 	boms := bom.NewService(bomstore.New(pool), catalogService, prices).
-		WithCatalogListing(catalogService).WithLogistics(logistics.Store())
+		WithCatalogListing(catalogService).WithLogistics(logistics.Store()).
+		WithCostSources(logisticsStore, supplierService) // méthode de calcul du coût, ADR 0031
 	bomSnapshots := snapshot.NewService(snapshotstore.New(pool), boms, catalogService, prices)
 
 	handler := httpapi.NewRouter(httpapi.Services{

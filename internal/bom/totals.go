@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"time"
 
 	"github.com/shopspring/decimal"
 
@@ -73,6 +74,8 @@ type TotalsInput struct {
 	LaborNotFrozen bool
 	// Stock : quantité en stock par pièce, propre à la BOM (ADR 0022) ; absente = aucun stock.
 	Stock map[int64]decimal.Decimal
+	// Cost : méthode de calcul et faits de coût (ADR 0031) ; nil = méthode par défaut (purchase + latest).
+	Cost *CostInput
 }
 
 // NodeTotals est le total d'un nœud et ce sur quoi il repose.
@@ -114,6 +117,12 @@ type NodeTotals struct {
 	// nil si la pièce n'a pas de stock. InStock : couverture totale → délai propre nul (ADR 0022).
 	StockCovered *decimal.Decimal
 	InStock      bool
+	// OwnLines : pour une pièce, les lignes de son coût propre selon la méthode (ADR 0031), dont la somme
+	// est OwnCost ; nil si le coût propre manque.
+	OwnLines []CostLine
+	// KindTotals : coût du sous-arbre par nature de ligne (ordre CostKinds) ; nil pour une nature absente,
+	// tout nil si Cost est nil. Leur somme est Cost.
+	KindTotals [numCostKinds]*money.Money
 }
 
 // Explanation dit sur quoi reposent tous les totaux d'un calcul.
@@ -121,13 +130,21 @@ type Explanation struct {
 	Currency        money.Currency
 	PriceSnapshotID *int64         // nil : prix en direct
 	Rates           []pricing.Rate // taux effectivement utilisés, triés par paire
+	// Method : méthode de calcul appliquée (ADR 0031).
+	Method CostMethod
+	// CostAsOf : date de calcul (contrats, année du taux budget) ; nil pour la méthode par défaut.
+	CostAsOf *time.Time
+	// BudgetRates : taux budget effectivement utilisés, triés par paire.
+	BudgetRates []pricing.Rate
 }
 
 // Totals est le résultat d'un calcul : un total par nœud, dans l'ordre des ids.
 type Totals struct {
 	Nodes       []NodeTotals
 	Explanation Explanation
-	index       map[int64]int
+	// Discounts : remise retenue par offre (méthodes avec remise), à figer à la publication.
+	Discounts map[int64]Discount
+	index     map[int64]int
 }
 
 // Node renvoie le total du nœud id.
@@ -195,7 +212,10 @@ func ComputeTotals(in TotalsInput) (Totals, error) {
 	if err != nil {
 		return Totals{}, fmt.Errorf("bom currency: %w", err)
 	}
-	usedRates := map[money.Currency]pricing.Rate{}
+	c, err := newCostCalc(in)
+	if err != nil {
+		return Totals{}, err
+	}
 
 	// Quantité réelle, de la racine vers les feuilles.
 	for _, i := range order {
@@ -206,6 +226,11 @@ func ComputeTotals(in TotalsInput) (Totals, error) {
 		out[i] = NodeTotals{NodeID: nodes[i].ID, RealQuantity: qty}
 	}
 	allocateStock(nodes, out, in)
+	for i, n := range nodes { // quantité par voiture de chaque offre : remise (× volume) et outillage
+		if n.Part != nil {
+			c.offerQty[n.Part.OfferID] = c.offerQty[n.Part.OfferID].Add(out[i].RealQuantity)
+		}
+	}
 
 	// Remontée : ordre inverse du pré-ordre, chaque enfant est calculé avant son parent.
 	// Chaque nœud = sa contribution propre (pièce) + celle de ses enfants (ADR 0007, ADR 0008).
@@ -216,9 +241,14 @@ func ComputeTotals(in TotalsInput) (Totals, error) {
 		var ownErr error
 		t.OwnLeadTimeDays = n.ProductionDays
 		if n.Part != nil {
-			ownErr = partOwnTotals(t, n, in, usedRates)
+			ownErr = partOwnTotals(t, n, c)
 			if ownErr == nil {
 				cost = *t.OwnCost
+				for _, l := range t.OwnLines {
+					if err := addKind(&t.KindTotals, l.Kind, l.Amount); err != nil {
+						return Totals{}, fmt.Errorf("node %d: %w", n.ID, err)
+					}
+				}
 			}
 		}
 		labor := decimal.Zero
@@ -244,6 +274,14 @@ func ComputeTotals(in TotalsInput) (Totals, error) {
 				if cost, err = cost.Add(*ct.Cost); err != nil { // impossible : tout est dans in.Currency
 					return Totals{}, fmt.Errorf("node %d: %w", n.ID, err)
 				}
+				for k, m := range ct.KindTotals {
+					if m == nil {
+						continue
+					}
+					if err := addKind(&t.KindTotals, CostKinds[k], *m); err != nil {
+						return Totals{}, fmt.Errorf("node %d: %w", n.ID, err)
+					}
+				}
 			}
 		}
 		t.LeadTimeDays = maxChild + t.OwnLeadTimeDays
@@ -265,20 +303,33 @@ func ComputeTotals(in TotalsInput) (Totals, error) {
 		default:
 			t.Cost = &cost
 		}
+		if t.Cost == nil {
+			t.KindTotals = [numCostKinds]*money.Money{}
+		}
 	}
 
-	rates := make([]pricing.Rate, 0, len(usedRates))
-	for _, r := range usedRates {
-		rates = append(rates, r)
-	}
-	slices.SortFunc(rates, func(a, b pricing.Rate) int {
-		return cmp.Or(cmp.Compare(a.From, b.From), cmp.Compare(a.To, b.To))
-	})
 	return Totals{
 		Nodes:       out,
-		Explanation: Explanation{Currency: in.Currency, PriceSnapshotID: in.PriceSnapshotID, Rates: rates},
+		Explanation: c.explanation(),
+		Discounts:   c.resolvedDiscounts(),
 		index:       index,
 	}, nil
+}
+
+// addKind ajoute m au total de la nature k.
+func addKind(totals *[numCostKinds]*money.Money, k CostKind, m money.Money) error {
+	i := kindIndex(k)
+	if totals[i] == nil {
+		v := m
+		totals[i] = &v
+		return nil
+	}
+	v, err := totals[i].Add(m)
+	if err != nil {
+		return err
+	}
+	totals[i] = &v
+	return nil
 }
 
 // allocateStock répartit le stock de chaque pièce entre ses nœuds, par id de nœud croissant (déterministe,
@@ -321,11 +372,11 @@ func fte(hours decimal.Decimal, volume int32, annualHours *decimal.Decimal) *dec
 	return &v
 }
 
-// partOwnTotals pose la contribution propre d'une pièce, avant celle de ses enfants : coût = prix × quantité
-// réelle, converti dans la devise de la BOM ; CO2 et masse = valeur unitaire × quantité réelle ;
-// délai propre = livraison + production. Sans prix ou taux, la pièce se liste dans MissingCost (en tête :
+// partOwnTotals pose la contribution propre d'une pièce, avant celle de ses enfants : coût selon la méthode
+// (costCalc.partLines) ; CO2 et masse = valeur unitaire × quantité réelle ; délai propre = livraison +
+// production. Sans prix, taux ou composante de la méthode, la pièce se liste dans MissingCost (en tête :
 // ordre de parcours) et l'erreur est renvoyée.
-func partOwnTotals(t *NodeTotals, n CalcNode, in TotalsInput, usedRates map[money.Currency]pricing.Rate) error {
+func partOwnTotals(t *NodeTotals, n CalcNode, c *costCalc) error {
 	p := n.Part
 	t.CO2Kg = p.CO2Kg.Mul(t.RealQuantity)
 	t.MassKg = p.MassKg.Mul(t.RealQuantity)
@@ -334,42 +385,18 @@ func partOwnTotals(t *NodeTotals, n CalcNode, in TotalsInput, usedRates map[mone
 		t.OwnLeadTimeDays = 0
 	}
 
-	cost, err := partCost(t, p.OfferID, in, usedRates)
+	lines, err := c.partLines(t, p)
 	if err != nil {
 		t.MissingCost = []int64{n.ID}
 		return err
 	}
+	cost := lines[0].Amount
+	for _, l := range lines[1:] {
+		if cost, err = cost.Add(l.Amount); err != nil {
+			return err
+		}
+	}
+	t.OwnLines = lines
 	t.OwnCost = &cost
 	return nil
-}
-
-func partCost(t *NodeTotals, offerID int64, in TotalsInput, usedRates map[money.Currency]pricing.Rate) (money.Money, error) {
-	pr, ok := in.Prices[offerID]
-	if !ok {
-		return money.Money{}, fmt.Errorf("offer %d: %w", offerID, pricing.ErrNoQuote)
-	}
-	if pr.Err != nil {
-		return money.Money{}, fmt.Errorf("offer %d: %w", offerID, pr.Err)
-	}
-	q := pr.Quote
-	t.Quote = &q
-	cost := q.Price.Mul(t.RealQuantity)
-	from := cost.Currency()
-	if from == in.Currency {
-		return cost, nil
-	}
-	rr, ok := in.Rates[from]
-	if !ok {
-		return money.Money{}, fmt.Errorf("rate %s→%s: %w", from, in.Currency, pricing.ErrNoRate)
-	}
-	if rr.Err != nil {
-		return money.Money{}, fmt.Errorf("rate %s→%s: %w", from, in.Currency, rr.Err)
-	}
-	if rr.Rate.From != from || rr.Rate.To != in.Currency {
-		return money.Money{}, fmt.Errorf("rate for %s→%s is %s→%s: %w", from, in.Currency, rr.Rate.From, rr.Rate.To, pricing.ErrNoRate)
-	}
-	r := rr.Rate
-	t.Rate = &r
-	usedRates[from] = r
-	return money.New(cost.Amount().Mul(r.Rate), string(in.Currency))
 }

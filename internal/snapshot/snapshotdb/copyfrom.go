@@ -9,6 +9,43 @@ import (
 	"context"
 )
 
+// iteratorForInsertSnapshotBudgetRates implements pgx.CopyFromSource.
+type iteratorForInsertSnapshotBudgetRates struct {
+	rows                 []InsertSnapshotBudgetRatesParams
+	skippedFirstNextCall bool
+}
+
+func (r *iteratorForInsertSnapshotBudgetRates) Next() bool {
+	if len(r.rows) == 0 {
+		return false
+	}
+	if !r.skippedFirstNextCall {
+		r.skippedFirstNextCall = true
+		return true
+	}
+	r.rows = r.rows[1:]
+	return len(r.rows) > 0
+}
+
+func (r iteratorForInsertSnapshotBudgetRates) Values() ([]interface{}, error) {
+	return []interface{}{
+		r.rows[0].SnapshotID,
+		r.rows[0].Year,
+		r.rows[0].FromCurrency,
+		r.rows[0].ToCurrency,
+		r.rows[0].Rate,
+	}, nil
+}
+
+func (r iteratorForInsertSnapshotBudgetRates) Err() error {
+	return nil
+}
+
+// Coût complet figé (ADR 0031) : taux budget de l'année de calcul et faits de coût par offre.
+func (q *Queries) InsertSnapshotBudgetRates(ctx context.Context, arg []InsertSnapshotBudgetRatesParams) (int64, error) {
+	return q.db.CopyFrom(ctx, []string{"bom_snapshot_budget_rates"}, []string{"snapshot_id", "year", "from_currency", "to_currency", "rate"}, &iteratorForInsertSnapshotBudgetRates{rows: arg})
+}
+
 // iteratorForInsertSnapshotNodes implements pgx.CopyFromSource.
 type iteratorForInsertSnapshotNodes struct {
 	rows                 []InsertSnapshotNodesParams
@@ -53,6 +90,51 @@ func (r iteratorForInsertSnapshotNodes) Err() error {
 // différée (migration 00002) : l'ordre d'insertion est libre, elle est vérifiée au commit.
 func (q *Queries) InsertSnapshotNodes(ctx context.Context, arg []InsertSnapshotNodesParams) (int64, error) {
 	return q.db.CopyFrom(ctx, []string{"bom_snapshot_nodes"}, []string{"snapshot_id", "node_key", "parent_key", "name", "part_id", "offer_id", "quantity", "co2_kg", "mass_kg", "production_days", "lead_time_days", "labor_hours", "strategy"}, &iteratorForInsertSnapshotNodes{rows: arg})
+}
+
+// iteratorForInsertSnapshotOfferCosts implements pgx.CopyFromSource.
+type iteratorForInsertSnapshotOfferCosts struct {
+	rows                 []InsertSnapshotOfferCostsParams
+	skippedFirstNextCall bool
+}
+
+func (r *iteratorForInsertSnapshotOfferCosts) Next() bool {
+	if len(r.rows) == 0 {
+		return false
+	}
+	if !r.skippedFirstNextCall {
+		r.skippedFirstNextCall = true
+		return true
+	}
+	r.rows = r.rows[1:]
+	return len(r.rows) > 0
+}
+
+func (r iteratorForInsertSnapshotOfferCosts) Values() ([]interface{}, error) {
+	return []interface{}{
+		r.rows[0].SnapshotID,
+		r.rows[0].OfferID,
+		r.rows[0].OriginCountry,
+		r.rows[0].DiscountPercent,
+		r.rows[0].DiscountReason,
+		r.rows[0].DiscountContractID,
+		r.rows[0].DiscountTierMin,
+		r.rows[0].CustomsPercent,
+		r.rows[0].FreightAmountPerKg,
+		r.rows[0].FreightCurrency,
+		r.rows[0].PackagingAmount,
+		r.rows[0].PackagingCurrency,
+		r.rows[0].ToolingAmount,
+		r.rows[0].ToolingCurrency,
+	}, nil
+}
+
+func (r iteratorForInsertSnapshotOfferCosts) Err() error {
+	return nil
+}
+
+func (q *Queries) InsertSnapshotOfferCosts(ctx context.Context, arg []InsertSnapshotOfferCostsParams) (int64, error) {
+	return q.db.CopyFrom(ctx, []string{"bom_snapshot_offer_costs"}, []string{"snapshot_id", "offer_id", "origin_country", "discount_percent", "discount_reason", "discount_contract_id", "discount_tier_min", "customs_percent", "freight_amount_per_kg", "freight_currency", "packaging_amount", "packaging_currency", "tooling_amount", "tooling_currency"}, &iteratorForInsertSnapshotOfferCosts{rows: arg})
 }
 
 // iteratorForInsertSnapshotStock implements pgx.CopyFromSource.

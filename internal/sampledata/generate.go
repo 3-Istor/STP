@@ -21,11 +21,12 @@ type bomSpec struct {
 	key, name, currency string
 	volume              int32
 	tree                []item
+	destination         string // pays d'assemblage (coût rendu, ADR 0025)
 }
 
 var bomSpecs = []bomSpec{
-	{"bom.multipla", "Fiat Multipla 1.6 16V", "EUR", 2000, multiplaTree},
-	{"bom.valhalla", "Aston Martin Valhalla", "GBP", 150, valhallaTree},
+	{"bom.multipla", "Fiat Multipla 1.6 16V", "EUR", 2000, multiplaTree, "IT"},
+	{"bom.valhalla", "Aston Martin Valhalla", "GBP", 150, valhallaTree, "GB"},
 }
 
 // Generate construit le jeu complet pour une graine. Même graine = même Dataset, octet pour octet.
@@ -67,9 +68,13 @@ func Generate(seed string) (Dataset, error) {
 	}
 
 	for _, s := range d.Suppliers {
+		end := contractEnd
+		if s.Key == ardenKey {
+			end = ardenContractEnd
+		}
 		c := Contract{
-			Key: "ctr." + strings.TrimPrefix(s.Key, "sup."), SupplierKey: s.Key, StartsOn: contractStart, EndsOn: contractEnd,
-			Conditions: "Contrat-cadre fictif " + contractStart[:4] + "–" + contractEnd[:4] +
+			Key: "ctr." + strings.TrimPrefix(s.Key, "sup."), SupplierKey: s.Key, StartsOn: contractStart, EndsOn: end,
+			Conditions: "Contrat-cadre fictif " + contractStart[:4] + "–" + end[:4] +
 				" : paiement à 60 jours fin de mois, livraison franco usine, révision annuelle des bornes de prix.",
 			Tiers: makeTiers(seed, s),
 		}
@@ -99,8 +104,15 @@ func Generate(seed string) (Dataset, error) {
 		if err != nil {
 			return d, err
 		}
+		bom.Destination, bom.CostBasis, bom.FX = b.destination, "purchase", "latest"
+		if b.key == "bom.multipla" {
+			if err := pilotMultipla(&bom); err != nil {
+				return d, err
+			}
+		}
 		d.BOMs = append(d.BOMs, bom)
 	}
+	costParams(seed, &d)
 	return d, nil
 }
 
