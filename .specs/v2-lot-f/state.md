@@ -1,8 +1,8 @@
 ---
 id: v2-lot-f
-status: review
+status: in-progress
 branch: v2-lot-f
-current_task: null
+current_task: T9
 started: 2026-11-17
 updated: 2026-11-17
 ---
@@ -36,6 +36,8 @@ analyses, profils : lots B et E) : après leur fusion.
 - 2026-11-17 T7 — `web/e2e/bom-cost-v2.spec.ts` (6 tests × 2 projets). Premier jet instable sous charge
   (deux montages 3D > 30 s) : un seul chargement, délai 90 s pour ce test. (409baf2, 18dc0ca)
 - 2026-11-17 T8 — vérification réelle et captures (rapport ci-dessous).
+- 2026-11-17 Partie 2 — lots B et E fusionnés par le coordinateur (eb8439b, ed39432). Base neuve `stp_lot_f2`
+  (goose → 00014, seed : V1 = snapshot 1, brouillon A = BOM 1, brouillon B = BOM 3, 5 pistes sur B).
 
 ## Decisions
 
