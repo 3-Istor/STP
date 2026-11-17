@@ -404,3 +404,56 @@ func TestRuntimeReplansWhenBoundsChangeDuringFetch(t *testing.T) {
 		t.Fatal("stale catalogue prices committed")
 	}
 }
+
+// TestRuntimeLoopsOverOneYear : après le dernier jour de l'année, l'horloge revient au départ et rejoue les mêmes
+// cotations : aucune nouvelle ligne, mêmes prix lus à la même date, journal de ticks continu (ADR 0043).
+func TestRuntimeLoopsOverOneYear(t *testing.T) {
+	pool := runtimeDB(t)
+	id, _ := runtimeOffer(t, pool)
+	cfg := runtimeConfig()
+	repo := &RuntimeStore{pool: pool, scoped: true, offerIDs: []int64{id}}
+	r := pricing.NewRuntime(pricesim.Simulator{}, repo, nil)
+	if _, _, err := r.Initialize(t.Context(), cfg); err != nil {
+		t.Fatal(err)
+	}
+	priceAt := func(at time.Time) string {
+		var amount string
+		if err := pool.QueryRow(t.Context(), `SELECT amount::text FROM price_quotes WHERE offer_id=$1 AND quoted_at<=$2 ORDER BY quoted_at DESC, id DESC LIMIT 1`, id, at).Scan(&amount); err != nil {
+			t.Fatal(err)
+		}
+		return amount
+	}
+	firstPass := map[int]string{}
+	var s pricing.RunState
+	for day := 1; day <= 365; day++ { // jours 1..364 de l'année, puis la bascule
+		var err error
+		if s, _, err = r.Advance(t.Context(), cfg); err != nil {
+			t.Fatalf("advance %d: %v", day, err)
+		}
+		if day < 365 {
+			firstPass[day] = priceAt(s.AsOf)
+		}
+	}
+	if s.Tick != 365 || !s.AsOf.Equal(cfg.InitialAsOf) {
+		t.Fatalf("after one year: tick %d as_of %s, want 365 and %s", s.Tick, s.AsOf.Format(time.DateOnly), cfg.InitialAsOf.Format(time.DateOnly))
+	}
+	quotes := runtimeCount(t, pool, "SELECT count(*) FROM price_quotes WHERE offer_id=$1", id)
+	if quotes != 365+364 { // 365 jours initiaux + 364 nouveaux jours ; le départ existait déjà
+		t.Fatalf("quotes after one year %d, want %d", quotes, 365+364)
+	}
+	for day := 1; day <= 3; day++ { // le 2e tour relit les mêmes prix, sans rien écrire
+		var err error
+		if s, _, err = r.Advance(t.Context(), cfg); err != nil {
+			t.Fatalf("second pass day %d: %v", day, err)
+		}
+		if got := priceAt(s.AsOf); got != firstPass[day] {
+			t.Fatalf("second pass day %d: price %s, first pass %s", day, got, firstPass[day])
+		}
+	}
+	if n := runtimeCount(t, pool, "SELECT count(*) FROM price_quotes WHERE offer_id=$1", id); n != quotes {
+		t.Fatalf("replay wrote %d new quotes", n-quotes)
+	}
+	if n := runtimeCount(t, pool, "SELECT count(*) FROM pricing_ticks WHERE as_of=$1", cfg.InitialAsOf.AddDate(0, 0, 1)); n != 2 {
+		t.Fatalf("ticks for a replayed day %d, want one per pass (2)", n)
+	}
+}
