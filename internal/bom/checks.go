@@ -273,7 +273,7 @@ func checkExpiredContracts(in ChecksInput) PublicationCheck {
 			label = fmt.Sprintf("contrat %d", u.ContractID)
 		}
 		if t, err := time.Parse(time.DateOnly, u.EndsOn); err == nil {
-			label += ", " + t.Format("02/01")
+			label += ", " + t.Format("02/01/2006")
 		}
 		if !seen[label] {
 			seen[label] = true

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { decimalSign, formatPercent, formatSignedMoney } from './money.ts'
+import { decimalSign, formatMoney, formatPercent, formatSignedMoney } from './money.ts'
 
 const eur = (amount: string) => ({ amount, currency: 'EUR' })
 // Intl sépare milliers et devise par des espaces insécables : on compare le texte lisible.
@@ -34,4 +34,9 @@ test('tri par valeur absolue exacte (causes d’écart), sans conversion en nomb
   assert.deepEqual(sorted, ['-170.035', '73.3191773', '60.29310132295939616885', '28.299', '-0.5'])
   // Au-delà de la précision d'un double : 0.10000000000000000001 > 0.1
   assert.equal(compareAbsDecimal('0.10000000000000000001', '-0.1'), 1)
+})
+
+test('livre sterling : « £ » et non « £GB » ; les autres devises gardent leur symbole', () => {
+  assert.equal(plain(formatMoney({ amount: '12.5', currency: 'GBP' })), '12,50 £')
+  assert.equal(plain(formatMoney({ amount: '12.5', currency: 'USD' })), '12,50 $US')
 })

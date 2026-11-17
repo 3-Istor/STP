@@ -1,6 +1,7 @@
 package bom
 
 import (
+	"regexp"
 	"slices"
 	"strings"
 	"testing"
@@ -214,5 +215,19 @@ func TestCheckBudgetsUsesTheConvertedPercent(t *testing.T) {
 	c := byCode(RunChecks(in))[CheckBudgets]
 	if !strings.Contains(c.Detail, "Porte 112,5 %") || strings.Contains(c.Detail, "90,0") {
 		t.Fatalf("detail = %q, want the converted percent 112,5 %%", c.Detail)
+	}
+}
+
+// Le détail d'un contrat expiré donne l'année : « 31/12 » seul est ambigu avec une horloge qui reboucle.
+func TestCheckExpiredContractsDetailHasYear(t *testing.T) {
+	in := checksBase(t, nil)
+	uses, err := ExpiredContractUses(map[int64][]int64{10: {3}}, map[int64][]supplier.Contract{10: {contract10()}}, time.Date(2026, 4, 2, 0, 0, 0, 0, time.UTC))
+	if err != nil {
+		t.Fatal(err)
+	}
+	in.Contracts = uses
+	d := byCode(RunChecks(in))[CheckExpiredContracts].Detail
+	if !regexp.MustCompile(`\d{2}/\d{2}/\d{4}`).MatchString(d) {
+		t.Fatalf("detail %q lacks a dd/mm/yyyy date", d)
 	}
 }

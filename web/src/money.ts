@@ -12,7 +12,7 @@ export function formatMoney(m: Money | null | undefined): string {
   if (!m) return 'n/d'
   let f = moneyFormats.get(m.currency)
   if (!f) {
-    f = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: m.currency, roundingMode: 'halfEven' })
+    f = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: m.currency, currencyDisplay: m.currency === 'GBP' ? 'narrowSymbol' : 'symbol', roundingMode: 'halfEven' })
     moneyFormats.set(m.currency, f)
   }
   return f.format(m.amount as Decimal)
