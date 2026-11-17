@@ -507,7 +507,9 @@ func TestEditTargetBudget(t *testing.T) {
 	s := bomstore.New(tx)
 	ctx := t.Context()
 	b, ids := sampleTree(t, s) // R ─ A ─ B ─ C ; R ─ D
-	check := func(nodes []bom.Node, budgets []bom.TargetBudget) error { return bom.CheckBudgetTree(nodes, budgets, "EUR") }
+	check := func(nodes []bom.Node, budgets []bom.TargetBudget) error {
+		return bom.CheckBudgetTree(nodes, budgets, "EUR")
+	}
 	eur := func(node, amount string) *bom.TargetBudget {
 		return &bom.TargetBudget{NodeID: ids[node], Amount: decimal.RequireFromString(amount), Currency: "EUR"}
 	}
