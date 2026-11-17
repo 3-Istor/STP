@@ -3,7 +3,7 @@
     "fixture": "multipla",
     "asset": "CarConcept.glb",
     "fidelity": "unrelated_concept_not_the_requested_vehicle",
-    "load_ms_in_this_environment": 7952,
+    "load_ms_in_this_environment": 13158,
     "stats": {
       "renders": 4,
       "drawCalls": 322,
@@ -19,7 +19,7 @@
     "fixture": "valhalla",
     "asset": "CarConcept.glb",
     "fidelity": "unrelated_concept_not_the_requested_vehicle",
-    "load_ms_in_this_environment": 6225,
+    "load_ms_in_this_environment": 20938,
     "stats": {
       "renders": 4,
       "drawCalls": 322,

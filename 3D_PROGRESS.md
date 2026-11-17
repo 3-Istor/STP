@@ -237,3 +237,15 @@ Rien de cela n'est annoncé comme corrigé. La définition de terminé du projet
   utilisateur `stp3d`, mot de passe de test `stp3d-test`, base `stp3d`, appliquer les migrations existantes,
   puis `make test DATABASE_URL='postgres://stp3d:stp3d-test@127.0.0.1:55439/stp3d?sslmode=disable'`.
 - Prochaine action dépendante inchangée : validation humaine de l'option 1 de l'ADR 0041.
+
+## Correction des preuves visuelles
+
+- Après inspection, une image CarConcept « éclatée » montrait encore le début de transition.
+  Capture refaite après comparaison à la pose assemblée ET attente de fin de l'animation, puis
+  inspectée : pièces effectivement séparées ; chevauchements toujours signalés, pas d'exactitude OEM.
+- Méthode sauvegardée dans `docs/3d/tools/capture_carconcept.mjs` (dépendance Playwright existante,
+  Vite dev et `make models` requis). Contrôle de syntaxe Node réussi. Le script de capture temporaire
+  utilisé pour cette recapture applique la même attente de pose finale.
+- Dernières mesures CarConcept dans le JSON : 13158 / 20938 ms dans cet environnement ; ce sont
+  des temps incluant initialisation, chargement et compilation WebGL, pas des garanties de performance.
+- Vite arrêté après recapture. Code produit et résultats fonctionnels inchangés.

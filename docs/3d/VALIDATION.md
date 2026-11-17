@@ -41,7 +41,8 @@ Documentation : `3D_PLAN.md` organise les étapes ; `3D_PROGRESS.md` consigne le
 `AUDIT.md` conserve le diagnostic initial ; `assets-manifest.json` inventorie les 418 types et sources ;
 `tools/audit_3d_assets.py` vérifie cet inventaire et `tools/test_audit_3d_assets.py` ses refus ;
 `audit-initial-backup.tar.gz` et `audit-backup-checksums.json` conservent les six fichiers originaux ;
-`captures/` porte les rendus et mesures ; `verification-pr.md` explique le résultat du harnais.
+`captures/` porte les rendus et mesures ; `tools/capture_carconcept.mjs` conserve la méthode de capture
+avec attente de la pose finale ; `verification-pr.md` explique le résultat du harnais.
 
 ## Pannes couvertes et vérification
 
