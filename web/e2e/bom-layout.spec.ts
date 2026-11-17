@@ -14,12 +14,21 @@ const nodes = [
   { id: 3, parent_id: 1, name: 'Habitacle', part_id: null, offer_id: null, quantity: '1', production_days: 1, totals: null },
 ]
 const explanation = { currency: 'EUR', price_snapshot_id: null, rates: [] }
+// Versions de la famille (GET /boms/1/versions, lot B) : le brouillon et le snapshot dont il est issu.
+const method = { basis: 'purchase', fx: 'latest', program_volume: null }
+const version = (kind: 'draft' | 'snapshot', id: number, label: string, at: string, price_snapshot_id: number | null) => ({
+  kind, id, bom_id: 1, ref: `${kind === 'draft' ? 'bom' : 'snapshot'}:${id}`, label, name: 'Fiat Multipla', at,
+  source_snapshot_id: kind === 'draft' ? 7 : null, method, cost: null, cost_error: 'coût incomplet', target_budget: null,
+  budget_percent: null, price_snapshot_id, proposed_by: null, validated_by: null, note: null, part_count: 0, node_count: 3,
+})
+const versions = [version('draft', 1, 'Brouillon A', '2026-11-04T12:30:00Z', null), version('snapshot', 7, 'V1', '2026-11-04T12:00:00Z', 3)]
 
 async function mockBomAPI(page: Page) {
   await page.route('**/api/**', async (route) => {
     const path = new URL(route.request().url()).pathname
     const json = {
       '/api/v1/boms': [bom],
+      '/api/v1/boms/1/versions': versions,
       '/api/v1/boms/1/tree': { bom, nodes, explanation, stock: [], planning: { schedule: null, lead_time_days: 0, available_on: null, critical: [], allowed_days: null, target_met: null, late: [] } },
       '/api/v1/snapshots/7': {
         snapshot: { id: 7, bom_id: 1, price_snapshot_id: 3, name: 'Fiat Multipla', currency: 'EUR', volume: 1000, published_at: '2026-11-04T12:00:00Z' },
@@ -54,17 +63,20 @@ test('arbre BOM pleine largeur et cliquable, brouillon puis snapshot', async ({ 
   const touch = testInfo.project.use.hasTouch
   await mockBomAPI(page)
   await page.goto('/#/boms')
-  await press(page.getByRole('link', { name: 'Fiat Multipla', exact: true }), touch)
+  // Avec ses versions, le brouillon est listé sous son libellé de version (« Brouillon A »).
+  await press(page.getByRole('link', { name: 'Brouillon A', exact: true }), touch)
   await expect(page).toHaveURL(/#\/boms\/1\/structurer$/)
 
   await expectTreeFillsView(page)
   await press(page.locator('.tree-row').filter({ hasText: 'Châssis' }), touch)
   await expect(page.getByRole('region', { name: 'Détail du nœud' })).toContainText('Châssis')
 
-  // Le snapshot à l'origine du brouillon : listé sous la BOM dans « Toutes les BOM », ouvert en lecture seule.
+  // Le snapshot à l'origine du brouillon : listé sous la BOM dans « Toutes les BOM » (versions de la famille,
+  // date à la seconde, colonne en UTC), ouvert en lecture seule.
   await press(page.getByRole('link', { name: 'Toutes les BOM' }), touch)
   const snapshotRow = page.getByRole('row').filter({ hasText: 'snapshot #7' })
-  await expect(snapshotRow).toContainText('04/11/2026 12:00:00 UTC')
+  await expect(snapshotRow).toContainText('04/11/2026 12:00:00')
+  await expect(page.getByRole('columnheader', { name: 'Date (UTC)' })).toBeVisible()
   await press(snapshotRow.getByRole('link', { name: 'Ouvrir' }), touch)
   await expect(page).toHaveURL(/#\/snapshots\/7\/structurer$/)
   await expect(page.getByRole('navigation', { name: 'Fil d’Ariane' })).toContainText('snapshot #7')

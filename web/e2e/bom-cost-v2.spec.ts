@@ -149,8 +149,11 @@ test('« Pourquoi ce coût ? » : lignes de l’API, composante absente, total ;
   const cascade = page.getByRole('region', { name: 'Pourquoi ce coût ?' })
   await expect(cascade).toContainText('Pourquoi ce coût ? · Porte avant nue')
   const rows = cascade.getByRole('row')
-  await expect(rows.filter({ hasText: 'Prix coté 149.25 GBP' })).toContainText('171,64 €')
-  await expect(rows.filter({ hasText: 'Prix coté 149.25 GBP' })).toContainText('pricesim.v1/demo-v4 · 07/04/2026 00:00 UTC')
+  // Libellé de l'API arrondi à l'affichage (149,25 GBP), exact en infobulle ; montant de l'API arrondi au centime.
+  const price = rows.filter({ hasText: 'Prix coté 149,25' })
+  await expect(price).toContainText('171,64 €')
+  await expect(price).toContainText('pricesim.v1/demo-v4 · 07/04/2026 00:00 UTC')
+  await expect(price.locator('.casc-label')).toHaveAttribute('title', 'Prix coté 149.25 GBP × 1')
   await expect(rows.filter({ hasText: 'Écart de change' })).toContainText('-3,19 €')
   // La méthode « complet » attend une ligne d'outillage : sans ligne, « absente », pas 0.
   await expect(rows.filter({ hasText: 'Outillage amorti' })).toContainText('absente')
