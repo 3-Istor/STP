@@ -1,7 +1,7 @@
 // Affichage des budgets cibles (ADR 0018, 0031). État et pourcentage viennent de l'API : ici, seulement leur
 // mise en forme (texte, classe de couleur --ok / --warn / --over, largeur de barre). Aucun calcul de budget.
 import type { BudgetState, NodeBudget } from '../api.ts'
-import { formatDecimal, formatMoney } from '../money.ts'
+import { formatMoney } from '../money.ts'
 
 export const budgetStateLabel: Record<BudgetState, string> = {
   ok: 'dans le budget',
@@ -16,9 +16,12 @@ export function budgetClass(b: NodeBudget | undefined): string {
   return `t-${b.state}`
 }
 
+// Le pourcentage arrive déjà arrondi à 1 décimale par l'API : affiché tel quel, au format fr-FR.
+const percentFormat = new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1, roundingMode: 'halfEven' })
+
 /** « 97,2 % », « n/d » si la comparaison est indisponible. */
 export function budgetPercentText(b: NodeBudget): string {
-  return b.percent !== null ? `${formatDecimal(b.percent, 1)} %` : 'n/d'
+  return b.percent !== null ? `${percentFormat.format(b.percent as Intl.StringNumericLiteral)} %` : 'n/d'
 }
 
 /** Infobulle : budget, coût comparé, écart, état ; l'erreur de l'API quand la comparaison est indisponible. */

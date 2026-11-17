@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { budgetBarWidth, budgetClass } from './budget.ts'
+import { budgetBarWidth, budgetClass, budgetPercentText } from './budget.ts'
 import type { NodeBudget } from '../api.ts'
 
 const budget = (state: NodeBudget['state'], percent: string | null): NodeBudget => ({
@@ -26,4 +26,10 @@ test('couleur : état de l’API, jamais vert pour une comparaison indisponible'
   assert.equal(budgetClass(budget('over', '120.0')), 't-over')
   assert.equal(budgetClass(budget('unavailable', null)), '')
   assert.equal(budgetClass(undefined), '')
+})
+
+test('pourcentage affiché tel que l’API le donne, une décimale, « n/d » sans comparaison', () => {
+  assert.equal(budgetPercentText(budget('over', '104.0')), '104,0 %')
+  assert.equal(budgetPercentText(budget('ok', '86.3')), '86,3 %')
+  assert.equal(budgetPercentText(budget('unavailable', null)), 'n/d')
 })

@@ -9,8 +9,8 @@
 .v3d-overlay > * { pointer-events: auto; }
 .v3d-top-left { top: 10px; left: 10px; flex-direction: column; max-width: 60%; }
 .v3d-top-right { top: 10px; right: 10px; }
-.v3d-bottom-left { bottom: 10px; left: 10px; flex-direction: column; }
-.v3d-bottom-right { bottom: 8px; right: 10px; max-width: 55%; text-align: right; }
+.v3d-bottom-left { bottom: 10px; left: 10px; flex-direction: column; max-width: 56%; }
+.v3d-bottom-right { bottom: 8px; right: 10px; max-width: 40%; text-align: right; }
 .v3d-badge { display: inline-block; padding: 3px 8px; border-radius: 4px; background: #fff; border: 1px solid #cfd6df;
   font-size: 11px; letter-spacing: .02em; color: #3b4656; }
 .v3d-badge strong { font-weight: 700; color: #1f2a37; }

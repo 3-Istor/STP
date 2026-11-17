@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { api } from '../../api.ts'
+import { Vehicle3D, type ColorBy, type RenderMode, type Vehicle3DNode } from '../../features/vehicle3d/index.tsx'
 import { BomTree } from '../BomTree.tsx'
 import type { BomData } from '../useBomData.ts'
-import { Vehicle3DSlot } from '../../shell/Vehicle3DSlot.tsx'
+import { vehicle3dKey, vehicle3dNodes } from '../vehicle3dNodes.ts'
 
 export type TreeView = 'arbre' | 'arbre-3d' | '3d'
 const treeViews: { id: TreeView; label: string }[] = [
@@ -25,8 +26,10 @@ type Props = {
   onDelete: (id: number) => void
 }
 
-// Structurer (maquettes I4-1, I4-2) : l'explorateur de la BOM en grand. Arbre virtualisé (NLPF-69), changement
-// d'offre en ligne, ajout avec choix de l'offre, déplacement, suppression ; bascule Arbre / Arbre + 3D / 3D.
+// Structurer (maquettes I4-1, I4-2, I4-3) : l'explorateur de la BOM en grand. Arbre virtualisé (NLPF-69),
+// changement d'offre en ligne, ajout avec choix de l'offre, déplacement, suppression ; bascule Arbre /
+// Arbre + 3D / 3D. La vue 3D (ADR 0035, chargée à la demande avec `three`) partage la sélection de l'arbre
+// par l'URL (?node=) : clic dans l'arbre → objet encadré dans la 3D, clic dans la 3D → ligne de l'arbre.
 export function Structurer(p: Props) {
   const { data } = p
   const [query, setQuery] = useState('')
@@ -53,7 +56,7 @@ export function Structurer(p: Props) {
       onDelete={p.onDelete}
     />
   )
-  const slot = <Vehicle3DSlot bomId={data.target.id} nodes={data.nodes} selectedNodeId={p.selectedID} onSelectNode={p.onSelect} />
+  const view3d = p.view !== 'arbre' ? <Vehicle3DPane data={data} selectedID={p.selectedID} onSelect={p.onSelect} /> : null
   return (
     <section className="block explorer" aria-label="Explorateur de la BOM">
       <div className="tbar">
@@ -91,7 +94,7 @@ export function Structurer(p: Props) {
       )}
       <div className={`explorer-body view-${p.view}`}>
         {p.view !== '3d' && tree}
-        {p.view !== 'arbre' && slot}
+        {view3d}
       </div>
       <div className="tfoot muted small">
         {data.readOnly
@@ -99,5 +102,58 @@ export function Structurer(p: Props) {
           : 'Sélectionnez une ligne : + ajoute dessous, ⇅ puis clic sur le nouveau parent déplace, × supprime (avec confirmation) · totaux recalculés par le serveur'}
       </div>
     </section>
+  )
+}
+
+const renderModes: { id: RenderMode; label: string }[] = [
+  { id: 'simple', label: 'Simple' },
+  { id: 'realistic', label: 'Réaliste' },
+]
+const colorModes: { id: ColorBy; label: string }[] = [
+  { id: 'budget', label: 'Budget' },
+  { id: 'system', label: 'Système' },
+]
+
+// Vehicle3DPane : contrôles de la maquette I4-2 (Rendu, Colorer, Éclatement) au-dessus de la vue 3D. Focus
+// (I4-3) : double-clic sur un sous-ensemble, « Sortir du focus » ou Échap.
+function Vehicle3DPane({ data, selectedID, onSelect }: { data: BomData; selectedID: number | null; onSelect: (id: number) => void }) {
+  const [mode, setMode] = useState<RenderMode>('simple')
+  const [colorBy, setColorBy] = useState<ColorBy>('budget')
+  const [explode, setExplode] = useState(0)
+  const budgets = data.budgets.unavailable === null ? data.budgets.byNode : null
+  const next = useMemo(() => vehicle3dNodes(data.nodes, budgets), [data.nodes, budgets])
+  const key = useMemo(() => vehicle3dKey(next), [next])
+  // Même scène tant que la structure et les statuts ne changent pas (les totaux, eux, changent à chaque relecture).
+  const [stable, setStable] = useState<{ key: string; nodes: Vehicle3DNode[] }>({ key, nodes: next })
+  if (stable.key !== key) setStable({ key, nodes: next })
+  return (
+    <div className="v3d-pane" role="region" aria-label="Vue 3D">
+      <div className="v3d-controls">
+        <span className="muted small">Rendu</span>
+        <div className="seg" role="radiogroup" aria-label="Rendu">
+          {renderModes.map((m) => (
+            <button key={m.id} type="button" role="radio" aria-checked={mode === m.id} className={mode === m.id ? 'on' : ''} onClick={() => setMode(m.id)}>
+              {m.label}
+            </button>
+          ))}
+        </div>
+        <span className="muted small">Colorer</span>
+        <div className="seg" role="radiogroup" aria-label="Colorer">
+          {colorModes.map((m) => (
+            <button key={m.id} type="button" role="radio" aria-checked={colorBy === m.id} className={colorBy === m.id ? 'on' : ''} onClick={() => setColorBy(m.id)}>
+              {m.label}
+            </button>
+          ))}
+        </div>
+        <label className="v3d-explode small">
+          <span className="muted">Éclatement</span>
+          <input type="range" min={0} max={100} step={5} value={Math.round(explode * 100)} onChange={(e) => setExplode(Number(e.target.value) / 100)} aria-label="Éclatement" />
+        </label>
+        <span className="muted small v3d-hint">Double-clic : focus sur un sous-ensemble</span>
+      </div>
+      <div className="v3d-stage">
+        <Vehicle3D bomId={data.target.id} nodes={stable.nodes} selectedNodeId={selectedID} onSelectNode={onSelect} mode={mode} colorBy={colorBy} explode={explode} />
+      </div>
+    </div>
   )
 }

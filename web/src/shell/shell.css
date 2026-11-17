@@ -80,8 +80,15 @@ input.search { width: 260px; max-width: 100%; }
 .explorer-body.view-arbre-3d .tree-pane { flex: 0 0 46%; max-width: 46%; border-right: 1px solid var(--line); }
 .explorer-body .tree { height: 100%; }
 @media (max-width: 1099px) { .explorer-body .tree { height: 60vh; } }
-.view3d { flex: 1; min-height: 320px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; background: var(--surface-2); padding: 24px; }
-.view3d p { margin: 4px 0; }
+.v3d-pane { flex: 1; min-width: 0; min-height: 360px; display: flex; flex-direction: column; background: var(--surface-2); }
+.v3d-controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 6px 10px; border-bottom: 1px solid var(--line); background: var(--surface); }
+.v3d-controls .seg button { padding: 3px 10px; }
+.v3d-explode { display: inline-flex; align-items: center; gap: 6px; margin-left: 6px; }
+.v3d-explode input { width: 110px; padding: 0; border: 0; accent-color: var(--accent); }
+.v3d-hint { margin-left: auto; }
+.v3d-stage { flex: 1; min-height: 0; position: relative; display: flex; }
+.v3d-stage > * { flex: 1; }
+@media (max-width: 1099px) { .v3d-stage { min-height: 60vh; } }
 .moving-notice { margin: 8px 10px 0; }
 
 /* Colonne de droite : Synthèse, onglets Détail / Réglages. */
@@ -104,8 +111,9 @@ input.search { width: 260px; max-width: 100%; }
 .sys .bar { height: 6px; background: var(--track); border-radius: 3px; overflow: hidden; }
 .sys .bar i { display: block; height: 100%; background: var(--bar); }
 .sys .n { text-align: right; }
-.sys.by-budget li { grid-template-columns: 112px 1fr 78px 46px; }
-.sys .p { text-align: right; color: var(--muted); }
+.sys.by-budget li { grid-template-columns: 108px 1fr 76px 52px; }
+.sys .p { text-align: right; color: var(--muted); white-space: nowrap; }
+.sys .n { white-space: nowrap; }
 .sys .bar i.fill-ok, .budget-track i.fill-ok { background: var(--ok-fill); }
 .sys .bar i.fill-warn, .budget-track i.fill-warn { background: var(--warn-fill); }
 .sys .bar i.fill-over, .budget-track i.fill-over { background: var(--over-fill); }
