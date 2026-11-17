@@ -8,6 +8,7 @@ import { axialOffsets, explodeVector, type V3 } from './explode.ts'
 import { explodeOptionsFor, focusGroup, type SlotTable, type VehicleIndex, type VehicleObject } from './mapping.ts'
 import { disposeTree, itemBox, styleMesh, type Built, type Item } from './scene.ts'
 import { buildSimple } from './simpleModel.ts'
+import { motionProgress } from './motion.ts'
 import type { ColorBy, RenderMode } from './types.ts'
 
 export type LoadResult = { mode: RenderMode; fallback: string | null; missing: VehicleObject[]; attribution: string | null }
@@ -49,6 +50,8 @@ export class Viewer {
   private palette: StatusPalette
   private frame = 0
   private tween: { from: [THREE.Vector3, THREE.Vector3]; to: [THREE.Vector3, THREE.Vector3]; t0: number; ms: number } | null = null
+  private partsTween: { from: THREE.Vector3[]; to: THREE.Vector3[]; t0: number; ms: number } | null = null
+  private readonly motionPreference: MediaQueryList
   private loadToken = 0
   private pointerDown: { x: number; y: number; t: number } | null = null
   private hoverFrame = 0
@@ -64,6 +67,7 @@ export class Viewer {
     this.cb = cb
     this.table = table
     this.palette = palette
+    this.motionPreference = window.matchMedia('(prefers-reduced-motion: reduce)')
     this.renderer = new THREE.WebGLRenderer({ antialias: true })
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
     this.renderer.shadowMap.enabled = true
@@ -94,8 +98,11 @@ export class Viewer {
 
     this.controls = new OrbitControls(this.camera, this.renderer.domElement)
     this.controls.enableDamping = false // pas d'inertie : sinon il faudrait une boucle de rendu
-    this.controls.maxPolarAngle = Math.PI * 0.495
+    this.controls.minDistance = 0.35
+    this.controls.maxDistance = 80
+    this.controls.maxPolarAngle = Math.PI * 0.98
     this.controls.addEventListener('change', this.requestRender)
+    this.controls.addEventListener('start', this.onNavigationStart)
 
     const el = this.renderer.domElement
     el.addEventListener('pointerdown', this.onPointerDown)
@@ -139,6 +146,7 @@ export class Viewer {
   }
 
   private replace(built: Built, index: VehicleIndex) {
+    this.partsTween = null
     if (this.built) {
       this.scene.remove(this.built.root)
       disposeTree(this.built.root)
@@ -166,6 +174,7 @@ export class Viewer {
       if (!it.obj?.estimated) all.union(b)
       if (it.obj) per.set(it.obj.key, (per.get(it.obj.key) ?? new THREE.Box3()).union(b))
     }
+    if (all.isEmpty()) for (const box of per.values()) all.union(box)
     const c = all.getCenter(new THREE.Vector3())
     this.vehicleCenter = [c.x, c.y, c.z]
     this.vehicleLength = Math.max(all.getSize(new THREE.Vector3()).x, 1)
@@ -193,8 +202,8 @@ export class Viewer {
   }
 
   setExplode(k: number) {
-    this.explode = Math.min(Math.max(k, 0), 1)
-    if (!this.focusKey) { this.applyPositions(); this.updateSelectionFrames(); this.requestRender() }
+    this.explode = Number.isFinite(k) ? Math.min(Math.max(k, 0), 1) : 0
+    if (!this.focusKey) this.moveParts()
   }
 
   setSelection(keys: string[], frame: boolean) {
@@ -208,14 +217,26 @@ export class Viewer {
     if (!this.index || (key !== null && !this.index.byKey.has(key))) key = null
     this.focusKey = key
     this.focusKeys = new Set(key ? focusGroup(key, this.index!, this.table) : [])
-    this.applyPositions()
+    this.moveParts(() => {
+      if (key) this.frameFocus()
+      else this.recenter(true)
+    })
     this.applyStyles()
     this.cb.onFocusChange(key ? this.index!.byKey.get(key)! : null)
-    if (key) this.frameFocus()
-    else this.recenter(true)
   }
 
   get focused() { return this.focusKey }
+
+  /** Mesures du dernier rendu, accessibles via le diagnostic de développement existant. */
+  get diagnostics() {
+    return {
+      renders: this.renders, drawCalls: this.renderer.info.render.calls,
+      triangles: this.renderer.info.render.triangles,
+      geometries: this.renderer.info.memory.geometries, textures: this.renderer.info.memory.textures,
+      items: this.built?.items.length ?? 0,
+      animating: this.partsTween !== null || this.tween !== null,
+    }
+  }
 
   /** Position écran (px, relative au canvas) du centre actuel d'un objet : sert aux tests de clic réels. */
   screenPositionOf(key: string): { x: number; y: number } | null {
@@ -227,11 +248,29 @@ export class Viewer {
   }
 
   recenter(animate = true) {
-    const items = this.built?.items.filter(i => !i.obj?.estimated) ?? []
+    const known = this.built?.items.filter(i => !i.obj?.estimated) ?? []
+    const items = known.length > 0 ? known : this.built?.items ?? []
     this.frameItems(items, DEFAULT_VIEW, animate)
   }
 
   // ——— Positions ———
+
+  /** Part du dernier état affiché : inverser le curseur pendant une transition ne crée aucun saut. */
+  private moveParts(frameTarget?: () => void) {
+    if (!this.built) return
+    const from = this.built.items.map(it => it.node.position.clone())
+    this.applyPositions()
+    const to = this.built.items.map(it => it.node.position.clone())
+    frameTarget?.() // cadrer la destination, avant de restaurer la pose de départ
+    this.partsTween = null
+    if (!this.motionPreference.matches && from.some((p, i) => !p.equals(to[i]))) {
+      this.partsTween = { from, to, t0: performance.now(), ms: 450 }
+      this.built.items.forEach((it, i) => it.node.position.copy(from[i]))
+      this.built.root.updateMatrixWorld(true)
+    }
+    this.updateSelectionFrames()
+    this.requestRender()
+  }
 
   private applyPositions() {
     if (!this.built) return
@@ -269,7 +308,8 @@ export class Viewer {
 
   // ——— Styles ———
 
-  private colorOf(obj: VehicleObject): string {
+  private colorOf(obj: VehicleObject): string | null {
+    if (this.colorBy === 'material') return null
     return this.colorBy === 'budget' ? budgetColor(obj.budgetStatus, this.palette) : systemColor(obj.systemIndex)
   }
 
@@ -326,7 +366,7 @@ export class Viewer {
     const sphere = box.getBoundingSphere(new THREE.Sphere())
     const d = dir ?? this.camera.position.clone().sub(this.controls.target).normalize()
     // cadrage serré sur tout le véhicule, avec du contexte autour d'un petit sous-ensemble sélectionné
-    const dist = Math.max(this.fitDistance(sphere.radius) * (dir ? 1.05 : 1.6), dir ? 1.2 : 1.5 * this.vehicleLength)
+    const dist = Math.max(this.fitDistance(sphere.radius) * (dir ? 1.08 : 1.4), dir ? 1.2 : 0.45 * this.vehicleLength)
     this.moveCamera(sphere.center.clone().add(d.clone().multiplyScalar(dist)), sphere.center, animate)
   }
 
@@ -348,7 +388,7 @@ export class Viewer {
   }
 
   private moveCamera(pos: THREE.Vector3, target: THREE.Vector3, animate: boolean) {
-    if (!animate) {
+    if (!animate || this.motionPreference.matches) {
       this.camera.position.copy(pos)
       this.controls.target.copy(target)
       this.controls.update()
@@ -369,9 +409,21 @@ export class Viewer {
 
   private readonly renderFrame = (now: number) => {
     this.frame = 0
+    if (this.partsTween && this.built) {
+      const p = this.partsTween
+      const e = motionProgress(now, p.t0, p.ms)
+      this.built.items.forEach((it, i) => {
+        if (e === 1) it.node.position.copy(p.to[i])
+        else it.node.position.lerpVectors(p.from[i], p.to[i], e)
+      })
+      this.built.root.updateMatrixWorld(true)
+      this.updateSelectionFrames()
+      if (e < 1) this.requestRender()
+      else this.partsTween = null
+    }
     if (this.tween) {
       const t = Math.min((now - this.tween.t0) / this.tween.ms, 1)
-      const e = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2
+      const e = motionProgress(now, this.tween.t0, this.tween.ms)
       this.camera.position.lerpVectors(this.tween.from[0], this.tween.to[0], e)
       this.controls.target.lerpVectors(this.tween.from[1], this.tween.to[1], e)
       this.controls.update()
@@ -381,6 +433,7 @@ export class Viewer {
     this.renderer.render(this.scene, this.camera)
     this.renders++
     this.container.dataset.renders = String(this.renders)
+    this.container.dataset.animation = this.partsTween || this.tween ? 'running' : 'idle'
   }
 
   private onResize() {
@@ -393,6 +446,9 @@ export class Viewer {
   }
 
   // ——— Interaction ———
+
+  // Une orbite ou un zoom manuel prend immédiatement la main sur un cadrage automatique.
+  private readonly onNavigationStart = () => { this.tween = null }
 
   private pick(ev: PointerEvent | MouseEvent): VehicleObject | null {
     if (!this.built) return null
@@ -455,6 +511,7 @@ export class Viewer {
     el.removeEventListener('pointerleave', this.onPointerLeave)
     el.removeEventListener('dblclick', this.onDoubleClick)
     this.controls.removeEventListener('change', this.requestRender)
+    this.controls.removeEventListener('start', this.onNavigationStart)
     this.controls.dispose()
     disposeTree(this.scene)
     this.envTexture.dispose()

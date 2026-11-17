@@ -145,7 +145,7 @@ export default function Vehicle3DView({ bomId, nodes, selectedNodeId, onSelectNo
               <span><i style={{ background: budgetColor('over', palette) }} />dépassé</span>
               <span><i style={{ background: UNAVAILABLE }} />sans budget ou indisponible</span>
             </>
-          ) : index.systems.map(s => (
+          ) : color.mode === 'material' ? <span>Matériaux du modèle · aucune indication de budget</span> : index.systems.map(s => (
             <span key={s.id}><i style={{ background: systemColor(s.index) }} />{s.name}</span>
           ))}
         </div>

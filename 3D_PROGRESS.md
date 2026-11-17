@@ -133,3 +133,32 @@ Rien de cela n'est annoncé comme corrigé. La définition de terminé du projet
   des 418 types n'est promu en géométrie fiable.
 - Contrôle Python et ses 2 tests (11 sous-cas invalides) réussissent après déplacement.
 - Ce point est un commit de reprise documentaire ; les étapes visuelles et fonctionnelles restent ouvertes.
+
+## Point de sauvegarde — transitions et matériaux (étapes 2/3 partielles)
+
+- Commit documentaire précédent : `0048639`.
+- `viewer.ts` : transitions des pièces depuis la pose affichée, inversion sans saut, arrivée copiée
+  exactement à la pose cible, animation de caméra annulée par une navigation manuelle, mouvement
+  réduit respecté, cadrage rapproché et zoom borné. Le rendu cesse au repos ; diagnostics disponibles
+  dans le point d'accès de développement existant.
+- `motion.ts` et son test : courbe d'animation commune, bornes exactes ; le test a échoué avant ajout
+  du module, puis passe. Les tests existants de mapping et d'éclatement restent présents et passent.
+- `types.ts`, `colors.ts`/test, `Vehicle3DView.tsx`, `Structurer.tsx`, `demo/Demo.tsx` : mode Matériaux
+  sans coloration budget implicite ; modes Budget et Système conservés et vérifiés.
+- `simpleModel.ts` : couche de vernis de la carrosserie dans le schéma généré.
+- Nouveau `web/e2e/vehicle3d-viewer.spec.ts` : deux fixtures, 0→100→0 exact, inversion, sélection,
+  repos sans boucle permanente, préférence de mouvement réduit, GLB absent/invalide.
+- Chromium desktop : **5 tests passent**. Premier essai à 5 s trop court pendant l'initialisation
+  WebGL logicielle ; délai de chargement des nouveaux tests porté à 30 s, sans skip ni retrait de test.
+  Durées mesurées par parcours 13–27 s, pas une mesure du seul temps de chargement ni des FPS.
+- Quatre captures nouvelles inspectées visuellement : `docs/3d/captures/{multipla,valhalla}-{assemble,eclate}.png`.
+  Constat : schémas génériques, silhouette non fidèle, positions Valhalla estimées et collisions encore
+  possibles. Le gain porte sur les matériaux et interactions ; la qualité automobile professionnelle
+  de l'étape 2 n'est PAS validée, ni la fidélité industrielle de l'étape 3.
+- Tests unitaires web : 8 fichiers passent ; lint et build passent avec avertissements préexistants.
+- `make lint` : réussi avec les outils temporaires ; `make test` sur PostgreSQL temporaire migré :
+  réussi, intégration comprise (voir `/tmp/stp-3d-toolchain/go-test-v2.log`).
+- Cas de panne couvert : retour à 0 après inversion pendant le déplacement ; pose finale strictement
+  identique. GLB absent/invalide produit un message et un repli explicitement schématique.
+- Prochaine unité indépendante : affichage explicite des pièces sans modèle, outils de cadrage/focus
+  et transparence, puis proposition d'ADR pour les liaisons exactes par occurrence.

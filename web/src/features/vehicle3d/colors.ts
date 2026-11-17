@@ -44,7 +44,7 @@ export function budgetColor(status: BudgetStatus | null, palette: StatusPalette 
  * fournit) ; sinon repli sur les systèmes avec un avis à afficher, jamais un vert inventé.
  */
 export function resolveColorMode(colorBy: ColorBy, nodes: Vehicle3DNode[]): { mode: ColorBy; notice: string | null } {
-  if (colorBy === 'system') return { mode: 'system', notice: null }
+  if (colorBy !== 'budget') return { mode: colorBy, notice: null }
   const provided = nodes.some(n => n.budget_status !== undefined)
   return provided
     ? { mode: 'budget', notice: null }

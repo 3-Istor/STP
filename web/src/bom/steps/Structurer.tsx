@@ -110,6 +110,7 @@ const renderModes: { id: RenderMode; label: string }[] = [
   { id: 'realistic', label: 'Réaliste' },
 ]
 const colorModes: { id: ColorBy; label: string }[] = [
+  { id: 'material', label: 'Matériaux' },
   { id: 'budget', label: 'Budget' },
   { id: 'system', label: 'Système' },
 ]
@@ -118,7 +119,7 @@ const colorModes: { id: ColorBy; label: string }[] = [
 // (I4-3) : double-clic sur un sous-ensemble, « Sortir du focus » ou Échap.
 function Vehicle3DPane({ data, selectedID, onSelect }: { data: BomData; selectedID: number | null; onSelect: (id: number) => void }) {
   const [mode, setMode] = useState<RenderMode>('simple')
-  const [colorBy, setColorBy] = useState<ColorBy>('budget')
+  const [colorBy, setColorBy] = useState<ColorBy>('material')
   const [explode, setExplode] = useState(0)
   const budgets = data.budgets.unavailable === null ? data.budgets.byNode : null
   const next = useMemo(() => vehicle3dNodes(data.nodes, budgets), [data.nodes, budgets])

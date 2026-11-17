@@ -26,6 +26,8 @@ test('resolveColorMode', () => {
   const withStatus = [{ id: 1, parent_id: null, name: 'A', part_id: null, budget_status: null }]
   const tests = [
     { by: 'system' as const, nodes: without, mode: 'system', notice: false },
+    { by: 'material' as const, nodes: without, mode: 'material', notice: false },
+    { by: 'material' as const, nodes: withStatus, mode: 'material', notice: false },
     { by: 'budget' as const, nodes: without, mode: 'system', notice: true },
     { by: 'budget' as const, nodes: withStatus, mode: 'budget', notice: false },
   ]

@@ -43,8 +43,10 @@ const MATERIALS: Record<string, MaterialDef> = {
 
 function makeMaterial(name: string): { mat: THREE.MeshStandardMaterial; paint: boolean } {
   const d = MATERIALS[name] ?? MATERIALS.body
-  const mat = new THREE.MeshStandardMaterial({
+  const mat = new THREE.MeshPhysicalMaterial({
     color: d.color, metalness: d.metal, roughness: d.rough,
+    clearcoat: name === 'body' ? 1 : 0,
+    clearcoatRoughness: 0.18,
     transparent: d.opacity !== undefined, opacity: d.opacity ?? 1,
     side: d.opacity !== undefined ? THREE.DoubleSide : THREE.FrontSide,
   })

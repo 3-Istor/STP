@@ -25,7 +25,7 @@ export function Demo() {
   const [boms, setBoms] = useState<{ id: number; name: string }[]>([])
   const [loaded, setLoaded] = useState<{ bomId: number; nodes?: Vehicle3DNode[]; error?: string } | null>(null)
   const [mode, setMode] = useState<RenderMode>((q.get('mode') as RenderMode) ?? 'simple')
-  const [colorBy, setColorBy] = useState<ColorBy>((q.get('color') as ColorBy) ?? 'budget')
+  const [colorBy, setColorBy] = useState<ColorBy>((q.get('color') as ColorBy) ?? 'material')
   const [explode, setExplode] = useState(Number(q.get('explode') ?? 0))
   const [fake, setFake] = useState(q.get('fakeBudget') === '1')
   const [selected, setSelected] = useState<number | null>(q.get('select') ? Number(q.get('select')) : null)
@@ -71,6 +71,7 @@ export function Demo() {
           <button aria-pressed={mode === 'realistic'} onClick={() => setMode('realistic')}>Réaliste</button>
         </span>
         <span className="demo-seg">Colorer
+          <button aria-pressed={colorBy === 'material'} onClick={() => setColorBy('material')}>Matériaux</button>
           <button aria-pressed={colorBy === 'budget'} onClick={() => setColorBy('budget')}>Budget</button>
           <button aria-pressed={colorBy === 'system'} onClick={() => setColorBy('system')}>Système</button>
         </span>

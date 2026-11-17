@@ -2,7 +2,7 @@
 import type { TreeNode } from '../../api.ts'
 
 export type RenderMode = 'simple' | 'realistic'
-export type ColorBy = 'budget' | 'system'
+export type ColorBy = 'budget' | 'system' | 'material'
 /** Statut budget d'un nœud, calculé par le back (ADR 0018) ; la 3D ne le calcule jamais. */
 export type BudgetStatus = 'ok' | 'warn' | 'over'
 
