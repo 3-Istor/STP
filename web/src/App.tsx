@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
-import { api, errorMessage, type BOM, type Snapshot } from './api.ts'
+import { api, errorMessage, type BOM } from './api.ts'
 import { emptyCatalog, loadCatalog, type Catalog } from './catalog.ts'
 import { CurrenciesContext, currencyChoices, loadCurrencies } from './currencies.ts'
 import { AllBoms } from './home/AllBoms.tsx'
@@ -24,8 +24,6 @@ export default function App() {
   const [listError, setListError] = useState<string | null>(null)
   const [catalog, setCatalog] = useState<Catalog>(emptyCatalog)
   const [fxCurrencies, setFxCurrencies] = useState<string[]>([])
-  // Snapshots publiés depuis cet onglet : l'API ne liste pas encore les versions (lot B).
-  const [published, setPublished] = useState<Snapshot[]>([])
 
   const refresh = useCallback(() => {
     api
@@ -79,8 +77,7 @@ export default function App() {
           catalog={catalog}
           bar={bar}
           onBOMChanged={refresh}
-          published={published}
-          onPublished={(s) => setPublished((p) => [...p.filter((x) => x.id !== s.id), s])}
+          onPublished={refresh}
         />
       )
       break
@@ -139,15 +136,13 @@ function BomScreen({
   catalog,
   bar,
   onBOMChanged,
-  published,
   onPublished,
 }: {
   route: Extract<Route, { page: 'bom' }>
   catalog: Catalog
   bar: BarProps
   onBOMChanged: () => void
-  published: Snapshot[]
-  onPublished: (s: Snapshot) => void
+  onPublished: () => void
 }) {
   const { state, error } = useBomData(route.target, catalog, onBOMChanged)
   if (state.status !== 'ready') {
@@ -184,7 +179,7 @@ function BomScreen({
         right: `${data.currency} · ${count(data.volume)} véhicules`,
       }}
     >
-      <BomWorkspace route={route} data={data} error={error} published={published} onPublished={onPublished} />
+      <BomWorkspace route={route} data={data} error={error} onPublished={onPublished} />
     </Frame>
   )
 }

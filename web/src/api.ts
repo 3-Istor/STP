@@ -245,7 +245,14 @@ export type Snapshot = {
   annual_hours: string | null // null : snapshot publié avant ADR 0024
   destination_country: string | null
   published_at: string
+  // Trace de la publication (ADR 0033) ; null si non saisie ou publiée avant.
+  note?: string | null
+  proposed_by?: string | null
+  validated_by?: string | null
 }
+
+// Contrôle figé à la publication, avec la justification de chaque avertissement (ADR 0033).
+export type FrozenCheck = { code: string; level: CheckLevel; title: string; detail: string; justification: string | null }
 
 export type Published = {
   snapshot: Snapshot
@@ -253,6 +260,7 @@ export type Published = {
   explanation: Explanation
   stock: StockLine[]
   planning: Planning
+  checks?: FrozenCheck[]
 }
 
 export type NewNode =

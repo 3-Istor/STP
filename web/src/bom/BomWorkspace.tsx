@@ -24,14 +24,13 @@ type Props = {
   route: BomRoute
   data: BomData
   error: string | null
-  published: Snapshot[]
   onPublished: (s: Snapshot) => void
 }
 
 // BomWorkspace : une BOM ouverte, à l'une des 5 étapes. À gauche le contenu de l'étape, à droite la colonne
 // « Synthèse » (identique partout) puis le détail du nœud sélectionné ou les réglages de calcul.
 // La sélection de nœud vit dans l'URL (?node=) : elle suit d'une étape à l'autre.
-export function BomWorkspace({ route, data, error, published, onPublished }: Props) {
+export function BomWorkspace({ route, data, error, onPublished }: Props) {
   const dialogs = useAppDialog()
   const [moving, setMoving] = useState<number | null>(null)
   const [adding, setAdding] = useState<number | null>(null)
@@ -100,7 +99,12 @@ export function BomWorkspace({ route, data, error, published, onPublished }: Pro
       break
     case 'publier':
       main = (
-        <Publier data={data} published={published} onPublished={onPublished} onOpenDraft={(id) => navigate(bomRoute({ kind: 'draft', id }, 'structurer'))} />
+        <Publier
+          data={data}
+          onPublished={onPublished}
+          onOpenDraft={(id) => navigate(bomRoute({ kind: 'draft', id }, 'structurer'))}
+          onFix={(id) => go({ step: 'structurer', node: id })}
+        />
       )
       break
   }

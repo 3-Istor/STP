@@ -7,6 +7,7 @@ import {
   errorMessage,
   type BOM,
   type CostAnomalies,
+  type FrozenCheck,
   type Explanation,
   type NodeAnomaly,
   type NodeBudget,
@@ -25,6 +26,7 @@ export type BomData = {
   name: string
   bom: BOM | null // brouillon
   snapshot: Snapshot | null // snapshot publié
+  frozenChecks: FrozenCheck[] | null // contrôles figés à la publication (snapshot), null pour un brouillon
   currency: string
   volume: number
   annualHours: string | null
@@ -66,7 +68,7 @@ export function useBomData(target: Target, catalog: Catalog, onBOMChanged: () =>
   clearError: () => void
 } {
   const [bom, setBOM] = useState<{ bom: BOM; nodes: TreeNode[]; explanation: Explanation; stock: StockLine[]; planning: Planning; budgets?: NodeBudget[] } | null>(null)
-  const [snap, setSnap] = useState<{ snapshot: Snapshot; nodes: TreeNode[]; explanation: Explanation; stock: StockLine[]; planning: Planning | null } | null>(null)
+  const [snap, setSnap] = useState<{ snapshot: Snapshot; nodes: TreeNode[]; explanation: Explanation; stock: StockLine[]; planning: Planning | null; checks?: FrozenCheck[] } | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -197,7 +199,7 @@ export function useBomData(target: Target, catalog: Catalog, onBOMChanged: () =>
     state = {
       status: 'ready',
       data: {
-        target, readOnly: false, name: bom.bom.name, bom: bom.bom, snapshot: null,
+        target, readOnly: false, name: bom.bom.name, bom: bom.bom, snapshot: null, frozenChecks: null,
         currency: bom.bom.currency, volume: bom.bom.volume, annualHours: bom.bom.annual_hours,
         priceSnapshotID: bom.bom.price_snapshot_id, nodes: bom.nodes, byID, root: bom.nodes.find((n) => n.parent_id === null),
         explanation: bom.explanation, stock: bom.stock, planning: bom.planning, catalog: pricedCatalog, budgets,
@@ -208,7 +210,7 @@ export function useBomData(target: Target, catalog: Catalog, onBOMChanged: () =>
     state = {
       status: 'ready',
       data: {
-        target, readOnly: true, name: snap.snapshot.name, bom: null, snapshot: snap.snapshot,
+        target, readOnly: true, name: snap.snapshot.name, bom: null, snapshot: snap.snapshot, frozenChecks: snap.checks ?? null,
         currency: snap.snapshot.currency, volume: snap.snapshot.volume, annualHours: snap.snapshot.annual_hours,
         priceSnapshotID: snap.snapshot.price_snapshot_id, nodes: snap.nodes, byID, root: snap.nodes.find((n) => n.parent_id === null),
         explanation: snap.explanation, stock: snap.stock, planning: snap.planning, catalog: pricedCatalog, budgets,

@@ -277,3 +277,18 @@ details.fold[open] > summary { border-bottom: 1px solid var(--line); }
 .ideas-totals { margin-top: 8px; }
 .new-idea { margin-top: 8px; font-size: var(--fs-small); }
 .new-idea input { min-width: 0; flex: 1; }
+
+/* Publier : contrôles avant publication (maquette I4-7). */
+.checks { list-style: none; margin: 0; padding: 0; }
+.check { display: grid; grid-template-columns: 26px minmax(180px, 1.2fr) minmax(0, 1.4fr) auto; gap: 8px; align-items: center; padding: 5px 12px; border-bottom: 1px solid var(--line-soft); font-size: var(--fs-small); }
+.check.missing { background: var(--warn-bg); box-shadow: inset 3px 0 0 var(--warn-fill); }
+.check-icon { width: 20px; height: 20px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; color: var(--accent-fg); font-weight: 700; font-size: 12px; }
+.check-icon.lvl-ok { background: var(--ok-fill); }
+.check-icon.lvl-warn { background: var(--warn-fill); }
+.check-icon.lvl-block { background: var(--over-fill); }
+.check-detail { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.check-act { display: inline-flex; gap: 6px; justify-content: flex-end; }
+.check-act .btn { padding: 2px 10px; }
+.check-justify { grid-column: 2 / -1; width: 100%; }
+.publish-form textarea { width: 100%; }
+.trace dd { text-align: left; }
