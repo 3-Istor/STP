@@ -43,6 +43,29 @@ type anomalyNode struct {
 	node Node
 }
 
+// anomalyNeeds : ce que le détecteur demande en plus du coût et de la masse (ADR 0039).
+type anomalyNeeds struct{ offers, history, family bool }
+
+func needsOf(d pricing.AnomalyDetector) anomalyNeeds {
+	switch v := d.(type) {
+	case pricing.OfferSpreadDetector:
+		return anomalyNeeds{offers: true}
+	case pricing.HistoryDetector:
+		return anomalyNeeds{history: true}
+	case pricing.PerKgDetector:
+		return anomalyNeeds{family: v.ByFamily}
+	}
+	return anomalyNeeds{}
+}
+
+// familyOf : catégorie × matière de la pièce ; vide si l'une des deux manque (jamais devinée).
+func familyOf(p catalog.Part) string {
+	if p.Category == "" || p.Material == nil {
+		return ""
+	}
+	return p.Category + " · " + *p.Material
+}
+
 // anomaliesWith juge chaque nœud pièce avec detector ; population et sujets portent coût unitaire converti
 // et masse de la pièce. Rend aussi la pièce et le nœud de chaque verdict, et l'arbre lu.
 func (s *Service) anomaliesWith(ctx context.Context, bomID int64, detector pricing.AnomalyDetector, threshold decimal.Decimal) (
@@ -57,6 +80,10 @@ func (s *Service) anomaliesWith(ctx context.Context, bomID int64, detector prici
 	}
 	if detector == nil {
 		return CostAnomalies{}, nil, nil, fmt.Errorf("cost anomalies of bom %d: no detector: %w", bomID, ErrInvalidInput)
+	}
+	need := needsOf(detector)
+	if need.history && s.history == nil {
+		return CostAnomalies{}, nil, nil, fmt.Errorf("cost anomalies of bom %d: %w", bomID, ErrSuggestionsUnavailable)
 	}
 	currency := money.Currency(b.Currency)
 	out := CostAnomalies{Threshold: threshold, Currency: currency, PriceSnapshotID: b.PriceSnapshotID}
@@ -161,6 +188,9 @@ func (s *Service) anomaliesWith(ctx context.Context, bomID int64, detector prici
 	for _, p := range all {
 		catalogParts[p.ID] = p.Part
 		sample := pricing.CostSample{PartID: p.ID, Category: p.Category, MassKg: p.MassKG, Err: pricing.ErrNoQuote}
+		if need.family {
+			sample.Family = familyOf(p.Part)
+		}
 		for _, o := range p.Offers {
 			if o.ArchivedAt != nil {
 				continue
@@ -175,6 +205,49 @@ func (s *Service) anomaliesWith(ctx context.Context, bomID int64, detector prici
 			}
 		}
 		population = append(population, sample)
+	}
+
+	// Méthode « offres » : coût de chaque offre active de la pièce ; une offre sans prix ou sans taux est comptée
+	// à part (Missing), jamais remplacée par un prix.
+	offerCosts := map[int64][]money.Money{}
+	offerMissing := map[int64]int{}
+	if need.offers {
+		for _, p := range all {
+			for _, o := range p.Offers {
+				if o.ArchivedAt != nil {
+					continue
+				}
+				if c, err := unit(o.ID); err != nil {
+					offerMissing[p.ID]++
+				} else {
+					offerCosts[p.ID] = append(offerCosts[p.ID], *c)
+				}
+			}
+		}
+	}
+	// Méthode « historique » : cotations des 12 derniers mois de l'offre retenue (lues une fois par offre).
+	trails := map[int64]*pricing.PriceTrail{}
+	trailOf := func(offerID int64) (*pricing.PriceTrail, error) {
+		if t, ok := trails[offerID]; ok {
+			return t, nil
+		}
+		q := quotes[offerID]
+		if q.Err != nil {
+			return nil, nil
+		}
+		at := q.Quote.QuotedAt
+		hist, err := s.history.ReadHistory(ctx, offerID, pricing.AnnualWindowStart(at), at)
+		if err != nil {
+			return nil, fmt.Errorf("offer %d history: %w", offerID, err)
+		}
+		t := &pricing.PriceTrail{Current: q.Quote.Price}
+		for _, h := range hist {
+			if h.ID != q.Quote.ID && !h.QuotedAt.Before(pricing.AnnualWindowStart(at)) && h.Price.Currency() == q.Quote.Price.Currency() {
+				t.Past = append(t.Past, h.Price)
+			}
+		}
+		trails[offerID] = t
+		return t, nil
 	}
 
 	var subjects []pricing.CostSample
@@ -192,7 +265,19 @@ func (s *Service) anomaliesWith(ctx context.Context, bomID int64, detector prici
 			catalogParts[p.ID] = p
 		}
 		c, err := unit(*n.OfferID)
-		subjects = append(subjects, pricing.CostSample{PartID: *n.PartID, Category: p.Category, Cost: c, MassKg: p.MassKG, Err: err})
+		sample := pricing.CostSample{PartID: *n.PartID, Category: p.Category, Cost: c, MassKg: p.MassKG, Err: err}
+		if need.family {
+			sample.Family = familyOf(p)
+		}
+		if need.offers {
+			sample.OfferCosts, sample.MissingOffers = offerCosts[p.ID], offerMissing[p.ID]
+		}
+		if need.history && err == nil {
+			if sample.Trail, err = trailOf(*n.OfferID); err != nil {
+				return CostAnomalies{}, nil, nil, fmt.Errorf("cost anomalies of bom %d: node %d: %w", bomID, n.ID, err)
+			}
+		}
+		subjects = append(subjects, sample)
 		judged = append(judged, anomalyNode{part: p, node: n})
 	}
 	verdicts, err := detector.Detect(subjects, population, threshold)

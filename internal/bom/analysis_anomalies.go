@@ -20,6 +20,12 @@ const (
 	AnomalyPerKg AnomalyMethod = "per_kg"
 	// AnomalyMedian : prix unitaire comparé à la médiane de la catégorie (ADR 0027).
 	AnomalyMedian AnomalyMethod = "median"
+	// AnomalyOffers : coût de l'offre retenue comparé à la médiane des offres de la même pièce (ADR 0039).
+	AnomalyOffers AnomalyMethod = "offers"
+	// AnomalyHistory : prix coté comparé à la médiane de ses cotations des 12 derniers mois (ADR 0039).
+	AnomalyHistory AnomalyMethod = "history"
+	// AnomalyMaterial : prix au kg comparé à la médiane €/kg de la famille catégorie × matière (ADR 0039).
+	AnomalyMaterial AnomalyMethod = "material"
 )
 
 // anomalyDetectorFor : le seul endroit où une méthode d'anomalie devient un détecteur (AGENTS §4), avec son
@@ -30,8 +36,14 @@ func (s *Service) anomalyDetectorFor(m AnomalyMethod) (pricing.AnomalyDetector, 
 		return pricing.PerKgDetector{MinPeers: 5}, pricing.DefaultPerKgThreshold, nil
 	case AnomalyMedian:
 		return s.anomalies, pricing.DefaultAnomalyThreshold, nil
+	case AnomalyOffers:
+		return pricing.OfferSpreadDetector{MinOffers: 2}, pricing.DefaultOfferSpreadThreshold, nil
+	case AnomalyHistory:
+		return pricing.HistoryDetector{MinQuotes: 5}, pricing.DefaultHistoryThreshold, nil
+	case AnomalyMaterial:
+		return pricing.PerKgDetector{MinPeers: 5, ByFamily: true}, pricing.DefaultPerKgThreshold, nil
 	}
-	return nil, decimal.Decimal{}, fmt.Errorf("anomaly method %q (want per_kg or median): %w", m, ErrInvalidInput)
+	return nil, decimal.Decimal{}, fmt.Errorf("anomaly method %q (want per_kg, median, offers, history or material): %w", m, ErrInvalidInput)
 }
 
 // PartAnomaly : verdict d'une pièce de la BOM (à une offre retenue) et surcoût estimé par voiture.

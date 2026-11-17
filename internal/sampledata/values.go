@@ -38,6 +38,15 @@ type material struct {
 
 type matKind int
 
+// name : matière telle qu'elle est écrite dans le catalogue (ADR 0039).
+func (k matKind) name() string { return matNames[k] }
+
+var matNames = map[matKind]string{
+	steel: "acier", castIron: "fonte", alu: "aluminium", plastic: "plastique", rubber: "caoutchouc", glass: "verre",
+	copper: "cuivre", electronic: "électronique", carbon: "carbone", textile: "textile", foam: "mousse", leather: "cuir",
+	fluid: "fluide", battery: "batterie", magnet: "aimant", titanium: "titane", ceramic: "céramique", inox: "inox",
+}
+
 const (
 	steel matKind = iota
 	castIron

@@ -117,3 +117,95 @@ func TestPartAnomalies(t *testing.T) {
 }
 
 func ptrDec(s string) *decimal.Decimal { d := dec(s); return &d }
+
+// TestPartAnomaliesOffersAndMaterial : méthodes « offres » et « matière » (ADR 0039) de bout en bout dans le service,
+// et méthode inconnue refusée.
+func TestPartAnomaliesOffersAndMaterial(t *testing.T) {
+	at := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	var parts []catalog.Part
+	var offers []catalog.Offer
+	var quotes []pricing.Quote
+	var listed []catalog.PartWithOffers
+	steel := "acier"
+	// Pièce 1 : trois offres à 100, 100 et 130 € (la BOM retient la dernière). Pièces 2 à 6 : acier à 10 €/kg,
+	// sauf la 6 à 30 €/kg ; la pièce 7 n'a pas de matière. La pièce 1 vaut 100 à 130 €/kg dans la même famille.
+	addPart := func(id int64, mass string, material *string, prices ...string) {
+		p := catalog.Part{ID: id, Name: fmt.Sprintf("P%d", id), Category: "Caisse", Material: material}
+		if mass != "" {
+			m := dec(mass)
+			p.MassKG = &m
+		}
+		var own []catalog.Offer
+		for i, price := range prices {
+			o := catalog.Offer{ID: id*10 + int64(i), PartID: id, Currency: "EUR"}
+			m, err := money.Parse(price, "EUR")
+			if err != nil {
+				t.Fatal(err)
+			}
+			offers, own = append(offers, o), append(own, o)
+			quotes = append(quotes, pricing.Quote{OfferID: o.ID, Price: m, Source: "sim", QuotedAt: at})
+		}
+		parts, listed = append(parts, p), append(listed, catalog.PartWithOffers{Part: p, Offers: own})
+	}
+	addPart(1, "1", &steel, "100", "100", "130")
+	for id := int64(2); id <= 5; id++ {
+		addPart(id, "1", &steel, "10")
+	}
+	addPart(6, "1", &steel, "30")
+	addPart(7, "1", nil, "10")
+	cat, err := catalog.NewStub(parts, offers)
+	if err != nil {
+		t.Fatal(err)
+	}
+	svc := NewService(newMemStore(), cat, pricing.NewStub(quotes, nil)).WithCatalogListing(fakeListing{parts: listed})
+	ctx := t.Context()
+	b, err := svc.CreateBOM(ctx, NewBOM{Name: "B", Currency: "EUR", Volume: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, nodes, _ := svc.Tree(ctx, b.ID)
+	for _, pick := range [][2]int64{{1, 12}, {6, 60}, {7, 70}} { // pièce, offre retenue
+		partID, offerID := pick[0], pick[1]
+		if _, err := svc.AddNode(ctx, b.ID, NewNode{ParentID: nodes[0].ID, PartID: &partID, OfferID: &offerID, Quantity: dec("1")}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	tests := []struct {
+		name   string
+		method AnomalyMethod
+		want   map[int64]pricing.AnomalyStatus
+		reason map[int64]error
+	}{
+		{"offres : 130 € contre une médiane de 100 € ; les pièces à une offre ne sont pas évaluables", AnomalyOffers, map[int64]pricing.AnomalyStatus{
+			1: pricing.AnomalyDetected, 6: pricing.AnomalyNotEvaluable, 7: pricing.AnomalyNotEvaluable,
+		}, map[int64]error{6: pricing.ErrTooFewOffers}},
+		{"matière : 30 €/kg contre 10 €/kg dans « Caisse · acier » ; sans matière : non évaluable", AnomalyMaterial, map[int64]pricing.AnomalyStatus{
+			1: pricing.AnomalyDetected, 6: pricing.AnomalyDetected, 7: pricing.AnomalyNotEvaluable,
+		}, map[int64]error{7: pricing.ErrNoMaterial}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := svc.PartAnomalies(ctx, b.ID, tt.method, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			byPart := map[int64]PartAnomaly{}
+			for _, p := range got.Parts {
+				byPart[p.PartID] = p
+			}
+			for id, want := range tt.want {
+				if p := byPart[id]; p.Status != want {
+					t.Errorf("part %d: %s (%v), want %s", id, p.Status, p.Err, want)
+				}
+			}
+			for id, want := range tt.reason {
+				if p := byPart[id]; !errors.Is(p.Err, want) {
+					t.Errorf("part %d: reason %v, want %v", id, p.Err, want)
+				}
+			}
+		})
+	}
+	if _, err := svc.PartAnomalies(ctx, b.ID, "nope", nil); !errors.Is(err, ErrInvalidInput) {
+		t.Fatalf("unknown method: %v, want ErrInvalidInput", err)
+	}
+}

@@ -17,8 +17,20 @@ var DefaultPerKgThreshold = decimal.NewFromInt(2)
 // PerKgDetector : anomalie si le prix au kg de la pièce ≥ seuil × médiane des prix au kg de sa famille
 // (catégorie), seulement si la famille compte au moins MinPeers pièces évaluables (ADR 0037). Une pièce sans
 // masse (ou de masse nulle) n'a pas de prix au kg : écartée de la médiane, non évaluable comme sujet.
+//
+// ByFamily (méthode « matière », ADR 0039) : la famille est CostSample.Family (catégorie × matière) au lieu de la
+// catégorie ; une pièce sans famille est non évaluable (ErrNoMaterial).
 type PerKgDetector struct {
 	MinPeers int
+	ByFamily bool
+}
+
+// key : clé de regroupement d'une pièce.
+func (d PerKgDetector) key(s CostSample) string {
+	if d.ByFamily {
+		return s.Family
+	}
+	return s.Category
 }
 
 var _ AnomalyDetector = PerKgDetector{}
@@ -42,15 +54,16 @@ func (d PerKgDetector) Detect(subjects, population []CostSample, threshold decim
 	byCategory := map[string][]money.Money{}
 	missing := map[string]int{}
 	for _, p := range population {
-		if p.Category == "" {
+		k := d.key(p)
+		if k == "" {
 			continue
 		}
 		v, err := perKg(p)
 		if err != nil {
-			missing[p.Category]++
+			missing[k]++
 			continue
 		}
-		byCategory[p.Category] = append(byCategory[p.Category], v)
+		byCategory[k] = append(byCategory[k], v)
 	}
 	medians := map[string]money.Money{}
 	for _, c := range slices.Sorted(maps.Keys(byCategory)) {
@@ -63,13 +76,19 @@ func (d PerKgDetector) Detect(subjects, population []CostSample, threshold decim
 	}
 	out := make([]Anomaly, len(subjects))
 	for i, s := range subjects {
+		k := d.key(s)
 		a := Anomaly{
 			PartID: s.PartID, Category: s.Category, Status: AnomalyNotEvaluable, Cost: s.Cost,
-			Peers: len(byCategory[s.Category]), Missing: missing[s.Category],
+			Peers: len(byCategory[k]), Missing: missing[k],
 		}
-		m, hasMedian := medians[s.Category]
+		if d.ByFamily {
+			a.Family = k
+		}
+		m, hasMedian := medians[k]
 		v, vErr := perKg(s)
 		switch {
+		case d.ByFamily && k == "":
+			a.Err = ErrNoMaterial
 		case s.Category == "":
 			a.Err = ErrNoCategory
 		case vErr != nil:

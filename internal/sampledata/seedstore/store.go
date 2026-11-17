@@ -151,6 +151,7 @@ func insert(ctx context.Context, tx pgx.Tx, version string, ds sampledata.Datase
 		return err
 	}
 	cols := make([][]string, 13)
+	var materials []string
 	var days []int32
 	for i, p := range ds.Parts {
 		mapped("part", p.Key, pid[i])
@@ -158,16 +159,18 @@ func insert(ctx context.Context, tx pgx.Tx, version string, ds sampledata.Datase
 			p.ManufacturingAmount, p.ManufacturingCurrency, p.LaborHours, p.HourlyAmount, p.HourlyCurrency} {
 			cols[j] = append(cols[j], v)
 		}
+		materials = append(materials, p.Material)
 		days = append(days, int32(p.ProductionDays)) // #nosec G115 -- jours écrits dans le code (< 30)
 	}
 	if _, err := tx.Exec(ctx, `INSERT INTO parts (id, name, category, zone, mass_kg, co2_kg_per_unit, recycled_percent,
 			recyclability_percent, manufacturing_amount, manufacturing_currency, labor_hours, hourly_amount, hourly_currency,
-			production_days) OVERRIDING SYSTEM VALUE
-		SELECT id, n, c, z, m::numeric, co2::numeric, rp::numeric, rc::numeric, ma::numeric, mc, lh::numeric, ha::numeric, hc, d
+			production_days, material) OVERRIDING SYSTEM VALUE
+		SELECT id, n, c, z, m::numeric, co2::numeric, rp::numeric, rc::numeric, ma::numeric, mc, lh::numeric, ha::numeric, hc, d,
+			NULLIF(mat, '')
 		FROM unnest($1::bigint[], $2::text[], $3::text[], $4::text[], $5::text[], $6::text[], $7::text[], $8::text[],
-			$9::text[], $10::text[], $11::text[], $12::text[], $13::text[], $14::int[])
-			AS u(id, n, c, z, m, co2, rp, rc, ma, mc, lh, ha, hc, d)`,
-		pid, cols[0], cols[1], cols[2], cols[3], cols[4], cols[5], cols[6], cols[7], cols[8], cols[9], cols[10], cols[11], days); err != nil {
+			$9::text[], $10::text[], $11::text[], $12::text[], $13::text[], $14::int[], $15::text[])
+			AS u(id, n, c, z, m, co2, rp, rc, ma, mc, lh, ha, hc, d, mat)`,
+		pid, cols[0], cols[1], cols[2], cols[3], cols[4], cols[5], cols[6], cols[7], cols[8], cols[9], cols[10], cols[11], days, materials); err != nil {
 		return fmt.Errorf("insert parts: %w", err)
 	}
 
