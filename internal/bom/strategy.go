@@ -44,7 +44,11 @@ type Candidate struct {
 	Cost     *money.Money
 	LeadDays int // livraison de l'offre + production de la pièce
 	CO2Kg    decimal.Decimal
-	HasFacts bool // LeadDays et CO2Kg sont connus (faux si un attribut de la pièce manque)
+	// MassKg : masse unitaire de la pièce × quantité réelle (critère masse d'un profil, ADR 0036).
+	MassKg   decimal.Decimal
+	HasFacts bool // LeadDays, CO2Kg et MassKg sont connus (faux si un attribut de la pièce manque)
+	// Quality : note qualité de l'offre (plus haute = meilleure) ; nil si non renseignée.
+	Quality *decimal.Decimal
 	// Quote et Rate : cotation et taux utilisés pour Cost (explicabilité, AGENTS §3) ; Rate nil si même devise.
 	Quote *pricing.Quote
 	Rate  *pricing.Rate
@@ -52,17 +56,33 @@ type Candidate struct {
 	Excluded error
 }
 
-// Ranked : candidate classée. Scores normalisés entre 0 (meilleur) et 1 sur les candidates comparées.
+// ErrNoQualityScore : la qualité pèse dans le classement mais l'offre n'a pas de note (ADR 0036) : la
+// candidate est exclue avec cette raison, jamais notée 0.
+var ErrNoQualityScore = errors.New("offer has no quality score")
+
+// Ranked : candidate classée. Scores normalisés entre 0 (meilleur) et 1 sur les candidates comparées ; un
+// critère de poids nul n'est pas évalué (score 0).
 type Ranked struct {
 	Candidate
 	CostScore, LeadScore, CO2Score decimal.Decimal
-	Score                          decimal.Decimal // score qui trie selon la stratégie
+	MassScore, QualityScore        decimal.Decimal
+	Score                          decimal.Decimal // moyenne pondérée qui trie
 }
 
 // Rank classe les candidates complètes selon la stratégie ; les exclues sont rendues à part, par offre.
 // Strategy vide : pas de tri imposé, ordre par offre (ADR 0028). Égalité de score → id d'offre croissant.
 func Rank(strategy Strategy, cands []Candidate) (ranked []Ranked, excluded []Candidate) {
+	return RankWeighted(strategyWeights(strategy), cands)
+}
+
+// RankWeighted classe les candidates par la moyenne pondérée de leurs scores normalisés (ADR 0036) :
+// Σ poids × score ÷ Σ poids. Poids tous nuls : ordre par offre. Si la qualité pèse, une candidate sans note est
+// exclue (ErrNoQualityScore).
+func RankWeighted(w Weights, cands []Candidate) (ranked []Ranked, excluded []Candidate) {
 	for _, c := range cands {
+		if c.Excluded == nil && w.Quality > 0 && c.Quality == nil {
+			c.Excluded = fmt.Errorf("offer %d: %w", c.OfferID, ErrNoQualityScore)
+		}
 		if c.Excluded != nil {
 			excluded = append(excluded, c)
 			continue
@@ -77,9 +97,14 @@ func Rank(strategy Strategy, cands []Candidate) (ranked []Ranked, excluded []Can
 	normalize(ranked, func(r Ranked) decimal.Decimal { return decimal.NewFromInt(int64(r.LeadDays)) },
 		func(r *Ranked, s decimal.Decimal) { r.LeadScore = s })
 	normalize(ranked, func(r Ranked) decimal.Decimal { return r.CO2Kg }, func(r *Ranked, s decimal.Decimal) { r.CO2Score = s })
-	score := scoreOf(strategy)
+	if w.Mass > 0 {
+		normalize(ranked, func(r Ranked) decimal.Decimal { return r.MassKg }, func(r *Ranked, s decimal.Decimal) { r.MassScore = s })
+	}
+	if w.Quality > 0 { // plus haute = meilleure : on normalise l'opposé
+		normalize(ranked, func(r Ranked) decimal.Decimal { return r.Quality.Neg() }, func(r *Ranked, s decimal.Decimal) { r.QualityScore = s })
+	}
 	for i := range ranked {
-		ranked[i].Score = score(ranked[i])
+		ranked[i].Score = weightedScore(w, ranked[i])
 	}
 	slices.SortFunc(ranked, func(a, b Ranked) int {
 		return cmp.Or(a.Score.Cmp(b.Score), cmp.Compare(a.OfferID, b.OfferID))
@@ -87,23 +112,35 @@ func Rank(strategy Strategy, cands []Candidate) (ranked []Ranked, excluded []Can
 	return ranked, excluded
 }
 
-// scoreOf : le seul endroit où une stratégie devient un calcul (AGENTS §4).
-func scoreOf(s Strategy) func(Ranked) decimal.Decimal {
+// strategyWeights : le seul endroit où une stratégie de nœud devient un calcul (AGENTS §4) — des poids.
+// « balanced » est le cas à poids égaux sur coût, délai et CO2 (ADR 0028, ADR 0036).
+func strategyWeights(s Strategy) Weights {
 	switch s {
 	case StrategyCost:
-		return func(r Ranked) decimal.Decimal { return r.CostScore }
+		return Weights{Cost: 1}
 	case StrategyLeadTime:
-		return func(r Ranked) decimal.Decimal { return r.LeadScore }
+		return Weights{LeadTime: 1}
 	case StrategyCO2:
-		return func(r Ranked) decimal.Decimal { return r.CO2Score }
+		return Weights{CO2: 1}
 	case StrategyBalanced:
-		three := decimal.NewFromInt(3)
-		return func(r Ranked) decimal.Decimal {
-			return r.CostScore.Add(r.LeadScore).Add(r.CO2Score).DivRound(three, ftePrecision)
-		}
+		return Weights{Cost: 1, LeadTime: 1, CO2: 1}
 	default: // sans stratégie : tous à égalité, l'ordre par offre décide
-		return func(Ranked) decimal.Decimal { return decimal.Zero }
+		return Weights{}
 	}
+}
+
+// weightedScore : Σ poids × score ÷ Σ poids, à ftePrecision décimales ; 0 si tous les poids sont nuls.
+func weightedScore(w Weights, r Ranked) decimal.Decimal {
+	total := w.sum()
+	if total == 0 {
+		return decimal.Zero
+	}
+	sum := r.CostScore.Mul(decimal.NewFromInt(int64(w.Cost))).
+		Add(r.LeadScore.Mul(decimal.NewFromInt(int64(w.LeadTime)))).
+		Add(r.CO2Score.Mul(decimal.NewFromInt(int64(w.CO2)))).
+		Add(r.MassScore.Mul(decimal.NewFromInt(int64(w.Mass)))).
+		Add(r.QualityScore.Mul(decimal.NewFromInt(int64(w.Quality))))
+	return sum.DivRound(decimal.NewFromInt(int64(total)), ftePrecision)
 }
 
 // normalize pose (v − min) ÷ (max − min) ; si toutes les valeurs sont égales, 0 pour toutes (ADR 0028).

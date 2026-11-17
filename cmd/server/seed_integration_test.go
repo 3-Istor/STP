@@ -89,7 +89,7 @@ func seedCounts(t *testing.T, pool *pgxpool.Pool) map[string]int {
 	t.Helper()
 	out := map[string]int{}
 	for _, table := range []string{"suppliers", "parts", "offers", "boms", "bom_nodes", "price_quotes", "fx_quotes",
-		"pricing_runs", "seed_loads", "customs_duties", "freight_rates", "budget_rates", "bom_target_budgets", "bom_schedule",
+		"pricing_runs", "seed_loads", "customs_duties", "freight_rates", "budget_rates", "bom_target_budgets", "bom_schedule", "bom_vehicle_profiles",
 		"bom_snapshots", "bom_snapshot_checks", "bom_reduction_ideas", "seed_demo_steps", "price_snapshots"} {
 		var n int
 		if err := pool.QueryRow(t.Context(), "SELECT count(*) FROM "+table).Scan(&n); err != nil {
@@ -135,6 +135,24 @@ func TestRunSeedTwiceWithSameParametersAddsNothing(t *testing.T) {
 	}
 	checkMultiplaPilot(t, pool)
 	checkDemoVersions(t, pool)
+	// ADR 0036 : la Multipla seedée est en profil familiale ; son brouillon B, créé depuis le snapshot V1
+	// (versions de démo, ADR 0033), hérite du profil figé. Aucune autre BOM n'a de profil.
+	rows, err := pool.Query(t.Context(), `SELECT b.name, p.preset FROM bom_vehicle_profiles p JOIN boms b ON b.id = p.bom_id ORDER BY b.id`)
+	if err != nil {
+		t.Fatal("profiles:", err)
+	}
+	var profiles []string
+	for rows.Next() {
+		var name, preset string
+		if err := rows.Scan(&name, &preset); err != nil {
+			t.Fatal("scan profile:", err)
+		}
+		profiles = append(profiles, name+"="+preset)
+	}
+	rows.Close()
+	if want := "[Fiat Multipla 1.6 16V=family Fiat Multipla 1.6 16V=family]"; fmt.Sprint(profiles) != want {
+		t.Fatalf("profiles %v; want %s (Multipla and its draft B)", profiles, want)
+	}
 
 	if err := runSeed(t.Context(), pool); err != nil {
 		t.Fatal("second seed:", err)

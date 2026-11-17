@@ -40,6 +40,11 @@ type Service struct {
 	contracts  ContractSource
 	// ideas : pistes de réduction (vision V2 §2) ; nil → indisponible.
 	ideas IdeaStore
+	// profiles : profils de véhicule (ADR 0036) ; nil → aucun profil, classement par stratégie de nœud seulement.
+	profiles ProfileStore
+	// history et suppliers : historique des cotations et annuaire des fournisseurs, pour les analyses (lot E).
+	history   QuoteHistory
+	suppliers SupplierDirectory
 }
 
 // WithLogistics branche les tables du coût total rendu (ADR 0025).

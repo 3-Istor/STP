@@ -57,3 +57,13 @@ SELECT * FROM bom_snapshot_checks WHERE snapshot_id = $1 ORDER BY position;
 -- En-têtes de tous les snapshots (versions d'une famille de BOM), par id.
 -- name: ListSnapshots :many
 SELECT * FROM bom_snapshots ORDER BY id;
+
+-- Profil de véhicule figé (ADR 0036).
+-- name: InsertSnapshotVehicleProfile :exec
+INSERT INTO bom_snapshot_vehicle_profiles
+    (snapshot_id, preset, weight_cost, weight_co2, weight_lead_time, weight_mass, weight_quality)
+VALUES ($1, $2, $3, $4, $5, $6, $7);
+
+-- name: GetSnapshotVehicleProfile :one
+SELECT preset, weight_cost, weight_co2, weight_lead_time, weight_mass, weight_quality
+FROM bom_snapshot_vehicle_profiles WHERE snapshot_id = $1;

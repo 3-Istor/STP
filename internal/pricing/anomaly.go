@@ -36,7 +36,9 @@ type CostSample struct {
 	PartID   int64
 	Category string
 	Cost     *money.Money
-	Err      error
+	// MassKg : masse unitaire de la pièce (prix au kg, ADR 0037) ; nil si non renseignée.
+	MassKg *decimal.Decimal
+	Err    error
 }
 
 // AnomalyStatus : verdict d'une pièce. NotEvaluable n'est jamais lu comme « normal ».
@@ -59,6 +61,10 @@ type Anomaly struct {
 	Peers    int              // pièces de la catégorie qui ont un coût (la pièce elle-même si elle est active)
 	Missing  int              // pièces de la catégorie écartées faute de prix ou de taux (jamais cachées)
 	Err      error            // pourquoi la pièce n'est pas évaluable
+	// Excess : coût unitaire − coût de référence (médiane, ou médiane €/kg × masse) ; négatif sous la référence.
+	Excess *money.Money
+	// PerKg, MedianPerKg : prix au kg de la pièce et médiane de la famille (PerKgDetector seulement).
+	PerKg, MedianPerKg *money.Money
 }
 
 // AnomalyDetector juge chaque sujet par rapport à la population (même devise pour tous les coûts).
@@ -128,7 +134,8 @@ func (d MedianDetector) Detect(subjects, population []CostSample, threshold deci
 				return nil, fmt.Errorf("part %d: cost in %s, median in %s: %w", s.PartID, s.Cost.Currency(), m.Currency(), money.ErrCurrencyMismatch)
 			}
 			r := s.Cost.Amount().DivRound(m.Amount(), ratioPrecision)
-			a.Median, a.Ratio = &m, &r
+			excess, _ := money.New(s.Cost.Amount().Sub(m.Amount()), string(m.Currency()))
+			a.Median, a.Ratio, a.Excess = &m, &r, &excess
 			a.Status = AnomalyNormal
 			if s.Cost.Amount().GreaterThanOrEqual(threshold.Mul(m.Amount())) {
 				a.Status = AnomalyDetected

@@ -195,3 +195,16 @@ SELECT * FROM bom_reduction_ideas WHERE bom_id = $1 AND id = $2;
 
 -- name: DeleteReductionIdea :execrows
 DELETE FROM bom_reduction_ideas WHERE bom_id = $1 AND id = $2;
+
+-- Profil de véhicule (ADR 0036) : pondérations du classement des alternatives.
+-- name: GetVehicleProfile :one
+SELECT preset, weight_cost, weight_co2, weight_lead_time, weight_mass, weight_quality
+FROM bom_vehicle_profiles WHERE bom_id = $1;
+
+-- name: UpsertVehicleProfile :one
+INSERT INTO bom_vehicle_profiles (bom_id, preset, weight_cost, weight_co2, weight_lead_time, weight_mass, weight_quality)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
+ON CONFLICT (bom_id) DO UPDATE SET preset = EXCLUDED.preset, weight_cost = EXCLUDED.weight_cost,
+    weight_co2 = EXCLUDED.weight_co2, weight_lead_time = EXCLUDED.weight_lead_time,
+    weight_mass = EXCLUDED.weight_mass, weight_quality = EXCLUDED.weight_quality
+RETURNING preset, weight_cost, weight_co2, weight_lead_time, weight_mass, weight_quality;

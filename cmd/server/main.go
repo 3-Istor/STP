@@ -126,8 +126,10 @@ func domainServices(pool *pgxpool.Pool, cat *catalog.Service, sup *supplier.Serv
 	logisticsStore := pricingstore.NewLogistics(pool)
 	boms := bom.NewService(bomstore.New(pool), cat, prices).
 		WithCatalogListing(cat).WithLogistics(pricing.NewLogisticsService(logisticsStore).Store()).
-		WithCostSources(logisticsStore, sup). // méthode de calcul du coût, ADR 0031
-		WithIdeas(bomstore.New(pool))         // pistes de réduction
+		WithCostSources(logisticsStore, sup).            // méthode de calcul du coût, ADR 0031
+		WithIdeas(bomstore.New(pool)).                   // pistes de réduction
+		WithProfiles(bomstore.New(pool)).                // profils de véhicule, ADR 0036
+		WithAnalysisSources(pricingstore.New(pool), sup) // analyses du lot E (historique, fournisseurs)
 	snaps := snapshot.NewService(snapshotstore.New(pool), boms, cat, prices).
 		WithSupplierNames(sup) // explications de la comparaison, ADR 0032
 	return boms, snaps
