@@ -350,3 +350,6 @@ validation fonctionnelle et visuelle sur les assets réellement accessibles.
   CI distante et revue humaine non validés. La mission globale n'est pas déclarée terminée.
 - Prochaine action dépendante : obtenir les GLB/CAD autorisés des deux bonnes versions, inspecter
   et intégrer leurs sous-arbres, produire les vrais manifestes d'assemblage et les captures de référence.
+- Sauvegarde locale finale de l'incrément : `1552471`. Vérification ciblée après les corrections
+  de revue : 4 scénarios desktop/mobile PASS. Inventaire et 2 tests Python PASS ; captures inspectées.
+  Base temporaire arrêtée et supprimée ; livrable par fichier dans `docs/3d/VALIDATION_MANIFEST.md`.
