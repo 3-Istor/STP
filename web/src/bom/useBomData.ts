@@ -7,8 +7,10 @@ import {
   errorMessage,
   type BOM,
   type CostAnomalies,
+  type FrozenCheck,
   type Explanation,
   type NodeAnomaly,
+  type NodeBudget,
   type Planning,
   type Snapshot,
   type StockLine,
@@ -24,6 +26,7 @@ export type BomData = {
   name: string
   bom: BOM | null // brouillon
   snapshot: Snapshot | null // snapshot publié
+  frozenChecks: FrozenCheck[] | null // contrôles figés à la publication (snapshot), null pour un brouillon
   currency: string
   volume: number
   annualHours: string | null
@@ -35,6 +38,9 @@ export type BomData = {
   stock: StockLine[]
   planning: Planning | null
   catalog: Catalog // catalogue avec les prix des offres à la source des totaux
+  // Budgets cibles par nœud, lus avec l'arbre (même calcul que les coûts affichés). unavailable : pourquoi il
+  // n'y a aucun budget à montrer (snapshot publié, API sans budgets) ; une BOM sans budget a une table vide.
+  budgets: Budgets
   anomalies: { data: CostAnomalies | null; error: string | null }
   anomalyByNode: ReadonlyMap<number, NodeAnomaly>
   threshold: string
@@ -44,6 +50,10 @@ export type BomData = {
   // run exécute une action de l'utilisateur puis relit l'arbre ; une erreur de l'API est affichée telle quelle.
   run: (action: () => Promise<unknown>, opts?: { bomChanged?: boolean }) => Promise<boolean>
 }
+
+export type Budgets = { byNode: ReadonlyMap<number, NodeBudget>; unavailable: string | null }
+
+const noBudgets = new Map<number, NodeBudget>()
 
 type State =
   | { status: 'loading' }
@@ -57,8 +67,8 @@ export function useBomData(target: Target, catalog: Catalog, onBOMChanged: () =>
   error: string | null
   clearError: () => void
 } {
-  const [bom, setBOM] = useState<{ bom: BOM; nodes: TreeNode[]; explanation: Explanation; stock: StockLine[]; planning: Planning } | null>(null)
-  const [snap, setSnap] = useState<{ snapshot: Snapshot; nodes: TreeNode[]; explanation: Explanation; stock: StockLine[]; planning: Planning | null } | null>(null)
+  const [bom, setBOM] = useState<{ bom: BOM; nodes: TreeNode[]; explanation: Explanation; stock: StockLine[]; planning: Planning; budgets?: NodeBudget[] } | null>(null)
+  const [snap, setSnap] = useState<{ snapshot: Snapshot; nodes: TreeNode[]; explanation: Explanation; stock: StockLine[]; planning: Planning | null; checks?: FrozenCheck[] } | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -166,6 +176,12 @@ export function useBomData(target: Target, catalog: Catalog, onBOMChanged: () =>
   const nodes = bom?.nodes ?? snap?.nodes
   const byID = useMemo(() => new Map((nodes ?? []).map((n) => [n.id, n])), [nodes])
   const anomalyByNode = useMemo(() => new Map((anomalies.data?.nodes ?? []).map((a) => [a.node_id, a])), [anomalies.data])
+  const treeBudgets = bom?.budgets
+  const budgets = useMemo<Budgets>(() => {
+    if (!isDraft) return { byNode: noBudgets, unavailable: 'Budgets non figés dans un snapshot publié.' }
+    if (!treeBudgets) return { byNode: noBudgets, unavailable: 'Budgets absents de la réponse de l’API.' }
+    return { byNode: new Map(treeBudgets.map((b) => [b.node_id, b])), unavailable: null }
+  }, [isDraft, treeBudgets])
 
   const applyThreshold = useCallback(
     (th: string) => {
@@ -183,10 +199,10 @@ export function useBomData(target: Target, catalog: Catalog, onBOMChanged: () =>
     state = {
       status: 'ready',
       data: {
-        target, readOnly: false, name: bom.bom.name, bom: bom.bom, snapshot: null,
+        target, readOnly: false, name: bom.bom.name, bom: bom.bom, snapshot: null, frozenChecks: null,
         currency: bom.bom.currency, volume: bom.bom.volume, annualHours: bom.bom.annual_hours,
         priceSnapshotID: bom.bom.price_snapshot_id, nodes: bom.nodes, byID, root: bom.nodes.find((n) => n.parent_id === null),
-        explanation: bom.explanation, stock: bom.stock, planning: bom.planning, catalog: pricedCatalog,
+        explanation: bom.explanation, stock: bom.stock, planning: bom.planning, catalog: pricedCatalog, budgets,
         anomalies, anomalyByNode, threshold, applyThreshold, version, busy, run,
       },
     }
@@ -194,10 +210,10 @@ export function useBomData(target: Target, catalog: Catalog, onBOMChanged: () =>
     state = {
       status: 'ready',
       data: {
-        target, readOnly: true, name: snap.snapshot.name, bom: null, snapshot: snap.snapshot,
+        target, readOnly: true, name: snap.snapshot.name, bom: null, snapshot: snap.snapshot, frozenChecks: snap.checks ?? null,
         currency: snap.snapshot.currency, volume: snap.snapshot.volume, annualHours: snap.snapshot.annual_hours,
         priceSnapshotID: snap.snapshot.price_snapshot_id, nodes: snap.nodes, byID, root: snap.nodes.find((n) => n.parent_id === null),
-        explanation: snap.explanation, stock: snap.stock, planning: snap.planning, catalog: pricedCatalog,
+        explanation: snap.explanation, stock: snap.stock, planning: snap.planning, catalog: pricedCatalog, budgets,
         anomalies: emptyAnomalies, anomalyByNode, threshold, applyThreshold, version, busy: false,
         run: async () => false,
       },

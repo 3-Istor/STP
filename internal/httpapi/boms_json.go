@@ -311,6 +311,8 @@ type treeJSON struct {
 	Explanation explanationJSON `json:"explanation"`
 	Stock       []stockJSON     `json:"stock"`
 	Planning    planningJSON    `json:"planning"`
+	// Budgets : budgets cibles du brouillon évalués sur les totaux de cette réponse (même calcul que /budgets).
+	Budgets []budgetJSON `json:"budgets"`
 }
 
 // scheduleJSON : dates calendaires "AAAA-MM-JJ" (ADR 0023).

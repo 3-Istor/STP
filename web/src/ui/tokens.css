@@ -68,10 +68,12 @@
   --bdg-ok-fg: #9be0bd;
   --backdrop: #11182759;
   --shadow: 0 18px 60px #0b24463d;
+  --v3d-bg: #eef0f3; /* fond de la vue 3D (lu par le moteur, ADR 0035) */
 }
 
 [data-theme='dark'] {
   color-scheme: dark;
+  --v3d-bg: #2a3038;
   --bg: #15181c;
   --surface: #1d2126;
   --surface-2: #22272e;

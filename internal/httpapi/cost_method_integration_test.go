@@ -162,7 +162,26 @@ func TestCostMethodRoutes(t *testing.T) {
 			t.Fatal(err)
 		}
 		if len(got) != 2 || got[0].State != "ok" || got[1].State != "over" || got[1].Delta == nil {
-			t.Errorf("budgets = %+v", got)
+			t.Fatalf("budgets = %+v", got)
+		}
+		for _, b := range got {
+			want := b.Cost.Amount().Mul(decimal.NewFromInt(100)).DivRound(b.Target.Amount(), 17).StringFixedBank(1)
+			if b.Percent == nil || *b.Percent != want {
+				t.Errorf("node %d: percent = %v, want %s", b.NodeID, b.Percent, want)
+			}
+		}
+		// L'arbre porte les mêmes budgets, évalués sur ses propres totaux (prix figés ici : mêmes chiffres).
+		var tree treeJSON
+		if err := json.Unmarshal(apiCall(t, h, "GET", base+"/tree", "", http.StatusOK).Body.Bytes(), &tree); err != nil {
+			t.Fatal(err)
+		}
+		if len(tree.Budgets) != 2 {
+			t.Fatalf("tree budgets = %+v", tree.Budgets)
+		}
+		for i, b := range tree.Budgets {
+			if b.NodeID != got[i].NodeID || b.State != got[i].State || *b.Percent != *got[i].Percent {
+				t.Errorf("tree budget %+v ≠ /budgets %+v", b, got[i])
+			}
 		}
 	})
 

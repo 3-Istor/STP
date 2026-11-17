@@ -75,8 +75,26 @@ type budgetJSON struct {
 	Target money.Money  `json:"target"`
 	Cost   *money.Money `json:"cost"`
 	Delta  *money.Money `json:"delta"`
-	State  string       `json:"state"` // ok | warn | over | unavailable
-	Error  *string      `json:"error"`
+	// Percent : coût ÷ budget × 100, chaîne décimale à 1 décimale (half-even) ; null si indisponible.
+	Percent *string `json:"percent"`
+	State   string  `json:"state"` // ok | warn | over | unavailable
+	Error   *string `json:"error"`
+}
+
+func toBudgetsJSON(st []bom.BudgetStatus) []budgetJSON {
+	out := make([]budgetJSON, len(st))
+	for i, s := range st {
+		out[i] = budgetJSON{NodeID: s.NodeID, Target: s.Target, Cost: s.Cost, Delta: s.Delta, State: s.State}
+		if s.Percent != nil {
+			p := s.Percent.StringFixedBank(1)
+			out[i].Percent = &p
+		}
+		if s.Error != "" {
+			msg := s.Error
+			out[i].Error = &msg
+		}
+	}
+	return out
 }
 
 func (a *api) getCostMethod(w http.ResponseWriter, r *http.Request) {
@@ -155,13 +173,5 @@ func (a *api) budgets(w http.ResponseWriter, r *http.Request) {
 		writeError(w, r, err)
 		return
 	}
-	out := make([]budgetJSON, len(st))
-	for i, s := range st {
-		out[i] = budgetJSON{NodeID: s.NodeID, Target: s.Target, Cost: s.Cost, Delta: s.Delta, State: s.State}
-		if s.Error != "" {
-			msg := s.Error
-			out[i].Error = &msg
-		}
-	}
-	writeJSON(w, http.StatusOK, out)
+	writeJSON(w, http.StatusOK, toBudgetsJSON(st))
 }

@@ -158,10 +158,16 @@ export type Candidate = {
   cost_score: string | null
   lead_time_score: string | null
   co2_score: string | null
+  mass_score?: string | null
+  quality_score?: string | null
   excluded: string | null // raison (prix, taux ou attribut manquant)
 }
 
 export type Suggestions = {
+  // profile : profil de véhicule qui classe quand aucune stratégie de nœud ne s'applique (ADR 0036) ;
+  // weights : poids appliqués (stratégie, profil, ou null).
+  profile?: VehicleProfile | null
+  weights?: Weights | null
   node_id: number
   strategy: Strategy | null
   strategy_from: number | null
@@ -172,10 +178,48 @@ export type Suggestions = {
   excluded: Candidate[]
 }
 
-// Méthode de calcul du coût (contrat du lot A, ADR 0031) : absente tant que l'API ne la renvoie pas.
-export type CostMethod = { basis: 'purchase' | 'landed' | 'full'; fx: 'budget' | 'latest'; program_volume?: number }
+// Méthode de calcul du coût (ADR 0031) : base (achat, rendu, complet) × change (taux budget, dernier taux).
+// program_volume : volume programme pour amortir l'outillage, exigé par la base « full ».
+export type CostBasis = 'purchase' | 'landed' | 'full'
+export type FXPolicy = 'budget' | 'latest'
+export type CostMethod = { basis: CostBasis; fx: FXPolicy; program_volume?: number | null }
 
-export type Explanation = { currency: string; price_snapshot_id: number | null; rates: Rate[]; cost_method?: CostMethod }
+// cost_method et cost_as_of (date de calcul : contrats, année du taux budget) sont absents d'un snapshot
+// publié avant ADR 0031 ; budget_rates : taux budget utilisés.
+export type Explanation = {
+  currency: string
+  price_snapshot_id: number | null
+  rates: Rate[]
+  cost_method?: CostMethod
+  cost_as_of?: string | null
+  budget_rates?: Rate[]
+}
+
+// Budget cible d'un nœud comparé à son coût (ADR 0018, 0031). État et pourcentage sont calculés par l'API :
+// ok (vert), warn (orange, coût ≥ 90 % du budget), over (rouge, coût > budget), unavailable (coût ou
+// conversion manquant, jamais vert). percent : coût ÷ budget × 100, 1 décimale, null si indisponible.
+export type BudgetState = 'ok' | 'warn' | 'over' | 'unavailable'
+export type NodeBudget = {
+  node_id: number
+  target: Money
+  cost: Money | null
+  delta: Money | null
+  percent: string | null
+  state: BudgetState
+  error: string | null
+}
+
+// Ventilation du coût d'un nœud (« Pourquoi ce coût ? », ADR 0031) : lignes additives dans la devise de la
+// BOM, Σ amount = total. Un sous-ensemble agrège ses descendants par nature (as_of null).
+export type CostLineKind = 'price' | 'fx' | 'discount' | 'customs' | 'freight' | 'packaging' | 'tooling'
+export type CostBreakdown = {
+  node_id: number
+  currency: string
+  method: CostMethod
+  cost_as_of: string | null
+  lines: { kind: CostLineKind; label: string; amount: Money; source: string; as_of: string | null }[]
+  total: Money
+}
 
 // État de la source de prix (GET /api/v1/pricing/status).
 export type PricingStatus = { dataset_version?: string; tick?: number; as_of?: string; status: string }
@@ -188,7 +232,8 @@ export type PriceSnapshotRef = {
   taken_at: string
 }
 
-export type Tree = { bom: BOM; nodes: TreeNode[]; explanation: Explanation; stock: StockLine[]; planning: Planning }
+// budgets : budgets cibles évalués sur les totaux de cette même réponse (absent d'une API antérieure au lot F).
+export type Tree = { bom: BOM; nodes: TreeNode[]; explanation: Explanation; stock: StockLine[]; planning: Planning; budgets?: NodeBudget[] }
 
 export type Snapshot = {
   id: number
@@ -200,7 +245,14 @@ export type Snapshot = {
   annual_hours: string | null // null : snapshot publié avant ADR 0024
   destination_country: string | null
   published_at: string
+  // Trace de la publication (ADR 0033) ; null si non saisie ou publiée avant.
+  note?: string | null
+  proposed_by?: string | null
+  validated_by?: string | null
 }
+
+// Contrôle figé à la publication, avec la justification de chaque avertissement (ADR 0033).
+export type FrozenCheck = { code: string; level: CheckLevel; title: string; detail: string; justification: string | null }
 
 export type Published = {
   snapshot: Snapshot
@@ -208,6 +260,7 @@ export type Published = {
   explanation: Explanation
   stock: StockLine[]
   planning: Planning
+  checks?: FrozenCheck[]
 }
 
 export type NewNode =
@@ -221,6 +274,149 @@ export type NodePatch =
   | { production_days: number }
   | { strategy: Strategy | null }
   | { part_id: number; offer_id: number }
+
+// --- Versions, comparaison, publication tracée, pistes (lot B, ADR 0032, 0033) -------------------------
+
+export type VersionRef = string // « bom:3 » ou « snapshot:1 », à passer à /compare
+export type Version = {
+  kind: 'draft' | 'snapshot'
+  id: number
+  bom_id: number
+  ref: VersionRef
+  label: string // « V1 », « Brouillon B »
+  name: string
+  at: string // création (brouillon) ou publication (snapshot), à la seconde
+  source_snapshot_id: number | null
+  method: CostMethod
+  cost: Money | null
+  cost_error: string | null
+  target_budget: Money | null
+  budget_percent: string | null
+  price_snapshot_id: number | null
+  proposed_by: string | null
+  validated_by: string | null
+  note: string | null
+  part_count: number
+  node_count: number
+}
+
+export type VersionTotals = { cost: Money; co2_kg: string; mass_kg: string; lead_time_days: number }
+export type CompareSide = { ref: VersionRef; label: string; name: string; method: CostMethod; price_snapshot_id: number | null; totals: VersionTotals }
+export type CauseKind = 'structure' | 'offer_change' | 'price' | 'fx' | 'discount' | 'logistics' | 'tooling' | 'method'
+// Σ amount des causes = delta.cost exactement (ADR 0032) ; node_ids : 20 plus gros écarts (côté « vers »),
+// from_node_ids : nœuds du côté « de » (pièces retirées) ; node_count : total.
+export type Cause = { kind: CauseKind; amount: Money; explanation: string; node_ids: number[]; from_node_ids: number[]; node_count: number }
+export type ChangedPart = {
+  change: string // added | removed | offer | quantity…
+  path: string
+  node_id: number | null
+  from_node_id: number | null
+  part_id: number
+  before: string
+  after: string
+  delta: Money
+}
+export type Comparison = { from: CompareSide; to: CompareSide; delta: VersionTotals; causes: Cause[]; changed_parts: ChangedPart[] }
+
+export type CheckLevel = 'ok' | 'warn' | 'block'
+export type PublicationCheck = { code: string; level: CheckLevel; title: string; detail: string; node_ids: number[] }
+export type PublishRequest = { note: string; proposed_by: string; validated_by: string; justifications: Record<string, string> }
+
+export type IdeaStatus = 'idea' | 'in_progress' | 'to_validate' | 'done' | 'dropped'
+export type Idea = { id: number; title: string; owner: string; estimated_gain: Money; status: IdeaStatus; draft_bom_id: number | null; created_at: string }
+// open_total : pistes ouvertes (idée, en cours, à valider) ; gap_to_target = coût − budget global ;
+// remaining = écart − pistes ouvertes. Signés : négatif = couvert (budget tenu).
+export type IdeasSummary = { ideas: Idea[]; open_total: Money; gap_to_target: Money | null; remaining: Money | null; gap_error: string | null }
+export type NewIdea = { title: string; owner: string; estimated_gain: Money; status: IdeaStatus; draft_bom_id: number | null }
+export type IdeaPatch = Partial<Pick<Idea, 'title' | 'owner' | 'estimated_gain' | 'status'>>
+
+// --- Analyses et profils (lot E, ADR 0036, 0037) --------------------------------------------------------
+
+export type FxSensitivity = {
+  currency: string
+  share_percent: string // exposition ÷ total, 2 décimales
+  impact: Money
+  budget_percent_after: string | null
+  shock_percent: string
+  exposed: Money
+  cost_before: Money
+  cost_after: Money
+  budget: Money | null
+  budget_error: string | null
+  rates: Rate[]
+  cost_method: CostMethod
+  price_snapshot_id: number | null
+}
+
+export type PriceDriver = {
+  part_id: number
+  name: string
+  amplitude: Money | null
+  rank: number | null // null : non évaluable (error)
+  error: string | null
+  offers: { offer_id: number; quantity: string; min: Money | null; max: Money | null; quotes: number; amplitude: Money | null; error: string | null }[]
+  window_start: string
+  window_end: string
+}
+
+export type CostShare = { key: string; cost: Money; share_percent: string; parts: number }
+export type Sourcing = {
+  currency: string
+  as_of: string
+  total: Money
+  by_country: CostShare[]
+  by_currency: CostShare[]
+  supplier_count: number
+  top5_share_percent: string
+  suppliers: {
+    supplier_id: number
+    name: string
+    countries: string[]
+    currencies: string[]
+    cost: Money
+    share_percent: string
+    parts: number
+    contract: { status: 'active' | 'expired' | 'not_started' | 'none'; contract_id: number | null; ends_on: string | null }
+  }[]
+  mono_source_count: number
+  mono_source: { part_id: number; name: string; active_offers: number; supplier_ids: number[]; cost: Money; share_percent: string }[]
+  expired_contracts: {
+    contract_id: number
+    supplier_id: number
+    supplier_name: string
+    ends_on: string
+    lost_amount: Money | null
+    parts: { part_id: number; name: string; offer_id: number; ordered_quantity: string; discount_percent: string; tier_min: string | null; amount: Money | null; error: string | null }[]
+  }[]
+  rates: { currency: string; budget_rate: Rate | null; latest_rate: Rate | null; gap_percent: string | null; effect: Money | null; error: string | null }[]
+  cost_method: CostMethod
+  price_snapshot_id: number | null
+}
+
+export type PartAnomaly = {
+  part_id: number
+  name: string
+  category: string
+  offer_id: number
+  node_ids: number[]
+  quantity: string
+  status: 'anomaly' | 'normal' | 'not_evaluable'
+  unit_cost: Money | null
+  per_kg: Money | null
+  median_per_kg: Money | null
+  reference_cost: Money | null
+  ratio: string | null
+  excess: Money | null
+  impact: Money | null // surcoût estimé par véhicule
+  peers: number
+  missing: number
+  reason: string | null
+}
+export type PartAnomalies = { method: string; threshold: string; currency: string; price_snapshot_id: number | null; rates: Rate[]; anomaly_count: number; parts: PartAnomaly[] }
+
+export type Weights = { cost: number; co2: number; lead_time: number; mass: number; quality: number }
+export type VehicleProfile = { preset: string | null; weights: Weights | null }
+export type ProfilePreset = { preset: string; label: string; hint: string; weights: Weights | null; custom: boolean }
 
 export class ApiError extends Error {
   readonly status: number
@@ -288,10 +484,33 @@ export const api = {
     call<BOM>('PUT', `/boms/${id}/freeze-prices`, { price_snapshot_id: snapshotID }),
   listPriceSnapshots: () => call<PriceSnapshotRef[]>('GET', '/price-snapshots'),
   unfreezePrices: (id: number) => call<BOM>('DELETE', `/boms/${id}/freeze-prices`),
-  publish: (id: number) => call<Snapshot>('POST', `/boms/${id}/publish`),
+  // Publication tracée (ADR 0033) : 409 si un contrôle bloque, 422 si un avertissement n'est pas justifié.
+  publish: (id: number, body?: PublishRequest) => call<Snapshot>('POST', `/boms/${id}/publish`, body),
   snapshot: (id: number) => call<Published>('GET', `/snapshots/${id}`),
   newDraft: (snapshotID: number) => call<BOM>('POST', `/snapshots/${snapshotID}/drafts`),
   pricingStatus: () => call<PricingStatus>('GET', '/pricing/status'),
+  // Méthode de calcul (brouillon seulement en écriture) ; « full » exige program_volume.
+  setCostMethod: (bomID: number, m: CostMethod) => call<CostMethod>('PUT', `/boms/${bomID}/cost-method`, m),
+  costBreakdown: (bomID: number, nodeID: number) => call<CostBreakdown>('GET', `/boms/${bomID}/nodes/${nodeID}/cost-breakdown`),
+  snapshotCostBreakdown: (snapshotID: number, nodeID: number) =>
+    call<CostBreakdown>('GET', `/snapshots/${snapshotID}/nodes/${nodeID}/cost-breakdown`),
+  versions: (bomID: number) => call<Version[]>('GET', `/boms/${bomID}/versions`),
+  compare: (from: VersionRef, to: VersionRef) =>
+    call<Comparison>('GET', `/compare?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`),
+  publicationChecks: (bomID: number) => call<PublicationCheck[]>('GET', `/boms/${bomID}/publication-checks`),
+  ideas: (bomID: number) => call<IdeasSummary>('GET', `/boms/${bomID}/ideas`),
+  createIdea: (bomID: number, idea: NewIdea) => call<Idea>('POST', `/boms/${bomID}/ideas`, idea),
+  patchIdea: (bomID: number, ideaID: number, p: IdeaPatch) => call<Idea>('PATCH', `/boms/${bomID}/ideas/${ideaID}`, p),
+  deleteIdea: (bomID: number, ideaID: number) => call<void>('DELETE', `/boms/${bomID}/ideas/${ideaID}`),
+  fxSensitivity: (bomID: number, shock: string) =>
+    call<FxSensitivity[]>('GET', `/boms/${bomID}/analysis/fx-sensitivity?shock_percent=${encodeURIComponent(shock)}`),
+  priceDrivers: (bomID: number, limit = 10) => call<PriceDriver[]>('GET', `/boms/${bomID}/analysis/price-drivers?limit=${limit}`),
+  sourcing: (bomID: number) => call<Sourcing>('GET', `/boms/${bomID}/analysis/sourcing`),
+  partAnomalies: (bomID: number) => call<PartAnomalies>('GET', `/boms/${bomID}/analysis/anomalies`),
+  profilePresets: () => call<ProfilePreset[]>('GET', '/vehicle-profiles'),
+  profile: (bomID: number) => call<VehicleProfile>('GET', `/boms/${bomID}/profile`),
+  snapshotProfile: (snapshotID: number) => call<VehicleProfile>('GET', `/snapshots/${snapshotID}/profile`),
+  setProfile: (bomID: number, p: { preset: string; weights: Weights }) => call<VehicleProfile>('PUT', `/boms/${bomID}/profile`, p),
 }
 
 export function errorMessage(e: unknown): string {

@@ -17,6 +17,12 @@ function readPalette(el: HTMLElement): StatusPalette {
   return { ok: get('--ok', DEFAULT_STATUS.ok), warn: get('--warn', DEFAULT_STATUS.warn), over: get('--over', DEFAULT_STATUS.over) }
 }
 
+/** Fond de la scène : variable --v3d-bg du thème courant, sinon le gris clair d'origine. */
+function readBackground(el: HTMLElement): string {
+  const v = getComputedStyle(el).getPropertyValue('--v3d-bg').trim()
+  return /^#[0-9a-f]{6}$/i.test(v) ? v : '#eef0f3'
+}
+
 type Status = { state: 'loading' } | { state: 'ready'; result: LoadResult } | { state: 'error'; message: string }
 
 export default function Vehicle3DView({ bomId, nodes, selectedNodeId, onSelectNode, mode, colorBy, explode }: Vehicle3DProps) {
@@ -53,11 +59,21 @@ export default function Vehicle3DView({ bomId, nodes, selectedNodeId, onSelectNo
       },
     })
     viewerRef.current = viewer
+    viewer.setBackground(readBackground(rootRef.current!))
+    // Bascule de thème (data-theme sur <html>) : couleurs de statut et fond relus, sans reconstruire la scène.
+    const themeObserver = new MutationObserver(() => {
+      const root = rootRef.current
+      if (!root) return
+      setPalette(readPalette(root))
+      viewer.setBackground(readBackground(root))
+    })
+    themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] })
     // Développement seulement : accès au moteur pour les captures et tests Playwright (absent du build).
     if (import.meta.env.DEV) Object.assign(rootRef.current!, { __viewer: viewer })
     const onKey = (ev: KeyboardEvent) => { if (ev.key === 'Escape' && viewer.focused) viewer.setFocus(null) }
     window.addEventListener('keydown', onKey)
     return () => {
+      themeObserver.disconnect()
       window.removeEventListener('keydown', onKey)
       viewer.dispose()
       viewerRef.current = null
@@ -127,7 +143,7 @@ export default function Vehicle3DView({ bomId, nodes, selectedNodeId, onSelectNo
               <span><i style={{ background: budgetColor('ok', palette) }} />dans le budget</span>
               <span><i style={{ background: budgetColor('warn', palette) }} />proche</span>
               <span><i style={{ background: budgetColor('over', palette) }} />dépassé</span>
-              <span><i style={{ background: UNAVAILABLE }} />indisponible</span>
+              <span><i style={{ background: UNAVAILABLE }} />sans budget ou indisponible</span>
             </>
           ) : index.systems.map(s => (
             <span key={s.id}><i style={{ background: systemColor(s.index) }} />{s.name}</span>

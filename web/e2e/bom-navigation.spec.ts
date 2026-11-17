@@ -124,8 +124,9 @@ test('devise de référence choisie dans la liste des devises cotées', async ({
 test('une ligne de BOM montre son aperçu, « Ouvrir » mène à l’étape Structurer', async ({ page }, testInfo) => {
   await mockAPI(page)
   await page.goto('/#/boms')
-  const row = page.getByRole('row').filter({ hasText: 'Fiat Multipla' })
-  const date = row.getByRole('cell').nth(2)
+  // Sans GET /versions (fixture absente), la BOM reste listée seule, sous la ligne de sa famille.
+  const row = page.locator('tr.bom-row').filter({ hasText: 'Fiat Multipla' })
+  const date = row.getByRole('cell').nth(1)
   if (testInfo.project.use.hasTouch) await date.tap()
   else await date.click()
   await expect(page.getByRole('complementary', { name: 'Aperçu' })).toContainText('Fiat Multipla · brouillon')

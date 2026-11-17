@@ -1,6 +1,6 @@
 import { bomRoute, href, STEP_LABELS, STEPS, type Route, type Step, type Target } from '../router.ts'
 
-export type StepBadges = Partial<Record<Step, { text: string; level?: 'warn' | 'over' | 'ok' }>>
+export type StepBadges = Partial<Record<Step, { text: string; level?: 'warn' | 'over' | 'ok'; title?: string }>>
 
 type Props = {
   route: Route
@@ -50,7 +50,11 @@ export function TopBar({ route, bom, badges }: Props) {
               >
                 <span className="n">{i + 1}</span>
                 <b>{STEP_LABELS[s]}</b>
-                {badges[s] && <span className={`bdg ${badges[s]!.level ?? ''}`}>{badges[s]!.text}</span>}
+                {badges[s] && (
+                  <span className={`bdg ${badges[s]!.level ?? ''}`} title={badges[s]!.title}>
+                    {badges[s]!.text}
+                  </span>
+                )}
               </a>
             </span>
           ))}

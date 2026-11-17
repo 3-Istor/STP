@@ -1,9 +1,12 @@
 import { useState } from 'react'
-import type { Explanation, NewNode, NodeAnomaly, NodePatch, StockLine, TreeNode } from '../api.ts'
+import type { Explanation, NewNode, NodeAnomaly, NodeBudget, NodePatch, StockLine, TreeNode } from '../api.ts'
 import { partName, type Catalog } from '../catalog.ts'
 import { formatDate, formatDecimal, formatMoney, multiplyDecimal } from '../money.ts'
 import { AddNodeDialog } from './AddNodeDialog.tsx'
 import { AnomalyFacts } from './Anomalies.tsx'
+import { budgetClass, budgetPercentText, budgetTitle } from './budget.ts'
+import { CostBreakdown } from './CostBreakdown.tsx'
+import type { Target } from '../router.ts'
 import { StockPanel } from './StockPanel.tsx'
 
 type Props = {
@@ -21,6 +24,9 @@ type Props = {
   anomaly?: NodeAnomaly
   parentName?: string // fil du nœud (parent direct), comme la maquette I4-1
   onSetStock?: (partID: number, quantity: string) => Promise<boolean>
+  target: Target // brouillon ou snapshot : source de la ventilation « Pourquoi ce coût ? »
+  version: number // relecture de l'arbre : la ventilation est relue
+  budget?: NodeBudget // budget cible propre au nœud (API), s'il en a un
 }
 
 // NodePanel : détail d'un nœud à la demande (AGENTS §5), dans la colonne de droite de toutes les étapes —
@@ -48,6 +54,14 @@ export function NodePanel(p: Props) {
           <dd className={t.cost_error_code ? 'over' : undefined}>
             {t.cost ? formatMoney(t.cost) : (t.cost_error ?? 'n/d')}
           </dd>
+          {p.budget && (
+            <>
+              <dt>Budget</dt>
+              <dd title={budgetTitle(p.budget)}>
+                {formatMoney(p.budget.target)} · <b className={budgetClass(p.budget)}>{budgetPercentText(p.budget)}</b>
+              </dd>
+            </>
+          )}
           {t.missing_cost.length > 0 && (
             <>
               <dt>Sans prix</dt>
@@ -85,6 +99,8 @@ export function NodePanel(p: Props) {
       )}
 
       <AnomalyFacts anomaly={p.anomaly} />
+
+      <CostBreakdown target={p.target} nodeID={node.id} title={title} version={p.version} />
 
       {isPart && (
         <StockPanel

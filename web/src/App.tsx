@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
-import { api, errorMessage, type BOM, type Snapshot } from './api.ts'
+import { api, errorMessage, type BOM } from './api.ts'
 import { emptyCatalog, loadCatalog, type Catalog } from './catalog.ts'
 import { CurrenciesContext, currencyChoices, loadCurrencies } from './currencies.ts'
 import { AllBoms } from './home/AllBoms.tsx'
 import { BomWorkspace } from './bom/BomWorkspace.tsx'
-import { useBomData } from './bom/useBomData.ts'
+import { useBomData, type BomData } from './bom/useBomData.ts'
+import { useLoad } from './bom/useLoad.ts'
 import { formatDecimal } from './money.ts'
 import { href, useRoute, type Route } from './router.ts'
 import { StatusBar } from './shell/StatusBar.tsx'
@@ -24,8 +25,6 @@ export default function App() {
   const [listError, setListError] = useState<string | null>(null)
   const [catalog, setCatalog] = useState<Catalog>(emptyCatalog)
   const [fxCurrencies, setFxCurrencies] = useState<string[]>([])
-  // Snapshots publiés depuis cet onglet : l'API ne liste pas encore les versions (lot B).
-  const [published, setPublished] = useState<Snapshot[]>([])
 
   const refresh = useCallback(() => {
     api
@@ -56,7 +55,7 @@ export default function App() {
     case 'boms':
       screen = (
         <Frame route={route} bar={{ ...bar, items: [`${count(boms.length)} BOM`], right: null }}>
-          <AllBoms boms={boms} published={published} error={listError} onChanged={refresh} />
+          <AllBoms boms={boms} error={listError} onChanged={refresh} />
         </Frame>
       )
       break
@@ -79,8 +78,7 @@ export default function App() {
           catalog={catalog}
           bar={bar}
           onBOMChanged={refresh}
-          published={published}
-          onPublished={(s) => setPublished((p) => [...p.filter((x) => x.id !== s.id), s])}
+          onPublished={refresh}
         />
       )
       break
@@ -139,17 +137,16 @@ function BomScreen({
   catalog,
   bar,
   onBOMChanged,
-  published,
   onPublished,
 }: {
   route: Extract<Route, { page: 'bom' }>
   catalog: Catalog
   bar: BarProps
   onBOMChanged: () => void
-  published: Snapshot[]
-  onPublished: (s: Snapshot) => void
+  onPublished: () => void
 }) {
   const { state, error } = useBomData(route.target, catalog, onBOMChanged)
+  const badgeData = useBadgeData(state.status === 'ready' ? state.data : null)
   if (state.status !== 'ready') {
     const label = route.target.kind === 'draft' ? 'brouillon' : `snapshot #${route.target.id}`
     return (
@@ -169,9 +166,7 @@ function BomScreen({
     )
   }
   const data = state.data
-  const anomalyCount = data.anomalies.data?.nodes.filter((n) => n.status === 'anomaly').length ?? 0
-  const badges: StepBadges = { structurer: { text: count(data.nodes.length) } }
-  if (anomalyCount > 0) badges.chiffrer = { text: count(anomalyCount), level: 'warn' }
+  const badges = stepBadges(data.nodes.length, badgeData)
   const label = data.snapshot ? `snapshot #${data.snapshot.id}` : 'brouillon'
   return (
     <Frame
@@ -184,7 +179,34 @@ function BomScreen({
         right: `${data.currency} · ${count(data.volume)} véhicules`,
       }}
     >
-      <BomWorkspace route={route} data={data} error={error} published={published} onPublished={onPublished} />
+      <BomWorkspace route={route} data={data} error={error} onPublished={onPublished} />
     </Frame>
   )
+}
+
+// Données des badges d'étape, relues avec l'arbre (brouillon seulement) : anomalies €/kg (Chiffrer, ADR 0037)
+// et contrôles avant publication (Publier « ok sur total », Sourcer « contrat expiré », ADR 0033). Une
+// lecture en échec retire le badge : aucun chiffre par défaut.
+function useBadgeData(data: BomData | null) {
+  const draft = data && !data.readOnly ? data.target.id : null
+  const key = draft === null ? null : `${draft}-${data!.version}`
+  const anomalies = useLoad(key, () => api.partAnomalies(draft!))
+  const checks = useLoad(key, () => api.publicationChecks(draft!))
+  return {
+    anomalyCount: anomalies.status === 'ready' ? anomalies.data.anomaly_count : null,
+    checks: checks.status === 'ready' ? checks.data : null,
+  }
+}
+
+function stepBadges(nodes: number, b: ReturnType<typeof useBadgeData>): StepBadges {
+  const badges: StepBadges = { structurer: { text: count(nodes), title: 'nœuds' } }
+  if (b.anomalyCount !== null && b.anomalyCount > 0) badges.chiffrer = { text: count(b.anomalyCount), level: 'warn', title: 'anomalies €/kg' }
+  if (b.checks) {
+    const ok = b.checks.filter((c) => c.level === 'ok').length
+    const level = b.checks.some((c) => c.level === 'block') ? 'over' : ok < b.checks.length ? 'warn' : 'ok'
+    badges.publier = { text: `${ok}/${b.checks.length}`, level, title: 'contrôles avant publication passés' }
+    const expired = b.checks.find((c) => c.code === 'expired_contracts' && c.level !== 'ok')
+    if (expired) badges.sourcer = { text: '!', level: 'over', title: `${expired.title} : ${expired.detail}` }
+  }
+  return badges
 }
