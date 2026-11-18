@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import type { NewNode } from '../api.ts'
 import type { Catalog } from '../catalog.ts'
-import { formatMoney } from '../money.ts'
+import { decimalInput, formatMoney } from '../money.ts'
 import { byName, normalize } from '../text.ts'
 
 // Au-delà, la liste demande d'affiner la recherche : 800+ pièces ne s'affichent pas d'un coup.
@@ -41,6 +41,9 @@ export function AddNodeDialog({ parentName, parentID, catalog, onAdd, onClose }:
   const matches = catalog.parts.filter(
     (p) => (category === '' || p.category === category) && (q === '' || normalize(`${p.name} ${p.category}`).includes(q)),
   )
+  // Décimal strictement positif, virgule ou point ; l'API reçoit toujours un point.
+  const quantity = decimalInput(qty)
+  const qtyValid = /^\d+(\.\d+)?$/.test(quantity) && /[1-9]/.test(quantity)
   const part = partID !== null ? catalog.byPart.get(partID) : undefined
 
   function choosePart(id: number) {
@@ -55,13 +58,13 @@ export function AddNodeDialog({ parentName, parentID, catalog, onAdd, onClose }:
     setBusy(true)
     const ok =
       kind === 'part'
-        ? await onAdd({ parent_id: parentID, part_id: partID!, offer_id: offerID!, quantity: qty.trim() })
-        : await onAdd({ parent_id: parentID, name: name.trim(), quantity: qty.trim(), production_days: Number.parseInt(days, 10) })
+        ? await onAdd({ parent_id: parentID, part_id: partID!, offer_id: offerID!, quantity: quantity })
+        : await onAdd({ parent_id: parentID, name: name.trim(), quantity: quantity, production_days: Number.parseInt(days, 10) })
     setBusy(false)
     if (ok) onClose()
   }
 
-  const ready = kind === 'group' ? name.trim() !== '' : part !== undefined && offerID !== null
+  const ready = kind === 'group' ? name.trim() !== '' && qtyValid : part !== undefined && offerID !== null && qtyValid
 
   return (
     <dialog
@@ -165,9 +168,10 @@ export function AddNodeDialog({ parentName, parentID, catalog, onAdd, onClose }:
         )}
 
         <div className="form-actions">
-          <label className="qty-field">
+          <label className="qty-field" style={qtyValid ? undefined : { width: 'auto', maxWidth: 240 }}>
             Quantité
-            <input aria-label="Quantité" required inputMode="decimal" size={6} value={qty} onChange={(e) => setQty(e.target.value)} />
+            <input aria-label="Quantité" required inputMode="decimal" size={6} value={qty} aria-invalid={!qtyValid} onChange={(e) => setQty(e.target.value)} />
+            {!qtyValid && <span className="error" role="alert" style={{ display: 'block' }}>Saisissez un nombre supérieur à 0 (ex. 1,5).</span>}
           </label>
           <button type="button" className="secondary-button" onClick={onClose}>
             Annuler

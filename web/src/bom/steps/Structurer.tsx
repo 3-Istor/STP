@@ -52,6 +52,7 @@ export function Structurer(p: Props) {
       onChangeOffer={(nodeID, offerID) => void data.run(() => api.patchNode(data.target.id, nodeID, { offer_id: offerID }))}
       moving={p.moving}
       onPickParent={p.onPickParent}
+      onCancelMove={p.onCancelMove}
       onAddUnder={data.readOnly ? undefined : p.onAddUnder}
       onStartMove={p.onStartMove}
       onDelete={p.onDelete}
