@@ -35,5 +35,6 @@ ENTRYPOINT ["/usr/local/bin/priceapi"]
 # One-shot : applique les migrations puis s'arrête ; un code de sortie non nul bloque le back.
 FROM runtime AS migrate
 COPY --from=build /out/goose /usr/local/bin/goose
-COPY migrations /migrations
+# Readable by the non-root user whatever the host umask (0600 checkouts broke goose).
+COPY --chmod=0755 migrations /migrations
 ENTRYPOINT ["/bin/sh", "-c", "exec goose -dir /migrations postgres \"$DATABASE_URL\" up"]

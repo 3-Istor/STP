@@ -11,5 +11,6 @@ RUN npm run build
 
 FROM nginx:1.29.4-alpine
 COPY nginx.conf /etc/nginx/conf.d/default.conf
-COPY --from=build /app/dist /usr/share/nginx/html
+# Readable by the nginx worker whatever the host umask or the 3D assets ZIP modes (0600).
+COPY --from=build --chmod=0755 /app/dist /usr/share/nginx/html
 EXPOSE 80
