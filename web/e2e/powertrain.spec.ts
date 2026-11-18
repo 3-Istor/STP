@@ -83,3 +83,20 @@ test('prix manquant : coût incomplet et écart indisponible, scénario excluant
   await expect(page.getByRole('region', { name: 'Synthèse', exact: true }).locator('.total .vl')).toHaveText('incomplet')
   await expect(panel).toContainText('Des prix ou taux manquent')
 })
+
+test('panne API : référence conservée, reprise explicite et aucune simulation faussement annoncée', async ({ page }) => {
+  const f = await fixture(page)
+  await page.route('**/api/v1/boms/2/configuration-simulation', async route => {
+    await route.fulfill({ status: 503, json: { error: 'source de prix indisponible' } })
+    await page.unroute('**/api/v1/boms/2/configuration-simulation')
+  })
+  const panel = page.getByRole('region', { name: 'Simulation de motorisation' })
+  await panel.getByRole('radio', { name: 'Thermique', exact: true }).click()
+  await expect(panel.getByRole('alert')).toContainText('source de prix indisponible')
+  const summary = page.getByRole('region', { name: 'Synthèse', exact: true })
+  await expect(summary.locator('.total .vl')).toContainText('987,65')
+  await expect(summary).not.toContainText('scénario calculé')
+  await panel.getByRole('button', { name: 'Actualiser la comparaison' }).click()
+  await expect(summary.locator('.total .vl')).toContainText('731,29')
+  expect(f.requests).toHaveLength(1)
+})

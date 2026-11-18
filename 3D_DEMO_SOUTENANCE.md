@@ -1,7 +1,8 @@
 # Démonstration 3D — 18 novembre 2026
 
 Branche : `feat/3d-pro-v2`. Les services de démonstration sont préparés séparément du Docker
-habituel du projet. Le code Go, les migrations et les contrats API n'ont pas été modifiés.
+habituel du projet. La simulation Go en mémoire ajoute une route de lecture/calcul (ADR 0042),
+sans migration ni modification des contrats existants ou des données de référence.
 
 ## Ouvrir la démonstration déjà lancée
 
@@ -9,9 +10,8 @@ habituel du projet. Le code Go, les migrations et les contrats API n'ont pas ét
 - [Aston Martin Valhalla](http://127.0.0.1:41769/#/boms/2/structurer?tab=3d).
 - [Brouillon B : batterie remplaçable](http://127.0.0.1:41769/#/boms/3/structurer?tab=arbre-3d&node=60776).
 
-Les installations vérifiées ouvrent le mode **Composants** : les modèles fournis sont chargés
-depuis les manifestes d'occurrences. Le mode Simple reste un schéma explicitement annoncé.
-L'ancienne option Réaliste est retirée : l'application ne propose plus le modèle générique CarConcept.
+Le rendu **Composants** est permanent : les modèles fournis sont chargés depuis les manifestes
+d'occurrences. Les options Simple, Réaliste et le sélecteur Rendu ont disparu de l'interface produit.
 Au premier chargement, laisser finir le téléchargement local des GLB et la compilation des shaders.
 
 ## Redémarrer dans WSL
@@ -58,21 +58,27 @@ année des taux budget semés. Les prix restent synthétiques et datés, sans ta
 
 ## Parcours devant le jury
 
-1. Ouvrir la Fiat, laisser le mode Composants. Montrer sa silhouette et les crédits de l'auteur.
-2. Glisser sur la voiture pour tourner, utiliser la molette pour zoomer, puis **Recentrer**.
-3. Déplacer **Éclatement** à 50 puis 100 %. La coque se soulève, les organes et roues se dégagent.
-4. Passer en **Arbre + 3D** et cliquer une roue dans l'éclaté : son occurrence et le panneau Détail
-   apparaissent. Les quatre pneus ont des identités distinctes même s'ils partagent la même référence.
-5. Rechercher une pièce mécanique dans l'arbre, par exemple le bloc moteur. La sélectionner : la
-   géométrie liée est surlignée et cadrée. Dans **Composants et sources**, **Isoler la sélection**, puis
-   **Tout afficher**. Sélectionner le groupe motopropulseur et utiliser **Focus sélection**.
-6. **Échap**, puis **Réinitialiser** : revenir à la pose assemblée et à la caméra globale.
-7. Ouvrir la Valhalla. Montrer l'extérieur, puis ouvrir **Composants et sources**.
-8. Choisir successivement **Thermique**, **Électrique**, **Hybride** dans **Motorisation**. Le V8,
-   les trois moteurs électriques et la batterie sont des représentations illustratives. Le filtre
-   met les systèmes en évidence ; il ne simule pas un flux d'énergie ou une puissance.
-9. Fermer le panneau, éclater, puis cliquer un moteur avant. En **Arbre + 3D**, voir son occurrence
-   propre et les informations BOM. Revenir à **Réinitialiser** avant de quitter le véhicule.
+1. Ouvrir la **Valhalla**, vue **3D**. Montrer l'extérieur, tourner et zoomer, puis **Recentrer**.
+2. Déplacer **Éclatement** à 50 puis 100 %. La coque se soulève ; les organes se dégagent.
+3. Passer en **Arbre + 3D**, sélectionner le bloc V8 ou un moteur avant dans l'arbre. Dans
+   **Composants et sources**, **Isoler la sélection**, puis **Tout afficher**. Un clic sur la
+   géométrie choisit son occurrence BOM. Fermer le panneau de sources pour voir la scène.
+4. Revenir en **3D**, éclatement 0. Dans **Motorisation simulée** (au-dessus de l'explorateur),
+   cliquer **Thermique** et attendre la fin du calcul. Le sous-arbre électrique #34537 disparaît
+   de la BOM et de la scène ; le coût de la Synthèse devient **393 970,50 GBP** sur l'entrée vérifiée.
+5. Cliquer **Électrique** : V8 #32413, échappement #35285 et carburant #35392 retirés, moteurs
+   électriques/batterie conservés. Coût des composants disponibles : **369 705,74 GBP**.
+   Dire explicitement : batterie BEV adaptée et transformations non conçues/non chiffrées.
+6. Cliquer **Hybride** : tous les composants reviennent, **461 381,26 GBP**, tableau des trois
+   coûts et écarts. Les composants communs sont calculés une seule fois par configuration.
+7. Ouvrir **Hypothèses et limites techniques** ou **Composants retirés** pour expliquer les IDs
+   et quantités. La simulation est en lecture seule et utilise une même entrée Go de prix/change.
+   **Actualiser la comparaison** relit les cotations et recalcule les trois scénarios ensemble.
+8. Dans **Composants et sources**, le **Filtre visuel 3D** ne fait que mettre des systèmes en
+   évidence. Il n'a aucune incidence sur la BOM active ou les coûts : montrer cette distinction.
+9. **Quitter la simulation** restitue la référence éditable sans écriture de restauration SQL.
+   Ouvrir la **Fiat**, montrer silhouette, éclaté, deux arbres à cames #12932 et sélection de roue.
+   **Réinitialiser** revient à la pose assemblée. La coloration Matériaux/Budget/Système reste disponible.
 10. Ouvrir le brouillon B sur la batterie, puis **Composants et sources → Isoler la sélection**.
     Fermer le panneau pour voir la pièce. Changer **Fournisseur pour cette pièce** : la forme reste
     identique. Ouvrir **Remplacement physique — variante 3D illustrative**, choisir **Batterie 12 V
@@ -98,6 +104,14 @@ déplacée hors de sa liaison ou une quantité sans emplacement validé ne reço
 Les manifestes sont propres à l'installation semée et aux brouillons 1/2/3. Une autre base ou un
 nouveau snapshot exige son manifeste vérifié ; l'absence est affichée. Les snapshots publiés ne sont
 pas modifiés. Les performances observées en Chromium logiciel ne préjugent pas du GPU du jury.
+
+Les prix sont des données industrielles **synthétiques**, source `pricesim.v1/demo-v4`, cotées au
+1er janvier 2026 pour cette entrée. Les montants ci-dessus sont des résultats observés, jamais des
+constantes React ; une modification de BOM, devise, offre ou cotation change le résultat Go.
+Le profil vérifié ne s'applique qu'au brouillon Valhalla #2 avec les identités attendues. Une autre
+installation nécessite une définition contrôlée. Les calculs couvrent toute la BOM active, pas
+seulement les 47 occurrences physiques dotées d'une géométrie.
+Périmètre et preuves : [motorisations et comparaison](docs/3d/MOTORISATIONS_SOUTENANCE.md).
 
 ## Pièce sans modèle individuel
 

@@ -34,12 +34,14 @@ func TestConfigurationsReuseCostStrategies(t *testing.T) {
 func TestServiceConfigurationsPreserveReference(t *testing.T) {
 	f := newFixture(t)
 	bomID, rootID := f.newBOM(t)
-	thermal := f.addPart(t, bomID, rootID, 1, 10, "2")
+	thermal := f.addPart(t, bomID, rootID, 1, 11, "2") // USD quote and FX must be captured once for all modes.
 	electric := f.addPart(t, bomID, rootID, 2, 20, "4")
 	before, err := f.store.Draft(t.Context(), bomID)
 	if err != nil {
 		t.Fatal(err)
 	}
+	counted := &countingPricing{Pricing: f.prices}
+	f.svc.pricing = counted
 	req := ConfigurationRequest{RootID: rootID, Guards: []OccurrenceGuard{{ID: rootID}, {ID: thermal, ParentID: &rootID, PartID: id(1)}, {ID: electric, ParentID: &rootID, PartID: id(2)}}, Scenarios: []ConfigurationDefinition{
 		{Key: "hybrid"}, {Key: "thermal", ExcludedRoots: []int64{electric}}, {Key: "electric", ExcludedRoots: []int64{thermal}},
 	}}
@@ -47,7 +49,7 @@ func TestServiceConfigurationsPreserveReference(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for i, want := range []string{"204.00 EUR", "200.00 EUR", "4.00 EUR"} {
+	for i, want := range []string{"188.00 EUR", "184.00 EUR", "4.00 EUR"} {
 		if costOf(t, result.Scenarios[i].Tree, rootID) != want {
 			t.Fatalf("scenario %d: %s", i, costOf(t, result.Scenarios[i].Tree, rootID))
 		}
@@ -58,6 +60,9 @@ func TestServiceConfigurationsPreserveReference(t *testing.T) {
 	}
 	if result.PriceAsOf == nil {
 		t.Fatal("missing input quote date")
+	}
+	if counted.single != 0 || counted.batch != 2 {
+		t.Fatalf("configuration inputs read %d single / %d batch times; want 0 / 2 (quotes, FX) for all three scenarios", counted.single, counted.batch)
 	}
 }
 

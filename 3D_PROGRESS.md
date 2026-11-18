@@ -583,3 +583,16 @@ validation fonctionnelle et visuelle sur les assets réellement accessibles.
   Le contrôle indépendant « Filtre visuel 3D » est explicitement sans incidence sur le coût.
   Tests navigateur ciblés des scénarios : 2 PASS (montants API non constants, retraits, actualisation,
   sortie et prix manquant). Build TypeScript/Vite vert, profil explicite testé en logique pure.
+- Parcours réel des trois motorisations désormais PASS : coûts Go, IDs/quantités/cotations/taux
+  communs identiques, propulsion active visible et propulsion exclue absente, deux vues, éclatement,
+  filtre visuel sans changement de coût et retour éditable. Zéro mutation API ou requête CarConcept.
+  Empreinte de la réponse de référence avant/après identique :
+  `b797bad590e946187c85bb92b67cb7d0a958338341198f58082316499096fc4c`.
+  Captures et rapport : `docs/3d/captures/motorisations/` ; outil `tools/validate_powertrain.mjs`.
+- Prix et change vérifiés par test du service : exactement un lot de cotations et un lot de taux
+  pour les trois résultats (aucune lecture individuelle). Test ciblé `-race` vert.
+- La moulinette initiale a hérité de la base par défaut du Makefile ; tests transactionnels annulés,
+  schéma privé créé par le test interrompu identifié et supprimé. Relance sur la nouvelle base
+  dédiée `stp3d_config_tests`, distincte de `stp3d_demo` et de la base habituelle. Tous les tests
+  d'intégration ont passé ; un seuil existant de performance a échoué à 1,015 s pour 1 s sous
+  concurrence. Relance de tous les paquets séquentiellement (`GOFLAGS=-p=1`), seuil inchangé.

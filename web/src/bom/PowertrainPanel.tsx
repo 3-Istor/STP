@@ -17,7 +17,7 @@ export function PowertrainPanel({ state, source, onSelect }: { state: ReturnType
       <h3>Motorisation simulée</h3>
       <div className="row">
         <div className="seg" role="radiogroup" aria-label="Motorisation simulée">
-          {(['thermal', 'electric', 'hybrid'] as const).map(mode => <button key={mode} type="button" role="radio" aria-checked={state.activeMode === mode}
+          {(['thermal', 'electric', 'hybrid'] as const).map(mode => <button key={mode} type="button" role="radio" className={state.requestedMode && state.activeMode === mode ? 'on' : ''} aria-checked={state.requestedMode !== null && state.activeMode === mode}
             disabled={state.pending || source.busy} onClick={() => { setLimit(100); onSelect(mode) }}>{powertrainLabels[mode]}</button>)}
         </div>
         {state.requestedMode ? <button type="button" onClick={state.exit}>Quitter la simulation</button> : null}
@@ -30,7 +30,7 @@ export function PowertrainPanel({ state, source, onSelect }: { state: ReturnType
         <p className="small">Scénario actif : <strong>{powertrainLabels[state.activeMode]}</strong> · lecture seule · référence inchangée.
           {state.comparison.price_as_of ? ` Dernières cotations de l’entrée : ${formatDateTime(state.comparison.price_as_of)}.` : ''}</p>
         <div className="powertrain-table"><table aria-label="Comparaison économique des motorisations">
-          <thead><tr><th>Configuration</th><th>Coût / véhicule</th><th>Écart / hybride</th><th>Écart %</th><th>Pièces actives</th><th>Masse kg</th><th>CO₂ kg</th><th>Délai</th></tr></thead>
+          <thead><tr><th>Configuration</th><th>Coût / véhicule</th><th>Écart / hybride</th><th>Écart %</th><th>Occurrences pièce</th><th>Masse kg</th><th>CO₂ kg</th><th>Délai</th></tr></thead>
           <tbody>{state.comparison.scenarios.map(s => {
             const root = s.tree.nodes.find(n => n.id === state.comparison!.root_id)?.totals
             const parts = s.tree.nodes.filter(n => n.part_id !== null).map(n => source.catalog.byPart.get(n.part_id!))

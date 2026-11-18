@@ -91,3 +91,15 @@ Les nouveaux packs remplacent le blocage d'accès aux modèles : sources/attribu
 inspectées dans `docs/3d/SOUTENANCE_ASSETS.md`. Les géométries mécaniques restent illustratives.
 Préserver les extérieurs en vue normale, révéler l'intérieur à la demande, vérifier les vrais IDs de la
 base isolée ; ne pas modifier le backend, les snapshots publiés, les dépendances ou les branches protégées.
+
+## Corrections métier avant soutenance — 18 novembre
+
+Périmètre complémentaire autorisé : retirer Simple/Rendu, conserver Composants en permanence ;
+simuler en mémoire trois BOM Valhalla avec coût complet actif via le moteur Go existant.
+L'option 1 de l'ADR 0042 et ses hypothèses ont été explicitement validées par l'utilisateur.
+La nouvelle route est additive ; aucune migration, dépendance, écriture de référence ou modification
+des formules existantes. DCT/transmission/refroidissement communs, batterie BEV adaptée manquante.
+
+Ordre : sauvegarde → rendu permanent vérifié → service Go + tests → comparaison/BOM/3D
+synchronisées → parcours réel, tests globaux, revue niveau 2 et guide. Voir les états actualisés
+dans `3D_PROGRESS.md`, les preuves dans `docs/3d/MOTORISATIONS_SOUTENANCE.md`.
