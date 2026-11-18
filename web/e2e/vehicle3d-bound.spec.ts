@@ -77,6 +77,7 @@ test('manifestes : occurrences, picking, quantités, remplacement physique et of
   })
   await page.goto('/#/boms/1/structurer?tab=arbre-3d')
   await ready(page)
+  await expect(page.getByRole('radio', { name: 'Réaliste', exact: true })).toHaveCount(0)
   await page.getByRole('radio', { name: 'Composants', exact: true }).click()
   await ready(page)
   await expect(page.getByText('3/4 occurrences physiques représentées', { exact: false })).toBeVisible()
@@ -190,6 +191,7 @@ test('BOM complète : diagnostics différés et limités à 100 lignes à la dem
 
 test('extérieur prioritaire : intérieur révélé et cliquable à travers la coque transparente', async ({ page }) => {
   const f = fixture(), shell = boxGLB(6)
+  f.nodes.find(n => n.id === 6)!.parent_id = 2
   const manifest = { ...f.manifest, scope: { kind: 'draft', id: 80 }, assets: [
     ...f.manifest.assets.map(a => ({ ...a, display_role: 'interior' })),
     { ...f.manifest.assets[0], key: 'shell', path: '/models/shell.glb', sha256: createHash('sha256').update(shell).digest('hex'), display_role: 'exterior' },
@@ -223,6 +225,14 @@ test('extérieur prioritaire : intérieur révélé et cliquable à travers la c
   await page.getByLabel('Isoler un système', { exact: true }).selectOption('')
   await expect.poll(visible).toEqual([1])
   await page.getByText('Composants et sources', { exact: true }).click()
+  await page.goto('/vehicle3d-demo.html?bom=80&mode=bound&select=6')
+  await ready(page)
+  await expect(page.getByText('Modèle 3D de cette pièce indisponible.', { exact: false })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Cadrer la sélection', exact: true })).toBeDisabled()
+  await page.getByRole('button', { name: 'Localiser le sous-ensemble « Propulsion »', exact: true }).click()
+  await expect(page.getByText('Sous-ensemble localisé : Propulsion (#2). La pièce exacte reste sans modèle.', { exact: true })).toBeVisible()
+  await expect(page.locator('.demo-sel')).toContainText('#6')
+  await expect.poll(() => probe(page).then(p => p.selection)).toEqual(['node:3/instance:a', 'node:4/instance:a', 'node:5/instance:a'])
   // An absent exterior must expose the available illustrative interior, with an explicit notice.
   await page.route('**/models/shell.glb', route => route.fulfill({ status: 404 }))
   await page.reload()

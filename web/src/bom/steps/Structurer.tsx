@@ -57,7 +57,7 @@ export function Structurer(p: Props) {
       onDelete={p.onDelete}
     />
   )
-  const view3d = p.view !== 'arbre' ? <Vehicle3DPane data={data} selectedID={p.selectedID} onSelect={p.onSelect} /> : null
+  const view3d = p.view !== 'arbre' ? <Vehicle3DPane key={'vehicle-' + data.target.kind + data.target.id} data={data} selectedID={p.selectedID} onSelect={p.onSelect} /> : null
   return (
     <section className="block explorer" aria-label="Explorateur de la BOM">
       <div className="tbar">
@@ -108,7 +108,6 @@ export function Structurer(p: Props) {
 
 const renderModes: { id: RenderMode; label: string }[] = [
   { id: 'simple', label: 'Simple' },
-  { id: 'realistic', label: 'Réaliste' },
   { id: 'bound', label: 'Composants' },
 ]
 const colorModes: { id: ColorBy; label: string }[] = [
@@ -120,7 +119,9 @@ const colorModes: { id: ColorBy; label: string }[] = [
 // Vehicle3DPane : contrôles de la maquette I4-2 (Rendu, Colorer, Éclatement) au-dessus de la vue 3D. Focus
 // (I4-3) : double-clic sur un sous-ensemble, « Sortir du focus » ou Échap.
 function Vehicle3DPane({ data, selectedID, onSelect }: { data: BomData; selectedID: number | null; onSelect: (id: number) => void }) {
-  const [mode, setMode] = useState<RenderMode>(() => hasProvidedScene(data.target, data.nodes) ? 'bound' : 'simple')
+  const [requestedMode, setMode] = useState<RenderMode>(() => hasProvidedScene(data.target, data.nodes) ? 'bound' : 'simple')
+  // Neutralise aussi un ancien état React conservé pendant une actualisation à chaud.
+  const mode = requestedMode === 'realistic' ? 'bound' : requestedMode
   const [colorBy, setColorBy] = useState<ColorBy>('material')
   const [explode, setExplode] = useState(0)
   const budgets = data.budgets.unavailable === null ? data.budgets.byNode : null

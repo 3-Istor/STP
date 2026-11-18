@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { budgetColor, DEFAULT_STATUS, resolveColorMode, systemColor, UNAVAILABLE, type StatusPalette } from './colors.ts'
 import { buildVehicleIndex, type VehicleObject } from './mapping.ts'
-import { sceneSelection } from './selection.ts'
+import { locateContainingAssembly, sceneSelection } from './selection.ts'
 import { loadRealistic } from './realistic.ts'
 import { slotTable } from './tables.ts'
 import type { PropulsionMode, Vehicle3DProps } from './types.ts'
@@ -48,6 +48,7 @@ export default function Vehicle3DView({ bomId, nodes, selectedNodeId, onSelectNo
   const [propulsion, setPropulsion] = useState<PropulsionMode>('all')
   const [isolation, setIsolation] = useState<number | null>(null)
   const [isolateSelection, setIsolateSelection] = useState(false)
+  const [locatedFor, setLocatedFor] = useState<number | null>(null)
   const scopeKind = sceneScope?.kind ?? 'draft', scopeId = sceneScope?.id ?? bomId, scopeRevision = sceneScope?.revision
   const index = useMemo(() => buildVehicleIndex(nodes, slotTable), [nodes])
   const color = useMemo(() => resolveColorMode(colorBy, nodes), [colorBy, nodes])
@@ -61,6 +62,10 @@ export default function Vehicle3DView({ bomId, nodes, selectedNodeId, onSelectNo
     if (mode !== 'bound' || isolation === null) return value
     return { ...value, keys: value.keys.filter(k => activeIndex.byKey.get(k)?.systemId === isolation) }
   }, [activeIndex, selectedNode, missingKeys, mode, isolation])
+  const location = useMemo(() => mode === 'bound' && selection.unavailable
+    ? locateContainingAssembly(activeIndex, selectedNode, nodes, missingKeys) : null,
+  [mode, selection.unavailable, activeIndex, selectedNode, nodes, missingKeys])
+  const located = location && locatedFor === selectedNodeId ? location : null
 
   useEffect(() => { onSelectRef.current = onSelectNode }, [onSelectNode])
 
@@ -144,8 +149,8 @@ export default function Vehicle3DView({ bomId, nodes, selectedNodeId, onSelectNo
     pickedRef.current = null
     const viewer = viewerRef.current
     if (viewer?.focused && !selection.keys.includes(viewer.focused)) viewer.setFocus(null)
-    viewer?.setSelection(selection.keys, !fromClick, selectedNodeId === activeIndex.rootId)
-  }, [ready, selection, selectedNodeId, activeIndex.rootId])
+    viewer?.setSelection(located?.keys ?? selection.keys, !fromClick, selectedNodeId === activeIndex.rootId)
+  }, [ready, selection, selectedNodeId, activeIndex.rootId, located])
 
   const estimated = result?.mode === 'simple' ? activeIndex.objects.filter(o => o.estimated).length : 0
   const missing = result?.missing.length ?? 0
@@ -177,6 +182,13 @@ export default function Vehicle3DView({ bomId, nodes, selectedNodeId, onSelectNo
           {selectedNode?.part_id !== null ? 'Modèle 3D de cette pièce indisponible.' : 'Ce sous-ensemble est absent du modèle chargé.'}
           {' '}Aucun autre composant n’est sélectionné à sa place.
         </span> : null}
+        {ready && location ? <span className="v3d-notice">
+          {located ? `Sous-ensemble localisé : ${location.name} (#${location.nodeId}). La pièce exacte reste sans modèle.` :
+            <button type="button" className="v3d-button" onClick={() => {
+              setIsolation(null); setIsolateSelection(false); setPropulsion('all'); setLocatedFor(selectedNodeId)
+              viewerRef.current?.setFocus(null)
+            }}>Localiser le sous-ensemble « {location.name} »</button>}
+        </span> : null}
         {result?.fallback ? <span className="v3d-notice" role="alert">{result.fallback}</span> : null}
         {focus ? <span className="v3d-badge">Éclatement dans l’axe · le reste du véhicule en transparence · Échap pour sortir</span> : null}
       </div>
@@ -189,6 +201,7 @@ export default function Vehicle3DView({ bomId, nodes, selectedNodeId, onSelectNo
           setPropulsion('all')
           setIsolation(null)
           setIsolateSelection(false)
+          setLocatedFor(null)
           if (mode === 'bound' && activeIndex.rootId !== null) onSelectNode(activeIndex.rootId)
           viewerRef.current?.setExplode(0)
           viewerRef.current?.setFocus(null)

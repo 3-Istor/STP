@@ -487,3 +487,17 @@ validation fonctionnelle et visuelle sur les assets réellement accessibles.
   (confirmation de référence), manifestes draft-1/2/3 et droits Valhalla CC BY-NC-SA. La démonstration
   locale est prête selon les parcours exécutés ; les travaux mécaniques exacts restent dépendants
   d'assets certifiés supplémentaires, précisément recensés dans `SOUTENANCE_ASSETS.md`.
+
+## Corrections finales avant soutenance — reprise depuis 043df31
+
+- Branche vérifiée propre `feat/3d-pro-v2` ; version stable précédente conservée dans l'historique.
+  Aucun changement Go, PostgreSQL, dépendance ou asset prévu pour ces corrections ciblées.
+- Option Réaliste retirée du sélecteur de l'application et des boutons de la page technique. Un
+  ancien état React est neutralisé et la scène est réinitialisée par identité de BOM lors de la
+  navigation. Les vues 3D et Arbre + 3D et les GLB fournis restent inchangés. Le chargeur historique
+  reste uniquement couvert par les tests techniques existants ; aucun bouton produit ne l'active.
+- Localisation explicite d'un sous-ensemble ajoutée pour les occurrences sans géométrie propre :
+  ascendance BOM et géométries effectivement liées, racine exclue. Le bouton conserve l'ID de la pièce
+  sélectionnée et annonce clairement que seule la localisation du sous-ensemble est affichée.
+- Régressions de retrait du bouton et de localisation ajoutées ; 4 scénarios liés desktop PASS,
+  tests unitaires de non-substitution conservés. Audit exhaustif et validation réelle en cours.

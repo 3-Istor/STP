@@ -25,3 +25,20 @@ export function sceneSelection(index: VehicleIndex, node: Vehicle3DNode | undefi
   const keys = represented.filter(key => !missing.has(key))
   return { keys, unavailable: keys.length === 0 }
 }
+
+/** Localisation distincte de la pièce : uniquement par ascendance BOM, jamais par nom/référence. */
+export function locateContainingAssembly(index: VehicleIndex, node: Vehicle3DNode | undefined, nodes: Vehicle3DNode[] | ReadonlyMap<number, Vehicle3DNode>, missing: ReadonlySet<string> = new Set()): { nodeId: number; name: string; keys: string[] } | null {
+  if (!node || index.representation !== 'manifest' || !sceneSelection(index, node, missing).unavailable) return null
+  const byId = Array.isArray(nodes) ? new Map(nodes.map(n => [n.id, n])) : nodes
+  const seen = new Set<number>([node.id])
+  let id = node.parent_id
+  while (id !== null && id !== index.rootId && !seen.has(id)) {
+    seen.add(id)
+    const parent = byId.get(id)
+    if (!parent) return null
+    const { keys } = sceneSelection(index, parent, missing)
+    if (keys.length) return { nodeId: id, name: parent.name || `Sous-ensemble #${id}`, keys }
+    id = parent.parent_id
+  }
+  return null
+}

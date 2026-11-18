@@ -68,7 +68,6 @@ export function Demo() {
         )}
         <span className="demo-seg">Rendu
           <button aria-pressed={mode === 'simple'} onClick={() => setMode('simple')}>Simple</button>
-          <button aria-pressed={mode === 'realistic'} onClick={() => setMode('realistic')}>Réaliste</button>
           <button aria-pressed={mode === 'bound'} onClick={() => setMode('bound')}>Composants</button>
         </span>
         <span className="demo-seg">Colorer

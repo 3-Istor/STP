@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { buildVehicleIndex, type VehicleObject } from './mapping.ts'
-import { sceneSelection } from './selection.ts'
+import { locateContainingAssembly, sceneSelection } from './selection.ts'
 import { slotTable } from './tables.ts'
 
 test('absence de modèle : aucune substitution automatique par un ancêtre ou une autre occurrence', () => {
@@ -56,4 +56,25 @@ test('manifeste : sélection par occurrence et descendants, jamais par pièce co
     [nodes[2], ['3/left', '3/right'], false], [nodes[3], ['4/only'], false],
     [nodes[1], ['3/left', '3/right', '4/only'], false], [nodes[4], [], true],
   ] as const) assert.deepEqual(sceneSelection(index, node), { keys, unavailable })
+})
+
+test('localisation explicite : ancêtre fiable, sans remplacer la sélection de la pièce absente', () => {
+  const nodes = [
+    { id: 1, parent_id: null, name: 'Auto', part_id: null },
+    { id: 2, parent_id: 1, name: 'Moteur', part_id: null },
+    { id: 3, parent_id: 2, name: 'Bloc', part_id: 40 },
+    { id: 4, parent_id: 2, name: 'Fixation', part_id: 41 },
+    { id: 5, parent_id: 1, name: 'Autre système', part_id: null },
+    { id: 6, parent_id: 5, name: 'Fixation identique', part_id: 41 },
+    { id: 7, parent_id: 3, name: 'Joint', part_id: 42 },
+  ]
+  const objects = [{ nodeId: 3, key: '3/block' }] as VehicleObject[]
+  const index = { ...buildVehicleIndex(nodes, slotTable), representation: 'manifest' as const, objects }
+  assert.deepEqual(sceneSelection(index, nodes[3]), { keys: [], unavailable: true })
+  assert.deepEqual(locateContainingAssembly(index, nodes[3], nodes), { nodeId: 2, name: 'Moteur', keys: ['3/block'] })
+  assert.deepEqual(locateContainingAssembly(index, nodes[6], nodes), { nodeId: 3, name: 'Bloc', keys: ['3/block'] })
+  assert.equal(locateContainingAssembly(index, nodes[5], nodes), null)
+  assert.equal(locateContainingAssembly(index, nodes[2], nodes), null)
+  assert.equal(locateContainingAssembly(index, nodes[3], nodes, new Set(['3/block'])), null)
+  assert.equal(locateContainingAssembly(buildVehicleIndex(nodes, slotTable), nodes[3], nodes), null)
 })
