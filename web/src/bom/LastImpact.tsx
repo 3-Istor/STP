@@ -2,16 +2,18 @@ import { useState } from 'react'
 import type { Totals } from '../api.ts'
 import { decimalSign, formatDecimal, formatSignedMoney } from '../money.ts'
 import { computeImpact, isNoImpact, type Impact } from './impact.ts'
+import type { ReloadCause } from './useBomData.ts'
 
 const signed = (value: string, digits: number, unit: string) =>
   decimalSign(value) === 0 ? `0 ${unit}` : `${decimalSign(value) < 0 ? '−' : '+'} ${formatDecimal(value.replace(/^-/, ''), digits)} ${unit}`
 
-// useLastImpact : écart des totaux de la racine entre deux relectures de l'arbre (version). Une relecture suit une
-// modification de l'utilisateur (ajout, quantité, offre, attributs d'une pièce) ; les ticks de prix ne relisent pas.
-export function useLastImpact(version: number, totals: Totals | null | undefined): Impact | null {
+// useLastImpact : écart des totaux de la racine entre deux relectures de l'arbre (version) quand la relecture suit
+// une action de l'utilisateur ; une relecture due aux cotations ne fait que déplacer la référence.
+export function useLastImpact(version: number, totals: Totals | null | undefined, cause: ReloadCause): Impact | null {
   const [state, setState] = useState<{ version: number; totals: Totals | null | undefined; impact: Impact | null }>({ version, totals, impact: null })
   if (version !== state.version) {
-    setState({ version, totals, impact: state.totals && totals ? computeImpact(state.totals, totals) : state.impact })
+    const userChange = cause === 'user' && state.totals && totals
+    setState({ version, totals, impact: userChange ? computeImpact(state.totals!, totals!) : state.impact })
   }
   return state.impact
 }

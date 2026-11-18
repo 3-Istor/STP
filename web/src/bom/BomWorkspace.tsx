@@ -40,7 +40,7 @@ export function BomWorkspace({ route, data: sourceData, error, onPublished }: Pr
   const [tab, setTab] = useState<'detail' | 'reglages'>('detail')
   const simulation = usePowertrainSimulation(sourceData, route.step === 'structurer')
   const data = simulation.data
-  const lastImpact = useLastImpact(sourceData.version, sourceData.root?.totals)
+  const lastImpact = useLastImpact(sourceData.version, sourceData.root?.totals, sourceData.reloadCause)
   const selectedID = route.node !== null && data.byID.has(route.node) ? route.node : null
   const selected = selectedID !== null ? data.byID.get(selectedID)! : null
   const go = (patch: Partial<Pick<BomRoute, 'step' | 'node' | 'tab' | 'supplier'>>, replace = false) =>

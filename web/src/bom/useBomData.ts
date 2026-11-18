@@ -21,6 +21,8 @@ import { loadOfferPrices, noOfferPrices, withOfferPrices, type OfferPrices } fro
 import type { Target } from '../router.ts'
 import { staleQuotes } from './liveQuotes.ts'
 
+export type ReloadCause = 'user' | 'quotes'
+
 export type BomData = {
   simulation?: { mode: 'thermal' | 'electric' | 'hybrid'; pending: boolean; priceAsOf: string | null }
   target: Target
@@ -51,7 +53,8 @@ export type BomData = {
   version: number // change à chaque relecture de l'arbre
   busy: boolean
   // run exécute une action de l'utilisateur puis relit l'arbre ; une erreur de l'API est affichée telle quelle.
-  run: (action: () => Promise<unknown>, opts?: { bomChanged?: boolean }) => Promise<boolean>
+  run: (action: () => Promise<unknown>, opts?: { bomChanged?: boolean; cause?: ReloadCause }) => Promise<boolean>
+  reloadCause: ReloadCause // 'quotes' : relecture due à une nouvelle cotation, pas à une action de l'utilisateur
 }
 
 export type Budgets = { byNode: ReadonlyMap<number, NodeBudget>; unavailable: string | null }
@@ -76,6 +79,7 @@ export function useBomData(target: Target, catalog: Catalog, onBOMChanged: () =>
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [version, setVersion] = useState(0)
+  const [reloadCause, setReloadCause] = useState<ReloadCause>('user')
   const [threshold, setThreshold] = useState('3')
   const [anomalies, setAnomalies] = useState<{ data: CostAnomalies | null; error: string | null }>(emptyAnomalies)
   const anomalyRequest = useRef(0)
@@ -138,10 +142,11 @@ export function useBomData(target: Target, catalog: Catalog, onBOMChanged: () =>
     }
   }, [id, isDraft, loadAnomalies, loadTree])
 
-  const reload = useCallback(async () => {
+  const reload = useCallback(async (cause: ReloadCause = 'user') => {
     const { t, tick } = await loadTree()
     setBOM(t)
     setLoadedTick(tick)
+    setReloadCause(cause)
     setVersion((v) => v + 1)
     void loadAnomalies(threshold)
   }, [loadTree, loadAnomalies, threshold])
@@ -162,12 +167,12 @@ export function useBomData(target: Target, catalog: Catalog, onBOMChanged: () =>
   }, [liveDraft])
 
   const run = useCallback(
-    async (action: () => Promise<unknown>, opts: { bomChanged?: boolean } = {}) => {
+    async (action: () => Promise<unknown>, opts: { bomChanged?: boolean; cause?: ReloadCause } = {}) => {
       setBusy(true)
       setError(null)
       try {
         await action()
-        await reload()
+        await reload(opts.cause)
         if (opts.bomChanged) onBOMChanged()
         return true
       } catch (e) {
@@ -186,7 +191,7 @@ export function useBomData(target: Target, catalog: Catalog, onBOMChanged: () =>
   useEffect(() => {
     if (!stale || busy || latestTick === null || autoTick.current === latestTick) return
     autoTick.current = latestTick
-    void run(async () => {})
+    void run(async () => {}, { cause: 'quotes' })
   }, [stale, busy, latestTick, run])
 
   // Prix des sélecteurs d'offres : même source que les totaux (direct ou snapshot de prix). Lecture en
@@ -240,7 +245,7 @@ export function useBomData(target: Target, catalog: Catalog, onBOMChanged: () =>
         currency: bom.bom.currency, volume: bom.bom.volume, annualHours: bom.bom.annual_hours,
         priceSnapshotID: bom.bom.price_snapshot_id, nodes: bom.nodes, byID, root: bom.nodes.find((n) => n.parent_id === null),
         explanation: bom.explanation, stock: bom.stock, planning: bom.planning, catalog: pricedCatalog, budgets,
-        anomalies, anomalyByNode, threshold, applyThreshold, version, busy, run,
+        anomalies, anomalyByNode, threshold, applyThreshold, version, busy, run, reloadCause,
         newQuotes: liveDraft && staleQuotes(loadedTick, latestTick),
       },
     }
@@ -252,7 +257,7 @@ export function useBomData(target: Target, catalog: Catalog, onBOMChanged: () =>
         currency: snap.snapshot.currency, volume: snap.snapshot.volume, annualHours: snap.snapshot.annual_hours,
         priceSnapshotID: snap.snapshot.price_snapshot_id, nodes: snap.nodes, byID, root: snap.nodes.find((n) => n.parent_id === null),
         explanation: snap.explanation, stock: snap.stock, planning: snap.planning, catalog: pricedCatalog, budgets,
-        anomalies: emptyAnomalies, anomalyByNode, threshold, applyThreshold, version, busy: false, newQuotes: false,
+        anomalies: emptyAnomalies, anomalyByNode, threshold, applyThreshold, version, busy: false, newQuotes: false, reloadCause: 'user',
         run: async () => false,
       },
     }
