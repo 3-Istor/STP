@@ -6,6 +6,7 @@ export const errorPhrases: Record<string, string> = {
   snapshot_not_found: 'Cette version figée n’existe pas.',
   unknown_offer: 'Cette offre fournisseur n’existe pas.',
   price_snapshot_not_found: 'Ce lot de prix figés n’existe pas.',
+  price_snapshot_in_use: 'Ce lot de prix est encore utilisé : il ne peut pas être supprimé.',
   idea_not_found: 'Cette idée n’existe pas.',
   cycle: 'Ce déplacement créerait une boucle dans l’arbre : une pièce ne peut pas se contenir elle-même.',
   has_snapshots: 'Cette BOM a des versions figées : on repart d’un nouveau brouillon.',
@@ -58,7 +59,7 @@ export const errorPhrases: Record<string, string> = {
 
 // Codes dont le texte du serveur nomme le champ, la valeur ou le nœud en cause : on le garde après la phrase.
 // no_rate / no_quote : the server text names the missing pair or offer and the price snapshot.
-const detailedCodes = new Set(['invalid_threshold', 'publication_blocked', 'budget_exceeds_parent', 'cycle', 'missing_cost', 'invalid_logistics', 'no_rate', 'no_quote'])
+const detailedCodes = new Set(['invalid_threshold', 'publication_blocked', 'budget_exceeds_parent', 'cycle', 'missing_cost', 'invalid_logistics', 'no_rate', 'no_quote', 'price_snapshot_in_use'])
 export const keepsServerDetail = (code: string | undefined): boolean => code !== undefined && detailedCodes.has(code)
 
 // bad_request / invalid_input : le texte du serveur est du Go interne en anglais ; on le traduit quand on le reconnaît, sinon la phrase seule.

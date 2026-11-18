@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -188,4 +189,60 @@ func (u snapshotUnit) Save(ctx context.Context, req pricing.SnapshotRequest, dat
 	}
 	data.PriceSnapshotRef = snapshotRef(row.ID, row.Scope, row.ScopeID, row.TakenAt)
 	return data, nil
+}
+
+func (s *SnapshotStore) ListUsages(ctx context.Context) (map[int64][]pricing.SnapshotUsage, error) {
+	rows, err := pricingdb.New(s.pool).ListPriceSnapshotUsages(ctx, 0)
+	if err != nil {
+		return nil, err
+	}
+	return groupUsages(rows), nil
+}
+
+func groupUsages(rows []pricingdb.ListPriceSnapshotUsagesRow) map[int64][]pricing.SnapshotUsage {
+	out := map[int64][]pricing.SnapshotUsage{}
+	for _, r := range rows {
+		out[r.SnapshotID.Int64] = append(out[r.SnapshotID.Int64], pricing.SnapshotUsage{Kind: r.Kind, BOMID: r.BomID, BOMName: r.BomName, Version: int(r.Version)})
+	}
+	return out
+}
+
+// DeleteSnapshot : le contrôle d'usage et la suppression partagent une transaction ; le trigger de la base
+// (restrict_violation) refuse encore si un brouillon s'attache entre-temps.
+func (s *SnapshotStore) DeleteSnapshot(ctx context.Context, id int64) error {
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(context.Background()) }()
+	q := pricingdb.New(tx)
+	if _, err := q.ReadPriceSnapshot(ctx, id); errors.Is(err, pgx.ErrNoRows) {
+		return pricing.ErrPriceSnapshotNotFound
+	} else if err != nil {
+		return err
+	}
+	rows, err := q.ListPriceSnapshotUsages(ctx, id)
+	if err != nil {
+		return err
+	}
+	if len(rows) > 0 {
+		return &pricing.SnapshotInUseError{ID: id, UsedBy: groupUsages(rows)[id]}
+	}
+	for _, del := range []func(context.Context, int64) error{q.DeleteSnapshotPrices, q.DeleteSnapshotFX} {
+		if err := del(ctx, id); err != nil {
+			return inUseOr(err, id)
+		}
+	}
+	if _, err := q.DeletePriceSnapshot(ctx, id); err != nil {
+		return inUseOr(err, id)
+	}
+	return tx.Commit(ctx)
+}
+
+func inUseOr(err error, id int64) error {
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && pgErr.Code == "23001" { // restrict_violation
+		return &pricing.SnapshotInUseError{ID: id}
+	}
+	return err
 }

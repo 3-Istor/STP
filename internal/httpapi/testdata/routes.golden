@@ -11,6 +11,7 @@ DELETE /api/v1/freight-rates/{origin}/{destination}
 DELETE /api/v1/offers/{id}
 DELETE /api/v1/offers/{id}/packaging
 DELETE /api/v1/parts/{id}
+DELETE /api/v1/price-snapshots/{id}
 GET /api/v1/boms
 GET /api/v1/boms/{id}/analysis/anomalies
 GET /api/v1/boms/{id}/analysis/fx-sensitivity

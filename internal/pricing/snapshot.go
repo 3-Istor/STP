@@ -5,12 +5,52 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 
 	"bomstudio/internal/money"
 )
 
 var ErrIncompletePriceSnapshot = errors.New("price snapshot coverage incomplete")
+
+// ErrPriceSnapshotInUse : un lot référencé par une version publiée ou un brouillon ne se supprime pas (ADR 0051).
+var ErrPriceSnapshotInUse = errors.New("price snapshot in use")
+
+// SnapshotUsage : ce qui référence un lot. Kind « version » (Version = rang de publication) ou « draft ».
+type SnapshotUsage struct {
+	Kind    string `json:"kind"`
+	BOMID   int64  `json:"bom_id"`
+	BOMName string `json:"bom_name"`
+	Version int    `json:"version,omitempty"`
+}
+
+func (u SnapshotUsage) String() string {
+	if u.Kind == "draft" {
+		return "attaché au brouillon " + u.BOMName
+	}
+	return fmt.Sprintf("utilisé par V%d de %s", u.Version, u.BOMName)
+}
+
+type SnapshotInUseError struct {
+	ID     int64
+	UsedBy []SnapshotUsage
+}
+
+func (e *SnapshotInUseError) Error() string {
+	parts := make([]string, len(e.UsedBy))
+	for i, u := range e.UsedBy {
+		parts[i] = u.String()
+	}
+	return fmt.Sprintf("lot de prix #%d non supprimable : %s", e.ID, strings.Join(parts, " ; "))
+}
+func (e *SnapshotInUseError) Unwrap() error { return ErrPriceSnapshotInUse }
+
+// SnapshotListItem : en-tête d'un lot et ses usages (liste vide = supprimable).
+type SnapshotListItem struct {
+	PriceSnapshotRef
+	InUse  bool            `json:"in_use"`
+	UsedBy []SnapshotUsage `json:"used_by"`
+}
 
 type SnapshotRequest struct {
 	Scope            string           `json:"scope"`
@@ -54,6 +94,10 @@ type SnapshotRepository interface {
 	ReadSnapshot(context.Context, int64) (PriceSnapshotData, error)
 	// ListSnapshots renvoie l'en-tête de tous les snapshots de prix, du plus récent (taken_at) au plus ancien.
 	ListSnapshots(context.Context) ([]PriceSnapshotRef, error)
+	// ListUsages : usages de chaque lot, par id de lot.
+	ListUsages(context.Context) (map[int64][]SnapshotUsage, error)
+	// DeleteSnapshot supprime un lot et ses lignes dans une transaction ; ErrPriceSnapshotNotFound ou *SnapshotInUseError.
+	DeleteSnapshot(context.Context, int64) error
 }
 type SnapshotResult struct {
 	PriceSnapshotData
@@ -168,16 +212,33 @@ func (s *SnapshotService) Create(ctx context.Context, req SnapshotRequest) (Snap
 // List renvoie les en-têtes des snapshots de prix existants, du plus récent au plus ancien (ordre stable :
 // taken_at puis id décroissants). Un snapshot ne se nomme que par son instant figé (à la seconde) et son
 // périmètre : c'est ce que l'utilisateur choisit pour figer un brouillon sur des prix déjà figés.
-func (s *SnapshotService) List(ctx context.Context) ([]PriceSnapshotRef, error) {
+func (s *SnapshotService) List(ctx context.Context) ([]SnapshotListItem, error) {
 	refs, err := s.store.ListSnapshots(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("list price snapshots: %w", err)
 	}
-	sortSnapshotRefs(refs)
-	if refs == nil {
-		refs = []PriceSnapshotRef{}
+	usages, err := s.store.ListUsages(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("list price snapshot usages: %w", err)
 	}
-	return refs, nil
+	sortSnapshotRefs(refs)
+	items := make([]SnapshotListItem, len(refs))
+	for i, r := range refs {
+		used := usages[r.ID]
+		if used == nil {
+			used = []SnapshotUsage{}
+		}
+		items[i] = SnapshotListItem{PriceSnapshotRef: r, InUse: len(used) > 0, UsedBy: used}
+	}
+	return items, nil
+}
+
+// Delete supprime un lot non référencé (ADR 0051).
+func (s *SnapshotService) Delete(ctx context.Context, id int64) error {
+	if id <= 0 {
+		return ErrInvalidReadRequest
+	}
+	return s.store.DeleteSnapshot(ctx, id)
 }
 func (s *SnapshotService) Get(ctx context.Context, id int64) (SnapshotResult, error) {
 	if id <= 0 {

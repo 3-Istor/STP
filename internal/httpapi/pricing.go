@@ -19,7 +19,7 @@ func pricingError(w http.ResponseWriter, r *http.Request, err error) {
 		status = http.StatusBadRequest
 	case errors.Is(err, pricing.ErrPriceEntityNotFound), errors.Is(err, pricing.ErrPriceSnapshotNotFound):
 		status = http.StatusNotFound
-	case errors.Is(err, pricing.ErrRuntimeConfigConflict):
+	case errors.Is(err, pricing.ErrRuntimeConfigConflict), errors.Is(err, pricing.ErrPriceSnapshotInUse):
 		status = http.StatusConflict
 	case errors.Is(err, pricing.ErrSourceUnavailable), errors.Is(err, pricing.ErrRuntimeNotInitialized), errors.Is(err, pricing.ErrNoQuote), errors.Is(err, pricing.ErrNoRate):
 		status = http.StatusServiceUnavailable

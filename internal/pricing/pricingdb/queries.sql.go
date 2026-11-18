@@ -90,6 +90,36 @@ func (q *Queries) DeleteFreightRate(ctx context.Context, arg DeleteFreightRatePa
 	return err
 }
 
+const deletePriceSnapshot = `-- name: DeletePriceSnapshot :execrows
+DELETE FROM price_snapshots WHERE id=$1
+`
+
+func (q *Queries) DeletePriceSnapshot(ctx context.Context, id int64) (int64, error) {
+	result, err := q.db.Exec(ctx, deletePriceSnapshot, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const deleteSnapshotFX = `-- name: DeleteSnapshotFX :exec
+DELETE FROM price_snapshot_fx WHERE snapshot_id=$1
+`
+
+func (q *Queries) DeleteSnapshotFX(ctx context.Context, snapshotID int64) error {
+	_, err := q.db.Exec(ctx, deleteSnapshotFX, snapshotID)
+	return err
+}
+
+const deleteSnapshotPrices = `-- name: DeleteSnapshotPrices :exec
+DELETE FROM price_snapshot_quotes WHERE snapshot_id=$1
+`
+
+func (q *Queries) DeleteSnapshotPrices(ctx context.Context, snapshotID int64) error {
+	_, err := q.db.Exec(ctx, deleteSnapshotPrices, snapshotID)
+	return err
+}
+
 const getCustomsDuty = `-- name: GetCustomsDuty :one
 SELECT origin_country, destination_country, duty_percent FROM customs_duties WHERE origin_country = $1 AND destination_country = $2
 `
@@ -606,6 +636,51 @@ func (q *Queries) ListOfferCostParams(ctx context.Context, offerIds []int64) ([]
 			&i.PackagingCurrency,
 			&i.ToolingAmount,
 			&i.ToolingCurrency,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPriceSnapshotUsages = `-- name: ListPriceSnapshotUsages :many
+SELECT price_snapshot_id AS snapshot_id, 'draft'::text AS kind, id AS bom_id, name AS bom_name, 0::int AS version
+FROM boms WHERE price_snapshot_id IS NOT NULL AND ($1::bigint = 0 OR price_snapshot_id = $1)
+UNION ALL
+SELECT v.price_snapshot_id, 'version', v.bom_id, b.name, v.version
+FROM (SELECT id, bom_id, price_snapshot_id, (row_number() OVER (PARTITION BY bom_id ORDER BY id))::int AS version FROM bom_snapshots) v
+JOIN boms b ON b.id = v.bom_id WHERE $1::bigint = 0 OR v.price_snapshot_id = $1
+ORDER BY 1, 2, 3, 5
+`
+
+type ListPriceSnapshotUsagesRow struct {
+	SnapshotID pgtype.Int8
+	Kind       string
+	BomID      int64
+	BomName    string
+	Version    int32
+}
+
+// Qui utilise un lot (0 = tous) : brouillons attachés et versions publiées (V = rang de publication dans la BOM).
+func (q *Queries) ListPriceSnapshotUsages(ctx context.Context, snapshotID int64) ([]ListPriceSnapshotUsagesRow, error) {
+	rows, err := q.db.Query(ctx, listPriceSnapshotUsages, snapshotID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListPriceSnapshotUsagesRow
+	for rows.Next() {
+		var i ListPriceSnapshotUsagesRow
+		if err := rows.Scan(
+			&i.SnapshotID,
+			&i.Kind,
+			&i.BomID,
+			&i.BomName,
+			&i.Version,
 		); err != nil {
 			return nil, err
 		}

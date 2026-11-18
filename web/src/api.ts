@@ -237,6 +237,8 @@ export type PriceSnapshotRef = {
   scope: 'offer' | 'supplier' | 'bom' | 'catalog'
   scope_id?: number // absent pour le catalogue entier
   taken_at: string
+  in_use?: boolean // absent d'une API antérieure à la suppression des lots
+  used_by?: { kind: 'version' | 'draft'; bom_id: number; bom_name: string; version?: number }[]
 }
 
 // budgets : budgets cibles évalués sur les totaux de cette même réponse (absent d'une API antérieure au lot F).
@@ -537,6 +539,7 @@ export const api = {
   profile: (bomID: number) => call<VehicleProfile>('GET', `/boms/${bomID}/profile`),
   snapshotProfile: (snapshotID: number) => call<VehicleProfile>('GET', `/snapshots/${snapshotID}/profile`),
   setProfile: (bomID: number, p: { preset: string; weights: Weights }) => call<VehicleProfile>('PUT', `/boms/${bomID}/profile`, p),
+  deletePriceSnapshot: (id: number) => call<void>('DELETE', `/price-snapshots/${id}`),
 }
 
 // errorMessage : la phrase française du code d'erreur si l'API en donne un connu, sinon le texte reçu.

@@ -33,6 +33,7 @@ var errorTable = []apiError{
 	{bom.ErrCycle, http.StatusConflict, "cycle"},
 	{bom.ErrHasSnapshots, http.StatusConflict, "has_snapshots"},
 	{bom.ErrRootNode, http.StatusConflict, "root_node"},
+	{pricing.ErrPriceSnapshotInUse, http.StatusConflict, "price_snapshot_in_use"},
 	{pricing.ErrNoQuote, http.StatusConflict, "no_quote"},
 	{pricing.ErrNoRate, http.StatusConflict, "no_rate"},
 	{catalog.ErrMissingAttribute, http.StatusConflict, "missing_attribute"},
