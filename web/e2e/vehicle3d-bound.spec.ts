@@ -216,6 +216,13 @@ test('extérieur prioritaire : intérieur révélé et cliquable à travers la c
   await expect(page.locator('.demo-sel')).toContainText('#3')
   await page.getByRole('button', { name: 'Réinitialiser', exact: true }).click()
   await expect.poll(visible).toEqual([1])
+  // System isolation from the assembled view must reveal the matching interior.
+  await page.getByText('Composants et sources', { exact: true }).click()
+  await page.getByLabel('Isoler un système', { exact: true }).selectOption('2')
+  await expect.poll(visible).toEqual([3, 4, 5])
+  await page.getByLabel('Isoler un système', { exact: true }).selectOption('')
+  await expect.poll(visible).toEqual([1])
+  await page.getByText('Composants et sources', { exact: true }).click()
   // An absent exterior must expose the available illustrative interior, with an explicit notice.
   await page.route('**/models/shell.glb', route => route.fulfill({ status: 404 }))
   await page.reload()

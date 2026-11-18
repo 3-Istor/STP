@@ -441,3 +441,22 @@ validation fonctionnelle et visuelle sur les assets réellement accessibles.
   utilisateur ni snapshot existant modifié. API 18080, Vite 41769, simulateur 18090.
 - Prochaine tâche : terminer captures finales, navigation caméra et 0/50/100/0 sur les deux GLB réels,
   tests mobiles ciblés, moulinette PR, revue indépendante et guide `3D_DEMO_SOUTENANCE.md`.
+
+## Soutenance — stabilisation et revue
+
+- Parcours réel complet PASS sur les deux voitures : rotation à la souris, zoom molette, recentrage,
+  éclatement 0/50/100/0 linéaire (erreur max 1,11e-16), retour strict à la pose, arbre → 3D,
+  raycast → occurrence et Détail, isolation, focus de groupe et modes hybride/électrique/thermique.
+  Remplacement physique et offre seule vérifiés sur brouillon B puis valeurs originales restaurées.
+  Rapport final `docs/3d/captures/soutenance/validation.json` : **zéro erreur**. Captures inspectées.
+- Chromium mobile : **13 PASS** sur navigation et composants liés. Suite desktop complète : 62 PASS.
+- Revue niveau 1, base `f0e6ab8`, relecteur-code en contexte neuf : 1 Important vérifié, isolation d'un
+  système depuis l'assemblé rendait la scène vide. Test navigateur rouge avant, vert après correction
+  sur desktop et mobile (2 PASS). La révélation des intérieurs tient désormais compte du filtre système.
+- Moulinette PR avant revue : verte ; contrôle PR après correction en cours. Le détecteur PostgreSQL
+  du harnais marque `not_run` car `pg_isready` manque, bien que DATABASE_URL soit fournie aux tests.
+  Deux scénarios ciblés relancés explicitement en mode verbeux confirment l'exécution en base :
+  `TestBomSnapshotRejectsMutations` et `TestCatalogHTTPRoundTripAndPatch`, PASS sans saut.
+- Dix références Git préexistantes comparées à la sauvegarde du 17 : inchangées. Aucun push/merge,
+  reset/rebase ou changement des branches protégées. Originaux GLB et archive d'audit conservés.
+- Prochaine tâche : second tour de revue limité au correctif, clôture des preuves et commit du guide.

@@ -369,7 +369,7 @@ export class Viewer {
   private applyStyles() {
     if (!this.built) return
     const selectedInterior = !this.wholeVehicleSelected && this.built.items.some(it => it.displayRole === 'interior' && it.obj && this.selection.has(it.obj.key))
-    const revealInterior = !this.built.items.some(it => it.displayRole === 'exterior') || this.explode > 0 || this.shellTransparent || this.focusKey !== null || this.propulsionMode !== 'all' || selectedInterior || this.isolatedKeys !== null
+    const revealInterior = !this.built.items.some(it => it.displayRole === 'exterior') || this.explode > 0 || this.shellTransparent || this.focusKey !== null || this.propulsionMode !== 'all' || selectedInterior || this.isolatedKeys !== null || this.isolatedSystem !== null
     for (const it of this.built.items) {
       const system = it.obj?.componentSystem
       const propulsionGhost = (this.propulsionMode === 'thermal' && system === 'electric') || (this.propulsionMode === 'electric' && system === 'thermal')
