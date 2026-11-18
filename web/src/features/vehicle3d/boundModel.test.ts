@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import * as THREE from 'three'
 import { BoundAssetStore, buildBoundScene, validateGLB } from './boundModel.ts'
+import { isStaleChunkError } from './chunkError.ts'
 import { parseManifest, resolveManifest } from './manifest.ts'
 import { disposeBuilt, styleMesh } from './scene.ts'
 import type { ComponentSystem } from './manifest.ts'
@@ -83,6 +84,7 @@ test('empreinte, modèle absent et mesh absent : aucune géométrie étrangère 
     assert.equal(built.root.children.length, 0, failure)
     assert.equal(built.items.length, 0, failure)
     assert.equal(built.manifestInfo?.unavailable.size, 2, failure)
+    assert.deepEqual(built.manifestInfo?.missingAssets, failure === 'http' ? ['/models/test.glb'] : [], failure)
     assert.equal(store.residentAssets, 0, failure)
     disposeBuilt(built)
   }
@@ -131,4 +133,10 @@ test('GLB articulé : squelettes indépendants et textures de peau libérées à
   disposeBuilt(built); store.dispose()
   assert.equal(disposed, 2)
   assert.ok(skeletons.every(own => own.boneTexture === null))
+})
+
+test('échec de chargement du chunk reconnu, WebGL non', () => {
+  assert.ok(isStaleChunkError('Failed to fetch dynamically imported module: https://x/assets/Vehicle3DView-ab.js'))
+  assert.ok(isStaleChunkError('Importing a module script failed.'))
+  assert.ok(!isStaleChunkError('Error creating WebGL context.'))
 })

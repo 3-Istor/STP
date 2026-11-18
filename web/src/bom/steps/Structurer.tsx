@@ -1,5 +1,6 @@
 import { Component, useMemo, useState, type ReactNode } from 'react'
 import { api } from '../../api.ts'
+import { isStaleChunkError } from '../../features/vehicle3d/chunkError.ts'
 import { Vehicle3D, type ColorBy, type Vehicle3DNode } from '../../features/vehicle3d/index.tsx'
 import { BomTree } from '../BomTree.tsx'
 import type { BomData } from '../useBomData.ts'
@@ -157,6 +158,14 @@ class Vehicle3DBoundary extends Component<{ children: ReactNode }, { error: stri
   }
   render() {
     if (this.state.error === null) return this.props.children
+    if (isStaleChunkError(this.state.error)) {
+      return (
+        <div className="v3d-failed" role="alert">
+          <p><strong>Une nouvelle version de l’application est disponible.</strong> Rechargez la page pour afficher la vue 3D.</p>
+          <button type="button" className="v3d-button" onClick={() => window.location.reload()}>Recharger la page</button>
+        </div>
+      )
+    }
     return (
       <div className="v3d-failed" role="alert">
         <p>

@@ -180,11 +180,16 @@ export default function Vehicle3DView({ bomId, nodes, selectedNodeId, onSelectNo
         {info ? <span className="v3d-badge"><strong>{info.vehicleLabel}</strong> · {info.representedNodes}/{info.physicalNodes} occurrences physiques représentées</span> : null}
         {info ? <span className="v3d-badge">Géométrie : {info.assets.length === 0 ? 'aucun modèle chargé' : info.assets.some(a => a.display_role === 'exterior') && info.assets.some(a => a.display_role === 'interior') ? 'extérieur détaillé · mécanique illustrative' : info.assets.some(a => a.geometry_status === 'schematic') ? 'schématique' : info.assets.some(a => a.geometry_status === 'approximation') ? 'approximative' : 'exactitude déclarée par l’auteur, à contrôler'} · {info.approximatePlacements} placement(s) approximatif(s)</span> : null}
         {info && info.assets.some(a => a.display_role === 'interior') && !info.assets.some(a => a.display_role === 'exterior') ? <span className="v3d-notice">Vue mécanique illustrative — aucun extérieur chargé.</span> : null}
+        {info && info.missingAssets.length > 0 ? <span className="v3d-notice" role="alert">
+          Modèles 3D non installés ({info.missingAssets.length} fichier{info.missingAssets.length > 1 ? 's' : ''}) : voir 3D_DEMO_SOUTENANCE.md.
+          {' '}{info.missingAssets.slice(0, 3).join(', ')}{info.missingAssets.length > 3 ? '…' : ''}
+        </span> : null}
         {status.state === 'loading' ? <span className="v3d-badge" role="status">Chargement…</span> : null}
         {status.state === 'error' ? <span className="v3d-notice" role="alert">Vue 3D indisponible : {status.message}</span> : null}
         {status.state === 'error' ? <button type="button" className="v3d-button" onClick={() => setRevision(r => r + 1)}>Réessayer la vue 3D</button> : null}
         {ready && selection.unavailable ? <span className="v3d-notice" role="status">
-          {selectedNode?.part_id !== null ? 'Modèle 3D de cette pièce indisponible.' : 'Ce sous-ensemble est absent du modèle chargé.'}
+          {info && info.missingAssets.length > 0 ? 'Fichiers de modèles 3D non installés (voir l’alerte).'
+            : selectedNode?.part_id !== null ? 'Modèle 3D de cette pièce indisponible.' : 'Ce sous-ensemble est absent du modèle chargé.'}
           {' '}Aucun autre composant n’est sélectionné à sa place.
         </span> : null}
         {ready && location ? <span className="v3d-notice">

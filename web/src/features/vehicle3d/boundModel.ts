@@ -128,10 +128,14 @@ export async function buildBoundScene(resolution: ManifestResolution, nodes: Veh
   const unavailable = new Map<number, string>(resolution.unavailable)
   const activeAssets = new Map(resolution.instances.map(instance => [instance.asset.key, instance.asset]))
   const leases = new Map<string, Lease>()
-  const failures = new Map<string, string>()
+  const failures = new Map<string, string>(), missingFiles = new Set<string>()
   await Promise.all([...activeAssets].map(async ([key, asset]) => {
     try { leases.set(key, await store.acquire(asset, signal)) }
-    catch (error) { failures.set(key, error instanceof Error ? error.message : String(error)) }
+    catch (error) {
+      // 404 ou contenu non GLB : une seule alerte globale, pas un message par occurrence.
+      if (error instanceof ManifestError && error.code === 'asset_missing') { missingFiles.add(asset.path); failures.set(key, 'asset_missing') }
+      else failures.set(key, error instanceof Error ? error.message : String(error))
+    }
   }))
   const release = () => { skeletons.forEach(s => s.dispose()); materials.forEach(m => m.dispose()); leases.forEach(lease => lease.release()) }
   if (signal.aborted) { release(); throw new DOMException('Chargement annulé', 'AbortError') }
@@ -199,7 +203,7 @@ export async function buildBoundScene(resolution: ManifestResolution, nodes: Veh
       byKey: new Map(objects.map(o => [o.key, o])), byNodeId: new Map(objects.map(o => [o.nodeId, o])), systems, parentOf }
     return { root, items, missing: [], index, dispose: release, manifestInfo: {
       revision: resolution.manifest.revision, vehicleLabel: resolution.manifest.vehicle_label, unavailable,
-      physicalNodes: resolution.physical_nodes,
+      physicalNodes: resolution.physical_nodes, missingAssets: [...missingFiles],
       representedNodes: new Set(objects.filter(o => byId.get(o.nodeId)?.part_id !== null).map(o => o.nodeId)).size,
       assets: [...activeAssets.values()].filter(a => usedAssets.has(a.key)),
       approximatePlacements: new Set(objects.filter(o => o.positionStatus === 'approximation').map(o => o.nodeId)).size,

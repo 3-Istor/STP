@@ -26,7 +26,7 @@ export type Built = {
   index?: VehicleIndex
   manifestInfo?: {
     revision: string; vehicleLabel: string; unavailable: Map<number, string>
-    physicalNodes: number; representedNodes: number; assets: AssetDefinition[]
+    physicalNodes: number; missingAssets: string[]; representedNodes: number; assets: AssetDefinition[]
     approximatePlacements: number
   }
   dispose?: () => void // le chargeur lié possède les géométries/textures partagées via des baux
