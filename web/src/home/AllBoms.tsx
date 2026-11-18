@@ -140,17 +140,20 @@ export function AllBoms({ boms, error, onChanged }: Props) {
       .finally(() => setDraftingFrom(null))
   }
 
-  const draftActions = (b: BOM) => (
+  // label : nom de version, pour distinguer les brouillons d'une même BOM ; published : un snapshot existe, la suppression serait refusée (409).
+  const draftActions = (b: BOM, label = '', published = false) => (
     <>
-      <a className="btn pri" href={href(bomRoute({ kind: 'draft', id: b.id }))} aria-label={`Ouvrir ${b.name}`} onClick={(e) => e.stopPropagation()}>
+      <a className="btn pri" href={href(bomRoute({ kind: 'draft', id: b.id }))} aria-label={`Ouvrir ${b.name} ${label}`.trim()} onClick={(e) => e.stopPropagation()}>
         Ouvrir
       </a>
-      <button type="button" className="btn ico" title="Renommer" onClick={(e) => { e.stopPropagation(); rename(b) }} aria-label={`Renommer ${b.name}`}>
+      <button type="button" className="btn ico" title="Renommer" onClick={(e) => { e.stopPropagation(); rename(b) }} aria-label={`Renommer ${b.name} ${label}`.trim()}>
         ✎
       </button>
-      <button type="button" className="btn danger ico" title="Supprimer" onClick={(e) => { e.stopPropagation(); remove(b) }} aria-label={`Supprimer ${b.name}`}>
-        ×
-      </button>
+      {!published && (
+        <button type="button" className="btn danger ico" title="Supprimer" onClick={(e) => { e.stopPropagation(); remove(b) }} aria-label={`Supprimer ${b.name} ${label}`.trim()}>
+          ×
+        </button>
+      )}
     </>
   )
 
@@ -261,7 +264,7 @@ export function AllBoms({ boms, error, onChanged }: Props) {
                             </td>
                             <td className="acts-cell">
                               {v.kind === 'draft' ? (
-                                b ? draftActions(b) : (
+                                b ? draftActions(b, v.label, f.versions.some((x) => x.kind === 'snapshot' && x.bom_id === v.id)) : (
                                   <a className="btn" href={href(bomRoute({ kind: 'draft', id: v.id }))}>
                                     Ouvrir
                                   </a>
@@ -410,6 +413,9 @@ function VersionPreview({ version: v, family, priceLabel }: { version: Version; 
   )
 }
 
+// int32 côté serveur.
+const maxVolume = 2147483647
+
 // CreateDialog : création d'une BOM (nom, devise de référence, volume), formulaire de la V1 en fenêtre.
 function CreateDialog({ onClose, onCreate }: { onClose: () => void; onCreate: (b: { name: string; currency: string; volume: number }) => Promise<void> }) {
   const ref = useRef<HTMLDialogElement>(null)
@@ -423,10 +429,13 @@ function CreateDialog({ onClose, onCreate }: { onClose: () => void; onCreate: (b
   }, [])
   async function submit(e: FormEvent) {
     e.preventDefault()
+    const trimmed = name.trim()
+    if (trimmed === '') return setError('Le nom de la BOM ne peut pas être vide.')
+    if (!/^\d+$/.test(volume) || Number(volume) < 1 || Number(volume) > maxVolume) return setError('Le volume doit être un entier entre 1 et 2 147 483 647.')
     setBusy(true)
     setError(null)
     try {
-      await onCreate({ name: name.trim(), currency, volume: Number.parseInt(volume, 10) })
+      await onCreate({ name: trimmed, currency, volume: Number(volume) })
       onClose()
     } catch (err) {
       setError(errorMessage(err))
@@ -453,16 +462,16 @@ function CreateDialog({ onClose, onCreate }: { onClose: () => void; onCreate: (b
         </div>
         <label>
           Nom de la BOM
-          <input required autoFocus value={name} onChange={(e) => setName(e.target.value)} />
+          <input required autoFocus value={name} onChange={(e) => { setName(e.target.value); setError(null) }} />
         </label>
         <div className="form-columns">
           <label>
             Devise
-            <CurrencySelect required aria-label="Devise" value={currency} onChange={setCurrency} />
+            <CurrencySelect required aria-label="Devise" value={currency} onChange={(c) => { setCurrency(c); setError(null) }} />
           </label>
           <label>
             Volume (véhicules)
-            <input required aria-label="Volume" type="number" min={1} step={1} value={volume} onChange={(e) => setVolume(e.target.value)} />
+            <input required aria-label="Volume" type="number" min={1} max={maxVolume} step={1} value={volume} onChange={(e) => { setVolume(e.target.value); setError(null) }} />
           </label>
         </div>
         {error && (

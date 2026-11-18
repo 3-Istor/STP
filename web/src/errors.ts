@@ -58,9 +58,25 @@ export const errorPhrases: Record<string, string> = {
 
 // Codes dont le texte du serveur nomme le champ, la valeur ou le nœud en cause : on le garde après la phrase.
 // no_rate / no_quote : the server text names the missing pair or offer and the price snapshot.
-const detailedCodes = new Set(['bad_request', 'invalid_input', 'invalid_threshold', 'publication_blocked', 'budget_exceeds_parent', 'cycle', 'missing_cost', 'invalid_logistics', 'no_rate', 'no_quote'])
+const detailedCodes = new Set(['invalid_threshold', 'publication_blocked', 'budget_exceeds_parent', 'cycle', 'missing_cost', 'invalid_logistics', 'no_rate', 'no_quote'])
 export const keepsServerDetail = (code: string | undefined): boolean => code !== undefined && detailedCodes.has(code)
 
-export function phraseFor(code: string | undefined): string | undefined {
-  return code ? errorPhrases[code] : undefined
+// bad_request / invalid_input : le texte du serveur est du Go interne en anglais ; on le traduit quand on le reconnaît, sinon la phrase seule.
+const inputHints: [RegExp, (m: RegExpMatchArray) => string][] = [
+  [/empty name/, () => 'Le nom ne peut pas être vide.'],
+  [/remove it before switching to (\w+)/, (m) => `Cette BOM a un budget global dans une autre devise : supprimez-le avant de passer en ${m[1]}.`],
+  [/currency and volume together/, () => 'Indiquez la devise et le volume ensemble.'],
+  [/cannot unmarshal number .*volume|volume.*(out of range|must be)/, () => 'Le volume doit être un entier entre 1 et 2 147 483 647.'],
+  [/is not a decimal|can't convert .* to decimal|cannot unmarshal string into .*decimal/i, () => 'Un nombre saisi n’est pas valide.'],
+]
+
+export function phraseFor(code: string | undefined, message?: string): string | undefined {
+  if (!code) return undefined
+  if ((code === 'bad_request' || code === 'invalid_input') && message) {
+    for (const [re, say] of inputHints) {
+      const m = message.match(re)
+      if (m) return say(m)
+    }
+  }
+  return errorPhrases[code]
 }

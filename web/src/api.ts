@@ -540,7 +540,7 @@ export const api = {
 // errorMessage : la phrase française du code d'erreur si l'API en donne un connu, sinon le texte reçu.
 export function errorMessage(e: unknown): string {
   if (e instanceof ApiError) {
-    const phrase = phraseFor(e.code)
+    const phrase = phraseFor(e.code, e.message)
     if (!phrase) return e.message
     return keepsServerDetail(e.code) && e.message ? `${phrase} (${e.message})` : phrase
   }

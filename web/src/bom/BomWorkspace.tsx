@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react'
-import { api, type CostBasis, type CostMethod, type FXPolicy, type NewNode, type NodePatch, type Snapshot } from '../api.ts'
+import { api, errorMessage, type CostBasis, type CostMethod, type FXPolicy, type NewNode, type NodePatch, type Snapshot } from '../api.ts'
 import { partName } from '../catalog.ts'
 import { CurrencySelect } from '../CurrencySelect.tsx'
 import { bomRoute, navigate, type Route, type Step } from '../router.ts'
@@ -222,6 +222,18 @@ function Settings({ data }: { data: BomData }) {
       </div>
     )
   }
+  // L'erreur du serveur revient au champ (pas en tête de colonne) : l'appel l'attrape, le formulaire l'affiche.
+  const apply = async (call: () => Promise<unknown>): Promise<string | null> => {
+    const out = { msg: null as string | null }
+    await data.run(async () => {
+      try {
+        await call()
+      } catch (e) {
+        out.msg = errorMessage(e)
+      }
+    }, { bomChanged: true })
+    return out.msg
+  }
   return (
     <div className="stack settings">
       <ProfileSettings data={data} />
@@ -230,37 +242,52 @@ function Settings({ data }: { data: BomData }) {
         key={`${bom.currency}-${bom.volume}`}
         currency={bom.currency}
         volume={bom.volume}
-        onApply={(c, v) => void data.run(() => api.updateSettings(bom.id, c, v), { bomChanged: true })}
+        onApply={(c, v) => apply(() => api.updateSettings(bom.id, c, v))}
       />
       <Destination
         key={`dest-${bom.destination_country ?? ''}`}
         country={bom.destination_country}
-        onApply={(c) => void data.run(() => api.setDestination(bom.id, c), { bomChanged: true })}
+        onApply={(c) => apply(() => api.setDestination(bom.id, c))}
       />
     </div>
   )
 }
 
-function CurrencyVolume({ currency, volume, onApply }: { currency: string; volume: number; onApply: (currency: string, volume: number) => void }) {
+// int32 côté serveur.
+const maxVolume = 2147483647
+
+function CurrencyVolume({ currency, volume, onApply }: { currency: string; volume: number; onApply: (currency: string, volume: number) => Promise<string | null> }) {
   const [c, setC] = useState(currency)
   const [v, setV] = useState(String(volume))
+  const [error, setError] = useState<string | null>(null)
   const changed = c !== currency || v !== String(volume)
   return (
     <form
       className="stack"
       onSubmit={(e) => {
         e.preventDefault()
-        onApply(c, Number.parseInt(v, 10))
+        const n = Number(v)
+        if (!/^\d+$/.test(v) || n < 1 || n > maxVolume) return setError('Le volume doit être un entier entre 1 et 2 147 483 647.')
+        void onApply(c, n).then((msg) => {
+          if (msg === null) return
+          setC(currency) // la BOM garde sa devise : le sélecteur ne doit pas mentir
+          setError(msg)
+        })
       }}
     >
       <label className="setting">
         <span>Devise de référence</span>
-        <CurrencySelect aria-label="Devise de référence" value={c} onChange={setC} />
+        <CurrencySelect aria-label="Devise de référence" value={c} onChange={(x) => { setC(x); setError(null) }} />
       </label>
       <label className="setting">
         <span>Volume (véhicules)</span>
-        <input aria-label="Volume" type="number" min={1} step={1} value={v} onChange={(e) => setV(e.target.value)} />
+        <input aria-label="Volume" type="number" min={1} max={maxVolume} step={1} value={v} aria-invalid={error !== null && /volume/i.test(error)} onChange={(e) => { setV(e.target.value); setError(null) }} />
       </label>
+      {error && (
+        <p role="alert" className="form-error">
+          {error}
+        </p>
+      )}
       {changed && (
         <button type="submit" className="btn pri">
           Appliquer
@@ -271,21 +298,28 @@ function CurrencyVolume({ currency, volume, onApply }: { currency: string; volum
 }
 
 // Destination : pays de l'usine d'assemblage (ISO 3166-1 alpha-2), pour la douane et le transport (ADR 0025).
-function Destination({ country, onApply }: { country: string | null; onApply: (country: string | null) => void }) {
+function Destination({ country, onApply }: { country: string | null; onApply: (country: string | null) => Promise<string | null> }) {
   const [c, setC] = useState(country ?? '')
+  const [error, setError] = useState<string | null>(null)
   const next = c.trim().toUpperCase()
   return (
     <form
       className="stack"
       onSubmit={(e) => {
         e.preventDefault()
-        onApply(next === '' ? null : next)
+        if (next !== '' && !/^[A-Z]{2}$/.test(next)) return setError('Le pays est un code à deux lettres (ex. FR, DE).')
+        void onApply(next === '' ? null : next).then((msg) => msg !== null && setError(msg))
       }}
     >
       <label className="setting">
         <span>Pays de destination</span>
-        <input aria-label="Pays de destination" size={3} pattern="[A-Za-z]{2}" value={c} onChange={(e) => setC(e.target.value)} />
+        <input aria-label="Pays de destination" size={3} value={c} onChange={(e) => { setC(e.target.value); setError(null) }} />
       </label>
+      {error && (
+        <p role="alert" className="form-error">
+          {error}
+        </p>
+      )}
       {next !== (country ?? '') && (
         <button type="submit" className="btn pri">
           Appliquer
