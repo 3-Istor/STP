@@ -460,3 +460,30 @@ validation fonctionnelle et visuelle sur les assets réellement accessibles.
 - Dix références Git préexistantes comparées à la sauvegarde du 17 : inchangées. Aucun push/merge,
   reset/rebase ou changement des branches protégées. Originaux GLB et archive d'audit conservés.
 - Prochaine tâche : second tour de revue limité au correctif, clôture des preuves et commit du guide.
+
+## Soutenance — étape 5 livrée
+
+- Deuxième tour limité à `0dab799..84f03ff` : **aucun constat nouveau**, défaut d'isolation confirmé
+  corrigé. Bilan total : 2 tours, 1 Important corrigé avec test rouge/vert, 0 Nit, 0 pré-existant signalé.
+  Niveau calculé 1 sur la base du travail du jour `f0e6ab8`. Le niveau 3 affiché en fin de rapport
+  automatique compare à origin/main et inclut toute la V2 héritée ; il ne classe pas le seul diff du jour.
+- `make verify LEVEL=pr` après correction : **vert** ; preuves conservées dans
+  `docs/3d/soutenance-verify-pr.txt`, `soutenance-browser-evidence.txt`, `soutenance-postgres-evidence.txt`.
+  Non exécutés par le harnais : gitleaks, osv-scanner, actionlint et détecteur d'intégration pg_isready
+  absent. L'exécution PostgreSQL ciblée indépendante est prouvée sans saut. Quatre avertissements
+  oxlint préexistants et avertissement de taille du chunk Three.js subsistent ; aucun test affaibli.
+- Guide exact et parcours jury : `3D_DEMO_SOUTENANCE.md`. Galerie des captures réelles :
+  `docs/3d/captures/soutenance/README.md`. Responsabilités, cas de panne/tests et limites :
+  `docs/3d/VALIDATION_SOUTENANCE.md`. Inventaire/licences actualisés, huit empreintes GLB vérifiées.
+- API laissée disponible sur 18080, Vite 41769, simulateur 18090 et base dédiée 55439. Relecture finale
+  des trois BOM : coûts présents, zéro coût manquant ; batterie B revenue à part_id 195 / offer_id 474.
+  Base utilisateur et anciens snapshots intacts. Serveur de mesure temporaire arrêté ; base de tests
+  dédiée arrêtée après les contrôles. Archive d'audit : 6/6 empreintes d'origine conservées.
+- Limites : intérieurs/variante/placements illustratifs, coque Fiat monobloc, couverture physique
+  partielle explicitement indiquée. Ni CAD constructeur, collisions/cinématique certifiées, routages
+  exacts ni modèles des milliers de fixations disponibles. Firefox/WebKit, FPS GPU de soutenance et
+  CI distante **non vérifiés**. Aucun push ni merge réalisé.
+- À relire humainement avant toute fusion : `viewer.ts` (visibilité/picking/cadrage), `NodePanel.tsx`
+  (confirmation de référence), manifestes draft-1/2/3 et droits Valhalla CC BY-NC-SA. La démonstration
+  locale est prête selon les parcours exécutés ; les travaux mécaniques exacts restent dépendants
+  d'assets certifiés supplémentaires, précisément recensés dans `SOUTENANCE_ASSETS.md`.

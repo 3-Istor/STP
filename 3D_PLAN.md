@@ -4,6 +4,14 @@ Date : 2026-11-17. Demande : mission utilisateur « STP / BOM Studio — refonte
 Branche exclusive : `feat/3d-pro-v2`. État et prochaine action : [3D_PROGRESS.md](3D_PROGRESS.md).
 Audit et preuves : [docs/3d/AUDIT.md](docs/3d/AUDIT.md).
 
+Actualisation soutenance du 18 novembre : les deux extérieurs fournis et les kits mécaniques
+illustratifs sont intégrés ; le parcours final et les limites sont dans
+[3D_DEMO_SOUTENANCE.md](3D_DEMO_SOUTENANCE.md). Les constats historiques « assets non acquis »
+ci-dessous décrivent les étapes antérieures ; l'état courant fait foi dans `3D_PROGRESS.md`.
+Les cinq étapes prioritaires de la mission de soutenance ont été exécutées et vérifiées. La partie
+« mécanique exacte » du plan long reste conditionnée à l'acquisition de CAD et placements certifiés ;
+les prototypes intégrés ne sont pas présentés comme leur équivalent.
+
 ## Base de travail autorisée et vérifiée
 
 Branche exclusive : `feat/3d-pro-v2`, créée directement au commit V2

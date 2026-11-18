@@ -40,6 +40,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--downloads', type=Path, default=Path.home() / 'Downloads')
     parser.add_argument('--verify', action='store_true', help='Only verify installed files')
+    parser.add_argument('--verify-prepared', action='store_true', help='Also verify the four prepared copies; never generate them')
     args = parser.parse_args()
     destination = ROOT / 'web/public/models'
     destination.mkdir(parents=True, exist_ok=True)
@@ -53,6 +54,11 @@ def main():
             validate(data, asset['sha256'])
             target.write_bytes(data)
         print(asset['file'], 'verified', asset['sha256'])
+    if args.verify_prepared:
+        prepared = json.loads((ROOT / 'docs/3d/soutenance-prepared-assets.json').read_text())
+        for asset in prepared:
+            validate((destination / asset['file']).read_bytes(), asset['sha256'])
+            print(asset['file'], 'verified', asset['sha256'])
 
 
 if __name__ == '__main__':

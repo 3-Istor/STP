@@ -1,5 +1,11 @@
 # Ressources visuelles encore nécessaires
 
+**Mise à jour du 18 novembre :** les extérieurs Fiat Betier Models et Valhalla OUTPISTON ont été
+fournis, inspectés et intégrés, avec les deux kits mécaniques illustratifs. Le blocage de téléchargement
+décrit dans l'audit du 17 ci-dessous est levé pour ces fichiers. Voir [SOUTENANCE_ASSETS.md](SOUTENANCE_ASSETS.md)
+pour leurs licences, leur préparation et les manques mécaniques qui subsistent. Le candidat Aston
+final est différent de celui recherché le 17 et porte une licence CC BY-NC-SA 4.0.
+
 Recherche du 17 novembre 2026. Aucune géométrie constructeur acquise ; les 418 types restent
 inventoriés dans `assets-manifest.json`. Le nouveau chargement doit permettre d'intégrer de vrais
 modèles sans les remplacer par CarConcept et sans inventer une liaison de pièce.

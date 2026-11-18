@@ -1,0 +1,154 @@
+{
+  "at": "2026-11-18T03:23:57.790Z",
+  "base": "http://127.0.0.1:41769",
+  "vehicles": [
+    {
+      "name": "multipla",
+      "bom": 1,
+      "fromBom": 12505,
+      "from3D": 15865,
+      "group": 12502,
+      "steps": [
+        "Real exterior selected by the verified installation profile",
+        "Real mouse orbit and wheel zoom; camera recenter",
+        "0 → 50 → 100 → 0: linear intermediate and exact assembled transforms",
+        "BOM → exact occurrence → Detail → isolation",
+        "Real raycast → exact occurrence → expanded tree and Detail",
+        "Group focus keeps the selected BOM group; Escape and reset restore assembly"
+      ],
+      "loadMs": 15644,
+      "normalMetrics": {
+        "renders": 5,
+        "drawCalls": 134,
+        "triangles": 3700249,
+        "geometries": 45,
+        "textures": 5,
+        "items": 155,
+        "animating": false
+      },
+      "explodedMetrics": {
+        "renders": 48,
+        "drawCalls": 635,
+        "triangles": 3599405,
+        "geometries": 297,
+        "textures": 5,
+        "items": 155,
+        "animating": false
+      },
+      "halfExplodeMaxError": 0
+    },
+    {
+      "name": "valhalla",
+      "bom": 2,
+      "fromBom": 32415,
+      "from3D": 34539,
+      "group": 32412,
+      "steps": [
+        "Real exterior selected by the verified installation profile",
+        "Real mouse orbit and wheel zoom; camera recenter",
+        "0 → 50 → 100 → 0: linear intermediate and exact assembled transforms",
+        "BOM → exact occurrence → Detail → isolation",
+        "Real raycast → exact occurrence → expanded tree and Detail",
+        "Group focus keeps the selected BOM group; Escape and reset restore assembly",
+        "Thermal / electric / hybrid, three motors and HV battery, same occurrence keys"
+      ],
+      "loadMs": 5663,
+      "normalMetrics": {
+        "renders": 5,
+        "drawCalls": 313,
+        "triangles": 1105309,
+        "geometries": 108,
+        "textures": 42,
+        "items": 69,
+        "animating": false
+      },
+      "explodedMetrics": {
+        "renders": 51,
+        "drawCalls": 1231,
+        "triangles": 1177357,
+        "geometries": 567,
+        "textures": 42,
+        "items": 69,
+        "animating": false
+      },
+      "halfExplodeMaxError": 1.1102230246251565e-16,
+      "hybrid": [
+        {
+          "mode": "thermal",
+          "v8": 32415,
+          "frontMotors": [
+            34539,
+            34607
+          ],
+          "rearMotor": 34675,
+          "battery": 34758
+        },
+        {
+          "mode": "electric",
+          "v8": 32415,
+          "frontMotors": [
+            34539,
+            34607
+          ],
+          "rearMotor": 34675,
+          "battery": 34758
+        },
+        {
+          "mode": "hybrid",
+          "v8": 32415,
+          "frontMotors": [
+            34539,
+            34607
+          ],
+          "rearMotor": 34675,
+          "battery": 34758
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "variant": {
+    "nodeId": 60776,
+    "sourcePart": 195,
+    "replacementPart": 196,
+    "offerOnlySameGeometry": true,
+    "occurrenceKeyPreserved": true,
+    "differentGeometry": true,
+    "beforeDimensions": [
+      [
+        0.30000007152557373,
+        0.17999997735023499,
+        0.21999996900558472
+      ],
+      [
+        0.03600001335144043,
+        0.03600001335144043,
+        0.030000030994415283
+      ],
+      [
+        0.03600001335144043,
+        0.03600001335144043,
+        0.030000030994415283
+      ]
+    ],
+    "afterDimensions": [
+      [
+        0.36600005626678467,
+        0.19439998269081116,
+        0.21999996900558472
+      ],
+      [
+        0.043920040130615234,
+        0.03888005018234253,
+        0.030000030994415283
+      ],
+      [
+        0.043919920921325684,
+        0.03888005018234253,
+        0.030000030994415283
+      ]
+    ],
+    "accuracy": "Illustrative casing variant, no measured manufacturer dimensions",
+    "originalValuesRestored": true
+  }
+}

@@ -28,3 +28,33 @@ Premières captures réellement produites par le composant de l'application :
 `captures/multipla-exterior-soutenance.png`, `captures/valhalla-exterior-soutenance.png`.
 Les fixtures tronquées servent ici seulement à afficher les extérieurs ; couverture physique annoncée
 zéro, en attendant les manifestes établis sur les vraies occurrences de la base isolée.
+
+## Assemblage final sur la base de démonstration
+
+Les captures finales de l'application complète sont dans `captures/soutenance/`. Les anciennes
+captures ci-dessus conservent la preuve de l'étape extérieure seule. Les manifestes `draft-1`,
+`draft-2` et `draft-3` utilisent désormais les occurrences réelles des deux voitures et du brouillon B.
+`soutenance-assembly-layout.json` conserve les correspondances inspectées, les chemins BOM et la
+raison de chaque association. Aucun rapprochement indicatif des ZIP n'est utilisé directement.
+
+| Géométrie | Traitement et limite |
+|---|---|
+| Extérieur Fiat | Positions et matériaux natifs conservés, hiérarchie aplatie par matrices mesurées ; coque monobloc, quatre roues/pneus séparables |
+| Extérieur Aston | Pose skinnée réellement affichée figée par GLTFLoader dans une copie statique ; normales/tangentes, textures et matériaux préservés ; ouvrants/roues/sièges séparés |
+| Intérieurs | Une copie par véhicule, palettes converties en matériaux PBR, placements recalés visuellement ; doublons de roues illustratives retirés au profit des roues natives |
+| Batterie Fiat 60 Ah | Variante de boîtier dérivée du prototype 50 Ah, géométrie de démonstration distincte et étiquetée illustrative ; aucune dimension fabricant déduite de la capacité |
+
+Couverture physique contrôlée : Fiat 144/20108 occurrences ; Aston 47/10002. Les groupes virtuels
+illustrés ne sont pas comptés comme des pièces physiques couvertes. L'identité d'une occurrence,
+la fidélité de sa géométrie et la précision de son placement sont des preuves différentes.
+
+Les matrices source et la pose Valhalla sont produites par `tools/bake_valhalla_pose.mjs` ; les copies
+par `tools/prepare_soutenance_assets.py` ; les vecteurs explicites par `tools/explode_soutenance.py`.
+`tools/refresh_soutenance_clone.py` réemploie seulement les identités déjà vérifiées du brouillon B.
+Tous les GLB demeurent locaux et ignorés. Vérification complète :
+`python3 docs/3d/tools/install_soutenance_assets.py --verify --verify-prepared`.
+
+Restent manquants pour une représentation mécanique exacte : CAD constructeur et points de
+montage certifiés, cotes réelles de chaque référence, ouvrants Fiat séparés, routages HT/hydrauliques,
+fixations et variantes non fournies. Les intérieurs permettent la démonstration pédagogique des
+sous-ensembles ; ils ne suppriment pas ces manques.
