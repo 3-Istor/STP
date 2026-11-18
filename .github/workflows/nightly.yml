@@ -16,7 +16,7 @@ concurrency:
 
 jobs:
   nightly:
-    runs-on: ${{ fromJSON(vars.CNP_CI_RUNS_ON || '["self-hosted","Linux","X64"]') }}
+    runs-on: ${{ fromJSON(vars.CNP_CI_RUNS_ON || '"ubuntu-latest"') }}
     timeout-minutes: 60
     services:
       postgres:

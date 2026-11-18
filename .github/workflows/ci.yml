@@ -18,7 +18,7 @@ concurrency:
 
 jobs:
   go:
-    runs-on: ${{ fromJSON(vars.CNP_CI_RUNS_ON || '["self-hosted","Linux","X64"]') }}
+    runs-on: ${{ fromJSON(vars.CNP_CI_RUNS_ON || '"ubuntu-latest"') }}
     # Base réelle pour les migrations et les tests d'intégration (identifiants de test, cf. compose.yaml).
     services:
       postgres:
@@ -73,7 +73,7 @@ jobs:
           retention-days: 14
 
   web:
-    runs-on: ${{ fromJSON(vars.CNP_CI_RUNS_ON || '["self-hosted","Linux","X64"]') }}
+    runs-on: ${{ fromJSON(vars.CNP_CI_RUNS_ON || '"ubuntu-latest"') }}
     defaults:
       run:
         working-directory: web
@@ -106,7 +106,7 @@ jobs:
         run: npm audit --omit=dev --audit-level=high
 
   web-live:
-    runs-on: ${{ fromJSON(vars.CNP_CI_RUNS_ON || '["self-hosted","Linux","X64"]') }}
+    runs-on: ${{ fromJSON(vars.CNP_CI_RUNS_ON || '"ubuntu-latest"') }}
     timeout-minutes: 15
     services:
       postgres:
@@ -150,7 +150,7 @@ jobs:
           retention-days: 7
 
   security:
-    runs-on: ${{ fromJSON(vars.CNP_CI_RUNS_ON || '["self-hosted","Linux","X64"]') }}
+    runs-on: ${{ fromJSON(vars.CNP_CI_RUNS_ON || '"ubuntu-latest"') }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
@@ -162,7 +162,7 @@ jobs:
   # Smoke test de la stack complète (voir ADR 0005) : tout démarre, /healthz répond via nginx et
   # depuis le conteneur de l'API de prix.
   compose:
-    runs-on: ${{ fromJSON(vars.CNP_CI_RUNS_ON || '["self-hosted","Linux","X64"]') }}
+    runs-on: ${{ fromJSON(vars.CNP_CI_RUNS_ON || '"ubuntu-latest"') }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Démarrer la stack
@@ -183,7 +183,7 @@ jobs:
   # Niveau de risque du changement (ADR 0039) : dit à l'humain ce qu'il doit relire, et où.
   risk:
     if: github.event_name == 'pull_request'
-    runs-on: ${{ fromJSON(vars.CNP_CI_RUNS_ON || '["self-hosted","Linux","X64"]') }}
+    runs-on: ${{ fromJSON(vars.CNP_CI_RUNS_ON || '"ubuntu-latest"') }}
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -207,7 +207,7 @@ jobs:
 
   # Chaîne d'approvisionnement (ADR 0039) : outils épinglés dans scripts/tools.env.
   supply-chain:
-    runs-on: ${{ fromJSON(vars.CNP_CI_RUNS_ON || '["self-hosted","Linux","X64"]') }}
+    runs-on: ${{ fromJSON(vars.CNP_CI_RUNS_ON || '"ubuntu-latest"') }}
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
