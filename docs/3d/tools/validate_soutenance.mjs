@@ -154,7 +154,7 @@ try {
         await page.getByText('Composants et sources', { exact: true }).click()
         record.hybrid = []
         for (const mode of ['thermal', 'electric', 'hybrid']) {
-          await page.getByLabel('Motorisation', { exact: true }).selectOption(mode)
+          await page.getByLabel('Filtre visuel 3D', { exact: true }).selectOption(mode)
           const state = await probe()
           expect(state.items.map(i => i.key)).toEqual(initial.items.map(i => i.key))
           const at = id => state.items.find(i => i.id === id)

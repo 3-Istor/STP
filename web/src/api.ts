@@ -235,6 +235,15 @@ export type PriceSnapshotRef = {
 // budgets : budgets cibles évalués sur les totaux de cette même réponse (absent d'une API antérieure au lot F).
 export type Tree = { bom: BOM; nodes: TreeNode[]; explanation: Explanation; stock: StockLine[]; planning: Planning; budgets?: NodeBudget[] }
 
+export type PowertrainMode = 'thermal' | 'electric' | 'hybrid'
+export type ConfigurationRequest = {
+  root_id: number
+  guards: { id: number; parent_id: number | null; part_id: number | null }[]
+  scenarios: { key: PowertrainMode; excluded_roots: number[] }[]
+}
+export type ConfigurationScenario = { key: PowertrainMode; active_ids: number[]; excluded_ids: number[]; delta: Money | null; delta_percent: string | null; tree: Tree }
+export type ConfigurationComparison = { root_id: number; persistent: false; price_as_of: string | null; scenarios: ConfigurationScenario[] }
+
 export type Snapshot = {
   id: number
   bom_id: number
@@ -473,6 +482,7 @@ export const api = {
     call<MakeOrBuyResult>('POST', `/boms/${bomID}/nodes/${nodeID}/make-or-buy`, req),
   deleteBOM: (id: number) => call<void>('DELETE', `/boms/${id}`),
   tree: (id: number) => call<Tree>('GET', `/boms/${id}/tree`),
+  simulateConfigurations: (id: number, definition: ConfigurationRequest) => call<ConfigurationComparison>('POST', `/boms/${id}/configuration-simulation`, definition),
   addNode: (bomID: number, n: NewNode) => call<TreeNode>('POST', `/boms/${bomID}/nodes`, n),
   // Un seul champ par PATCH (contrat T8) : le type NodePatch l'impose.
   patchNode: (bomID: number, nodeID: number, p: NodePatch) =>

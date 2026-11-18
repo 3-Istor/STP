@@ -6,6 +6,7 @@ import type { BomData } from '../bom/useBomData.ts'
 import { shareWidths } from './share.ts'
 import { basisHint, costTitle, methodLabel } from '../bom/costMethod.ts'
 import { budgetBarWidth, budgetClass, budgetPercentText, budgetTitle } from '../bom/budget.ts'
+import { powertrainLabels } from '../bom/powertrain.ts'
 
 // Nombre de snapshots de prix montrés d'emblée ; les autres à la demande (« Tous les snapshots »).
 const SHOWN_SNAPSHOTS = 3
@@ -27,12 +28,12 @@ export function Summary({ data, onSelectNode }: { data: BomData; onSelectNode: (
   let state: { text: string; cls?: string; status?: boolean }
   if (data.busy) state = { text: 'Recalcul en cours…', cls: 'recalc', status: true }
   else if (t?.cost_error_code) state = { text: `incomplet : ${t.missing_cost.length} nœud(s) sans prix`, cls: 'over' }
-  else state = { text: data.readOnly ? 'figé (snapshot publié)' : 'à jour' }
+  else state = { text: data.simulation ? 'scénario calculé · référence inchangée' : data.readOnly ? 'figé (snapshot publié)' : 'à jour' }
 
   return (
     <section className="syn" aria-label="Synthèse">
       <div className="synh">
-        <h2>Synthèse</h2>
+        <h2>{data.simulation ? `Synthèse · ${powertrainLabels[data.simulation.mode]}` : 'Synthèse'}</h2>
         <PriceStatePill data={data} />
       </div>
       <p className="calc-state small">
@@ -176,6 +177,7 @@ function Method({ data }: { data: BomData }) {
 }
 
 function PriceStatePill({ data }: { data: BomData }) {
+  if (data.simulation) return <span className="state">{data.simulation.pending ? 'référence · calcul en cours' : 'prix capturés · simulation'}</span>
   if (data.priceSnapshotID === null) return <span className="state">prix en direct</span>
   return <span className="state">snapshot de prix #{data.priceSnapshotID}</span>
 }
@@ -221,6 +223,12 @@ function PricesUsed({ data }: { data: BomData }) {
     const bomID = data.target.id
     void data.run(() => (value === null ? api.unfreezePrices(bomID) : api.usePriceSnapshot(bomID, value)), { bomChanged: true })
   }
+  if (data.simulation) return <>
+    <div className="h3">Prix utilisés</div>
+    <p className="small">Même jeu de cotations et de taux pour les trois scénarios.
+      {data.simulation.priceAsOf ? ` Dernières cotations : ${formatDateTime(data.simulation.priceAsOf)}.` : ''}
+      {current !== null ? ` Snapshot de prix #${current}.` : ' Entrée capturée à la comparaison ; actualisation explicite.'}</p>
+  </>
   return (
     <>
       <div className="h3" id="prices-used">

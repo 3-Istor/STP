@@ -16,6 +16,8 @@ import { Publier } from './steps/Publier.tsx'
 import { Sourcer } from './steps/Sourcer.tsx'
 import { Structurer, type TreeView } from './steps/Structurer.tsx'
 import type { BomData } from './useBomData.ts'
+import { usePowertrainSimulation } from './usePowertrainSimulation.ts'
+import { PowertrainPanel } from './PowertrainPanel.tsx'
 import './bom.css'
 
 type BomRoute = Extract<Route, { page: 'bom' }>
@@ -30,11 +32,13 @@ type Props = {
 // BomWorkspace : une BOM ouverte, à l'une des 5 étapes. À gauche le contenu de l'étape, à droite la colonne
 // « Synthèse » (identique partout) puis le détail du nœud sélectionné ou les réglages de calcul.
 // La sélection de nœud vit dans l'URL (?node=) : elle suit d'une étape à l'autre.
-export function BomWorkspace({ route, data, error, onPublished }: Props) {
+export function BomWorkspace({ route, data: sourceData, error, onPublished }: Props) {
   const dialogs = useAppDialog()
   const [moving, setMoving] = useState<number | null>(null)
   const [adding, setAdding] = useState<number | null>(null)
   const [tab, setTab] = useState<'detail' | 'reglages'>('detail')
+  const simulation = usePowertrainSimulation(sourceData, route.step === 'structurer')
+  const data = simulation.data
   const selectedID = route.node !== null && data.byID.has(route.node) ? route.node : null
   const selected = selectedID !== null ? data.byID.get(selectedID)! : null
   const go = (patch: Partial<Pick<BomRoute, 'step' | 'node' | 'tab' | 'supplier'>>, replace = false) =>
@@ -68,7 +72,8 @@ export function BomWorkspace({ route, data, error, onPublished }: Props) {
   let main: ReactNode
   switch (route.step as Step) {
     case 'structurer':
-      main = (
+      main = (<>
+        <PowertrainPanel state={simulation} source={sourceData} onSelect={mode => { setMoving(null); setAdding(null); simulation.select(mode) }} />
         <Structurer
           data={data}
           selectedID={selectedID}
@@ -86,7 +91,7 @@ export function BomWorkspace({ route, data, error, onPublished }: Props) {
           onStartMove={setMoving}
           onDelete={remove}
         />
-      )
+      </>)
       break
     case 'chiffrer':
       main = <Chiffrer data={data} selectedID={selectedID} onSelect={select} />
@@ -146,6 +151,7 @@ export function BomWorkspace({ route, data, error, onPublished }: Props) {
                 volume={data.volume}
                 catalog={data.catalog}
                 readOnly={data.readOnly}
+                simulation={!!data.simulation}
                 isRoot={selected.parent_id === null}
                 onAdd={(n: NewNode) => data.run(() => api.addNode(data.target.id, n))}
                 onPatch={(p: NodePatch) => data.run(() => api.patchNode(data.target.id, selected.id, p))}

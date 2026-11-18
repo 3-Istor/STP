@@ -16,6 +16,7 @@ type Props = {
   volume: number
   catalog: Catalog
   readOnly: boolean
+  simulation?: boolean
   isRoot: boolean
   onAdd: (n: NewNode) => Promise<boolean>
   onPatch: (p: NodePatch) => Promise<boolean>
@@ -99,9 +100,9 @@ export function NodePanel(p: Props) {
         </dl>
       )}
 
-      <AnomalyFacts anomaly={p.anomaly} />
+      {!p.simulation && <AnomalyFacts anomaly={p.anomaly} />}
 
-      <CostBreakdown target={p.target} nodeID={node.id} title={title} version={p.version} />
+      {p.simulation ? <p className="small muted">Coûts du scénario : consultez le coût propre et les sous-totaux de sa BOM active. La ventilation de référence n’est pas utilisée.</p> : <CostBreakdown target={p.target} nodeID={node.id} title={title} version={p.version} />}
 
       {isPart && (
         <StockPanel

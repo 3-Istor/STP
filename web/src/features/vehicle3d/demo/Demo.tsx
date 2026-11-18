@@ -24,9 +24,9 @@ export function Demo() {
   const fixture = q.get('fixture')
   const [boms, setBoms] = useState<{ id: number; name: string }[]>([])
   const [loaded, setLoaded] = useState<{ bomId: number; nodes?: Vehicle3DNode[]; error?: string } | null>(null)
-  const [requestedMode, setMode] = useState<RenderMode>((q.get('mode') as RenderMode) ?? 'simple')
+  const requestedMode = (q.get('mode') as RenderMode) ?? 'simple'
   // Le chargeur historique n'est exercé que par les fixtures techniques, jamais sur une vraie BOM.
-  const mode = requestedMode === 'realistic' && !fixture ? 'bound' : requestedMode
+  const mode = fixture ? requestedMode : 'bound'
   const [colorBy, setColorBy] = useState<ColorBy>((q.get('color') as ColorBy) ?? 'material')
   const [explode, setExplode] = useState(Number(q.get('explode') ?? 0))
   const [fake, setFake] = useState(q.get('fakeBudget') === '1')
@@ -68,10 +68,6 @@ export function Demo() {
             {boms.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
           </select></label>
         )}
-        <span className="demo-seg">Rendu
-          <button aria-pressed={mode === 'simple'} onClick={() => setMode('simple')}>Simple</button>
-          <button aria-pressed={mode === 'bound'} onClick={() => setMode('bound')}>Composants</button>
-        </span>
         <span className="demo-seg">Colorer
           <button aria-pressed={colorBy === 'material'} onClick={() => setColorBy('material')}>Matériaux</button>
           <button aria-pressed={colorBy === 'budget'} onClick={() => setColorBy('budget')}>Budget</button>

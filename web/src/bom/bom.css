@@ -84,3 +84,14 @@ table.compact td:not(:first-child), table.compact th:not(:first-child) { text-al
 @container (max-width: 760px) {
   .view-arbre-3d .tree > * { min-width: 0; }
 }
+
+/* La comparaison garde la hauteur minimale du viewer ; les détails restent à la demande. */
+.main4.step-structurer:has(.powertrain-panel) { overflow: auto; }
+.powertrain-panel { flex: none; }
+.powertrain-panel .in { padding: 8px 12px; }
+.powertrain-panel h3 { margin: 0 0 6px; }
+.powertrain-panel p { margin: 6px 0; }
+.powertrain-table { overflow-x: auto; }
+.powertrain-table table { width: 100%; font-size: 12px; }
+.powertrain-table th, .powertrain-table td { padding: 5px 8px; white-space: nowrap; }
+.powertrain-table tr[aria-selected=true] { background: var(--surface-2); }

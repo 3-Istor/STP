@@ -30,7 +30,7 @@ function readBackground(el: HTMLElement): string {
 
 type Status = { state: 'loading' } | { state: 'ready'; result: LoadResult } | { state: 'error'; message: string }
 
-export default function Vehicle3DView({ bomId, nodes, selectedNodeId, onSelectNode, mode, colorBy, explode, onResetView, sceneScope }: Vehicle3DProps) {
+export default function Vehicle3DView({ bomId, nodes, selectedNodeId, onSelectNode, mode, colorBy, explode, onResetView, sceneScope, simulationMode }: Vehicle3DProps) {
   const rootRef = useRef<HTMLDivElement>(null)
   const hostRef = useRef<HTMLDivElement>(null)
   const pickedRef = useRef<number | null>(null) // sélection venue d'un clic dans la 3D : pas de recadrage
@@ -49,6 +49,11 @@ export default function Vehicle3DView({ bomId, nodes, selectedNodeId, onSelectNo
   const [isolation, setIsolation] = useState<number | null>(null)
   const [isolateSelection, setIsolateSelection] = useState(false)
   const [locatedFor, setLocatedFor] = useState<number | null>(null)
+  const [controlsForMode, setControlsForMode] = useState(simulationMode)
+  if (controlsForMode !== simulationMode) {
+    setControlsForMode(simulationMode); setTransparent(!!simulationMode)
+    setPropulsion('all'); setIsolation(null); setIsolateSelection(false); setLocatedFor(null)
+  }
   const scopeKind = sceneScope?.kind ?? 'draft', scopeId = sceneScope?.id ?? bomId, scopeRevision = sceneScope?.revision
   const index = useMemo(() => buildVehicleIndex(nodes, slotTable), [nodes])
   const color = useMemo(() => resolveColorMode(colorBy, nodes), [colorBy, nodes])
@@ -223,13 +228,13 @@ export default function Vehicle3DView({ bomId, nodes, selectedNodeId, onSelectNo
           }} /></label>
           {importError ? <p role="alert">{importError}</p> : null}
           {imported ? <button type="button" className="v3d-button" onClick={() => setImported(null)}>Recharger la source du projet</button> : null}
-          <label>Motorisation<select aria-label="Motorisation" value={propulsion} disabled={!ready} onChange={e => {
+          <label>Filtre visuel 3D<select aria-label="Filtre visuel 3D" value={propulsion} disabled={!ready} onChange={e => {
             setPropulsion(e.target.value as PropulsionMode)
             if (e.target.value !== 'all') setTransparent(true)
           }}>
             <option value="all">Véhicule complet</option><option value="thermal">Thermique</option><option value="electric">Électrique</option><option value="hybrid">Hybride</option>
           </select></label>
-          <p>Lecture des composants déclarés ; aucune simulation de fonctionnement ou de flux d’énergie.</p>
+          <p>Filtre d’affichage uniquement : ne modifie ni la BOM ni les coûts. Aucune simulation de fonctionnement ou de flux d’énergie.</p>
           <label>Isoler un système<select aria-label="Isoler un système" value={isolation ?? ''} disabled={!ready} onChange={e => setIsolation(e.target.value ? Number(e.target.value) : null)}>
             <option value="">Tous les systèmes</option>{activeIndex.systems.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select></label>

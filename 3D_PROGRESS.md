@@ -574,3 +574,12 @@ validation fonctionnelle et visuelle sur les assets réellement accessibles.
   369705.7356604838356815112468933765116 GBP. Réponse de référence strictement identique avant/après.
 - En cours : intégration et validation navigateur des scénarios, rendu permanent, suite complète,
   captures et revue de niveau 2. Aucun résultat interrompu ou test en échec compté comme vert.
+- Rendu permanent validé dans Chromium réel, Fiat et Valhalla : 3D / Arbre + 3D, navigation entre
+  voitures, actualisation et réinitialisation, nouveaux extérieurs et intérieurs présents. Zéro
+  requête CarConcept, erreur de page ou sélecteur Simple/Réaliste/Rendu. Captures et validation
+  reproductible dans `docs/3d/captures/rendu-permanent/` et `tools/validate_permanent_components.mjs`.
+- React utilise les arbres et totaux Go pour la BOM, la Synthèse et les objets actifs ; comparaison
+  et liste paginée des retraits. Lecture seule pendant la simulation, retour sans écriture.
+  Le contrôle indépendant « Filtre visuel 3D » est explicitement sans incidence sur le coût.
+  Tests navigateur ciblés des scénarios : 2 PASS (montants API non constants, retraits, actualisation,
+  sortie et prix manquant). Build TypeScript/Vite vert, profil explicite testé en logique pure.

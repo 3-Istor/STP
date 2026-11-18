@@ -1,10 +1,9 @@
 import { Component, useMemo, useState, type ReactNode } from 'react'
 import { api } from '../../api.ts'
-import { Vehicle3D, type ColorBy, type RenderMode, type Vehicle3DNode } from '../../features/vehicle3d/index.tsx'
+import { Vehicle3D, type ColorBy, type Vehicle3DNode } from '../../features/vehicle3d/index.tsx'
 import { BomTree } from '../BomTree.tsx'
 import type { BomData } from '../useBomData.ts'
-import { boundVehicle3dKey, vehicle3dKey, vehicle3dNodes } from '../vehicle3dNodes.ts'
-import { hasProvidedScene } from '../../features/vehicle3d/providedScene.ts'
+import { boundVehicle3dKey, vehicle3dNodes } from '../vehicle3dNodes.ts'
 
 export type TreeView = 'arbre' | 'arbre-3d' | '3d'
 const treeViews: { id: TreeView; label: string }[] = [
@@ -83,7 +82,7 @@ export function Structurer(p: Props) {
             + Ajouter une pièce
           </button>
         )}
-        {data.readOnly && <span className="muted small">Snapshot publié : lecture seule</span>}
+        {data.readOnly && <span className="muted small">{data.simulation ? 'Scénario de conception : lecture seule' : 'Snapshot publié : lecture seule'}</span>}
       </div>
       {p.moving !== null && (
         <p role="status" className="notice moving-notice">
@@ -99,17 +98,13 @@ export function Structurer(p: Props) {
       </div>
       <div className="tfoot muted small">
         {data.readOnly
-          ? 'Pour modifier : nouveau brouillon depuis ce snapshot (étape Publier ou Toutes les BOM).'
+          ? data.simulation ? 'Quittez la simulation pour modifier la BOM de référence.' : 'Pour modifier : nouveau brouillon depuis ce snapshot (étape Publier ou Toutes les BOM).'
           : 'Sélectionnez une ligne : + ajoute dessous, ⇅ puis clic sur le nouveau parent déplace, × supprime (avec confirmation) · totaux recalculés par le serveur'}
       </div>
     </section>
   )
 }
 
-const renderModes: { id: RenderMode; label: string }[] = [
-  { id: 'simple', label: 'Simple' },
-  { id: 'bound', label: 'Composants' },
-]
 const colorModes: { id: ColorBy; label: string }[] = [
   { id: 'material', label: 'Matériaux' },
   { id: 'budget', label: 'Budget' },
@@ -119,28 +114,17 @@ const colorModes: { id: ColorBy; label: string }[] = [
 // Vehicle3DPane : contrôles de la maquette I4-2 (Rendu, Colorer, Éclatement) au-dessus de la vue 3D. Focus
 // (I4-3) : double-clic sur un sous-ensemble, « Sortir du focus » ou Échap.
 function Vehicle3DPane({ data, selectedID, onSelect }: { data: BomData; selectedID: number | null; onSelect: (id: number) => void }) {
-  const [requestedMode, setMode] = useState<RenderMode>(() => hasProvidedScene(data.target, data.nodes) ? 'bound' : 'simple')
-  // Neutralise aussi un ancien état React conservé pendant une actualisation à chaud.
-  const mode = requestedMode === 'realistic' ? 'bound' : requestedMode
   const [colorBy, setColorBy] = useState<ColorBy>('material')
   const [explode, setExplode] = useState(0)
   const budgets = data.budgets.unavailable === null ? data.budgets.byNode : null
   const next = useMemo(() => vehicle3dNodes(data.nodes, budgets, data.catalog.byPart), [data.nodes, budgets, data.catalog.byPart])
-  const key = useMemo(() => mode === 'bound' ? boundVehicle3dKey(next) : vehicle3dKey(next), [next, mode])
+  const key = useMemo(() => boundVehicle3dKey(next), [next])
   // Même scène tant que la structure et les statuts ne changent pas (les totaux, eux, changent à chaque relecture).
   const [stable, setStable] = useState<{ key: string; nodes: Vehicle3DNode[] }>({ key, nodes: next })
   if (stable.key !== key) setStable({ key, nodes: next })
   return (
     <div className="v3d-pane" role="region" aria-label="Vue 3D">
       <div className="v3d-controls">
-        <span className="muted small">Rendu</span>
-        <div className="seg" role="radiogroup" aria-label="Rendu">
-          {renderModes.map((m) => (
-            <button key={m.id} type="button" role="radio" aria-checked={mode === m.id} className={mode === m.id ? 'on' : ''} onClick={() => setMode(m.id)}>
-              {m.label}
-            </button>
-          ))}
-        </div>
         <span className="muted small">Colorer</span>
         <div className="seg" role="radiogroup" aria-label="Colorer">
           {colorModes.map((m) => (
@@ -157,7 +141,7 @@ function Vehicle3DPane({ data, selectedID, onSelect }: { data: BomData; selected
       </div>
       <div className="v3d-stage">
         <Vehicle3DBoundary>
-          <Vehicle3D bomId={data.target.id} sceneScope={data.target} nodes={stable.nodes} selectedNodeId={selectedID} onSelectNode={onSelect} mode={mode} colorBy={colorBy} explode={explode} onResetView={() => setExplode(0)} />
+          <Vehicle3D bomId={data.target.id} sceneScope={data.target} nodes={stable.nodes} selectedNodeId={selectedID} onSelectNode={onSelect} mode="bound" simulationMode={data.simulation?.pending ? undefined : data.simulation?.mode} colorBy={colorBy} explode={explode} onResetView={() => setExplode(0)} />
         </Vehicle3DBoundary>
       </div>
     </div>

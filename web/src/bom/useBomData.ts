@@ -21,6 +21,7 @@ import { loadOfferPrices, noOfferPrices, withOfferPrices, type OfferPrices } fro
 import type { Target } from '../router.ts'
 
 export type BomData = {
+  simulation?: { mode: 'thermal' | 'electric' | 'hybrid'; pending: boolean; priceAsOf: string | null }
   target: Target
   readOnly: boolean
   name: string

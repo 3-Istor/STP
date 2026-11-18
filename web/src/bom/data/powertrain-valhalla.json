@@ -1,0 +1,77 @@
+{
+  "bom_id": 2,
+  "root_id": 29978,
+  "version": "valhalla-design-v1",
+  "guards": [
+    {
+      "id": 29978,
+      "parent_id": null,
+      "part_id": null
+    },
+    {
+      "id": 32413,
+      "parent_id": 32412,
+      "part_id": null
+    },
+    {
+      "id": 34537,
+      "parent_id": 32412,
+      "part_id": null
+    },
+    {
+      "id": 35285,
+      "parent_id": 32412,
+      "part_id": null
+    },
+    {
+      "id": 35392,
+      "parent_id": 32412,
+      "part_id": null
+    },
+    {
+      "id": 32415,
+      "parent_id": 32414,
+      "part_id": 297
+    },
+    {
+      "id": 34539,
+      "parent_id": 34538,
+      "part_id": 325
+    },
+    {
+      "id": 34607,
+      "parent_id": 34606,
+      "part_id": 325
+    },
+    {
+      "id": 34675,
+      "parent_id": 34674,
+      "part_id": 326
+    },
+    {
+      "id": 34758,
+      "parent_id": 34757,
+      "part_id": 322
+    }
+  ],
+  "scenarios": [
+    {
+      "key": "hybrid",
+      "excluded_roots": []
+    },
+    {
+      "key": "thermal",
+      "excluded_roots": [
+        34537
+      ]
+    },
+    {
+      "key": "electric",
+      "excluded_roots": [
+        32413,
+        35285,
+        35392
+      ]
+    }
+  ]
+}

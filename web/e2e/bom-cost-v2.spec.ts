@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test'
 import type { Page } from '@playwright/test'
+import { mockBoundAssemblies } from './fixtures/bound-assemblies.ts'
 
 // V2 lot F : budgets (état et % calculés par l'API, jamais par le front), méthode de calcul (affichée, changée
 // par PUT puis relecture), « Pourquoi ce coût ? » (lignes de l'API, composante absente et erreur visibles,
@@ -178,30 +179,45 @@ test('« Pourquoi ce coût ? » : une erreur de l’API est affichée, jamais un
 const selection3d = (page: Page) =>
   page.evaluate(() => [...((document.querySelector('.v3d-root') as unknown as { __viewer: { selection: Set<string> } }).__viewer.selection)])
 
+test('sans manifeste : absence explicite, aucun retour à Simple ou à un ancien modèle', async ({ page }) => {
+  await mockAPI(page)
+  await page.route('**/models/manifests/draft-1.json', route => route.fulfill({ status: 404 }))
+  const models: string[] = []
+  page.on('request', request => { if (/\/models\/.*\.glb/.test(request.url())) models.push(request.url()) })
+  await page.goto('/#/boms/1/structurer?tab=arbre-3d')
+  await expect(page.locator('.v3d-root')).toHaveAttribute('data-status', 'error', { timeout: 30_000 })
+  await expect(page.getByRole('alert')).toContainText('Aucun manifeste pour cette BOM')
+  await expect(page.getByRole('radio', { name: 'Simple', exact: true })).toHaveCount(0)
+  await expect(page.getByRole('radiogroup', { name: 'Rendu', exact: true })).toHaveCount(0)
+  await expect(row(page, 'Fiat Multipla')).toBeVisible()
+  expect(models).toEqual([])
+})
+
 test('Arbre + 3D : clic dans l’arbre → objet sélectionné dans la 3D ; clic dans la 3D → ligne de l’arbre', async ({ page, browserName }) => {
   const webgl = await page.evaluate(() => !!document.createElement('canvas').getContext('webgl2'))
   test.skip(!webgl, `WebGL2 indisponible dans ce navigateur (${browserName}) : vue 3D non testable ici`)
   // WebGL logiciel (SwiftShader) en CI : chaque rendu est lent, deux workers en parallèle le ralentissent encore.
   test.setTimeout(90_000)
   await mockAPI(page)
+  await mockBoundAssemblies(page)
   await page.goto('/#/boms/1/structurer?tab=arbre-3d')
   await expect(page.locator('.v3d-root')).toHaveAttribute('data-status', 'ready', { timeout: 30_000 })
   await expect.poll(() => selection3d(page)).toEqual([])
 
   await row(page, 'Porte avant gauche').click()
   await expect(page).toHaveURL(/node=3/)
-  await expect.poll(() => selection3d(page)).toEqual(['door_fl'])
+  await expect.poll(() => selection3d(page)).toEqual(['node:3/instance:schematic'])
   // Les groupes sélectionnent leurs descendants. Une pièce sans modèle a un état explicite,
   // conformément à la refonte 3D : son parent ne doit plus être sélectionné à sa place.
   await row(page, 'Fiat Multipla').click()
-  await expect.poll(() => selection3d(page)).toEqual(['door_fl', 'hood', 'est:6'])
+  await expect.poll(() => selection3d(page)).toEqual(['node:3/instance:schematic', 'node:5/instance:schematic', 'node:6/instance:schematic'])
   await page.evaluate(() => { window.location.hash = '#/boms/1/structurer?tab=arbre-3d&node=4' })
   await expect(page.getByRole('treeitem', { selected: true })).toContainText('Porte avant nue')
   await expect.poll(() => selection3d(page)).toEqual([])
   await expect(page.getByText('Modèle 3D de cette pièce indisponible.', { exact: false })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Focus sélection', exact: true })).toBeDisabled()
   await row(page, 'Carrosserie et ouvrants').click()
-  await expect.poll(() => selection3d(page).then((s) => s.sort())).toEqual(['door_fl', 'hood'])
+  await expect.poll(() => selection3d(page).then((s) => s.sort())).toEqual(['node:3/instance:schematic', 'node:5/instance:schematic'])
 
   // Clic au centre projeté du capot (après le recadrage de la caméra) : la sélection revient dans l'URL et l'arbre.
   await page.getByRole('tab', { name: 'Réglages de calcul', exact: true }).click()
@@ -213,7 +229,7 @@ test('Arbre + 3D : clic dans l’arbre → objet sélectionné dans la 3D ; clic
     const v = (document.querySelector('.v3d-root') as unknown as {
       __viewer: { objectCenters: Map<string, [number, number, number]>; camera: { position: { constructor: new (x: number, y: number, z: number) => V } }; renderer: { domElement: HTMLCanvasElement } }
     }).__viewer
-    const [x, y, z] = v.objectCenters.get('hood')!
+    const [x, y, z] = v.objectCenters.get('node:5/instance:schematic')!
     const p = new v.camera.position.constructor(x, y, z).project(v.camera)
     const r = v.renderer.domElement.getBoundingClientRect()
     return { x: ((p.x + 1) / 2) * r.width, y: ((1 - p.y) / 2) * r.height }

@@ -15,6 +15,7 @@ export type Vehicle3DNode = Pick<TreeNode, 'id' | 'parent_id' | 'name' | 'part_i
 }
 
 export type Vehicle3DProps = {
+  simulationMode?: Exclude<PropulsionMode, 'all'>
   bomId: number
   nodes: Vehicle3DNode[]
   selectedNodeId: number | null
