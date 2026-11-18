@@ -60,6 +60,7 @@ export class Viewer {
   private loading = false
   private propulsionMode: PropulsionMode = 'all'
   private isolatedSystem: number | null = null
+  private isolatedKeys: Set<string> | null = null
   /** Nombre d'images rendues (diagnostic : vérifie l'absence de boucle au repos). */
   renders = 0
 
@@ -224,7 +225,7 @@ export class Viewer {
 
   setExplode(k: number) {
     this.explode = Number.isFinite(k) ? Math.min(Math.max(k, 0), 1) : 0
-    if (!this.focusKey) this.moveParts()
+    if (!this.focusKey) this.moveParts(this.index?.representation === 'manifest' ? () => this.recenter(true) : undefined)
     this.applyStyles()
   }
 
@@ -240,6 +241,7 @@ export class Viewer {
 
   focusSelection() {
     if (this.selection.size === 1) this.setFocus([...this.selection][0])
+    else if (this.selection.size > 1 && this.index?.representation === 'manifest') this.setFocus([...this.selection][0], [...this.selection])
   }
 
   setShellTransparency(transparent: boolean) {
@@ -249,13 +251,14 @@ export class Viewer {
 
   setPropulsion(mode: PropulsionMode) { this.propulsionMode = mode; this.applyStyles() }
   setIsolatedSystem(id: number | null) { this.isolatedSystem = id; this.applyStyles() }
+  setIsolatedKeys(keys: string[] | null) { this.isolatedKeys = keys?.length ? new Set(keys) : null; this.applyStyles() }
 
   /** Focus : le sous-ensemble (et ses associés) s'éclatent dans l'axe, le reste passe en transparence. */
-  setFocus(key: string | null) {
+  setFocus(key: string | null, groupKeys?: string[]) {
     if (!this.index || (key !== null && !this.index.byKey.has(key))) key = null
     if (key !== null && this.boxOf(this.itemsOf(new Set([key]))).isEmpty()) key = null
     this.focusKey = key
-    this.focusKeys = new Set(key ? focusGroup(key, this.index!, this.table) : [])
+    this.focusKeys = new Set(key ? groupKeys ?? focusGroup(key, this.index!, this.table) : [])
     this.moveParts(() => {
       if (key) this.frameFocus()
       else this.recenter(true)
@@ -361,14 +364,15 @@ export class Viewer {
   private applyStyles() {
     if (!this.built) return
     const selectedInterior = this.selection.size < this.built.items.length && this.built.items.some(it => it.displayRole === 'interior' && it.obj && this.selection.has(it.obj.key))
-    const revealInterior = this.explode > 0 || this.shellTransparent || this.focusKey !== null || this.propulsionMode !== 'all' || selectedInterior
+    const revealInterior = this.explode > 0 || this.shellTransparent || this.focusKey !== null || this.propulsionMode !== 'all' || selectedInterior || this.isolatedKeys !== null
     for (const it of this.built.items) {
       const system = it.obj?.componentSystem
       const propulsionGhost = (this.propulsionMode === 'thermal' && system === 'electric') || (this.propulsionMode === 'electric' && system === 'thermal')
       const ghost = propulsionGhost || (this.focusKey !== null && !(it.obj && this.focusKeys.has(it.obj.key)))
-      if (this.index?.representation === 'manifest') it.node.visible = (this.isolatedSystem === null || it.obj?.systemId === this.isolatedSystem) && (it.displayRole !== 'interior' || revealInterior)
+      if (this.index?.representation === 'manifest') it.node.visible = (this.isolatedSystem === null || it.obj?.systemId === this.isolatedSystem) && (this.isolatedKeys === null || (it.obj !== null && this.isolatedKeys.has(it.obj.key))) && (it.displayRole !== 'interior' || revealInterior)
       const style = { tint: it.obj ? this.colorOf(it.obj) : null, ghost, estimated: !!it.obj?.estimated }
       for (const m of it.meshes) {
+        if (m.userData.stp_native_interior) m.visible = !revealInterior
         const shell = system === 'body' || (!Array.isArray(m.material) && /^(body|Paint)/.test(m.material.name))
         styleMesh(m, { ...style, ghost: ghost || ((this.shellTransparent || selectedInterior) && shell) })
       }
@@ -383,8 +387,9 @@ export class Viewer {
     for (const h of this.selectionFrames) { this.scene.remove(h); h.dispose() }
     this.selectionFrames = []
     if (this.focusKey || this.loading) return
-    for (const key of this.selection) {
-      const box = this.boxOf(this.itemsOf(new Set([key])))
+    const groups = this.selection.size > 12 ? [this.selection] : [...this.selection].map(key => new Set([key]))
+    for (const keys of groups) {
+      const box = this.boxOf(this.itemsOf(keys))
       if (box.isEmpty()) continue
       box.expandByScalar(0.03)
       const h = new THREE.Box3Helper(box, SELECTION_COLOR)

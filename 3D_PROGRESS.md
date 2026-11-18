@@ -397,3 +397,22 @@ validation fonctionnelle et visuelle sur les assets réellement accessibles.
 - Tests frontend/build/lint PASS ; trois scénarios liés desktop PASS. Captures transparentes inspectées :
   organes dans les carrosseries, approximation visible et annoncée ; aucune erreur JavaScript.
 - Prochaine tâche : déplacements mécaniques ordonnés et réversibles, isolation et cadrage de l'éclaté.
+
+## Soutenance — étape 3 : éclatés progressifs
+
+- Coque Fiat soulevée comme un seul ensemble (ouvrants non séparables dans le modèle fourni), roues
+  natives écartées par coin, moteur/boîte/refroidissement séparés, cabine et châssis lisibles.
+- Valhalla : coque, portes, capots moteur, aileron, sièges et roues natifs séparés ; V8/DCT, moteurs
+  avant et batterie déplacés selon leurs groupes. Vecteurs explicites, pas de dispersion aléatoire.
+- Cadrage animé de la destination de l'éclaté, grand groupe sélectionné encadré sans des centaines
+  de boîtes ; focus de groupe et isolation de la sélection ajoutés. Vérification intégrée BOM à suivre.
+- Les détails natifs d'habitacle Fiat restent prioritaires en vue normale et sont masqués lors de
+  la lecture mécanique illustrative pour limiter les doublons. Les prototypes ne remplacent ni
+  la belle carrosserie ni les roues détaillées. Copies originales toujours préservées.
+- Captures réelles normales/éclatées et mesures dans `docs/3d/captures/*-{assembled,exploded}-soutenance.*`.
+  Deux retours strictement égaux à la pose initiale, zéro erreur JS. Intersections majeures corrigées
+  par dégagement de coque ; aucune validation de cinématique ou de collisions constructeur revendiquée.
+- Frontend, build et lint PASS ; 11 parcours navigateur desktop liés et historiques PASS. Les contrôles
+  Go/PR sont lancés sur une base séparée de la démonstration. Rien n'a été affaibli pour les faire passer.
+- Prochaine tâche : parcours complet dans Structurer, bonnes occurrences des sièges et moteurs,
+  isolation/focus, cas de remplacement et modes hybrides, puis instructions exactes de soutenance.

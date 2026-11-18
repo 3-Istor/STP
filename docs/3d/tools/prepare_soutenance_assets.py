@@ -80,6 +80,10 @@ def prepare(vehicle, layout, inspection, exterior):
         if exterior:
             for field in ('translation', 'rotation', 'scale'): node.pop(field, None)
             node['matrix'] = matrices[source_index if vehicle == 'valhalla' else source['name']]
+            if vehicle == 'multipla':
+                material_index = document['meshes'][source['mesh']]['primitives'][0].get('material')
+                if material_index is not None and document['materials'][material_index].get('name') == 'car_interior':
+                    node.setdefault('extras', {})['stp_native_interior'] = True
             if vehicle == 'valhalla':
                 pose = poses[source_index]
                 primitive = document['meshes'][pose['meshes']]['primitives'][pose['primitives']]

@@ -47,6 +47,7 @@ export default function Vehicle3DView({ bomId, nodes, selectedNodeId, onSelectNo
   const [importError, setImportError] = useState<string | null>(null)
   const [propulsion, setPropulsion] = useState<PropulsionMode>('all')
   const [isolation, setIsolation] = useState<number | null>(null)
+  const [isolateSelection, setIsolateSelection] = useState(false)
   const scopeKind = sceneScope?.kind ?? 'draft', scopeId = sceneScope?.id ?? bomId, scopeRevision = sceneScope?.revision
   const index = useMemo(() => buildVehicleIndex(nodes, slotTable), [nodes])
   const color = useMemo(() => resolveColorMode(colorBy, nodes), [colorBy, nodes])
@@ -75,13 +76,7 @@ export default function Vehicle3DView({ bomId, nodes, selectedNodeId, onSelectNo
           onSelectRef.current(obj.nodeId)
         },
         onHover: (obj, x, y) => setHover(obj ? { obj, x, y } : null),
-        onFocusChange: obj => {
-          setFocus(obj)
-          if (obj) {
-            pickedRef.current = obj.nodeId
-            onSelectRef.current(obj.nodeId)
-          }
-        },
+        onFocusChange: setFocus,
       })
     } catch (error) {
       setStatus({ state: 'error', message: error instanceof Error ? error.message : String(error) })
@@ -142,6 +137,7 @@ export default function Vehicle3DView({ bomId, nodes, selectedNodeId, onSelectNo
   useEffect(() => { if (ready) viewerRef.current?.setShellTransparency(transparent) }, [ready, transparent])
   useEffect(() => { if (ready) viewerRef.current?.setPropulsion(propulsion) }, [ready, propulsion])
   useEffect(() => { if (ready) viewerRef.current?.setIsolatedSystem(isolation) }, [ready, isolation])
+  useEffect(() => { if (ready) viewerRef.current?.setIsolatedKeys(isolateSelection ? selection.keys : null) }, [ready, isolateSelection, selection])
   useEffect(() => {
     if (!ready) return
     const fromClick = selectedNodeId !== null && selectedNodeId === pickedRef.current
@@ -161,7 +157,7 @@ export default function Vehicle3DView({ bomId, nodes, selectedNodeId, onSelectNo
       <div className="v3d-overlay v3d-top-left">
         {focus ? (
           <div className="v3d-focusbar">
-            <span className="v3d-crumbs">Véhicule › {focus.systemName} › <strong>{focus.name}</strong></span>
+            <span className="v3d-crumbs">Véhicule › {focus.systemName} › <strong>{mode === 'bound' && selectedNode?.part_id === null ? selectedNode.name : focus.name}</strong></span>
             <button type="button" className="v3d-button" onClick={() => viewerRef.current?.setFocus(null)}>Sortir du focus</button>
           </div>
         ) : null}
@@ -172,7 +168,7 @@ export default function Vehicle3DView({ bomId, nodes, selectedNodeId, onSelectNo
           <span className="v3d-badge"><strong>SIMILAIRE</strong> — pas le modèle exact du véhicule</span>
         ) : null}
         {info ? <span className="v3d-badge"><strong>{info.vehicleLabel}</strong> · {info.representedNodes}/{info.physicalNodes} occurrences physiques représentées</span> : null}
-        {info ? <span className="v3d-badge">Géométrie : {info.assets.length === 0 ? 'aucun modèle chargé' : info.assets.some(a => a.geometry_status === 'schematic') ? 'schématique' : info.assets.some(a => a.geometry_status === 'approximation') ? 'approximative' : 'exactitude déclarée par l’auteur, à contrôler'} · {info.approximatePlacements} placement(s) approximatif(s)</span> : null}
+        {info ? <span className="v3d-badge">Géométrie : {info.assets.length === 0 ? 'aucun modèle chargé' : info.assets.some(a => a.display_role === 'exterior') && info.assets.some(a => a.display_role === 'interior') ? 'extérieur détaillé · mécanique illustrative' : info.assets.some(a => a.geometry_status === 'schematic') ? 'schématique' : info.assets.some(a => a.geometry_status === 'approximation') ? 'approximative' : 'exactitude déclarée par l’auteur, à contrôler'} · {info.approximatePlacements} placement(s) approximatif(s)</span> : null}
         {status.state === 'loading' ? <span className="v3d-badge" role="status">Chargement…</span> : null}
         {status.state === 'error' ? <span className="v3d-notice" role="alert">Vue 3D indisponible : {status.message}</span> : null}
         {status.state === 'error' ? <button type="button" className="v3d-button" onClick={() => setRevision(r => r + 1)}>Réessayer la vue 3D</button> : null}
@@ -186,11 +182,13 @@ export default function Vehicle3DView({ bomId, nodes, selectedNodeId, onSelectNo
       <div className="v3d-overlay v3d-top-right">
         <button type="button" className="v3d-button" disabled={!ready} onClick={() => viewerRef.current?.recenter()}>Recentrer</button>
         <button type="button" className="v3d-button" disabled={!ready || selection.keys.length === 0} onClick={() => viewerRef.current?.frameSelection()}>Cadrer la sélection</button>
-        <button type="button" className="v3d-button" disabled={!ready || selection.keys.length !== 1} onClick={() => viewerRef.current?.focusSelection()}>Focus sélection</button>
+        <button type="button" className="v3d-button" disabled={!ready || (mode === 'bound' ? selection.keys.length === 0 : selection.keys.length !== 1)} onClick={() => viewerRef.current?.focusSelection()}>Focus sélection</button>
         {onResetView ? <button type="button" className="v3d-button" disabled={!ready} onClick={() => {
           setTransparent(false)
           setPropulsion('all')
           setIsolation(null)
+          setIsolateSelection(false)
+          if (mode === 'bound' && activeIndex.rootId !== null) onSelectNode(activeIndex.rootId)
           viewerRef.current?.setExplode(0)
           viewerRef.current?.setFocus(null)
           onResetView()
@@ -221,6 +219,7 @@ export default function Vehicle3DView({ bomId, nodes, selectedNodeId, onSelectNo
           <label>Isoler un système<select aria-label="Isoler un système" value={isolation ?? ''} disabled={!ready} onChange={e => setIsolation(e.target.value ? Number(e.target.value) : null)}>
             <option value="">Tous les systèmes</option>{activeIndex.systems.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
           </select></label>
+          <button type="button" className="v3d-button" disabled={!ready || (!isolateSelection && selection.keys.length === 0)} onClick={() => setIsolateSelection(v => !v)}>{isolateSelection ? 'Tout afficher' : 'Isoler la sélection'}</button>
           {info ? <>
             <p>Révision : {info.revision}. Correspondances contrôlées sur l’arbre courant.</p>
             <UnavailableList unavailable={info.unavailable} nodes={nodes} onSelect={onSelectNode} />
