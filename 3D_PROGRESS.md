@@ -553,3 +553,24 @@ validation fonctionnelle et visuelle sur les assets réellement accessibles.
 - Revue niveau 1, un tour, aucun constat de correction. Moulinette PR verte ; intégration PostgreSQL,
   scanners optionnels absents, CI distante, Firefox/WebKit et GPU du jury non vérifiés dans ce passage.
   Le backend, PostgreSQL et les branches protégées sont inchangés. Aucun push/merge effectué.
+
+## 18 novembre — rendu permanent et simulation économique (ADR 0042)
+
+- Point de sauvegarde local `0d694cf`, depuis l'état propre `35ec7e4`, exclusivement sur
+  `feat/3d-pro-v2`. Les huit assets et les sauvegardes d'audit précédentes sont conservés.
+- L'utilisateur a explicitement validé l'option 1 et les hypothèses de l'ADR 0042 : simulation Go
+  en mémoire, aucune écriture PostgreSQL, DCT/transmission/refroidissement communs, batterie BEV
+  adaptée manquante signalée. L'ADR reste au statut formel Proposé à compléter par un humain.
+- Service et route additive `POST /api/v1/boms/{id}/configuration-simulation` : une entrée de prix,
+  change et réglages, trois appels au moteur existant sur les arbres actifs. Aucun montant calculé
+  dans React, aucune formule historique changée. Exclusions de sous-arbres dédupliquées ; identités
+  de racine/parents/pièces gardées ; prix manquant explicite et comparaison indisponible.
+- Tests ciblés Go verts : calculs/quantités/communs, cotations/change, prix manquants, identités,
+  chevauchements, stratégies achat/landed/full, conservation de la référence via le service et
+  contrat HTTP. Golden des routes : une route ajoutée, aucune retirée.
+- Vérification réelle API : référence actuelle 14904 nœuds (une pièce ajoutée depuis l'audit
+  précédent, conservée). Hybride 461381.2621185521307522392595421971660 GBP ; thermique
+  393970.4967355966814761266755596435380 GBP ; électrique
+  369705.7356604838356815112468933765116 GBP. Réponse de référence strictement identique avant/après.
+- En cours : intégration et validation navigateur des scénarios, rendu permanent, suite complète,
+  captures et revue de niveau 2. Aucun résultat interrompu ou test en échec compté comme vert.

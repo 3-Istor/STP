@@ -58,6 +58,7 @@ PATCH /api/v1/offers/{id}
 PATCH /api/v1/parts/{id}
 PATCH /api/v1/suppliers/{id}
 POST /api/v1/boms
+POST /api/v1/boms/{id}/configuration-simulation
 POST /api/v1/boms/{id}/freeze-prices
 POST /api/v1/boms/{id}/ideas
 POST /api/v1/boms/{id}/nodes
