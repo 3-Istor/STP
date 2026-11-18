@@ -53,8 +53,12 @@ try {
   await page.goto(base + '/#/boms/2/structurer?tab=3d')
   await ready(); await capture('valhalla-reference')
   const panel = page.getByRole('region', { name: 'Simulation de motorisation' })
+  await page.getByRole('radio', { name: 'Arbre', exact: true }).click()
   await panel.getByRole('radio', { name: 'Thermique', exact: true }).click()
   const comparison = await response
+  await expect(panel.getByRole('radio', { name: 'Thermique', exact: true })).toHaveAttribute('aria-checked', 'true')
+  await page.getByRole('radio', { name: '3D', exact: true }).click()
+  await expect(page.getByLabel('Carrosserie transparente', { exact: true })).toBeChecked()
   expect(comparison.persistent).toBe(false)
   const reference = comparison.scenarios.find(s => s.key === 'hybrid')
   const referenceNodes = new Map(reference.tree.nodes.map(n => [n.id, n]))

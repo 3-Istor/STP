@@ -596,3 +596,13 @@ validation fonctionnelle et visuelle sur les assets réellement accessibles.
   dédiée `stp3d_config_tests`, distincte de `stp3d_demo` et de la base habituelle. Tous les tests
   d'intégration ont passé ; un seuil existant de performance a échoué à 1,015 s pour 1 s sous
   concurrence. Relance de tous les paquets séquentiellement (`GOFLAGS=-p=1`), seuil inchangé.
+- Moulinette PR verte sur la base de tests dédiée (Go `-race`, lint, contrats/architecture, sqlc,
+  sécurité disponible, 52 tests unitaires front, build et audit npm). `make lint` et `make test`
+  verts, intégration comprise. Le harnais imprime néanmoins « intégration not_run » car le binaire
+  hôte `pg_isready` est absent ; les sorties Go montrent l'exécution effective des tests de stores,
+  migrations et seeds avec le `DATABASE_URL` isolé explicite. Aucun scanner absent compté vert.
+- Suite complète Chromium desktop : 67 PASS. Revue de niveau 2 depuis `0d694cf` : architecture,
+  aucun constat ; correction, 1 Important probable confirmé par un nouveau test rouge : ouvrir la
+  3D après sélection du scénario depuis Arbre laissait la coque opaque. Initialisation minimale
+  de transparence corrigée ; le test couvre les trois modes et les deux vues et passe sur desktop.
+  Vérification mobile et second tour du seul relecteur concerné en cours.

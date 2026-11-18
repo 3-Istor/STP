@@ -41,7 +41,7 @@ export default function Vehicle3DView({ bomId, nodes, selectedNodeId, onSelectNo
   const [hover, setHover] = useState<{ obj: VehicleObject; x: number; y: number } | null>(null)
   const [focus, setFocus] = useState<VehicleObject | null>(null)
   const [palette, setPalette] = useState<StatusPalette>(DEFAULT_STATUS)
-  const [transparent, setTransparent] = useState(false)
+  const [transparent, setTransparent] = useState(!!simulationMode)
   const [revision, setRevision] = useState(0)
   const [imported, setImported] = useState<SceneManifest | null>(null)
   const [importError, setImportError] = useState<string | null>(null)
