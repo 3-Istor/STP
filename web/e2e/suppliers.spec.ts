@@ -428,15 +428,15 @@ test('repli snapshot daté explicitement visible', async ({ page }) => {
   await expect(page.getByTestId('price-101')).toHaveText(/110,00\s*€/)
 })
 
-test('création fournisseur : validation serveur visible et notes transmises en chaînes', async ({ page }) => {
+test('création fournisseur : note refusée au champ, erreur serveur visible et notes transmises en chaînes', async ({ page }) => {
   await mockSupplierAPI(page)
   const submissions: unknown[] = []
   await page.route('**/api/v1/suppliers', async (route) => {
     if (route.request().method() !== 'POST') return route.fallback()
     const body = route.request().postDataJSON()
     submissions.push(body)
-    if (body.quality_score === '6') {
-      await route.fulfill({ status: 400, json: { error: 'La qualité doit être comprise entre 0 et 5' } })
+    if (submissions.length === 1) {
+      await route.fulfill({ status: 400, json: { error: 'Un fournisseur porte déjà ce nom' } })
     } else {
       await route.fulfill({ status: 201, json: { id: 3, ...body } })
     }
@@ -447,14 +447,17 @@ test('création fournisseur : validation serveur visible et notes transmises en 
   await dialog.getByLabel('Nom du fournisseur').fill('Cèdre')
   await dialog.getByLabel('Qualité (sur 5)').fill('6')
   await dialog.getByLabel('Confiance (sur 5)').fill('4.125')
+  await expect(dialog.getByRole('alert')).toHaveText('Au plus 5.')
   await dialog.getByRole('button', { name: 'Créer le fournisseur', exact: true }).click()
-  await expect(dialog.getByRole('alert')).toHaveText('La qualité doit être comprise entre 0 et 5')
+  expect(submissions).toEqual([])
   await dialog.getByLabel('Qualité (sur 5)').fill('4.25')
+  await dialog.getByRole('button', { name: 'Créer le fournisseur', exact: true }).click()
+  await expect(dialog.getByRole('alert')).toHaveText('Un fournisseur porte déjà ce nom')
   await dialog.getByRole('button', { name: 'Créer le fournisseur', exact: true }).click()
   await expect(dialog).toHaveCount(0)
   await expect(page.getByRole('heading', { name: 'Cèdre', exact: true })).toBeVisible()
   expect(submissions).toEqual([
-    { name: 'Cèdre', quality_score: '6', trust_score: '4.125' },
+    { name: 'Cèdre', quality_score: '4.25', trust_score: '4.125' },
     { name: 'Cèdre', quality_score: '4.25', trust_score: '4.125' },
   ])
 })

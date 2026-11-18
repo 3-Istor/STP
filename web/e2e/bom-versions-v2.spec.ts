@@ -204,14 +204,14 @@ test('profil de véhicule changé → classement des alternatives changé', asyn
   await expect(alts.locator('tbody tr td:first-child')).toHaveText([/Fonderia/, /Rheinwerk/, /Officine Valsusa/])
 })
 
-test('Publier sur le brouillon B : refusée (409) par le contrat expiré, message clair, « Corriger » mène au nœud', async ({ page }) => {
+test('Publier sur le brouillon B : bloquée d’avance par le contrat expiré, raison affichée, « Corriger » mène au nœud', async ({ page }) => {
   const calls = await mockAPI(page, { blocked: true })
   await page.goto('/#/boms/3/publier')
   const controls = page.getByRole('region', { name: 'Contrôles avant publication' })
   await expect(controls).toContainText('Contrôles avant publication · 1 sur 4')
-  await page.getByRole('button', { name: 'Publier ce brouillon' }).click()
-  await expect(page.getByRole('alert').filter({ hasText: 'Publication bloquée' })).toHaveText('Publication bloquée par : Contrat expiré encore utilisé (Arden Composites, 31/03)')
-  expect(calls.filter((c) => c.path.endsWith('/publish'))).toHaveLength(1)
+  await expect(page.getByRole('button', { name: 'Publier ce brouillon' })).toBeDisabled()
+  await expect(page.getByText('Publication impossible : 1 contrôle(s) bloquant(s) (Contrat expiré encore utilisé).')).toBeVisible()
+  expect(calls.filter((c) => c.path.endsWith('/publish'))).toHaveLength(0)
   await controls.getByRole('listitem').filter({ hasText: 'Contrat expiré' }).getByRole('button', { name: 'Corriger' }).click()
   await expect(page).toHaveURL(/#\/boms\/3\/structurer\?node=4$/)
 })
