@@ -1,0 +1,59 @@
+{
+  "schema_version": 1,
+  "revision": "soutenance-exterior-20261118",
+  "scope": {
+    "kind": "draft",
+    "id": 2
+  },
+  "vehicle_label": "Aston Martin Valhalla 2025",
+  "assets": [
+    {
+      "key": "Valhalla2025",
+      "path": "/models/Valhalla2025.glb",
+      "sha256": "eb9eacb250cfcdf19c2deb2f617fdf937c4fa5178dd8b6a1f49eae411043683f",
+      "unit_scale": 1,
+      "source_url": "https://sketchfab.com/3d-models/2025-aston-martin-valhalla-4294795fcf194e2b9da861b251192bd1",
+      "license": "CC BY-NC-SA 4.0",
+      "license_url": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+      "author": "OUTPISTON",
+      "geometry_status": "approximation"
+    }
+  ],
+  "bindings": [
+    {
+      "node_id": 29978,
+      "parent_id": null,
+      "part_id": null,
+      "asset_key": "Valhalla2025",
+      "mesh_path": [],
+      "system": "body",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "exterior",
+          "position": [
+            0,
+            0.00328596,
+            0
+          ],
+          "rotation": [
+            0,
+            -1.5707963267948966,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    }
+  ],
+  "assemblies": []
+}

@@ -1,0 +1,59 @@
+{
+  "schema_version": 1,
+  "revision": "soutenance-exterior-20261118",
+  "scope": {
+    "kind": "draft",
+    "id": 1
+  },
+  "vehicle_label": "Fiat Multipla 1998",
+  "assets": [
+    {
+      "key": "Multipla1998",
+      "path": "/models/Multipla1998.glb",
+      "sha256": "a7166433396db3c54863435a0f24b0b49ead42cc6913cbb5c8bdf6282ffbdda3",
+      "unit_scale": 0.89,
+      "source_url": "https://sketchfab.com/3d-models/fiat-multipla-1998-3d-model-53cb07fa6a264cca811952c7ff3f3b38",
+      "license": "CC BY 4.0",
+      "license_url": "https://creativecommons.org/licenses/by/4.0/",
+      "author": "Betier Models",
+      "geometry_status": "approximation"
+    }
+  ],
+  "bindings": [
+    {
+      "node_id": 1,
+      "parent_id": null,
+      "part_id": null,
+      "asset_key": "Multipla1998",
+      "mesh_path": [],
+      "system": "body",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "exterior",
+          "position": [
+            1.3257072252,
+            -0.0068766473,
+            0.009876
+          ],
+          "rotation": [
+            0,
+            -1.5707963267948966,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    }
+  ],
+  "assemblies": []
+}

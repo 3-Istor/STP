@@ -353,3 +353,21 @@ validation fonctionnelle et visuelle sur les assets réellement accessibles.
 - Sauvegarde locale finale de l'incrément : `1552471`. Vérification ciblée après les corrections
   de revue : 4 scénarios desktop/mobile PASS. Inventaire et 2 tests Python PASS ; captures inspectées.
   Base temporaire arrêtée et supprimée ; livrable par fichier dans `docs/3d/VALIDATION_MANIFEST.md`.
+
+## Reprise soutenance — 18 novembre 2026 — étape 1
+
+- Mission utilisateur lue, branche `feat/3d-pro-v2` propre à `f0e6ab8`, règles/plan/ADR/validations relus.
+- Cinq fichiers reçus et inspectés, ZIP imbriqué extrait sans exécuter les scripts des packs.
+- Deux extérieurs GLB autonomes installés : Fiat Betier Models CC BY 4.0 ; Aston OUTPISTON
+  CC BY-NC-SA 4.0 selon les métadonnées réelles (différent du candidat recherché le 17).
+- GLTFLoader réel : axes, dimensions, essieux, hiérarchie, matériaux et textures inspectés. Conversion
+  explicite vers -X avant, Y vertical ; Fiat échelle uniforme 0,89 et centrage par essieux.
+- Rendu réel Chromium des deux extérieurs : aucune erreur JS, silhouettes inspectées, captures dans
+  `docs/3d/captures/*-exterior-soutenance.png`. Intérieurs pas encore chargés, couverture physique zéro.
+  Aucun meilleur extérieur remplacé par une forme générée. Les quatre GLB originaux restent intacts.
+- Tests frontend avant modification : 46 tests PASS. Installer local à empreintes, inventaire et
+  attributions dans `docs/3d/SOUTENANCE_ASSETS.md` ; aucun binaire tiers ajouté à Git.
+- Base existante vide : base séparée `stp-soutenance-db`, port 55439, migrations/seed V2 existants ;
+  API 18080, simulateur 18090, Vite 41769. Aucun code backend ni base utilisateur modifié.
+- Prochaine tâche : intégrer une seule copie de chaque intérieur, vérifier les liaisons indicatives
+  contre `seed_entities` et l'arbre réel, puis préparer les déplacements éclatés.
