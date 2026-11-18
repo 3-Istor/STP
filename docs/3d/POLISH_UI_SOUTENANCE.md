@@ -38,9 +38,10 @@ le défilement des sources ; les tests vérifient aussi les clics/paginations ap
 de molette. Les deux résolutions **1366 × 768** et **1280 × 720** passent.
 
 Le test de transparence attend désormais le montage des contrôles après le chargement paresseux,
-puis vérifie son état avec les assertions d'origine. Les trois motorisations sont trois cas
-paramétrés, chacun couvrant les deux vues et le retour à Arbre : six montages conservés, aucun
-délai de test ou d'assertion augmenté.
+puis vérifie son état avec les assertions d'origine. Sa fonction, son nom et ses trois motorisations
+dans la même boucle sont conservés : six montages avec les deux vues et le retour à Arbre,
+aucun délai de test ou d'assertion augmenté. Le découpage exploratoire en cas indépendants a été
+retiré après le signalement du contrôle de risque ; le diff final ne supprime aucune fonction de test.
 
 ## Validation et limites
 
@@ -54,14 +55,21 @@ délai de test ou d'assertion augmenté.
   défilements, hypothèses, contrôle d'import caché, sélection bidirectionnelle et éclaté passent.
   Zéro erreur de page, mutation API ou requête d'ancien modèle. Les empreintes des deux références
   BOM sont identiques avant/après ; les coûts Go restent 393970,50 / 369705,74 / 461381,26 GBP.
-- Campagne desktop isolée par fichier : **71 PASS / 1 échec**. Le seul échec est le test technique
+- Campagne desktop exploratoire isolée par fichier, avant restauration du regroupement d'origine :
+  **71 PASS / 1 échec**. L'échec est le test technique
   `vehicle3d-viewer.spec.ts`, « multipla : chargement, éclaté réversible, sélection BOM et rendu
   au repos » : dépassement du délai de 30000 ms. Même dépassement reproduit avec le test et le CSS
   de `d22d17d`, lus depuis Git et exécutés dans `/tmp` sans modifier les fichiers du projet.
   Ce contrôle de l'ancien rendu de fixture reste inchangé ; aucun seuil n'a été relevé pour obtenir
   un résultat vert. La suite Playwright globale n'est donc pas déclarée entièrement verte.
-- Parcours mobiles concernés : **11 PASS**, y compris les trois motorisations paramétrées,
+- Parcours mobiles exploratoires concernés : **11 PASS**, y compris les trois motorisations isolées,
   les deux montages, les occurrences volumineuses et l'import avancé.
+- Après restauration du regroupement d'origine : fichier `powertrain.spec.ts` **5 PASS / 1 échec**.
+  Comparaison, prix manquant, panne API et les deux résolutions laptop passent ; les six montages
+  du test de transparence cumulés dépassent également son délai global de 30000 ms sur ce Chromium
+  logiciel. Chacun des trois modes avait passé séparément. Aucun état erroné de transparence n'est
+  observé ; cette limite de temps reste signalée, pas contournée. Mobile non rejoué après ce seul
+  changement de regroupement. La vérification Playwright finale n'est pas entièrement verte.
 - CI distante, Firefox/WebKit et GPU du jury non vérifiés. Aucun push, PR ou merge.
 
 Ticket local ouvert **UI-LEGACY-001** : analyser le temps du parcours de fixture Multipla

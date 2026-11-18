@@ -1,12 +1,12 @@
-## Niveau de risque : 3 Critique
+## Niveau de risque : 1 Routine
 
-Comparé à `d22d17d`. Point de contrôle humain : **2 humains dont un CODEOWNER : plan validé avant le code, diff sensible relu ligne à ligne**.
+Comparé à `d22d17d`. Point de contrôle humain : **1 humain lit le résumé de preuves (verify-summary.md) avant merge**.
 
-Relecteurs IA en contexte neuf : relecteur-code, relecteur-architecture, relecteur-securite, relecteur-metier.
+Relecteurs IA en contexte neuf : relecteur-code.
 
 | Niveau | Fichier | Raison |
 |---|---|---|
-| 3 | `web/e2e/powertrain.spec.ts` | fonction de test supprimée : test('scénario choisi dans Arbre : mécanique révélée lors de chaque ouverture 3D ou Arbre + 3D', async ({ page }) => { |
+| 1 | `web/e2e/powertrain.spec.ts` | code ou fichier non classé (inconnu = routine) |
 | 1 | `web/e2e/vehicle3d-bound.spec.ts` | code ou fichier non classé (inconnu = routine) |
 | 1 | `web/src/bom/PowertrainPanel.tsx` | code ou fichier non classé (inconnu = routine) |
 | 1 | `web/src/bom/powertrain.ts` | code ou fichier non classé (inconnu = routine) |

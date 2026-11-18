@@ -1,18 +1,19 @@
 {
   "branch": "feat/3d-pro-v2",
   "base": "d22d17d",
-  "code_head": "c4573f3",
   "risk_level": 1,
   "review_findings": 0,
   "desktop": {
     "passed": 71,
     "failed": 1,
     "execution": "fresh browser per file",
-    "remaining": "UI-LEGACY-001"
+    "remaining": "UI-LEGACY-001",
+    "scope": "exploratory campaign with isolated motorisation cases"
   },
   "mobile": {
     "passed": 11,
-    "failed": 0
+    "failed": 0,
+    "scope": "exploratory campaign with isolated motorisation cases"
   },
   "frontend_unit": 52,
   "verify_pr": "passed",
@@ -22,5 +23,13 @@
   "backend_changed": false,
   "postgresql_integration": "not_run in frontend-only pass",
   "remote_ci": "not_run",
-  "optional_scanners": "not_run when absent"
+  "optional_scanners": "not_run when absent",
+  "code_head_before_test_structure_restore": "c4573f3",
+  "final_powertrain_file": {
+    "passed": 5,
+    "failed": 1,
+    "remaining": "original combined six-mount test exceeds 30000ms"
+  },
+  "final_e2e_status": "not entirely green; no thresholds increased or assertions removed",
+  "original_test_function_preserved": true
 }

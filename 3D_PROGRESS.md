@@ -701,3 +701,13 @@ validation fonctionnelle et visuelle sur les assets réellement accessibles.
   `docs/3d/captures/polish-ui/` et `docs/3d/validation-polish-ui/`.
   Backend, cotations, références BOM, assets, sauvegarde d'audit et branches protégées conservés.
   Aucun push, PR, merge, rebase ou reset. Démonstration disponible sur le frontend 41769 / API 18080.
+- Contrôle de risque final : le renommage/découpage du test de transparence avait déclenché la
+  règle « fonction de test supprimée ». Sa fonction, son nom, sa boucle de trois modes et toutes
+  ses assertions ont été rétablis ; seule l'attente explicite du montage des contrôles est ajoutée.
+  Le calcul de risque sur le diff depuis `d22d17d` revient à **1 Routine**, sans exemption du harnais.
+- Après cette conservation de structure, fichier `powertrain.spec.ts` final : **5 PASS / 1 échec**.
+  Les deux tailles laptop et les vérifications économiques passent. Le test regroupant six montages
+  dépasse son délai global de 30000 ms sur ce Chromium logiciel ; les trois cas isolés avaient
+  chacun passé. Aucun seuil n'est augmenté, aucune assertion retirée. Les comptes 71/72 desktop
+  et 11/11 mobile ci-dessus décrivent les campagnes exploratoires paramétrées, pas une suite finale
+  entièrement verte. Limites détaillées dans `docs/3d/POLISH_UI_SOUTENANCE.md`.
