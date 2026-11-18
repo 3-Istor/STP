@@ -1,0 +1,5 @@
+# False positives: 3D catalogue part keys (part_key_source "com.ampoule…", "mpl.batterie…"), not secrets.
+00486398a90304e945885a90a3f57ced0ca553a7:docs/3d/assets-manifest.json:generic-api-key:50
+00486398a90304e945885a90a3f57ced0ca553a7:docs/3d/assets-manifest.json:generic-api-key:51
+00486398a90304e945885a90a3f57ced0ca553a7:docs/3d/assets-manifest.json:generic-api-key:116
+00486398a90304e945885a90a3f57ced0ca553a7:docs/3d/assets-manifest.json:generic-api-key:324
