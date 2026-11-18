@@ -6,6 +6,7 @@ export const errorPhrases: Record<string, string> = {
   snapshot_not_found: 'Cette version figée n’existe pas.',
   unknown_offer: 'Cette offre fournisseur n’existe pas.',
   price_snapshot_not_found: 'Ce lot de prix figés n’existe pas.',
+  price_snapshot_in_use: 'Ce lot de prix est encore utilisé : il ne peut pas être supprimé.',
   idea_not_found: 'Cette idée n’existe pas.',
   cycle: 'Ce déplacement créerait une boucle dans l’arbre : une pièce ne peut pas se contenir elle-même.',
   has_snapshots: 'Cette BOM a des versions figées : on repart d’un nouveau brouillon.',
@@ -38,6 +39,8 @@ export const errorPhrases: Record<string, string> = {
   bridge_unavailable: 'Le pont de coût est indisponible pour cette BOM.',
   bridge_incomplete: 'Le pont de coût est incomplet : des pièces n’ont pas de coût.',
   invalid_history_data: 'Une donnée de prix enregistrée est invalide : la conversion du budget est impossible pour le moment.',
+  no_budget: 'Ce nœud n’a pas de budget cible : définissez-en un avant de chercher un retour au budget.',
+  plan_too_large: 'Ce sous-ensemble contient trop de pièces pour un plan de retour au budget : choisissez un sous-ensemble plus petit.',
   budgets_changed: 'Les budgets ont changé pendant l’enregistrement : rien n’a été écrit, recommencez.',
   currency_mismatch: 'Deux montants en devises différentes ne peuvent pas être additionnés sans taux.',
   justification_required: 'Une justification est nécessaire pour continuer.',
@@ -57,9 +60,26 @@ export const errorPhrases: Record<string, string> = {
 }
 
 // Codes dont le texte du serveur nomme le champ, la valeur ou le nœud en cause : on le garde après la phrase.
-const detailedCodes = new Set(['bad_request', 'invalid_input', 'invalid_threshold', 'publication_blocked', 'budget_exceeds_parent', 'cycle', 'missing_cost', 'invalid_logistics'])
+// no_rate / no_quote : the server text names the missing pair or offer and the price snapshot.
+const detailedCodes = new Set(['invalid_threshold', 'publication_blocked', 'budget_exceeds_parent', 'cycle', 'missing_cost', 'invalid_logistics', 'no_rate', 'no_quote', 'price_snapshot_in_use'])
 export const keepsServerDetail = (code: string | undefined): boolean => code !== undefined && detailedCodes.has(code)
 
-export function phraseFor(code: string | undefined): string | undefined {
-  return code ? errorPhrases[code] : undefined
+// bad_request / invalid_input : le texte du serveur est du Go interne en anglais ; on le traduit quand on le reconnaît, sinon la phrase seule.
+const inputHints: [RegExp, (m: RegExpMatchArray) => string][] = [
+  [/empty name/, () => 'Le nom ne peut pas être vide.'],
+  [/remove it before switching to (\w+)/, (m) => `Cette BOM a un budget global dans une autre devise : supprimez-le avant de passer en ${m[1]}.`],
+  [/currency and volume together/, () => 'Indiquez la devise et le volume ensemble.'],
+  [/cannot unmarshal number .*volume|volume.*(out of range|must be)/, () => 'Le volume doit être un entier entre 1 et 2 147 483 647.'],
+  [/is not a decimal|can't convert .* to decimal|cannot unmarshal string into .*decimal/i, () => 'Un nombre saisi n’est pas valide.'],
+]
+
+export function phraseFor(code: string | undefined, message?: string): string | undefined {
+  if (!code) return undefined
+  if ((code === 'bad_request' || code === 'invalid_input') && message) {
+    for (const [re, say] of inputHints) {
+      const m = message.match(re)
+      if (m) return say(m)
+    }
+  }
+  return errorPhrases[code]
 }

@@ -56,7 +56,11 @@ func (s *Service) Suggestions(ctx context.Context, bomID, nodeID int64) (Suggest
 	strategy, from := EffectiveStrategy(nodes, nodeID)
 	currency := money.Currency(b.Currency)
 
-	cands, err := s.candidates(ctx, n, qty, currency, b.PriceSnapshotID)
+	index, err := s.catalogIndex(ctx)
+	if err != nil {
+		return Suggestions{}, fmt.Errorf("suggestions for node %d in bom %d: %w", nodeID, bomID, err)
+	}
+	cands, err := s.candidates(ctx, n, qty, currency, b.PriceSnapshotID, index)
 	if err != nil {
 		return Suggestions{}, fmt.Errorf("suggestions for node %d in bom %d: %w", nodeID, bomID, err)
 	}
@@ -79,10 +83,19 @@ func (s *Service) Suggestions(ctx context.Context, bomID, nodeID int64) (Suggest
 
 // realQuantity : produit des quantités de la racine au nœud (ADR 0007 règle 1), borné contre un cycle.
 func realQuantity(nodes []Node, nodeID int64) (decimal.Decimal, Node, error) {
+	return realQuantityIn(nodesByID(nodes), nodeID)
+}
+
+func nodesByID(nodes []Node) map[int64]Node {
 	byID := make(map[int64]Node, len(nodes))
 	for _, n := range nodes {
 		byID[n.ID] = n
 	}
+	return byID
+}
+
+// realQuantityIn : realQuantity sur un index déjà construit (une boucle sur plusieurs nœuds).
+func realQuantityIn(byID map[int64]Node, nodeID int64) (decimal.Decimal, Node, error) {
 	n, ok := byID[nodeID]
 	if !ok {
 		return decimal.Decimal{}, Node{}, fmt.Errorf("node %d: %w", nodeID, ErrNodeNotFound)
@@ -91,13 +104,26 @@ func realQuantity(nodes []Node, nodeID int64) (decimal.Decimal, Node, error) {
 	cur := n
 	for steps := 0; cur.ParentID != nil; steps++ {
 		p, ok := byID[*cur.ParentID]
-		if !ok || steps > len(nodes) {
+		if !ok || steps > len(byID) {
 			return decimal.Decimal{}, Node{}, fmt.Errorf("node %d not under root: %w", nodeID, ErrInvalidTree)
 		}
 		qty = qty.Mul(p.Quantity)
 		cur = p
 	}
 	return qty, n, nil
+}
+
+// catalogIndex : les pièces actives du catalogue et leurs offres, par pièce ; lu une fois par appel.
+func (s *Service) catalogIndex(ctx context.Context) (map[int64]catalog.PartWithOffers, error) {
+	all, err := s.listing.ListParts(ctx, catalog.Filters{})
+	if err != nil {
+		return nil, err
+	}
+	byPart := make(map[int64]catalog.PartWithOffers, len(all))
+	for _, p := range all {
+		byPart[p.ID] = p
+	}
+	return byPart, nil
 }
 
 type pendingCandidate struct {
@@ -108,18 +134,25 @@ type pendingCandidate struct {
 
 // candidates : l'offre actuelle du nœud (toujours, même archivée : exclue avec la raison) et chaque offre active
 // de sa pièce et de ses alternatives non archivées.
-func (s *Service) candidates(ctx context.Context, n Node, qty decimal.Decimal, currency money.Currency, snapID *int64) ([]Candidate, error) {
+func (s *Service) candidates(ctx context.Context, n Node, qty decimal.Decimal, currency money.Currency, snapID *int64,
+	byPart map[int64]catalog.PartWithOffers,
+) ([]Candidate, error) {
+	todo, err := s.pendingFor(ctx, n, byPart)
+	if err != nil {
+		return nil, err
+	}
+	prices, rates, err := s.loadPendingPrices(ctx, [][]pendingCandidate{todo}, currency, snapID)
+	if err != nil {
+		return nil, err
+	}
+	return evaluateAll(todo, qty, currency, prices, rates), nil
+}
+
+// pendingFor : les offres à évaluer pour le nœud ; la première est l'offre actuelle.
+func (s *Service) pendingFor(ctx context.Context, n Node, byPart map[int64]catalog.PartWithOffers) ([]pendingCandidate, error) {
 	alts, err := s.listing.Alternatives(ctx, *n.PartID)
 	if err != nil {
 		return nil, err
-	}
-	all, err := s.listing.ListParts(ctx, catalog.Filters{})
-	if err != nil {
-		return nil, err
-	}
-	byPart := make(map[int64]catalog.PartWithOffers, len(all))
-	for _, p := range all {
-		byPart[p.ID] = p
 	}
 	partIDs := []int64{*n.PartID}
 	for _, a := range alts {
@@ -154,21 +187,33 @@ func (s *Service) candidates(ctx context.Context, n Node, qty decimal.Decimal, c
 			}
 		}
 	}
-	offers := make([]int64, len(todo))
-	for i, t := range todo {
-		offers[i] = t.offer.ID
+	return todo, nil
+}
+
+// loadPendingPrices : prix et taux de toutes les offres des listes, en une lecture.
+func (s *Service) loadPendingPrices(ctx context.Context, lists [][]pendingCandidate, currency money.Currency, snapID *int64) (
+	map[int64]PriceResult, map[money.Currency]RateResult, error,
+) {
+	var offers []int64
+	for _, todo := range lists {
+		for _, t := range todo {
+			offers = append(offers, t.offer.ID)
+		}
 	}
 	slices.Sort(offers)
-	prices, rates, err := LoadPrices(ctx, s.pricing, snapID, slices.Compact(offers), currency)
-	if err != nil {
-		return nil, err
-	}
+	return LoadPrices(ctx, s.pricing, snapID, slices.Compact(offers), currency)
+}
+
+// evaluateAll : candidates triées par offre ; todo[0] est l'offre actuelle.
+func evaluateAll(todo []pendingCandidate, qty decimal.Decimal, currency money.Currency, prices map[int64]PriceResult,
+	rates map[money.Currency]RateResult,
+) []Candidate {
 	out := make([]Candidate, 0, len(todo))
 	for _, t := range todo {
-		out = append(out, evaluate(t, qty, currency, prices, rates, curOffer.ID))
+		out = append(out, evaluate(t, qty, currency, prices, rates, todo[0].offer.ID))
 	}
 	slices.SortFunc(out, func(a, b Candidate) int { return cmp.Compare(a.OfferID, b.OfferID) })
-	return out, nil
+	return out
 }
 
 func evaluate(t pendingCandidate, qty decimal.Decimal, currency money.Currency, prices map[int64]PriceResult,

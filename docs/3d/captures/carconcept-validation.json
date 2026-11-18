@@ -1,0 +1,34 @@
+[
+  {
+    "fixture": "multipla",
+    "asset": "CarConcept.glb",
+    "fidelity": "unrelated_concept_not_the_requested_vehicle",
+    "load_ms_in_this_environment": 13158,
+    "stats": {
+      "renders": 4,
+      "drawCalls": 322,
+      "triangles": 639587,
+      "geometries": 108,
+      "textures": 17,
+      "items": 62,
+      "animating": false
+    },
+    "page_errors": []
+  },
+  {
+    "fixture": "valhalla",
+    "asset": "CarConcept.glb",
+    "fidelity": "unrelated_concept_not_the_requested_vehicle",
+    "load_ms_in_this_environment": 20938,
+    "stats": {
+      "renders": 4,
+      "drawCalls": 322,
+      "triangles": 639587,
+      "geometries": 108,
+      "textures": 17,
+      "items": 62,
+      "animating": false
+    },
+    "page_errors": []
+  }
+]

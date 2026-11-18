@@ -75,6 +75,7 @@ func NewRouter(services ...Services) http.Handler {
 		a.routes(mux)
 		a.versionRoutes(mux)
 		mountAnalysis(mux, s.BOMs, s.Snapshots) // lot E : analyses et profils de véhicule (analysis.go)
+		mountConfigurations(mux, s.BOMs)        // simulations sans stockage, voir ADR 0050
 	}
 	return jsonNotFound(mux)
 }

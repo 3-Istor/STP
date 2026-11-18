@@ -111,6 +111,31 @@ func (f *fakeBOMs) Suggestions(_ context.Context, bomID, nodeID int64) (bom.Sugg
 		Excluded: []bom.Candidate{{PartID: 11, OfferID: 21, Excluded: fmt.Errorf("offer 21: %w", pricing.ErrNoQuote)}},
 	}, f.record("Suggestions %d %d", bomID, nodeID)
 }
+func (f *fakeBOMs) BudgetPlan(_ context.Context, bomID, nodeID int64) (bom.BudgetPlan, error) {
+	if err := f.record("BudgetPlan %d %d", bomID, nodeID); err != nil {
+		return bom.BudgetPlan{}, err
+	}
+	switch nodeID {
+	case 404:
+		return bom.BudgetPlan{}, fmt.Errorf("node 404: %w", bom.ErrNodeNotFound)
+	case 5:
+		return bom.BudgetPlan{}, fmt.Errorf("budget plan: %w", bom.ErrNoBudget)
+	}
+	m := func(a string) money.Money { v, _ := money.Parse(a, "EUR"); return v }
+	if nodeID == 6 { // dans le budget : plan vide
+		return bom.BudgetPlan{NodeID: 6, Currency: "EUR", Budget: m("100"), Cost: m("90"), Overrun: m("0"), Remaining: m("0"), Covered: true}, nil
+	}
+	q := decimal.RequireFromString("0.8")
+	return bom.BudgetPlan{NodeID: nodeID, Currency: "EUR", Budget: m("100"), Cost: m("115.8"), Overrun: m("15.8"), Remaining: m("3.3"),
+		Actions: []bom.PlanAction{{
+			Nodes: []bom.PlanNode{{ID: 8, Name: "Porte avant nue"}, {ID: 9, Name: "Porte arriere nue"}},
+			PlanSaving: bom.PlanSaving{FromPartID: 10, ToPartID: 11, FromOfferID: 20, ToOfferID: 21, FromPart: "Porte", ToPart: "Porte",
+				FromSupplier: "Arden", ToSupplier: "Fonderia", FromMaterial: "acier", ToMaterial: "aluminium",
+				Gain: decimal.RequireFromString("12.5"), CO2Delta: decimal.RequireFromString("-1.5"), MassDelta: decimal.RequireFromString("-4"),
+				LeadDelta: 2, ToQuality: &q},
+			Cumulative: decimal.RequireFromString("12.5"),
+		}}}, nil
+}
 func (f *fakeBOMs) CostAnomalies(_ context.Context, bomID int64, th decimal.Decimal) (bom.CostAnomalies, error) {
 	cost, _ := money.Parse("340", "EUR")
 	med, _ := money.Parse("100", "EUR")
@@ -299,6 +324,12 @@ func TestRoutes(t *testing.T) {
 			`"cost":{"amount":"12.50","currency":"EUR"},"lead_time_days":3,"co2_kg":"1.5","quote":null,"rate":null,"score":"0.1235"`},
 		{"suggestions excluded with reason", "GET", "/api/v1/boms/7/nodes/3/suggestions", "", 200, "Suggestions 7 3",
 			`"offer_id":21,"current":false,"cost":null,"lead_time_days":null,"co2_kg":null`},
+		{"budget plan", "GET", "/api/v1/boms/7/nodes/3/budget-plan", "", 200, "BudgetPlan 7 3",
+			`"overrun":{"amount":"15.80","currency":"EUR"},"remaining":{"amount":"3.30","currency":"EUR"},"covered":false,"actions":[{"nodes":[{"id":8,"name":"Porte avant nue"},{"id":9,"name":"Porte arriere nue"}],"from":{"part_id":10,"offer_id":20,"part":"Porte","supplier":"Arden","material":"acier","quality":null},"to":{"part_id":11,"offer_id":21,"part":"Porte","supplier":"Fonderia","material":"aluminium","quality":"0.8"},"gain":{"amount":"12.50","currency":"EUR"},"cumulative_gain":{"amount":"12.50","currency":"EUR"},"co2_delta_kg":"-1.5","mass_delta_kg":"-4","lead_time_delta_days":2,"covers":false}]`},
+		{"budget plan within budget is empty", "GET", "/api/v1/boms/7/nodes/6/budget-plan", "", 200, "BudgetPlan 7 6", `"covered":true,"actions":[]`},
+		{"budget plan unknown node", "GET", "/api/v1/boms/7/nodes/404/budget-plan", "", 404, "BudgetPlan 7 404", `bom node not found`},
+		{"budget plan without budget", "GET", "/api/v1/boms/7/nodes/5/budget-plan", "", 409, "BudgetPlan 7 5", `no target budget`},
+		{"budget plan bad node id", "GET", "/api/v1/boms/7/nodes/x/budget-plan", "", 400, "", `not a positive integer`},
 		{"patch node two fields", "PATCH", "/api/v1/boms/7/nodes/3", `{"offer_id":21,"quantity":"2"}`, 400, "", `exactly one`},
 		{"patch node no field", "PATCH", "/api/v1/boms/7/nodes/3", `{}`, 400, "", `exactly one`},
 		{"delete node", "DELETE", "/api/v1/boms/7/nodes/3", "", 204, "DeleteNode 7 3", ""},

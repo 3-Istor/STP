@@ -74,7 +74,7 @@ input.search { width: 260px; max-width: 100%; }
 .tfoot { padding: 6px 10px; border-top: 1px solid var(--line); }
 
 /* Étape Structurer : l'explorateur occupe la hauteur disponible. */
-.step-structurer { overflow: hidden; }
+.step-structurer { overflow: auto; }
 .explorer { flex: 1; display: flex; flex-direction: column; min-height: 520px; }
 .explorer-body { flex: 1; display: flex; min-height: 0; }
 .explorer-body.view-arbre-3d .tree-pane { flex: 0 0 46%; max-width: 46%; border-right: 1px solid var(--line); }

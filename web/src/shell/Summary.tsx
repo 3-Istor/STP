@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useAppDialog } from '../useAppDialog.tsx'
 import { api, errorMessage, type PriceSnapshotRef, type TreeNode } from '../api.ts'
 import { partName } from '../catalog.ts'
 import { formatDate, formatDateTime, formatDecimal, formatMoney } from '../money.ts'
@@ -6,6 +7,8 @@ import type { BomData } from '../bom/useBomData.ts'
 import { shareWidths } from './share.ts'
 import { basisHint, costTitle, methodLabel } from '../bom/costMethod.ts'
 import { budgetBarWidth, budgetClass, budgetPercentText, budgetTitle } from '../bom/budget.ts'
+import { powertrainLabels } from '../bom/powertrain.ts'
+import { missingPairs, type FrozenRate, type Pair } from './snapshotCoverage.ts'
 
 // Nombre de snapshots de prix montrés d'emblée ; les autres à la demande (« Tous les snapshots »).
 const SHOWN_SNAPSHOTS = 3
@@ -27,12 +30,13 @@ export function Summary({ data, onSelectNode }: { data: BomData; onSelectNode: (
   let state: { text: string; cls?: string; status?: boolean }
   if (data.busy) state = { text: 'Recalcul en cours…', cls: 'recalc', status: true }
   else if (t?.cost_error_code) state = { text: `incomplet : ${t.missing_cost.length} nœud(s) sans prix`, cls: 'over' }
-  else state = { text: data.readOnly ? 'figé (snapshot publié)' : 'à jour' }
+  else if (data.newQuotes && !data.simulation) state = { text: 'nouvelles cotations disponibles', cls: 'recalc', status: true }
+  else state = { text: data.simulation ? 'scénario calculé · référence inchangée' : data.readOnly ? 'figé (snapshot publié)' : 'à jour' }
 
   return (
     <section className="syn" aria-label="Synthèse">
       <div className="synh">
-        <h2>Synthèse</h2>
+        <h2>{data.simulation ? `Synthèse · ${powertrainLabels[data.simulation.mode]}` : 'Synthèse'}</h2>
         <PriceStatePill data={data} />
       </div>
       <p className="calc-state small">
@@ -40,6 +44,14 @@ export function Summary({ data, onSelectNode }: { data: BomData; onSelectNode: (
         <span className={state.cls} role={state.status ? 'status' : undefined}>
           {state.text}
         </span>
+        {data.newQuotes && !data.simulation && (
+          <>
+            {' '}
+            <button type="button" className="btn" onClick={() => void data.run(async () => {})}>
+              Recalculer
+            </button>
+          </>
+        )}
       </p>
       <div className="totals total" aria-busy={data.busy}>
         <span className="lb">{costTitle(data.explanation.cost_method)}</span>
@@ -176,6 +188,7 @@ function Method({ data }: { data: BomData }) {
 }
 
 function PriceStatePill({ data }: { data: BomData }) {
+  if (data.simulation) return <span className="state">{data.simulation.pending ? 'référence · calcul en cours' : 'prix capturés · simulation'}</span>
   if (data.priceSnapshotID === null) return <span className="state">prix en direct</span>
   return <span className="state">snapshot de prix #{data.priceSnapshotID}</span>
 }
@@ -184,6 +197,7 @@ function PriceStatePill({ data }: { data: BomData }) {
 function usePriceSnapshots(current: number | null) {
   const [list, setList] = useState<PriceSnapshotRef[] | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [reloads, setReloads] = useState(0)
   useEffect(() => {
     let cancelled = false
     api
@@ -200,15 +214,40 @@ function usePriceSnapshots(current: number | null) {
     return () => {
       cancelled = true
     }
-  }, [current])
-  return { list, error }
+  }, [current, reloads])
+  return { list, error, reload: () => setReloads((n) => n + 1) }
+}
+
+// Frozen lots never change: their rates are fetched once per page.
+const lotRates = new Map<number, Promise<FrozenRate[]>>()
+
+// useLotGaps : for each listed lot, the BOM pairs it cannot convert (empty while unknown; the server still decides).
+function useLotGaps(ids: number[], required: Pair[]): Map<number, Pair[]> {
+  const [rates, setRates] = useState<Map<number, FrozenRate[]>>(new Map())
+  const key = ids.join(',')
+  useEffect(() => {
+    let cancelled = false
+    for (const id of key ? key.split(',').map(Number) : []) {
+      if (!lotRates.has(id)) lotRates.set(id, api.priceSnapshotRates(id))
+      lotRates.get(id)!.then(
+        (r) => { if (!cancelled) setRates((m) => (m.has(id) ? m : new Map(m).set(id, r))) },
+        () => lotRates.delete(id),
+      )
+    }
+    return () => { cancelled = true }
+  }, [key])
+  const gaps = new Map<number, Pair[]>()
+  for (const [id, r] of rates) gaps.set(id, missingPairs(r, required))
+  return gaps
 }
 
 // PricesUsed : source des prix (PR #23, déplacée de l'en-tête V1). En direct, ou un snapshot de prix existant
 // nommé par son instant à la seconde près, ou « Figer maintenant ». L'API refuse un snapshot qui ne couvre
 // pas la BOM (offres manquantes listées) : l'erreur s'affiche, la BOM ne bouge pas.
 function PricesUsed({ data }: { data: BomData }) {
-  const { list, error } = usePriceSnapshots(data.priceSnapshotID)
+  const { list, error, reload } = usePriceSnapshots(data.priceSnapshotID)
+  const dialogs = useAppDialog()
+  const [deleteError, setDeleteError] = useState<string | null>(null)
   const [all, setAll] = useState(false)
   const current = data.priceSnapshotID
   const sorted = list ?? []
@@ -216,11 +255,34 @@ function PricesUsed({ data }: { data: BomData }) {
   // Le snapshot attaché reste toujours visible, même ancien ou absent de la liste (liste en échec).
   const attached = current !== null ? sorted.find((s) => s.id === current) : undefined
   if (attached && !shown.includes(attached)) shown = [...shown, attached]
+  const gaps = useLotGaps(shown.map((s) => s.id), data.explanation.rates.map((r) => ({ from: r.from, to: r.to })))
   const choose = (value: number | null) => {
     if (data.readOnly || value === current) return
     const bomID = data.target.id
     void data.run(() => (value === null ? api.unfreezePrices(bomID) : api.usePriceSnapshot(bomID, value)), { bomChanged: true })
   }
+  const remove = async (s: PriceSnapshotRef) => {
+    const ok = await dialogs.confirm({
+      title: `Supprimer le lot #${s.id} ?`,
+      message: `Lot figé le ${formatDateTime(s.taken_at)}. Les cotations restent ; seul le lot disparaît.`,
+      confirmLabel: 'Supprimer',
+      danger: true,
+    })
+    if (!ok) return
+    try {
+      await api.deletePriceSnapshot(s.id)
+      setDeleteError(null)
+    } catch (e: unknown) {
+      setDeleteError(errorMessage(e))
+    }
+    reload()
+  }
+  if (data.simulation) return <>
+    <div className="h3">Prix utilisés</div>
+    <p className="small">Même jeu de cotations et de taux pour les trois scénarios.
+      {data.simulation.priceAsOf ? ` Dernières cotations : ${formatDateTime(data.simulation.priceAsOf)}.` : ''}
+      {current !== null ? ` Snapshot de prix #${current}.` : ' Entrée capturée à la comparaison ; actualisation explicite.'}</p>
+  </>
   return (
     <>
       <div className="h3" id="prices-used">
@@ -241,15 +303,27 @@ function PricesUsed({ data }: { data: BomData }) {
             <span className="muted">{list === null && !error ? 'chargement…' : 'date indisponible'}</span>
           </label>
         )}
-        {(data.readOnly ? shown.filter((s) => s.id === current) : shown).map((s) => (
-          <label key={s.id} className={`snap ${s.id === current ? 'on' : ''}`}>
-            <input type="radio" name="price-source" checked={s.id === current} disabled={data.busy || data.readOnly} onChange={() => choose(s.id)} />
-            <span>
-              #{s.id} · {formatDateTime(s.taken_at)}
-            </span>
-            <span className="muted">{scopeLabel(s)}</span>
-          </label>
-        ))}
+        {(data.readOnly ? shown.filter((s) => s.id === current) : shown).map((s) => {
+          const missing = s.id === current ? [] : (gaps.get(s.id) ?? [])
+          const reason = missing.length > 0 ? `Taux manquants : ${missing.map((p) => `${p.from}→${p.to}`).join(', ')}` : undefined
+          const usedBy = s.used_by?.map((u) => (u.kind === 'draft' ? `attaché au brouillon ${u.bom_name}` : `utilisé par V${u.version} de ${u.bom_name}`)).join(' ; ')
+          return (
+            <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <label className={`snap ${s.id === current ? 'on' : ''}`} title={reason} style={{ flex: 1, ...(reason ? { opacity: 0.55 } : {}) }}>
+                <input type="radio" name="price-source" checked={s.id === current} disabled={data.busy || data.readOnly || reason !== undefined} onChange={() => choose(s.id)} />
+                <span>
+                  #{s.id} · {formatDateTime(s.taken_at)}
+                </span>
+                <span className="muted">{reason ? `sans ${data.currency}` : scopeLabel(s)}</span>
+              </label>
+              {!data.readOnly && (
+                <button type="button" className="link small" disabled={data.busy || s.in_use === true} title={s.in_use ? usedBy : 'Supprimer ce lot de prix'} onClick={() => void remove(s)}>
+                  Supprimer
+                </button>
+              )}
+            </div>
+          )
+        })}
       </div>
       {!data.readOnly && sorted.length > SHOWN_SNAPSHOTS && (
         <button type="button" className="link small" onClick={() => setAll((v) => !v)}>
@@ -264,6 +338,8 @@ function PricesUsed({ data }: { data: BomData }) {
         </div>
       )}
       {error && <p className="error small">Snapshots de prix indisponibles : {error}</p>}
+      {deleteError && <p className="error small">{deleteError}</p>}
+      {dialogs.element}
     </>
   )
 }

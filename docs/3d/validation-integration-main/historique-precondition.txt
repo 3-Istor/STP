@@ -1,0 +1,17 @@
+
+Running 4 tests using 1 worker
+
+(node:3274556) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  1 [chromium-desktop] › ../../../../../../tmp/stp-merge-history-test/history.spec.ts:2:1 › une ancienne ancre est réécrite sans entrée d’historique (289ms)
+(node:3274689) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  2 [chromium-mobile] › ../../../../../../tmp/stp-merge-history-test/history.spec.ts:2:1 › une ancienne ancre est réécrite sans entrée d’historique (285ms)
+(node:3274886) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  3 [firefox-desktop] › ../../../../../../tmp/stp-merge-history-test/history.spec.ts:2:1 › une ancienne ancre est réécrite sans entrée d’historique (1.1s)
+(node:3275221) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  4 [firefox-mobile] › ../../../../../../tmp/stp-merge-history-test/history.spec.ts:2:1 › une ancienne ancre est réécrite sans entrée d’historique (1.4s)
+
+  4 passed (6.0s)

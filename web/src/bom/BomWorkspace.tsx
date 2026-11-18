@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react'
-import { api, type CostBasis, type CostMethod, type FXPolicy, type NewNode, type NodePatch, type Snapshot } from '../api.ts'
+import { api, errorMessage, type CostBasis, type CostMethod, type FXPolicy, type NewNode, type NodePatch, type Snapshot } from '../api.ts'
 import { partName } from '../catalog.ts'
 import { CurrencySelect } from '../CurrencySelect.tsx'
 import { bomRoute, navigate, type Route, type Step } from '../router.ts'
@@ -7,6 +7,7 @@ import { Summary } from '../shell/Summary.tsx'
 import { useAppDialog } from '../useAppDialog.tsx'
 import { AddNodeDialog } from './AddNodeDialog.tsx'
 import { Ideas } from './Ideas.tsx'
+import { LastImpact, useLastImpact } from './LastImpact.tsx'
 import { basisHint, basisLabels, fxLabels } from './costMethod.ts'
 import { ProfileSettings } from './ProfileSettings.tsx'
 import { NodePanel } from './NodePanel.tsx'
@@ -16,6 +17,8 @@ import { Publier } from './steps/Publier.tsx'
 import { Sourcer } from './steps/Sourcer.tsx'
 import { Structurer, type TreeView } from './steps/Structurer.tsx'
 import type { BomData } from './useBomData.ts'
+import { usePowertrainSimulation } from './usePowertrainSimulation.ts'
+import { PowertrainPanel } from './PowertrainPanel.tsx'
 import './bom.css'
 
 type BomRoute = Extract<Route, { page: 'bom' }>
@@ -30,16 +33,22 @@ type Props = {
 // BomWorkspace : une BOM ouverte, à l'une des 5 étapes. À gauche le contenu de l'étape, à droite la colonne
 // « Synthèse » (identique partout) puis le détail du nœud sélectionné ou les réglages de calcul.
 // La sélection de nœud vit dans l'URL (?node=) : elle suit d'une étape à l'autre.
-export function BomWorkspace({ route, data, error, onPublished }: Props) {
+export function BomWorkspace({ route, data: sourceData, error, onPublished }: Props) {
   const dialogs = useAppDialog()
   const [moving, setMoving] = useState<number | null>(null)
   const [adding, setAdding] = useState<number | null>(null)
   const [tab, setTab] = useState<'detail' | 'reglages'>('detail')
+  const simulation = usePowertrainSimulation(sourceData, route.step === 'structurer')
+  const data = simulation.data
+  const lastImpact = useLastImpact(sourceData.version, sourceData.root?.totals, sourceData.reloadCause)
   const selectedID = route.node !== null && data.byID.has(route.node) ? route.node : null
   const selected = selectedID !== null ? data.byID.get(selectedID)! : null
   const go = (patch: Partial<Pick<BomRoute, 'step' | 'node' | 'tab' | 'supplier'>>, replace = false) =>
     navigate({ ...route, ...patch }, { replace })
-  const select = (id: number) => go({ node: id }, true)
+  const select = (id: number) => {
+    setTab('detail')
+    go({ node: id }, true)
+  }
   const label = (id: number) => {
     const n = data.byID.get(id)
     return !n ? `#${id}` : n.part_id !== null ? partName(data.catalog, n.part_id) : n.name
@@ -65,7 +74,8 @@ export function BomWorkspace({ route, data, error, onPublished }: Props) {
   let main: ReactNode
   switch (route.step as Step) {
     case 'structurer':
-      main = (
+      main = (<>
+        <PowertrainPanel state={simulation} source={sourceData} onSelect={mode => { setMoving(null); setAdding(null); simulation.select(mode) }} />
         <Structurer
           data={data}
           selectedID={selectedID}
@@ -83,7 +93,7 @@ export function BomWorkspace({ route, data, error, onPublished }: Props) {
           onStartMove={setMoving}
           onDelete={remove}
         />
-      )
+      </>)
       break
     case 'chiffrer':
       main = <Chiffrer data={data} selectedID={selectedID} onSelect={select} />
@@ -125,6 +135,7 @@ export function BomWorkspace({ route, data, error, onPublished }: Props) {
       <aside className="col" aria-label="Synthèse et détail">
         <Summary data={data} onSelectNode={select} />
         {route.step === 'arbitrer' && <Ideas data={data} />}
+        <LastImpact impact={lastImpact} />
         <div className="tabs2" role="tablist" aria-label="Détail ou réglages">
           <button type="button" role="tab" aria-selected={tab === 'detail'} className={tab === 'detail' ? 'on' : ''} onClick={() => setTab('detail')}>
             Détail
@@ -146,9 +157,11 @@ export function BomWorkspace({ route, data, error, onPublished }: Props) {
                 volume={data.volume}
                 catalog={data.catalog}
                 readOnly={data.readOnly}
+                simulation={!!data.simulation}
                 isRoot={selected.parent_id === null}
                 onAdd={(n: NewNode) => data.run(() => api.addNode(data.target.id, n))}
                 onPatch={(p: NodePatch) => data.run(() => api.patchNode(data.target.id, selected.id, p))}
+                onRun={(action) => data.run(action)}
                 stock={data.stock}
                 anomaly={data.anomalyByNode.get(selected.id)}
                 onSetStock={(partID, q) => data.run(() => api.setPartStock(data.target.id, partID, q))}
@@ -213,6 +226,18 @@ function Settings({ data }: { data: BomData }) {
       </div>
     )
   }
+  // L'erreur du serveur revient au champ (pas en tête de colonne) : l'appel l'attrape, le formulaire l'affiche.
+  const apply = async (call: () => Promise<unknown>): Promise<string | null> => {
+    const out = { msg: null as string | null }
+    await data.run(async () => {
+      try {
+        await call()
+      } catch (e) {
+        out.msg = errorMessage(e)
+      }
+    }, { bomChanged: true })
+    return out.msg
+  }
   return (
     <div className="stack settings">
       <ProfileSettings data={data} />
@@ -221,37 +246,52 @@ function Settings({ data }: { data: BomData }) {
         key={`${bom.currency}-${bom.volume}`}
         currency={bom.currency}
         volume={bom.volume}
-        onApply={(c, v) => void data.run(() => api.updateSettings(bom.id, c, v), { bomChanged: true })}
+        onApply={(c, v) => apply(() => api.updateSettings(bom.id, c, v))}
       />
       <Destination
         key={`dest-${bom.destination_country ?? ''}`}
         country={bom.destination_country}
-        onApply={(c) => void data.run(() => api.setDestination(bom.id, c), { bomChanged: true })}
+        onApply={(c) => apply(() => api.setDestination(bom.id, c))}
       />
     </div>
   )
 }
 
-function CurrencyVolume({ currency, volume, onApply }: { currency: string; volume: number; onApply: (currency: string, volume: number) => void }) {
+// int32 côté serveur.
+const maxVolume = 2147483647
+
+function CurrencyVolume({ currency, volume, onApply }: { currency: string; volume: number; onApply: (currency: string, volume: number) => Promise<string | null> }) {
   const [c, setC] = useState(currency)
   const [v, setV] = useState(String(volume))
+  const [error, setError] = useState<string | null>(null)
   const changed = c !== currency || v !== String(volume)
   return (
     <form
       className="stack"
       onSubmit={(e) => {
         e.preventDefault()
-        onApply(c, Number.parseInt(v, 10))
+        const n = Number(v)
+        if (!/^\d+$/.test(v) || n < 1 || n > maxVolume) return setError('Le volume doit être un entier entre 1 et 2 147 483 647.')
+        void onApply(c, n).then((msg) => {
+          if (msg === null) return
+          setC(currency) // la BOM garde sa devise : le sélecteur ne doit pas mentir
+          setError(msg)
+        })
       }}
     >
       <label className="setting">
         <span>Devise de référence</span>
-        <CurrencySelect aria-label="Devise de référence" value={c} onChange={setC} />
+        <CurrencySelect aria-label="Devise de référence" value={c} onChange={(x) => { setC(x); setError(null) }} />
       </label>
       <label className="setting">
         <span>Volume (véhicules)</span>
-        <input aria-label="Volume" type="number" min={1} step={1} value={v} onChange={(e) => setV(e.target.value)} />
+        <input aria-label="Volume" type="number" min={1} max={maxVolume} step={1} value={v} aria-invalid={error !== null && /volume/i.test(error)} onChange={(e) => { setV(e.target.value); setError(null) }} />
       </label>
+      {error && (
+        <p role="alert" className="form-error">
+          {error}
+        </p>
+      )}
       {changed && (
         <button type="submit" className="btn pri">
           Appliquer
@@ -262,21 +302,28 @@ function CurrencyVolume({ currency, volume, onApply }: { currency: string; volum
 }
 
 // Destination : pays de l'usine d'assemblage (ISO 3166-1 alpha-2), pour la douane et le transport (ADR 0025).
-function Destination({ country, onApply }: { country: string | null; onApply: (country: string | null) => void }) {
+function Destination({ country, onApply }: { country: string | null; onApply: (country: string | null) => Promise<string | null> }) {
   const [c, setC] = useState(country ?? '')
+  const [error, setError] = useState<string | null>(null)
   const next = c.trim().toUpperCase()
   return (
     <form
       className="stack"
       onSubmit={(e) => {
         e.preventDefault()
-        onApply(next === '' ? null : next)
+        if (next !== '' && !/^[A-Z]{2}$/.test(next)) return setError('Le pays est un code à deux lettres (ex. FR, DE).')
+        void onApply(next === '' ? null : next).then((msg) => msg !== null && setError(msg))
       }}
     >
       <label className="setting">
         <span>Pays de destination</span>
-        <input aria-label="Pays de destination" size={3} pattern="[A-Za-z]{2}" value={c} onChange={(e) => setC(e.target.value)} />
+        <input aria-label="Pays de destination" size={3} value={c} onChange={(e) => { setC(e.target.value); setError(null) }} />
       </label>
+      {error && (
+        <p role="alert" className="form-error">
+          {error}
+        </p>
+      )}
       {next !== (country ?? '') && (
         <button type="submit" className="btn pri">
           Appliquer

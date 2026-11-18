@@ -1,0 +1,15 @@
+{
+  "metrics": {
+    "renders": 9,
+    "drawCalls": 1231,
+    "triangles": 1177357,
+    "geometries": 567,
+    "textures": 42,
+    "items": 69,
+    "animating": false
+  },
+  "visible": 69,
+  "coverage": 47,
+  "returnExact": true,
+  "errors": []
+}

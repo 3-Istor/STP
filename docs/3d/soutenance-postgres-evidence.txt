@@ -1,0 +1,46 @@
+=== RUN   TestBomSnapshotRejectsMutations
+=== RUN   TestBomSnapshotRejectsMutations/SI_UPDATE_d'un_snapshot_de_BOM_ALORS_refus
+=== RUN   TestBomSnapshotRejectsMutations/SI_DELETE_d'un_snapshot_de_BOM_ALORS_refus
+=== RUN   TestBomSnapshotRejectsMutations/SI_TRUNCATE_des_snapshots_de_BOM_ALORS_refus
+=== RUN   TestBomSnapshotRejectsMutations/SI_UPDATE_d'un_nœud_figé_ALORS_refus
+=== RUN   TestBomSnapshotRejectsMutations/SI_UPDATE_du_CO2_figé_ALORS_refus
+=== RUN   TestBomSnapshotRejectsMutations/SI_DELETE_d'un_nœud_figé_ALORS_refus
+=== RUN   TestBomSnapshotRejectsMutations/SI_TRUNCATE_des_nœuds_figés_ALORS_refus
+=== RUN   TestBomSnapshotRejectsMutations/SI_UPDATE_du_stock_figé_(ADR_0022)_ALORS_refus
+=== RUN   TestBomSnapshotRejectsMutations/SI_DELETE_du_stock_figé_ALORS_refus
+=== RUN   TestBomSnapshotRejectsMutations/SI_TRUNCATE_du_stock_figé_ALORS_refus
+=== RUN   TestBomSnapshotRejectsMutations/SI_UPDATE_d'un_budget_figé_(v2-lot-g_T3)_ALORS_refus
+=== RUN   TestBomSnapshotRejectsMutations/SI_DELETE_d'un_budget_figé_ALORS_refus
+=== RUN   TestBomSnapshotRejectsMutations/SI_TRUNCATE_des_budgets_figés_ALORS_refus
+=== RUN   TestBomSnapshotRejectsMutations/SI_DELETE_d'une_BOM_qui_a_un_snapshot_ALORS_refus
+=== RUN   TestBomSnapshotRejectsMutations/SI_UPDATE_d'un_nœud_du_brouillon_publié_ALORS_accepté
+=== RUN   TestBomSnapshotRejectsMutations/SI_DELETE_d'un_nœud_du_brouillon_publié_ALORS_accepté
+=== RUN   TestBomSnapshotRejectsMutations/SI_DELETE_d'une_BOM_sans_snapshot_ALORS_accepté
+--- PASS: TestBomSnapshotRejectsMutations (0.08s)
+    --- PASS: TestBomSnapshotRejectsMutations/SI_UPDATE_d'un_snapshot_de_BOM_ALORS_refus (0.00s)
+    --- PASS: TestBomSnapshotRejectsMutations/SI_DELETE_d'un_snapshot_de_BOM_ALORS_refus (0.00s)
+    --- PASS: TestBomSnapshotRejectsMutations/SI_TRUNCATE_des_snapshots_de_BOM_ALORS_refus (0.00s)
+    --- PASS: TestBomSnapshotRejectsMutations/SI_UPDATE_d'un_nœud_figé_ALORS_refus (0.00s)
+    --- PASS: TestBomSnapshotRejectsMutations/SI_UPDATE_du_CO2_figé_ALORS_refus (0.00s)
+    --- PASS: TestBomSnapshotRejectsMutations/SI_DELETE_d'un_nœud_figé_ALORS_refus (0.00s)
+    --- PASS: TestBomSnapshotRejectsMutations/SI_TRUNCATE_des_nœuds_figés_ALORS_refus (0.00s)
+    --- PASS: TestBomSnapshotRejectsMutations/SI_UPDATE_du_stock_figé_(ADR_0022)_ALORS_refus (0.00s)
+    --- PASS: TestBomSnapshotRejectsMutations/SI_DELETE_du_stock_figé_ALORS_refus (0.00s)
+    --- PASS: TestBomSnapshotRejectsMutations/SI_TRUNCATE_du_stock_figé_ALORS_refus (0.00s)
+    --- PASS: TestBomSnapshotRejectsMutations/SI_UPDATE_d'un_budget_figé_(v2-lot-g_T3)_ALORS_refus (0.00s)
+    --- PASS: TestBomSnapshotRejectsMutations/SI_DELETE_d'un_budget_figé_ALORS_refus (0.00s)
+    --- PASS: TestBomSnapshotRejectsMutations/SI_TRUNCATE_des_budgets_figés_ALORS_refus (0.00s)
+    --- PASS: TestBomSnapshotRejectsMutations/SI_DELETE_d'une_BOM_qui_a_un_snapshot_ALORS_refus (0.00s)
+    --- PASS: TestBomSnapshotRejectsMutations/SI_UPDATE_d'un_nœud_du_brouillon_publié_ALORS_accepté (0.00s)
+    --- PASS: TestBomSnapshotRejectsMutations/SI_DELETE_d'un_nœud_du_brouillon_publié_ALORS_accepté (0.00s)
+    --- PASS: TestBomSnapshotRejectsMutations/SI_DELETE_d'une_BOM_sans_snapshot_ALORS_accepté (0.00s)
+PASS
+ok  	bomstudio/internal/snapshot	0.091s
+=== RUN   TestCatalogHTTPRoundTripAndPatch
+=== RUN   TestCatalogHTTPRoundTripAndPatch/GET
+=== RUN   TestCatalogHTTPRoundTripAndPatch/PATCH
+--- PASS: TestCatalogHTTPRoundTripAndPatch (0.02s)
+    --- PASS: TestCatalogHTTPRoundTripAndPatch/GET (0.00s)
+    --- PASS: TestCatalogHTTPRoundTripAndPatch/PATCH (0.00s)
+PASS
+ok  	bomstudio/internal/httpapi	0.024s

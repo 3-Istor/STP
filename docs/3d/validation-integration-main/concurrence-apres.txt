@@ -1,0 +1,17 @@
+
+Running 4 tests using 1 worker
+
+(node:3275577) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  1 [chromium-desktop] › web/e2e/powertrain.spec.ts:87:1 › comparaison actualisée : volume et source des prix suivent les réglages capturés dans un autre onglet (472ms)
+(node:3275716) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  2 [chromium-mobile] › web/e2e/powertrain.spec.ts:87:1 › comparaison actualisée : volume et source des prix suivent les réglages capturés dans un autre onglet (477ms)
+(node:3275909) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  3 [firefox-desktop] › web/e2e/powertrain.spec.ts:87:1 › comparaison actualisée : volume et source des prix suivent les réglages capturés dans un autre onglet (1.5s)
+(node:3276270) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  4 [firefox-mobile] › web/e2e/powertrain.spec.ts:87:1 › comparaison actualisée : volume et source des prix suivent les réglages capturés dans un autre onglet (1.5s)
+
+  4 passed (7.0s)

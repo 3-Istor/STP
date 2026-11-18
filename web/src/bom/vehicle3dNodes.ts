@@ -10,9 +10,9 @@ import type { BudgetStatus, Vehicle3DNode } from '../features/vehicle3d/types.ts
  * Un sous-ensemble sans budget propre n'hérite pas du statut d'un ancêtre : ce serait affirmer un
  * dépassement (ou un respect) que personne n'a calculé pour lui.
  */
-export function vehicle3dNodes(nodes: TreeNode[], budgets: ReadonlyMap<number, NodeBudget> | null): Vehicle3DNode[] {
+export function vehicle3dNodes(nodes: TreeNode[], budgets: ReadonlyMap<number, NodeBudget> | null, parts?: ReadonlyMap<number, { name: string }>): Vehicle3DNode[] {
   return nodes.map((n) => {
-    const base: Vehicle3DNode = { id: n.id, parent_id: n.parent_id, name: n.name, part_id: n.part_id }
+    const base: Vehicle3DNode = { id: n.id, parent_id: n.parent_id, name: n.part_id === null ? n.name : (parts?.get(n.part_id)?.name ?? n.name), part_id: n.part_id, quantity: n.quantity }
     if (budgets === null) return base
     const st = budgets.get(n.id)?.state
     const status: BudgetStatus | null = st === 'ok' || st === 'warn' || st === 'over' ? st : null
@@ -28,7 +28,12 @@ export function vehicle3dNodes(nodes: TreeNode[], budgets: ReadonlyMap<number, N
 export function vehicle3dKey(nodes: Vehicle3DNode[]): string {
   let key = ''
   for (const n of nodes) {
-    key += `${n.id}/${n.parent_id ?? ''}/${n.part_id === null ? n.name : ''}/${n.budget_status === undefined ? '-' : (n.budget_status ?? '0')};`
+    key += `${n.id}/${n.parent_id ?? ''}/${n.part_id ?? ''}/${n.part_id === null ? n.name : ''}/${n.budget_status === undefined ? '-' : (n.budget_status ?? '0')};`
   }
   return key
+}
+
+/** Les placements liés dépendent aussi des quantités, contrairement au schéma historique. */
+export function boundVehicle3dKey(nodes: Vehicle3DNode[]): string {
+  return JSON.stringify(nodes.map(n => [n.id, n.parent_id, n.part_id, n.name, n.quantity, n.budget_status]))
 }

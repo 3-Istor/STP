@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { NodeAnomaly, NodeBudget, TreeNode } from '../api.ts'
 import { partName, type Catalog } from '../catalog.ts'
 import { formatDecimal, formatMoney } from '../money.ts'
@@ -25,6 +25,8 @@ type Props = {
   // Déplacement en cours : la ligne cliquée devient le nouveau parent du nœud `moving`.
   moving: number | null
   onPickParent: (parentID: number) => void
+  // Échap pendant un déplacement (à brancher : Structurer ne le passe pas encore).
+  onCancelMove?: () => void
   // Anomalies de coût par nœud (ADR 0027) : surbrillance des pièces suspectes, raison au survol.
   anomalies?: ReadonlyMap<number, NodeAnomaly>
   // Budgets cibles par nœud (API) ; budgetsUnavailable : pourquoi la colonne est vide (snapshot publié…).
@@ -39,7 +41,7 @@ type Props = {
 }
 
 export function BomTree(props: Props) {
-  const { nodes, catalog, readOnly, selectedID, onSelect, onChangeOffer, moving, onPickParent, anomalies, query } = props
+  const { nodes, catalog, readOnly, selectedID, onSelect, onChangeOffer, moving, onPickParent, onCancelMove, anomalies, query } = props
   const [collapsed, setCollapsed] = useState<ReadonlySet<number>>(() => initiallyCollapsed(nodes, OPEN_DEPTH))
   const rows = useMemo(
     () => flatten(nodes, collapsed, (n) => (n.part_id !== null ? partName(catalog, n.part_id) : n.name), query),
@@ -47,7 +49,8 @@ export function BomTree(props: Props) {
   )
 
   const viewport = useRef<HTMLDivElement>(null)
-  const [scrollTop, setScrollTop] = useState(0)
+  const [scroll, setScroll] = useState({ query, top: 0 })
+  const scrollTop = scroll.query === query ? scroll.top : 0
   const [height, setHeight] = useState(600)
   useEffect(() => {
     const el = viewport.current
@@ -56,6 +59,7 @@ export function BomTree(props: Props) {
     ro.observe(el)
     return () => ro.disconnect()
   }, [])
+  useEffect(() => { viewport.current?.scrollTo({ top: 0 }) }, [query])
 
   // Sélection venue d'ailleurs (lien profond, autre étape, Synthèse) : ses ancêtres sont dépliés et la
   // ligne est ramenée dans la zone visible. Un clic dans l'arbre ne fait rien défiler (ligne déjà visible).
@@ -75,12 +79,21 @@ export function BomTree(props: Props) {
     }
     return { text, title: `${t.missing_cost.length} pièce(s) sans coût sous ce nœud : ${text}` }
   }
-  const [revealedFor, setRevealedFor] = useState<number | null>(null)
-  if (selectedID !== revealedFor) {
-    // Mise à jour pendant le rendu (état dérivé de la sélection précédente), pas dans un effet.
-    setRevealedFor(selectedID)
+  // Ramène une ligne dans la zone visible ; faux tant qu'elle n'est pas dans les lignes aplaties.
+  const scrollToRow = useCallback((id: number): boolean => {
+    const el = viewport.current
+    if (!el) return false
+    const index = rows.findIndex((r) => r.node.id === id)
+    if (index < 0) return false
+    const top = (index + 1) * ROW_HEIGHT // + en-tête
+    if (top < el.scrollTop + ROW_HEIGHT || top + ROW_HEIGHT > el.scrollTop + el.clientHeight) {
+      el.scrollTop = Math.max(0, top - el.clientHeight / 3)
+    }
+    return true
+  }, [rows])
+  function expandAncestors(id: number) {
     const hidden: number[] = []
-    for (let p = selectedID !== null ? (byID.get(selectedID)?.parent_id ?? null) : null; p !== null; p = byID.get(p)?.parent_id ?? null) {
+    for (let p = byID.get(id)?.parent_id ?? null; p !== null; p = byID.get(p)?.parent_id ?? null) {
       if (collapsed.has(p)) hidden.push(p)
     }
     if (hidden.length > 0) {
@@ -89,19 +102,42 @@ export function BomTree(props: Props) {
       setCollapsed(next)
     }
   }
+  const [revealedFor, setRevealedFor] = useState<number | null>(null)
+  if (selectedID !== revealedFor) {
+    // Mise à jour pendant le rendu (état dérivé de la sélection précédente), pas dans un effet.
+    setRevealedFor(selectedID)
+    if (selectedID !== null) expandAncestors(selectedID)
+  }
   // Une fois par sélection : les lignes changent à chaque dépliage, on ne recentre pas à chaque fois.
   const revealed = useRef<number | null>(null)
   useEffect(() => {
-    const el = viewport.current
-    if (!el || selectedID === null || revealed.current === selectedID) return
-    const index = rows.findIndex((r) => r.node.id === selectedID)
-    if (index < 0) return
-    revealed.current = selectedID
-    const top = (index + 1) * ROW_HEIGHT // + en-tête
-    if (top < el.scrollTop + ROW_HEIGHT || top + ROW_HEIGHT > el.scrollTop + el.clientHeight) {
-      el.scrollTop = Math.max(0, top - el.clientHeight / 3)
+    if (selectedID === null || revealed.current === selectedID) return
+    if (scrollToRow(selectedID)) revealed.current = selectedID
+  }, [selectedID, scrollToRow])
+
+  // Un seul nœud ajouté ou déplacé entre deux arbres (le sélectionné ne change pas) : on le déplie et le montre.
+  const [prevNodes, setPrevNodes] = useState(nodes)
+  const [focus, setFocus] = useState<{ id: number } | null>(null)
+  if (prevNodes !== nodes) {
+    setPrevNodes(nodes)
+    const before = new Map(prevNodes.map((n) => [n.id, n.parent_id]))
+    const changed = prevNodes.length > 0 ? nodes.filter((n) => before.get(n.id) !== n.parent_id) : []
+    if (changed.length === 1) {
+      expandAncestors(changed[0].id)
+      setFocus({ id: changed[0].id })
     }
-  }, [selectedID, rows])
+  }
+  const focused = useRef<{ id: number } | null>(null)
+  useEffect(() => {
+    if (focus && focused.current !== focus && scrollToRow(focus.id)) focused.current = focus
+  }, [focus, scrollToRow])
+
+  useEffect(() => {
+    if (moving === null || !onCancelMove) return
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onCancelMove() }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [moving, onCancelMove])
 
   // L'en-tête de colonnes (une ligne, collant) précède les lignes de l'arbre dans la zone défilante.
   const first = Math.max(0, Math.floor((scrollTop - ROW_HEIGHT) / ROW_HEIGHT) - OVERSCAN)
@@ -122,7 +158,7 @@ export function BomTree(props: Props) {
       className={moving !== null ? 'tree moving' : 'tree'}
       role="tree"
       aria-label="Arbre de la BOM"
-      onScroll={(e) => setScrollTop(e.currentTarget.scrollTop)}
+      onScroll={(e) => setScroll({ query, top: e.currentTarget.scrollTop })}
     >
       <div className="tree-head" aria-hidden="true" style={{ height: ROW_HEIGHT }}>
         <span className="name">Ensemble / pièce</span>
@@ -157,8 +193,13 @@ export function BomTree(props: Props) {
               aria-selected={n.id === selectedID}
               aria-expanded={r.hasChildren ? r.expanded : undefined}
               className={classes.join(' ')}
-              style={{ top: (first + i) * ROW_HEIGHT, height: ROW_HEIGHT, paddingLeft: 8 + r.depth * 16 }}
-              onClick={() => (moving !== null ? onPickParent(n.id) : onSelect(n.id))}
+              style={{ top: (first + i) * ROW_HEIGHT, height: ROW_HEIGHT, paddingLeft: 8 + r.depth * 16, ...(moving !== null && isPart ? { cursor: 'not-allowed', opacity: 0.55 } : {}) }}
+              title={moving !== null && isPart ? 'Une pièce ne peut pas contenir d’autres nœuds : choisissez un ensemble.' : undefined}
+              aria-disabled={moving !== null && isPart ? true : undefined}
+              onClick={() => {
+                if (moving === null) onSelect(n.id)
+                else if (!isPart) onPickParent(n.id)
+              }}
             >
               <button
                 type="button"

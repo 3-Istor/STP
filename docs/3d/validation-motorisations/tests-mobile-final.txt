@@ -1,0 +1,31 @@
+
+> web@0.0.0 test:e2e
+> playwright test --project=chromium-mobile --workers=1 e2e/powertrain.spec.ts e2e/vehicle3d-bound.spec.ts e2e/bom-cost-v2.spec.ts
+
+[WebServer] (node:2548000) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 16 tests using 1 worker
+
+(node:2548045) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   1 [chromium-mobile] › e2e/bom-cost-v2.spec.ts:103:1 › budgets : % et couleur de l’API dans l’arbre et la Synthèse, « — » sans budget, « n/d » indisponible (690ms)
+  ✓   2 [chromium-mobile] › e2e/bom-cost-v2.spec.ts:124:1 › méthode : affichée avec sa date, changée par l’API avec « Recalcul en cours… » (2.2s)
+  ✓   3 [chromium-mobile] › e2e/bom-cost-v2.spec.ts:147:1 › « Pourquoi ce coût ? » : lignes de l’API, composante absente, total ; brouillon puis snapshot (567ms)
+  ✓   4 [chromium-mobile] › e2e/bom-cost-v2.spec.ts:170:1 › « Pourquoi ce coût ? » : une erreur de l’API est affichée, jamais un coût à 0 (465ms)
+  ✓   5 [chromium-mobile] › e2e/bom-cost-v2.spec.ts:182:1 › sans manifeste : absence explicite, aucun retour à Simple ou à un ancien modèle (3.9s)
+  ✓   6 [chromium-mobile] › e2e/bom-cost-v2.spec.ts:196:1 › Arbre + 3D : clic dans l’arbre → objet sélectionné dans la 3D ; clic dans la 3D → ligne de l’arbre (6.0s)
+[WebServer] 12:37:45 PM [vite] (client) [console.error] THREE.WebGLRenderer: THREE.WebGLRenderer: Error creating WebGL context.
+[WebServer] 12:37:45 PM [vite] (client) [console.error] THREE.WebGLRenderer: THREE.WebGLRenderer: Error creating WebGL context.
+  ✓   7 [chromium-mobile] › e2e/bom-cost-v2.spec.ts:246:1 › 3D sans WebGL : la panne reste dans le panneau 3D, l’arbre et la Synthèse restent utilisables (942ms)
+  ✓   8 [chromium-mobile] › e2e/powertrain.spec.ts:44:1 › motorisations : coût API, BOM active, comparaison commune, actualisation et sortie sans écriture (802ms)
+  ✓   9 [chromium-mobile] › e2e/powertrain.spec.ts:76:1 › prix manquant : coût incomplet et écart indisponible, scénario excluant la pièce toujours calculable (532ms)
+  ✓  10 [chromium-mobile] › e2e/powertrain.spec.ts:87:1 › panne API : référence conservée, reprise explicite et aucune simulation faussement annoncée (589ms)
+  ✓  11 [chromium-mobile] › e2e/powertrain.spec.ts:104:1 › scénario choisi dans Arbre : mécanique révélée lors de chaque ouverture 3D ou Arbre + 3D (18.8s)
+  ✓  12 [chromium-mobile] › e2e/vehicle3d-bound.spec.ts:49:1 › manifestes : occurrences, picking, quantités, remplacement physique et offre seule (8.0s)
+  ✓  13 [chromium-mobile] › e2e/vehicle3d-bound.spec.ts:152:1 › import : portée refusée, empreinte incorrecte explicite, aucune substitution générique (4.0s)
+  ✓  14 [chromium-mobile] › e2e/vehicle3d-bound.spec.ts:173:1 › BOM complète : diagnostics différés et limités à 100 lignes à la demande (4.1s)
+  ✓  15 [chromium-mobile] › e2e/vehicle3d-bound.spec.ts:193:1 › extérieur prioritaire : intérieur révélé et cliquable à travers la coque transparente (8.0s)
+  ✓  16 [chromium-mobile] › e2e/vehicle3d-bound.spec.ts:225:1 › pièce absente : localisation explicite du groupe, identité BOM conservée (4.1s)
+
+  16 passed (1.1m)

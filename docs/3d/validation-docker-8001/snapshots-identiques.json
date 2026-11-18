@@ -1,0 +1,57 @@
+{
+  "bom_snapshot_budget_rates": {
+    "source": "fb4c1cbf5610f4d81b7c004140bb1373",
+    "docker_copy": "fb4c1cbf5610f4d81b7c004140bb1373",
+    "identical": true
+  },
+  "bom_snapshot_checks": {
+    "source": "2589dbaf9240e4fb598df5021ed80ee3",
+    "docker_copy": "2589dbaf9240e4fb598df5021ed80ee3",
+    "identical": true
+  },
+  "bom_snapshot_nodes": {
+    "source": "ed116976de29f35e20e7ff309f5aa518",
+    "docker_copy": "ed116976de29f35e20e7ff309f5aa518",
+    "identical": true
+  },
+  "bom_snapshot_offer_costs": {
+    "source": "f2545158941fc72cae152ba779041973",
+    "docker_copy": "f2545158941fc72cae152ba779041973",
+    "identical": true
+  },
+  "bom_snapshot_part_stock": {
+    "source": "d41d8cd98f00b204e9800998ecf8427e",
+    "docker_copy": "d41d8cd98f00b204e9800998ecf8427e",
+    "identical": true
+  },
+  "bom_snapshot_target_budgets": {
+    "source": "18b6dade696e19c9438d8adabeb6b6ea",
+    "docker_copy": "18b6dade696e19c9438d8adabeb6b6ea",
+    "identical": true
+  },
+  "bom_snapshot_vehicle_profiles": {
+    "source": "145fa2f726fcbbc47977f05f200cd02e",
+    "docker_copy": "145fa2f726fcbbc47977f05f200cd02e",
+    "identical": true
+  },
+  "bom_snapshots": {
+    "source": "1f21588674890ff2f10b1d9447b2af06",
+    "docker_copy": "1f21588674890ff2f10b1d9447b2af06",
+    "identical": true
+  },
+  "price_snapshot_fx": {
+    "source": "1dc005b483994600eed9d14ad1d1d4ae",
+    "docker_copy": "1dc005b483994600eed9d14ad1d1d4ae",
+    "identical": true
+  },
+  "price_snapshot_quotes": {
+    "source": "658e2866c63aef3786b88ee1febc6383",
+    "docker_copy": "658e2866c63aef3786b88ee1febc6383",
+    "identical": true
+  },
+  "price_snapshots": {
+    "source": "03af4f207b1efe9708ad906c0f421412",
+    "docker_copy": "03af4f207b1efe9708ad906c0f421412",
+    "identical": true
+  }
+}

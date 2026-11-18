@@ -1,0 +1,2522 @@
+{
+  "schema_version": 1,
+  "revision": "soutenance-exploded-20261118",
+  "scope": {
+    "kind": "draft",
+    "id": 2
+  },
+  "vehicle_label": "Aston Martin Valhalla 2025",
+  "assets": [
+    {
+      "key": "ValhallaExteriorPrepared",
+      "path": "/models/ValhallaExteriorPrepared.glb",
+      "sha256": "f6dfa6260e525259db58559324967107301cd1200ca30aa692e7a11718538745",
+      "unit_scale": 1,
+      "source_url": "https://sketchfab.com/3d-models/2025-aston-martin-valhalla-4294795fcf194e2b9da861b251192bd1",
+      "license": "CC BY-NC-SA 4.0",
+      "license_url": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+      "author": "OUTPISTON",
+      "geometry_status": "approximation",
+      "display_role": "exterior"
+    },
+    {
+      "key": "ValhallaInteriorPrepared",
+      "path": "/models/ValhallaInteriorPrepared.glb",
+      "sha256": "32f1d9c3d46562438cd6ba534478cc2db5f0b35704be077894624b86b973e9dc",
+      "unit_scale": 1,
+      "source_url": "http://127.0.0.1:41769/models/soutenance-credits.html",
+      "license": "Création originale fournie pour STP — usage local autorisé, licence publique non spécifiée",
+      "license_url": "http://127.0.0.1:41769/models/soutenance-credits.html",
+      "author": "Pack illustratif fourni par l’utilisateur",
+      "geometry_status": "schematic",
+      "display_role": "interior"
+    }
+  ],
+  "bindings": [
+    {
+      "node_id": 32139,
+      "parent_id": 31004,
+      "part_id": null,
+      "asset_key": "ValhallaExteriorPrepared",
+      "mesh_path": [
+        "occurrence-32139"
+      ],
+      "system": "body",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "exterior",
+          "position": [
+            0,
+            0.00328596,
+            0
+          ],
+          "rotation": [
+            0,
+            -1.5707963267948966,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "explode_vector": [
+            0,
+            1.15,
+            -0.65
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 29978,
+      "parent_id": null,
+      "part_id": null,
+      "asset_key": "ValhallaExteriorPrepared",
+      "mesh_path": [
+        "occurrence-29978"
+      ],
+      "system": "body",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "exterior",
+          "position": [
+            0,
+            0.00328596,
+            0
+          ],
+          "rotation": [
+            0,
+            -1.5707963267948966,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "explode_vector": [
+            0,
+            1.75,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 35461,
+      "parent_id": 35460,
+      "part_id": null,
+      "asset_key": "ValhallaExteriorPrepared",
+      "mesh_path": [
+        "occurrence-35461"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "exterior",
+          "position": [
+            0,
+            0.00328596,
+            0
+          ],
+          "rotation": [
+            0,
+            -1.5707963267948966,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "explode_vector": [
+            0.7,
+            0.1,
+            0.25
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 35735,
+      "parent_id": 35460,
+      "part_id": null,
+      "asset_key": "ValhallaExteriorPrepared",
+      "mesh_path": [
+        "occurrence-35735"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "exterior",
+          "position": [
+            0,
+            0.00328596,
+            0
+          ],
+          "rotation": [
+            0,
+            -1.5707963267948966,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "explode_vector": [
+            0.7,
+            0.1,
+            -0.25
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 35598,
+      "parent_id": 35460,
+      "part_id": null,
+      "asset_key": "ValhallaExteriorPrepared",
+      "mesh_path": [
+        "occurrence-35598"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "exterior",
+          "position": [
+            0,
+            0.00328596,
+            0
+          ],
+          "rotation": [
+            0,
+            -1.5707963267948966,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "explode_vector": [
+            -0.7,
+            0.1,
+            0.25
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 35872,
+      "parent_id": 35460,
+      "part_id": null,
+      "asset_key": "ValhallaExteriorPrepared",
+      "mesh_path": [
+        "occurrence-35872"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "exterior",
+          "position": [
+            0,
+            0.00328596,
+            0
+          ],
+          "rotation": [
+            0,
+            -1.5707963267948966,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "explode_vector": [
+            -0.7,
+            0.1,
+            -0.25
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 31005,
+      "parent_id": 31004,
+      "part_id": null,
+      "asset_key": "ValhallaExteriorPrepared",
+      "mesh_path": [
+        "occurrence-31005"
+      ],
+      "system": "body",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "exterior",
+          "position": [
+            0,
+            0.00328596,
+            0
+          ],
+          "rotation": [
+            0,
+            -1.5707963267948966,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "explode_vector": [
+            1.2,
+            0.75,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 31251,
+      "parent_id": 31004,
+      "part_id": null,
+      "asset_key": "ValhallaExteriorPrepared",
+      "mesh_path": [
+        "occurrence-31251"
+      ],
+      "system": "body",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "exterior",
+          "position": [
+            0,
+            0.00328596,
+            0
+          ],
+          "rotation": [
+            0,
+            -1.5707963267948966,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "explode_vector": [
+            -1.2,
+            0.75,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 44231,
+      "parent_id": 43773,
+      "part_id": null,
+      "asset_key": "ValhallaExteriorPrepared",
+      "mesh_path": [
+        "occurrence-44231"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "exterior",
+          "position": [
+            0,
+            0.00328596,
+            0
+          ],
+          "rotation": [
+            0,
+            -1.5707963267948966,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "explode_vector": [
+            0.18,
+            0.45,
+            -0.1
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 31550,
+      "parent_id": 31004,
+      "part_id": null,
+      "asset_key": "ValhallaExteriorPrepared",
+      "mesh_path": [
+        "occurrence-31550"
+      ],
+      "system": "body",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "exterior",
+          "position": [
+            0,
+            0.00328596,
+            0
+          ],
+          "rotation": [
+            0,
+            -1.5707963267948966,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "explode_vector": [
+            0,
+            1.0,
+            -0.45
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 44334,
+      "parent_id": 43773,
+      "part_id": null,
+      "asset_key": "ValhallaExteriorPrepared",
+      "mesh_path": [
+        "occurrence-44334"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "exterior",
+          "position": [
+            0,
+            0.00328596,
+            0
+          ],
+          "rotation": [
+            0,
+            -1.5707963267948966,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "explode_vector": [
+            -0.18,
+            0.45,
+            -0.1
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 36135,
+      "parent_id": 35460,
+      "part_id": null,
+      "asset_key": "ValhallaExteriorPrepared",
+      "mesh_path": [
+        "occurrence-36135"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "exterior",
+          "position": [
+            0,
+            0.00328596,
+            0
+          ],
+          "rotation": [
+            0,
+            -1.5707963267948966,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "explode_vector": [
+            0.7,
+            0,
+            0.25
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 36145,
+      "parent_id": 35460,
+      "part_id": null,
+      "asset_key": "ValhallaExteriorPrepared",
+      "mesh_path": [
+        "occurrence-36145"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "exterior",
+          "position": [
+            0,
+            0.00328596,
+            0
+          ],
+          "rotation": [
+            0,
+            -1.5707963267948966,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "explode_vector": [
+            0.7,
+            0,
+            -0.25
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 36140,
+      "parent_id": 35460,
+      "part_id": null,
+      "asset_key": "ValhallaExteriorPrepared",
+      "mesh_path": [
+        "occurrence-36140"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "exterior",
+          "position": [
+            0,
+            0.00328596,
+            0
+          ],
+          "rotation": [
+            0,
+            -1.5707963267948966,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "explode_vector": [
+            -0.7,
+            0,
+            0.25
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 36150,
+      "parent_id": 35460,
+      "part_id": null,
+      "asset_key": "ValhallaExteriorPrepared",
+      "mesh_path": [
+        "occurrence-36150"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "exterior",
+          "position": [
+            0,
+            0.00328596,
+            0
+          ],
+          "rotation": [
+            0,
+            -1.5707963267948966,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "explode_vector": [
+            -0.7,
+            0,
+            -0.25
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 29981,
+      "parent_id": 29980,
+      "part_id": 267,
+      "asset_key": "ValhallaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-29981"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            -0.08,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            0.92,
+            0.9,
+            0.82
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0.05
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 30422,
+      "parent_id": 30421,
+      "part_id": 269,
+      "asset_key": "ValhallaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-30422"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            -0.08,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            0.92,
+            0.9,
+            0.82
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0.05
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 30226,
+      "parent_id": 30225,
+      "part_id": 268,
+      "asset_key": "ValhallaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-30226"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            -0.08,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            0.92,
+            0.9,
+            0.82
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0.05
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 29980,
+      "parent_id": 29979,
+      "part_id": null,
+      "asset_key": "ValhallaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-29980"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            -0.08,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            0.92,
+            0.9,
+            0.82
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0.05
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 32415,
+      "parent_id": 32414,
+      "part_id": 297,
+      "asset_key": "ValhallaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-32415"
+      ],
+      "system": "thermal",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            -0.08,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            0.92,
+            0.9,
+            0.82
+          ],
+          "explode_vector": [
+            -0.75,
+            0.55,
+            0.45
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 32948,
+      "parent_id": 32947,
+      "part_id": 298,
+      "asset_key": "ValhallaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-32948"
+      ],
+      "system": "thermal",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            -0.08,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            0.92,
+            0.9,
+            0.82
+          ],
+          "explode_vector": [
+            -0.75,
+            0.55,
+            0.45
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 32413,
+      "parent_id": 32412,
+      "part_id": null,
+      "asset_key": "ValhallaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-32413"
+      ],
+      "system": "thermal",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            -0.08,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            0.92,
+            0.9,
+            0.82
+          ],
+          "explode_vector": [
+            -0.75,
+            0.55,
+            0.45
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 33203,
+      "parent_id": 33201,
+      "part_id": 313,
+      "asset_key": "ValhallaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-33203"
+      ],
+      "system": "thermal",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            -0.08,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            0.92,
+            0.9,
+            0.82
+          ],
+          "explode_vector": [
+            -0.75,
+            0.55,
+            0.45
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 32767,
+      "parent_id": 32766,
+      "part_id": 298,
+      "asset_key": "ValhallaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-32767"
+      ],
+      "system": "thermal",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            -0.08,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            0.92,
+            0.9,
+            0.82
+          ],
+          "explode_vector": [
+            -0.75,
+            0.55,
+            0.45
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 33132,
+      "parent_id": 33130,
+      "part_id": 313,
+      "asset_key": "ValhallaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-33132"
+      ],
+      "system": "thermal",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            -0.08,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            0.92,
+            0.9,
+            0.82
+          ],
+          "explode_vector": [
+            -0.75,
+            0.55,
+            0.45
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 32416,
+      "parent_id": 32414,
+      "part_id": 299,
+      "asset_key": "ValhallaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-32416"
+      ],
+      "system": "thermal",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            -0.08,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            0.92,
+            0.9,
+            0.82
+          ],
+          "explode_vector": [
+            -0.75,
+            0.55,
+            0.45
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 32474,
+      "parent_id": 32473,
+      "part_id": 310,
+      "asset_key": "ValhallaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-32474"
+      ],
+      "system": "thermal",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            -0.08,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            0.92,
+            0.9,
+            0.82
+          ],
+          "explode_vector": [
+            -0.75,
+            0.55,
+            0.45
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 33202,
+      "parent_id": 33201,
+      "part_id": 308,
+      "asset_key": "ValhallaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-33202"
+      ],
+      "system": "thermal",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            -0.08,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            0.92,
+            0.9,
+            0.82
+          ],
+          "explode_vector": [
+            -0.75,
+            0.55,
+            0.45
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 33273,
+      "parent_id": 33272,
+      "part_id": 312,
+      "asset_key": "ValhallaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-33273"
+      ],
+      "system": "thermal",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            -0.08,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            0.92,
+            0.9,
+            0.82
+          ],
+          "explode_vector": [
+            -0.75,
+            0.55,
+            0.45
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 33131,
+      "parent_id": 33130,
+      "part_id": 308,
+      "asset_key": "ValhallaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-33131"
+      ],
+      "system": "thermal",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            -0.08,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            0.92,
+            0.9,
+            0.82
+          ],
+          "explode_vector": [
+            -0.75,
+            0.55,
+            0.45
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 33204,
+      "parent_id": 33201,
+      "part_id": 309,
+      "asset_key": "ValhallaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-33204"
+      ],
+      "system": "thermal",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            -0.08,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            0.92,
+            0.9,
+            0.82
+          ],
+          "explode_vector": [
+            -0.75,
+            0.55,
+            0.45
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 33133,
+      "parent_id": 33130,
+      "part_id": 309,
+      "asset_key": "ValhallaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-33133"
+      ],
+      "system": "thermal",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            -0.08,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            0.92,
+            0.9,
+            0.82
+          ],
+          "explode_vector": [
+            -0.75,
+            0.55,
+            0.45
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 35390,
+      "parent_id": 35285,
+      "part_id": 341,
+      "asset_key": "ValhallaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-35390"
+      ],
+      "system": "thermal",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            -0.08,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            0.92,
+            0.9,
+            0.82
+          ],
+          "explode_vector": [
+            -0.75,
+            0.55,
+            0.45
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 35055,
+      "parent_id": 35054,
+      "part_id": 345,
+      "asset_key": "ValhallaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-35055"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            -0.08,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            0.92,
+            0.9,
+            0.82
+          ],
+          "explode_vector": [
+            -1.05,
+            -0.5,
+            0.35
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 35056,
+      "parent_id": 35054,
+      "part_id": 346,
+      "asset_key": "ValhallaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-35056"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            -0.08,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            0.92,
+            0.9,
+            0.82
+          ],
+          "explode_vector": [
+            -1.05,
+            -0.5,
+            0.35
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 34675,
+      "parent_id": 34674,
+      "part_id": 326,
+      "asset_key": "ValhallaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-34675"
+      ],
+      "system": "electric",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            -0.08,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            0.92,
+            0.9,
+            0.82
+          ],
+          "explode_vector": [
+            -1.05,
+            -0.5,
+            0.35
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 35057,
+      "parent_id": 35054,
+      "part_id": 347,
+      "asset_key": "ValhallaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-35057"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            -0.08,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            0.92,
+            0.9,
+            0.82
+          ],
+          "explode_vector": [
+            -1.05,
+            -0.5,
+            0.35
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 35054,
+      "parent_id": 32412,
+      "part_id": null,
+      "asset_key": "ValhallaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-35054"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            -0.08,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            0.92,
+            0.9,
+            0.82
+          ],
+          "explode_vector": [
+            -1.05,
+            -0.5,
+            0.35
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 34537,
+      "parent_id": 32412,
+      "part_id": null,
+      "asset_key": "ValhallaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-34537"
+      ],
+      "system": "electric",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            -0.08,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            0.92,
+            0.9,
+            0.82
+          ],
+          "explode_vector": [
+            0.6,
+            0,
+            0.35
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 34607,
+      "parent_id": 34606,
+      "part_id": 325,
+      "asset_key": "ValhallaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-34607"
+      ],
+      "system": "electric",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            -0.08,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            0.92,
+            0.9,
+            0.82
+          ],
+          "explode_vector": [
+            0.6,
+            -0.5,
+            0.35
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 34539,
+      "parent_id": 34538,
+      "part_id": 325,
+      "asset_key": "ValhallaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-34539"
+      ],
+      "system": "electric",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            -0.08,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            0.92,
+            0.9,
+            0.82
+          ],
+          "explode_vector": [
+            0.6,
+            0.5,
+            0.35
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 34758,
+      "parent_id": 34757,
+      "part_id": 322,
+      "asset_key": "ValhallaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-34758"
+      ],
+      "system": "electric",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            -0.08,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            0.92,
+            0.9,
+            0.82
+          ],
+          "explode_vector": [
+            0,
+            -0.8,
+            0.65
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 34757,
+      "parent_id": 34537,
+      "part_id": null,
+      "asset_key": "ValhallaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-34757"
+      ],
+      "system": "electric",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            -0.08,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            0.92,
+            0.9,
+            0.82
+          ],
+          "explode_vector": [
+            0,
+            -0.8,
+            0.65
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 34807,
+      "parent_id": 34757,
+      "part_id": 324,
+      "asset_key": "ValhallaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-34807"
+      ],
+      "system": "electric",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            -0.08,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            0.92,
+            0.9,
+            0.82
+          ],
+          "explode_vector": [
+            0,
+            -0.8,
+            0.65
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 34949,
+      "parent_id": 34939,
+      "part_id": 328,
+      "asset_key": "ValhallaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-34949"
+      ],
+      "system": "electric",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            -0.08,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            0.92,
+            0.9,
+            0.82
+          ],
+          "explode_vector": [
+            0,
+            -0.8,
+            0.65
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 34950,
+      "parent_id": 34939,
+      "part_id": 329,
+      "asset_key": "ValhallaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-34950"
+      ],
+      "system": "electric",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            -0.08,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            0.92,
+            0.9,
+            0.82
+          ],
+          "explode_vector": [
+            0,
+            -0.8,
+            0.65
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 35207,
+      "parent_id": 32412,
+      "part_id": null,
+      "asset_key": "ValhallaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-35207"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            -0.08,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            0.92,
+            0.9,
+            0.82
+          ],
+          "explode_vector": [
+            1.0,
+            0,
+            0.25
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 34808,
+      "parent_id": 34757,
+      "part_id": 335,
+      "asset_key": "ValhallaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-34808"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            -0.08,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            0.92,
+            0.9,
+            0.82
+          ],
+          "explode_vector": [
+            1.0,
+            0,
+            0.25
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 35460,
+      "parent_id": 29978,
+      "part_id": null,
+      "asset_key": "ValhallaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-35460"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            -0.08,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            0.92,
+            0.9,
+            0.82
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0.1
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 35725,
+      "parent_id": 35724,
+      "part_id": 365,
+      "asset_key": "ValhallaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-35725"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            -0.08,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            0.92,
+            0.9,
+            0.82
+          ],
+          "explode_vector": [
+            0.25,
+            -0.7,
+            0.12
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 35601,
+      "parent_id": 35599,
+      "part_id": 352,
+      "asset_key": "ValhallaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-35601"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            -0.08,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            0.92,
+            0.9,
+            0.82
+          ],
+          "explode_vector": [
+            0.25,
+            -0.7,
+            0.12
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 35600,
+      "parent_id": 35599,
+      "part_id": 351,
+      "asset_key": "ValhallaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-35600"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            -0.08,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            0.92,
+            0.9,
+            0.82
+          ],
+          "explode_vector": [
+            0.25,
+            -0.7,
+            0.12
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 35602,
+      "parent_id": 35599,
+      "part_id": 353,
+      "asset_key": "ValhallaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-35602"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            -0.08,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            0.92,
+            0.9,
+            0.82
+          ],
+          "explode_vector": [
+            0.25,
+            -0.7,
+            0.12
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 35604,
+      "parent_id": 35599,
+      "part_id": 355,
+      "asset_key": "ValhallaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-35604"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            -0.08,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            0.92,
+            0.9,
+            0.82
+          ],
+          "explode_vector": [
+            0.25,
+            -0.7,
+            0.12
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 35588,
+      "parent_id": 35587,
+      "part_id": 365,
+      "asset_key": "ValhallaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-35588"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            -0.08,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            0.92,
+            0.9,
+            0.82
+          ],
+          "explode_vector": [
+            0.25,
+            0.7,
+            0.12
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 35464,
+      "parent_id": 35462,
+      "part_id": 352,
+      "asset_key": "ValhallaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-35464"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            -0.08,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            0.92,
+            0.9,
+            0.82
+          ],
+          "explode_vector": [
+            0.25,
+            0.7,
+            0.12
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 35463,
+      "parent_id": 35462,
+      "part_id": 351,
+      "asset_key": "ValhallaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-35463"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            -0.08,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            0.92,
+            0.9,
+            0.82
+          ],
+          "explode_vector": [
+            0.25,
+            0.7,
+            0.12
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 35465,
+      "parent_id": 35462,
+      "part_id": 353,
+      "asset_key": "ValhallaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-35465"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            -0.08,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            0.92,
+            0.9,
+            0.82
+          ],
+          "explode_vector": [
+            0.25,
+            0.7,
+            0.12
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 35467,
+      "parent_id": 35462,
+      "part_id": 355,
+      "asset_key": "ValhallaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-35467"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            -0.08,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            0.92,
+            0.9,
+            0.82
+          ],
+          "explode_vector": [
+            0.25,
+            0.7,
+            0.12
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 35999,
+      "parent_id": 35998,
+      "part_id": 366,
+      "asset_key": "ValhallaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-35999"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            -0.08,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            0.92,
+            0.9,
+            0.82
+          ],
+          "explode_vector": [
+            -0.25,
+            -0.7,
+            0.12
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 35875,
+      "parent_id": 35873,
+      "part_id": 352,
+      "asset_key": "ValhallaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-35875"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            -0.08,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            0.92,
+            0.9,
+            0.82
+          ],
+          "explode_vector": [
+            -0.25,
+            -0.7,
+            0.12
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 35874,
+      "parent_id": 35873,
+      "part_id": 351,
+      "asset_key": "ValhallaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-35874"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            -0.08,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            0.92,
+            0.9,
+            0.82
+          ],
+          "explode_vector": [
+            -0.25,
+            -0.7,
+            0.12
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 35876,
+      "parent_id": 35873,
+      "part_id": 353,
+      "asset_key": "ValhallaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-35876"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            -0.08,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            0.92,
+            0.9,
+            0.82
+          ],
+          "explode_vector": [
+            -0.25,
+            -0.7,
+            0.12
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 35878,
+      "parent_id": 35873,
+      "part_id": 355,
+      "asset_key": "ValhallaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-35878"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            -0.08,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            0.92,
+            0.9,
+            0.82
+          ],
+          "explode_vector": [
+            -0.25,
+            -0.7,
+            0.12
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 35862,
+      "parent_id": 35861,
+      "part_id": 366,
+      "asset_key": "ValhallaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-35862"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            -0.08,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            0.92,
+            0.9,
+            0.82
+          ],
+          "explode_vector": [
+            -0.25,
+            0.7,
+            0.12
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 35738,
+      "parent_id": 35736,
+      "part_id": 352,
+      "asset_key": "ValhallaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-35738"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            -0.08,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            0.92,
+            0.9,
+            0.82
+          ],
+          "explode_vector": [
+            -0.25,
+            0.7,
+            0.12
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 35737,
+      "parent_id": 35736,
+      "part_id": 351,
+      "asset_key": "ValhallaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-35737"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            -0.08,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            0.92,
+            0.9,
+            0.82
+          ],
+          "explode_vector": [
+            -0.25,
+            0.7,
+            0.12
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 35739,
+      "parent_id": 35736,
+      "part_id": 353,
+      "asset_key": "ValhallaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-35739"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            -0.08,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            0.92,
+            0.9,
+            0.82
+          ],
+          "explode_vector": [
+            -0.25,
+            0.7,
+            0.12
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 35741,
+      "parent_id": 35736,
+      "part_id": 355,
+      "asset_key": "ValhallaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-35741"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            -0.08,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            0.92,
+            0.9,
+            0.82
+          ],
+          "explode_vector": [
+            -0.25,
+            0.7,
+            0.12
+          ]
+        }
+      ]
+    }
+  ],
+  "assemblies": []
+}

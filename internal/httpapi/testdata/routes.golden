@@ -11,6 +11,7 @@ DELETE /api/v1/freight-rates/{origin}/{destination}
 DELETE /api/v1/offers/{id}
 DELETE /api/v1/offers/{id}/packaging
 DELETE /api/v1/parts/{id}
+DELETE /api/v1/price-snapshots/{id}
 GET /api/v1/boms
 GET /api/v1/boms/{id}/analysis/anomalies
 GET /api/v1/boms/{id}/analysis/fx-sensitivity
@@ -20,6 +21,7 @@ GET /api/v1/boms/{id}/anomalies
 GET /api/v1/boms/{id}/budgets
 GET /api/v1/boms/{id}/cost-method
 GET /api/v1/boms/{id}/ideas
+GET /api/v1/boms/{id}/nodes/{nodeID}/budget-plan
 GET /api/v1/boms/{id}/nodes/{nodeID}/cost-breakdown
 GET /api/v1/boms/{id}/nodes/{nodeID}/suggestions
 GET /api/v1/boms/{id}/profile
@@ -59,6 +61,7 @@ PATCH /api/v1/offers/{id}
 PATCH /api/v1/parts/{id}
 PATCH /api/v1/suppliers/{id}
 POST /api/v1/boms
+POST /api/v1/boms/{id}/configuration-simulation
 POST /api/v1/boms/{id}/freeze-prices
 POST /api/v1/boms/{id}/ideas
 POST /api/v1/boms/{id}/nodes

@@ -24,8 +24,10 @@ export function Demo() {
   const fixture = q.get('fixture')
   const [boms, setBoms] = useState<{ id: number; name: string }[]>([])
   const [loaded, setLoaded] = useState<{ bomId: number; nodes?: Vehicle3DNode[]; error?: string } | null>(null)
-  const [mode, setMode] = useState<RenderMode>((q.get('mode') as RenderMode) ?? 'simple')
-  const [colorBy, setColorBy] = useState<ColorBy>((q.get('color') as ColorBy) ?? 'budget')
+  const requestedMode = (q.get('mode') as RenderMode) ?? 'simple'
+  // Le chargeur historique n'est exercé que par les fixtures techniques, jamais sur une vraie BOM.
+  const mode = fixture ? requestedMode : 'bound'
+  const [colorBy, setColorBy] = useState<ColorBy>((q.get('color') as ColorBy) ?? 'material')
   const [explode, setExplode] = useState(Number(q.get('explode') ?? 0))
   const [fake, setFake] = useState(q.get('fakeBudget') === '1')
   const [selected, setSelected] = useState<number | null>(q.get('select') ? Number(q.get('select')) : null)
@@ -39,7 +41,7 @@ export function Demo() {
     if (fixture) return
     fetch(`/api/v1/boms/${bomId}/tree`)
       .then(async r => { if (!r.ok) throw new Error(`${r.status} ${(await r.json()).error ?? ''}`); return r.json() })
-      .then((t: { nodes: Vehicle3DNode[] }) => setLoaded({ bomId, nodes: t.nodes.map(({ id, parent_id, name, part_id }) => ({ id, parent_id, name, part_id })) }))
+      .then((t: { nodes: Vehicle3DNode[] }) => setLoaded({ bomId, nodes: t.nodes.map(({ id, parent_id, name, part_id, quantity }) => ({ id, parent_id, name, part_id, quantity })) }))
       .catch((e: Error) => setLoaded({ bomId, error: `Arbre de la BOM ${bomId} indisponible : ${e.message}` }))
   }, [bomId, fixture])
 
@@ -66,11 +68,8 @@ export function Demo() {
             {boms.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
           </select></label>
         )}
-        <span className="demo-seg">Rendu
-          <button aria-pressed={mode === 'simple'} onClick={() => setMode('simple')}>Simple</button>
-          <button aria-pressed={mode === 'realistic'} onClick={() => setMode('realistic')}>Réaliste</button>
-        </span>
         <span className="demo-seg">Colorer
+          <button aria-pressed={colorBy === 'material'} onClick={() => setColorBy('material')}>Matériaux</button>
           <button aria-pressed={colorBy === 'budget'} onClick={() => setColorBy('budget')}>Budget</button>
           <button aria-pressed={colorBy === 'system'} onClick={() => setColorBy('system')}>Système</button>
         </span>
@@ -93,7 +92,7 @@ export function Demo() {
       <main className="demo-view">
         {nodes ? (
           <Vehicle3D bomId={fixture ? FIXTURES[fixture]?.bom_id ?? 0 : bomId} nodes={nodes} selectedNodeId={selected}
-            onSelectNode={setSelected} mode={mode} colorBy={colorBy} explode={explode} />
+            onSelectNode={setSelected} mode={mode} colorBy={colorBy} explode={explode} onResetView={() => setExplode(0)} />
         ) : null}
       </main>
     </div>

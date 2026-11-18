@@ -1,0 +1,24 @@
+
+> web@0.0.0 test:e2e
+> playwright test --project=chromium-mobile --workers=1 e2e/powertrain.spec.ts e2e/vehicle3d-bound.spec.ts --grep-invert laptop
+
+[WebServer] (node:2763779) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 11 tests using 1 worker
+
+(node:2763813) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   1 [chromium-mobile] › e2e/powertrain.spec.ts:46:1 › motorisations : coût API, BOM active, comparaison commune, actualisation et sortie sans écriture (1.0s)
+  ✓   2 [chromium-mobile] › e2e/powertrain.spec.ts:85:1 › prix manquant : coût incomplet et écart indisponible, scénario excluant la pièce toujours calculable (524ms)
+  ✓   3 [chromium-mobile] › e2e/powertrain.spec.ts:96:1 › panne API : référence conservée, reprise explicite et aucune simulation faussement annoncée (621ms)
+  ✓   4 [chromium-mobile] › e2e/powertrain.spec.ts:114:3 › scénario Thermique choisi dans Arbre : mécanique révélée lors de chaque ouverture 3D ou Arbre + 3D (20.6s)
+  ✓   5 [chromium-mobile] › e2e/powertrain.spec.ts:114:3 › scénario Électrique choisi dans Arbre : mécanique révélée lors de chaque ouverture 3D ou Arbre + 3D (21.4s)
+  ✓   6 [chromium-mobile] › e2e/powertrain.spec.ts:114:3 › scénario Hybride choisi dans Arbre : mécanique révélée lors de chaque ouverture 3D ou Arbre + 3D (18.1s)
+  ✓   7 [chromium-mobile] › e2e/vehicle3d-bound.spec.ts:49:1 › manifestes : occurrences, picking, quantités, remplacement physique et offre seule (11.5s)
+  ✓   8 [chromium-mobile] › e2e/vehicle3d-bound.spec.ts:152:1 › import : portée refusée, empreinte incorrecte explicite, aucune substitution générique (13.1s)
+  ✓   9 [chromium-mobile] › e2e/vehicle3d-bound.spec.ts:176:1 › BOM complète : diagnostics différés et limités à 100 lignes à la demande (6.2s)
+  ✓  10 [chromium-mobile] › e2e/vehicle3d-bound.spec.ts:196:1 › extérieur prioritaire : intérieur révélé et cliquable à travers la coque transparente (18.1s)
+  ✓  11 [chromium-mobile] › e2e/vehicle3d-bound.spec.ts:228:1 › pièce absente : localisation explicite du groupe, identité BOM conservée (12.6s)
+
+  11 passed (2.1m)

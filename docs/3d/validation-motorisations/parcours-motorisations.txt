@@ -1,0 +1,3 @@
+thermal: BOM, Go cost, 3D, both views, explode and visual-only filter PASS
+electric: BOM, Go cost, 3D, both views, explode and visual-only filter PASS
+hybrid: BOM, Go cost, 3D, both views, explode and visual-only filter PASS

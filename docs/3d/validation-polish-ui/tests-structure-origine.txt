@@ -1,0 +1,61 @@
+
+> web@0.0.0 test:e2e
+> playwright test --project=chromium-desktop --workers=1 e2e/powertrain.spec.ts
+
+[WebServer] (node:2788060) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 6 tests using 1 worker
+
+(node:2788160) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  1 [chromium-desktop] › e2e/powertrain.spec.ts:46:1 › motorisations : coût API, BOM active, comparaison commune, actualisation et sortie sans écriture (1.7s)
+  ✓  2 [chromium-desktop] › e2e/powertrain.spec.ts:85:1 › prix manquant : coût incomplet et écart indisponible, scénario excluant la pièce toujours calculable (1.0s)
+  ✓  3 [chromium-desktop] › e2e/powertrain.spec.ts:96:1 › panne API : référence conservée, reprise explicite et aucune simulation faussement annoncée (1.1s)
+  ✘  4 [chromium-desktop] › e2e/powertrain.spec.ts:113:1 › scénario choisi dans Arbre : mécanique révélée lors de chaque ouverture 3D ou Arbre + 3D (33.5s)
+(node:2790254) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  5 [chromium-desktop] › e2e/powertrain.spec.ts:130:3 › laptop 1366×768 : panneaux et listes accessibles jusqu’en bas (11.7s)
+  ✓  6 [chromium-desktop] › e2e/powertrain.spec.ts:130:3 › laptop 1280×720 : panneaux et listes accessibles jusqu’en bas (9.9s)
+
+
+  1) [chromium-desktop] › e2e/powertrain.spec.ts:113:1 › scénario choisi dans Arbre : mécanique révélée lors de chaque ouverture 3D ou Arbre + 3D 
+
+    Test timeout of 30000ms exceeded.
+
+    Error: locator.click: Test timeout of 30000ms exceeded.
+    Call log:
+      - waiting for getByRole('radio', { name: '3D', exact: true })
+        - locator resolved to <button class="" role="radio" type="button" aria-checked="false">3D</button>
+      - attempting click action
+        - waiting for element to be visible, enabled and stable
+        - element is visible, enabled and stable
+        - scrolling into view if needed
+
+
+      119 |     await panel.getByRole('radio', { name: mode, exact: true }).click()
+      120 |     for (const view of ['3D', 'Arbre + 3D']) {
+    > 121 |       await page.getByRole('radio', { name: view, exact: true }).click()
+          |                                                                  ^
+      122 |       await page.getByRole('button', { name: 'Réinitialiser', exact: true }).waitFor()
+      123 |       await expect(page.getByLabel('Carrosserie transparente', { exact: true })).toBeChecked()
+      124 |       await page.getByRole('radio', { name: 'Arbre', exact: true }).click()
+        at /home/joebuntu/Desktop/SIGL/NLPF/STP/web/e2e/powertrain.spec.ts:121:66
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/powertrain-scénario-choisi-fd35f-ue-ouverture-3D-ou-Arbre-3D-chromium-desktop/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/powertrain-scénario-choisi-fd35f-ue-ouverture-3D-ou-Arbre-3D-chromium-desktop/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/powertrain-scénario-choisi-fd35f-ue-ouverture-3D-ou-Arbre-3D-chromium-desktop/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/powertrain-scénario-choisi-fd35f-ue-ouverture-3D-ou-Arbre-3D-chromium-desktop/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  1 failed
+    [chromium-desktop] › e2e/powertrain.spec.ts:113:1 › scénario choisi dans Arbre : mécanique révélée lors de chaque ouverture 3D ou Arbre + 3D 
+  5 passed (1.0m)

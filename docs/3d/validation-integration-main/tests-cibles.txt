@@ -1,0 +1,2 @@
+ok  	bomstudio/internal/bom	0.167s
+ok  	bomstudio/internal/httpapi	0.135s

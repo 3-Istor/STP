@@ -1,0 +1,37 @@
+
+Running 1 test using 1 worker
+
+(node:3271423) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  1 [chromium-desktop] › web/e2e/powertrain.spec.ts:87:1 › comparaison actualisée : volume et source des prix suivent les réglages capturés dans un autre onglet (5.5s)
+
+
+  1) [chromium-desktop] › web/e2e/powertrain.spec.ts:87:1 › comparaison actualisée : volume et source des prix suivent les réglages capturés dans un autre onglet
+
+    Error: expect(locator).toHaveText(expected) failed
+
+    Locator:  getByRole('region', { name: 'Détail du nœud' }).locator('dt:has-text("Quantité commandée") + dd')
+    Expected: "100 pour 100 véhicules"
+    Received: "1 pour 1 véhicules"
+    Timeout:  5000ms
+
+    Call log:
+      - Expect "toHaveText" getByRole('region', { name: 'Détail du nœud' }).locator('dt:has-text("Quantité commandée") + dd') with timeout 5000ms
+      - waiting for getByRole('region', { name: 'Détail du nœud' }).locator('dt:has-text("Quantité commandée") + dd')
+        14 × locator resolved to <dd>1 pour 1 véhicules</dd>
+           - unexpected value "1 pour 1 véhicules"
+
+
+       96 |   f.changeSettings()
+       97 |   await panel.getByRole('button', { name: 'Actualiser la comparaison' }).click()
+    >  98 |   await expect(ordered).toHaveText('100 pour 100 véhicules')
+          |                         ^
+       99 |   await expect(page.getByRole('region', { name: 'Synthèse', exact: true })).toContainText('Snapshot de prix #73.')
+      100 |   expect(f.requests).toHaveLength(2)
+      101 |   expect(f.calls.every(c => c === 'POST /api/v1/boms/2/configuration-simulation')).toBe(true)
+        at /home/joebuntu/Desktop/SIGL/NLPF/STP/web/e2e/powertrain.spec.ts:98:25
+
+    Error Context: ../../../../../../tmp/stp-merge-regression-results/powertrain-comparaison-act-4d37b-pturés-dans-un-autre-onglet-chromium-desktop/error-context.md
+
+  1 failed
+    [chromium-desktop] › web/e2e/powertrain.spec.ts:87:1 › comparaison actualisée : volume et source des prix suivent les réglages capturés dans un autre onglet

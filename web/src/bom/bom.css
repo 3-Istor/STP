@@ -84,3 +84,15 @@ table.compact td:not(:first-child), table.compact th:not(:first-child) { text-al
 @container (max-width: 760px) {
   .view-arbre-3d .tree > * { min-width: 0; }
 }
+
+/* La comparaison garde la hauteur minimale du viewer ; les détails restent à la demande. */
+.powertrain-panel { flex: none; }
+.powertrain-panel .in { padding: 8px 12px; }
+.powertrain-panel h3 { margin: 0 0 6px; }
+.powertrain-panel p { margin: 6px 0; }
+.powertrain-table { overflow-x: auto; }
+.powertrain-table table { width: 100%; font-size: 12px; }
+.powertrain-table th, .powertrain-table td { padding: 5px 8px; white-space: nowrap; }
+.powertrain-table tr[aria-selected=true] { background: var(--surface-2); }
+.powertrain-removed-body { max-height: min(32dvh, 240px); overflow-y: auto; overscroll-behavior: contain; padding: 0 4px 8px; }
+.last-impact { margin: 8px 0; padding: 6px 10px; border: 1px solid var(--line); border-left: 3px solid var(--accent); border-radius: var(--radius); background: var(--surface); }

@@ -1,0 +1,141 @@
+{
+  "at": "2026-11-18T11:40:51.294Z",
+  "errors": [],
+  "mutations": [],
+  "legacyRequests": [],
+  "scenarios": [
+    {
+      "key": "thermal",
+      "cost": {
+        "amount": "393970.4967355966814761266755596435380",
+        "currency": "GBP"
+      },
+      "delta": {
+        "amount": "-67410.7653829554492761125839825536280",
+        "currency": "GBP"
+      },
+      "delta_percent": "-14.61",
+      "active_nodes": 14387,
+      "active_parts": 9621,
+      "excluded_nodes": 517,
+      "mass_kg": "945.800715",
+      "co2_kg": "12897.558015",
+      "lead_time_days": 61,
+      "visible_propulsion": [
+        32415
+      ],
+      "absent_propulsion": [
+        34539,
+        34607,
+        34675,
+        34758
+      ],
+      "bound_items": 59,
+      "source_quotes_and_common_quantities_identical": true,
+      "both_views": true,
+      "explode": true,
+      "visual_filter_preserves_cost": true
+    },
+    {
+      "key": "electric",
+      "cost": {
+        "amount": "369705.7356604838356815112468933765116",
+        "currency": "GBP"
+      },
+      "delta": {
+        "amount": "-91675.5264580682950707280126488206544",
+        "currency": "GBP"
+      },
+      "delta_percent": "-19.87",
+      "active_nodes": 12605,
+      "active_parts": 8395,
+      "excluded_nodes": 2299,
+      "mass_kg": "954.278125",
+      "co2_kg": "16187.635085",
+      "lead_time_days": 61,
+      "visible_propulsion": [
+        34539,
+        34607,
+        34675,
+        34758
+      ],
+      "absent_propulsion": [
+        32415
+      ],
+      "bound_items": 55,
+      "source_quotes_and_common_quantities_identical": true,
+      "both_views": true,
+      "explode": true,
+      "visual_filter_preserves_cost": true
+    },
+    {
+      "key": "hybrid",
+      "cost": {
+        "amount": "461381.2621185521307522392595421971660",
+        "currency": "GBP"
+      },
+      "delta": {
+        "amount": "0.0000000000000000000000000000000",
+        "currency": "GBP"
+      },
+      "delta_percent": "0.00",
+      "active_nodes": 14904,
+      "active_parts": 10003,
+      "excluded_nodes": 0,
+      "mass_kg": "1169.913515",
+      "co2_kg": "18068.795815",
+      "lead_time_days": 61,
+      "visible_propulsion": [
+        32415,
+        34539,
+        34607,
+        34675,
+        34758
+      ],
+      "absent_propulsion": [],
+      "bound_items": 69,
+      "source_quotes_and_common_quantities_identical": true,
+      "both_views": true,
+      "explode": true,
+      "visual_filter_preserves_cost": true
+    }
+  ],
+  "referenceHashBefore": "b797bad590e946187c85bb92b67cb7d0a958338341198f58082316499096fc4c",
+  "priceAsOf": "2026-01-01T00:00:00Z",
+  "explanation": {
+    "currency": "GBP",
+    "price_snapshot_id": null,
+    "rates": [
+      {
+        "from": "EUR",
+        "to": "GBP",
+        "rate": "0.831836227930362",
+        "source": "pricesim.v1/demo-v4",
+        "quoted_at": "2026-01-01T00:00:00Z"
+      },
+      {
+        "from": "JPY",
+        "to": "GBP",
+        "rate": "0.00537325942172901",
+        "source": "pricesim.v1/demo-v4",
+        "quoted_at": "2026-01-01T00:00:00Z"
+      },
+      {
+        "from": "USD",
+        "to": "GBP",
+        "rate": "0.7900622882756781",
+        "source": "pricesim.v1/demo-v4",
+        "quoted_at": "2026-01-01T00:00:00Z"
+      }
+    ],
+    "cost_method": {
+      "basis": "purchase",
+      "fx": "latest",
+      "program_volume": null
+    },
+    "cost_as_of": null,
+    "budget_rates": []
+  },
+  "referenceHashAfter": "b797bad590e946187c85bb92b67cb7d0a958338341198f58082316499096fc4c",
+  "referenceUnchanged": true
+}

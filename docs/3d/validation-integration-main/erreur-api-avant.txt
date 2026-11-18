@@ -1,0 +1,6 @@
+--- FAIL: TestConfigurationAPI (0.00s)
+    --- FAIL: TestConfigurationAPI/invalid_definition (0.00s)
+        configurations_test.go:77: missing JSON error or stable error code
+FAIL
+FAIL	bomstudio/internal/httpapi	0.006s
+FAIL

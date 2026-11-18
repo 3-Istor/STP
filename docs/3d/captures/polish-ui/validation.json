@@ -1,0 +1,104 @@
+{
+  "at": "2026-11-18T12:27:45.650Z",
+  "errors": [],
+  "mutations": [],
+  "legacy": [],
+  "laptops": [
+    {
+      "viewport": {
+        "width": 1366,
+        "height": 768
+      },
+      "modes": [
+        {
+          "key": "hybrid",
+          "cost": {
+            "amount": "461381.2621185521307522392595421971660",
+            "currency": "GBP"
+          },
+          "calculated": true
+        },
+        {
+          "key": "thermal",
+          "cost": {
+            "amount": "393970.4967355966814761266755596435380",
+            "currency": "GBP"
+          },
+          "calculated": true
+        },
+        {
+          "key": "electric",
+          "cost": {
+            "amount": "369705.7356604838356815112468933765116",
+            "currency": "GBP"
+          },
+          "calculated": true
+        }
+      ],
+      "advanced_collapsed": true,
+      "sidebar_scroll": true,
+      "removed_scroll": true,
+      "sources_scroll": true
+    },
+    {
+      "viewport": {
+        "width": 1280,
+        "height": 720
+      },
+      "modes": [
+        {
+          "key": "hybrid",
+          "cost": {
+            "amount": "461381.2621185521307522392595421971660",
+            "currency": "GBP"
+          },
+          "calculated": true
+        },
+        {
+          "key": "thermal",
+          "cost": {
+            "amount": "393970.4967355966814761266755596435380",
+            "currency": "GBP"
+          },
+          "calculated": true
+        },
+        {
+          "key": "electric",
+          "cost": {
+            "amount": "369705.7356604838356815112468933765116",
+            "currency": "GBP"
+          },
+          "calculated": true
+        }
+      ],
+      "advanced_collapsed": true,
+      "sidebar_scroll": true,
+      "removed_scroll": true,
+      "sources_scroll": true
+    }
+  ],
+  "before": {
+    "1": "19b171180f258985a3dac510a06cc5f1d16cfa613a4097550c98689ab0ab8336",
+    "2": "b797bad590e946187c85bb92b67cb7d0a958338341198f58082316499096fc4c"
+  },
+  "costs": {
+    "hybrid": {
+      "amount": "461381.2621185521307522392595421971660",
+      "currency": "GBP"
+    },
+    "thermal": {
+      "amount": "393970.4967355966814761266755596435380",
+      "currency": "GBP"
+    },
+    "electric": {
+      "amount": "369705.7356604838356815112468933765116",
+      "currency": "GBP"
+    }
+  },
+  "selection_and_explode": true,
+  "fiat_views_and_scroll": true,
+  "after": {
+    "1": "19b171180f258985a3dac510a06cc5f1d16cfa613a4097550c98689ab0ab8336",
+    "2": "b797bad590e946187c85bb92b67cb7d0a958338341198f58082316499096fc4c"
+  }
+}

@@ -1,0 +1,52 @@
+[
+  {
+    "kind": "draft",
+    "id": 1,
+    "root_id": 1,
+    "root_name": "Fiat Multipla 1.6 16V",
+    "anchor_ids": [
+      12502,
+      26314
+    ],
+    "variants": [
+      {
+        "node_id": 15896,
+        "parent_id": 15895,
+        "part_ids": [
+          195,
+          196
+        ]
+      }
+    ]
+  },
+  {
+    "kind": "draft",
+    "id": 2,
+    "root_id": 29978,
+    "root_name": "Aston Martin Valhalla",
+    "anchor_ids": [
+      32412,
+      35460
+    ]
+  },
+  {
+    "kind": "draft",
+    "id": 3,
+    "root_id": 44881,
+    "root_name": "Fiat Multipla 1.6 16V",
+    "anchor_ids": [
+      57382,
+      71194
+    ],
+    "variants": [
+      {
+        "node_id": 60776,
+        "parent_id": 60775,
+        "part_ids": [
+          195,
+          196
+        ]
+      }
+    ]
+  }
+]

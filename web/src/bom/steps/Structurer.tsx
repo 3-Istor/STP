@@ -1,9 +1,10 @@
 import { Component, useMemo, useState, type ReactNode } from 'react'
 import { api } from '../../api.ts'
-import { Vehicle3D, type ColorBy, type RenderMode, type Vehicle3DNode } from '../../features/vehicle3d/index.tsx'
+import { isStaleChunkError } from '../../features/vehicle3d/chunkError.ts'
+import { Vehicle3D, type ColorBy, type Vehicle3DNode } from '../../features/vehicle3d/index.tsx'
 import { BomTree } from '../BomTree.tsx'
 import type { BomData } from '../useBomData.ts'
-import { vehicle3dKey, vehicle3dNodes } from '../vehicle3dNodes.ts'
+import { boundVehicle3dKey, vehicle3dNodes } from '../vehicle3dNodes.ts'
 
 export type TreeView = 'arbre' | 'arbre-3d' | '3d'
 const treeViews: { id: TreeView; label: string }[] = [
@@ -51,12 +52,13 @@ export function Structurer(p: Props) {
       onChangeOffer={(nodeID, offerID) => void data.run(() => api.patchNode(data.target.id, nodeID, { offer_id: offerID }))}
       moving={p.moving}
       onPickParent={p.onPickParent}
+      onCancelMove={p.onCancelMove}
       onAddUnder={data.readOnly ? undefined : p.onAddUnder}
       onStartMove={p.onStartMove}
       onDelete={p.onDelete}
     />
   )
-  const view3d = p.view !== 'arbre' ? <Vehicle3DPane data={data} selectedID={p.selectedID} onSelect={p.onSelect} /> : null
+  const view3d = p.view !== 'arbre' ? <Vehicle3DPane key={'vehicle-' + data.target.kind + data.target.id} data={data} selectedID={p.selectedID} onSelect={p.onSelect} /> : null
   return (
     <section className="block explorer" aria-label="Explorateur de la BOM">
       <div className="tbar">
@@ -82,7 +84,7 @@ export function Structurer(p: Props) {
             + Ajouter une pièce
           </button>
         )}
-        {data.readOnly && <span className="muted small">Snapshot publié : lecture seule</span>}
+        {data.readOnly && <span className="muted small">{data.simulation ? 'Scénario de conception : lecture seule' : 'Snapshot publié : lecture seule'}</span>}
       </div>
       {p.moving !== null && (
         <p role="status" className="notice moving-notice">
@@ -98,18 +100,15 @@ export function Structurer(p: Props) {
       </div>
       <div className="tfoot muted small">
         {data.readOnly
-          ? 'Pour modifier : nouveau brouillon depuis ce snapshot (étape Publier ou Toutes les BOM).'
+          ? data.simulation ? 'Quittez la simulation pour modifier la BOM de référence.' : 'Pour modifier : nouveau brouillon depuis ce snapshot (étape Publier ou Toutes les BOM).'
           : 'Sélectionnez une ligne : + ajoute dessous, ⇅ puis clic sur le nouveau parent déplace, × supprime (avec confirmation) · totaux recalculés par le serveur'}
       </div>
     </section>
   )
 }
 
-const renderModes: { id: RenderMode; label: string }[] = [
-  { id: 'simple', label: 'Simple' },
-  { id: 'realistic', label: 'Réaliste' },
-]
 const colorModes: { id: ColorBy; label: string }[] = [
+  { id: 'material', label: 'Matériaux' },
   { id: 'budget', label: 'Budget' },
   { id: 'system', label: 'Système' },
 ]
@@ -117,26 +116,17 @@ const colorModes: { id: ColorBy; label: string }[] = [
 // Vehicle3DPane : contrôles de la maquette I4-2 (Rendu, Colorer, Éclatement) au-dessus de la vue 3D. Focus
 // (I4-3) : double-clic sur un sous-ensemble, « Sortir du focus » ou Échap.
 function Vehicle3DPane({ data, selectedID, onSelect }: { data: BomData; selectedID: number | null; onSelect: (id: number) => void }) {
-  const [mode, setMode] = useState<RenderMode>('simple')
-  const [colorBy, setColorBy] = useState<ColorBy>('budget')
+  const [colorBy, setColorBy] = useState<ColorBy>('material')
   const [explode, setExplode] = useState(0)
   const budgets = data.budgets.unavailable === null ? data.budgets.byNode : null
-  const next = useMemo(() => vehicle3dNodes(data.nodes, budgets), [data.nodes, budgets])
-  const key = useMemo(() => vehicle3dKey(next), [next])
+  const next = useMemo(() => vehicle3dNodes(data.nodes, budgets, data.catalog.byPart), [data.nodes, budgets, data.catalog.byPart])
+  const key = useMemo(() => boundVehicle3dKey(next), [next])
   // Même scène tant que la structure et les statuts ne changent pas (les totaux, eux, changent à chaque relecture).
   const [stable, setStable] = useState<{ key: string; nodes: Vehicle3DNode[] }>({ key, nodes: next })
   if (stable.key !== key) setStable({ key, nodes: next })
   return (
     <div className="v3d-pane" role="region" aria-label="Vue 3D">
       <div className="v3d-controls">
-        <span className="muted small">Rendu</span>
-        <div className="seg" role="radiogroup" aria-label="Rendu">
-          {renderModes.map((m) => (
-            <button key={m.id} type="button" role="radio" aria-checked={mode === m.id} className={mode === m.id ? 'on' : ''} onClick={() => setMode(m.id)}>
-              {m.label}
-            </button>
-          ))}
-        </div>
         <span className="muted small">Colorer</span>
         <div className="seg" role="radiogroup" aria-label="Colorer">
           {colorModes.map((m) => (
@@ -153,7 +143,7 @@ function Vehicle3DPane({ data, selectedID, onSelect }: { data: BomData; selected
       </div>
       <div className="v3d-stage">
         <Vehicle3DBoundary>
-          <Vehicle3D bomId={data.target.id} nodes={stable.nodes} selectedNodeId={selectedID} onSelectNode={onSelect} mode={mode} colorBy={colorBy} explode={explode} />
+          <Vehicle3D bomId={data.target.id} sceneScope={data.target} nodes={stable.nodes} selectedNodeId={selectedID} onSelectNode={onSelect} mode="bound" simulationMode={data.simulation?.pending ? undefined : data.simulation?.mode} colorBy={colorBy} explode={explode} onResetView={() => setExplode(0)} />
         </Vehicle3DBoundary>
       </div>
     </div>
@@ -169,6 +159,14 @@ class Vehicle3DBoundary extends Component<{ children: ReactNode }, { error: stri
   }
   render() {
     if (this.state.error === null) return this.props.children
+    if (isStaleChunkError(this.state.error)) {
+      return (
+        <div className="v3d-failed" role="alert">
+          <p><strong>Une nouvelle version de l’application est disponible.</strong> Rechargez la page pour afficher la vue 3D.</p>
+          <button type="button" className="v3d-button" onClick={() => window.location.reload()}>Recharger la page</button>
+        </div>
+      )
+    }
     return (
       <div className="v3d-failed" role="alert">
         <p>

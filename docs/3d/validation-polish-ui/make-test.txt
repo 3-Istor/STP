@@ -1,0 +1,28 @@
+go test ./...
+?   	bomstudio/cmd/priceapi	[no test files]
+ok  	bomstudio/cmd/risk	(cached)
+ok  	bomstudio/cmd/server	0.013s
+ok  	bomstudio/internal/archtest	(cached)
+ok  	bomstudio/internal/bom	(cached)
+?   	bomstudio/internal/bom/bomdb	[no test files]
+ok  	bomstudio/internal/bom/bomstore	0.008s
+ok  	bomstudio/internal/catalog	(cached)
+?   	bomstudio/internal/catalog/catalogdb	[no test files]
+ok  	bomstudio/internal/catalog/catalogstore	0.008s
+ok  	bomstudio/internal/httpapi	0.178s
+ok  	bomstudio/internal/money	(cached)
+ok  	bomstudio/internal/priceapi	(cached)
+ok  	bomstudio/internal/pricesim	(cached)
+ok  	bomstudio/internal/pricing	0.074s
+ok  	bomstudio/internal/pricing/priceclient	(cached)
+?   	bomstudio/internal/pricing/pricingdb	[no test files]
+ok  	bomstudio/internal/pricing/pricingstore	0.009s
+ok  	bomstudio/internal/sampledata	(cached)
+ok  	bomstudio/internal/sampledata/seedstore	0.012s
+ok  	bomstudio/internal/snapshot	0.078s
+?   	bomstudio/internal/snapshot/snapshotdb	[no test files]
+?   	bomstudio/internal/snapshot/snapshotstore	[no test files]
+ok  	bomstudio/internal/supplier	(cached)
+?   	bomstudio/internal/supplier/supplierdb	[no test files]
+ok  	bomstudio/internal/supplier/supplierstore	0.007s
+ok  	bomstudio/migrations	0.006s

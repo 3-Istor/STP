@@ -53,4 +53,17 @@ func (h pricingSnapshotsHandler) register(mux *http.ServeMux) {
 		}
 		writeJSON(w, http.StatusOK, result)
 	})
+	// Supprime un lot non référencé (ADR 0051) ; 409 price_snapshot_in_use nomme les usages.
+	mux.HandleFunc("DELETE /api/v1/price-snapshots/{id}", func(w http.ResponseWriter, r *http.Request) {
+		id, err := pathID(r, "id")
+		if err != nil {
+			badRequest(w, err)
+			return
+		}
+		if err := h.service.Delete(r.Context(), id); err != nil {
+			pricingError(w, r, err)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	})
 }

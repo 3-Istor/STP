@@ -1,0 +1,26 @@
+[
+  {
+    "file": "MultiplaExteriorPrepared.glb",
+    "sha256": "4d96186b0f5d3dae2b8db04cc1a04593fe2c0b62e433e4c17b2053a29aeb282b",
+    "bytes": 41811960,
+    "occurrence_groups": 9
+  },
+  {
+    "file": "MultiplaInteriorPrepared.glb",
+    "sha256": "d4e894baf357f0ed2d397ff40b9c0e580ce6b0d55aed6d2b190023aa447f19b1",
+    "bytes": 515824,
+    "occurrence_groups": 148
+  },
+  {
+    "file": "ValhallaExteriorPrepared.glb",
+    "sha256": "f6dfa6260e525259db58559324967107301cd1200ca30aa692e7a11718538745",
+    "bytes": 31489336,
+    "occurrence_groups": 15
+  },
+  {
+    "file": "ValhallaInteriorPrepared.glb",
+    "sha256": "32f1d9c3d46562438cd6ba534478cc2db5f0b35704be077894624b86b973e9dc",
+    "bytes": 607260,
+    "occurrence_groups": 54
+  }
+]

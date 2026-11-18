@@ -6,11 +6,12 @@ import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js'
 import { budgetColor, systemColor, type StatusPalette } from './colors.ts'
 import { axialOffsets, explodeVector, type V3 } from './explode.ts'
 import { explodeOptionsFor, focusGroup, type SlotTable, type VehicleIndex, type VehicleObject } from './mapping.ts'
-import { disposeTree, itemBox, styleMesh, type Built, type Item } from './scene.ts'
+import { disposeBuilt, disposeTree, itemBox, styleMesh, type Built, type Item } from './scene.ts'
 import { buildSimple } from './simpleModel.ts'
-import type { ColorBy, RenderMode } from './types.ts'
+import { motionProgress } from './motion.ts'
+import type { ColorBy, PropulsionMode, RenderMode } from './types.ts'
 
-export type LoadResult = { mode: RenderMode; fallback: string | null; missing: VehicleObject[]; attribution: string | null }
+export type LoadResult = { mode: RenderMode; fallback: string | null; missing: VehicleObject[]; attribution: string | null; index?: VehicleIndex; manifestInfo?: Built['manifestInfo'] }
 
 export type ViewerCallbacks = {
   onPick: (obj: VehicleObject) => void
@@ -44,15 +45,23 @@ export class Viewer {
   private focusKey: string | null = null
   private focusKeys = new Set<string>()
   private selection = new Set<string>()
+  private wholeVehicleSelected = false
+  private shellTransparent = false
   private selectionFrames: THREE.Box3Helper[] = []
   private colorBy: ColorBy = 'system'
   private palette: StatusPalette
   private frame = 0
   private tween: { from: [THREE.Vector3, THREE.Vector3]; to: [THREE.Vector3, THREE.Vector3]; t0: number; ms: number } | null = null
+  private partsTween: { from: THREE.Vector3[]; to: THREE.Vector3[]; t0: number; ms: number } | null = null
+  private readonly motionPreference: MediaQueryList
   private loadToken = 0
   private pointerDown: { x: number; y: number; t: number } | null = null
   private hoverFrame = 0
   private disposed = false
+  private loading = false
+  private propulsionMode: PropulsionMode = 'all'
+  private isolatedSystem: number | null = null
+  private isolatedKeys: Set<string> | null = null
   /** Nombre d'images rendues (diagnostic : vérifie l'absence de boucle au repos). */
   renders = 0
 
@@ -64,6 +73,7 @@ export class Viewer {
     this.cb = cb
     this.table = table
     this.palette = palette
+    this.motionPreference = window.matchMedia('(prefers-reduced-motion: reduce)')
     this.renderer = new THREE.WebGLRenderer({ antialias: true })
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
     this.renderer.shadowMap.enabled = true
@@ -94,8 +104,11 @@ export class Viewer {
 
     this.controls = new OrbitControls(this.camera, this.renderer.domElement)
     this.controls.enableDamping = false // pas d'inertie : sinon il faudrait une boucle de rendu
-    this.controls.maxPolarAngle = Math.PI * 0.495
+    this.controls.minDistance = 0.35
+    this.controls.maxDistance = 80
+    this.controls.maxPolarAngle = Math.PI * 0.98
     this.controls.addEventListener('change', this.requestRender)
+    this.controls.addEventListener('start', this.onNavigationStart)
 
     const el = this.renderer.domElement
     el.addEventListener('pointerdown', this.onPointerDown)
@@ -111,13 +124,28 @@ export class Viewer {
 
   // ——— Chargement ———
 
-  async load(mode: RenderMode, index: VehicleIndex, realistic: RealisticLoader): Promise<LoadResult> {
+  async load(mode: RenderMode, index: VehicleIndex, realistic: RealisticLoader, bound?: () => Promise<Built>): Promise<LoadResult> {
     const token = ++this.loadToken
+    this.loading = true
+    this.partsTween = null
+    this.tween = null
+    if (this.built) this.built.root.visible = false
+    for (const frame of this.selectionFrames) frame.visible = false
+    this.requestRender()
     let built: Built
     let fallback: string | null = null
     let attribution: string | null = null
     let effective: RenderMode = mode
-    if (mode === 'realistic') {
+    if (mode === 'bound') {
+      if (!bound) throw new Error('Aucun manifeste lié à cette scène.')
+      try { built = await bound() }
+      catch (error) {
+        if (token === this.loadToken && this.built) {
+          this.scene.remove(this.built.root); disposeBuilt(this.built); this.built = null
+        }
+        throw error
+      }
+    } else if (mode === 'realistic') {
       try {
         const r = await realistic(index)
         built = r
@@ -131,17 +159,20 @@ export class Viewer {
       built = buildSimple(index, this.table)
     }
     if (this.disposed || token !== this.loadToken) {
-      disposeTree(built.root)
+      disposeBuilt(built)
       throw new Error('chargement remplacé')
     }
-    this.replace(built, index)
-    return { mode: effective, fallback, missing: built.missing, attribution }
+    const activeIndex = built.index ?? index
+    this.replace(built, activeIndex)
+    this.loading = false
+    return { mode: effective, fallback, missing: built.missing, attribution, index: activeIndex, manifestInfo: built.manifestInfo }
   }
 
   private replace(built: Built, index: VehicleIndex) {
+    this.partsTween = null
     if (this.built) {
       this.scene.remove(this.built.root)
-      disposeTree(this.built.root)
+      disposeBuilt(this.built)
     }
     this.built = built
     this.index = index
@@ -166,6 +197,7 @@ export class Viewer {
       if (!it.obj?.estimated) all.union(b)
       if (it.obj) per.set(it.obj.key, (per.get(it.obj.key) ?? new THREE.Box3()).union(b))
     }
+    if (all.isEmpty()) for (const box of per.values()) all.union(box)
     const c = all.getCenter(new THREE.Vector3())
     this.vehicleCenter = [c.x, c.y, c.z]
     this.vehicleLength = Math.max(all.getSize(new THREE.Vector3()).x, 1)
@@ -193,29 +225,65 @@ export class Viewer {
   }
 
   setExplode(k: number) {
-    this.explode = Math.min(Math.max(k, 0), 1)
-    if (!this.focusKey) { this.applyPositions(); this.updateSelectionFrames(); this.requestRender() }
+    this.explode = Number.isFinite(k) ? Math.min(Math.max(k, 0), 1) : 0
+    if (!this.focusKey) this.moveParts(this.index?.representation === 'manifest' ? () => this.recenter(true) : undefined)
+    this.applyStyles()
   }
 
-  setSelection(keys: string[], frame: boolean) {
+  setSelection(keys: string[], frame: boolean, wholeVehicle = false) {
     this.selection = new Set(keys)
+    this.wholeVehicleSelected = wholeVehicle
     this.applyStyles()
-    if (frame && keys.length > 0 && !this.focusKey) this.frameItems(this.itemsOf(new Set(keys)), null)
+    if (frame && keys.length > 0 && !this.focusKey) {
+      if (wholeVehicle) this.recenter()
+      else this.frameDestination(this.itemsOf(new Set(keys)), null)
+    }
   }
+
+  frameSelection() {
+    if (this.selection.size > 0) this.frameDestination(this.itemsOf(this.selection), null)
+  }
+
+  focusSelection() {
+    if (this.selection.size === 1) this.setFocus([...this.selection][0])
+    else if (this.selection.size > 1 && this.index?.representation === 'manifest') this.setFocus([...this.selection][0], [...this.selection])
+  }
+
+  setShellTransparency(transparent: boolean) {
+    this.shellTransparent = transparent
+    this.applyStyles()
+  }
+
+  setPropulsion(mode: PropulsionMode) { this.propulsionMode = mode; this.applyStyles() }
+  setIsolatedSystem(id: number | null) { this.isolatedSystem = id; this.applyStyles() }
+  setIsolatedKeys(keys: string[] | null) { this.isolatedKeys = keys?.length ? new Set(keys) : null; this.applyStyles() }
 
   /** Focus : le sous-ensemble (et ses associés) s'éclatent dans l'axe, le reste passe en transparence. */
-  setFocus(key: string | null) {
+  setFocus(key: string | null, groupKeys?: string[]) {
     if (!this.index || (key !== null && !this.index.byKey.has(key))) key = null
+    if (key !== null && this.boxOf(this.itemsOf(new Set([key]))).isEmpty()) key = null
     this.focusKey = key
-    this.focusKeys = new Set(key ? focusGroup(key, this.index!, this.table) : [])
-    this.applyPositions()
+    this.focusKeys = new Set(key ? groupKeys ?? focusGroup(key, this.index!, this.table) : [])
+    this.moveParts(() => {
+      if (key) this.frameFocus()
+      else this.recenter(true)
+    })
     this.applyStyles()
     this.cb.onFocusChange(key ? this.index!.byKey.get(key)! : null)
-    if (key) this.frameFocus()
-    else this.recenter(true)
   }
 
   get focused() { return this.focusKey }
+
+  /** Mesures du dernier rendu, accessibles via le diagnostic de développement existant. */
+  get diagnostics() {
+    return {
+      renders: this.renders, drawCalls: this.renderer.info.render.calls,
+      triangles: this.renderer.info.render.triangles,
+      geometries: this.renderer.info.memory.geometries, textures: this.renderer.info.memory.textures,
+      items: this.built?.items.length ?? 0,
+      animating: this.partsTween !== null || this.tween !== null,
+    }
+  }
 
   /** Position écran (px, relative au canvas) du centre actuel d'un objet : sert aux tests de clic réels. */
   screenPositionOf(key: string): { x: number; y: number } | null {
@@ -227,16 +295,40 @@ export class Viewer {
   }
 
   recenter(animate = true) {
-    const items = this.built?.items.filter(i => !i.obj?.estimated) ?? []
-    this.frameItems(items, DEFAULT_VIEW, animate)
+    const known = this.built?.items.filter(i => !i.obj?.estimated) ?? []
+    const items = known.length > 0 ? known : this.built?.items ?? []
+    this.frameDestination(items, DEFAULT_VIEW, animate)
   }
 
   // ——— Positions ———
 
+  /** Part du dernier état affiché : inverser le curseur pendant une transition ne crée aucun saut. */
+  private moveParts(frameTarget?: () => void) {
+    if (!this.built) return
+    const from = this.built.items.map(it => it.node.position.clone())
+    this.partsTween = null
+    this.applyPositions()
+    const to = this.built.items.map(it => it.node.position.clone())
+    frameTarget?.() // cadrer la destination, avant de restaurer la pose de départ
+    if (!this.motionPreference.matches && from.some((p, i) => !p.equals(to[i]))) {
+      this.partsTween = { from, to, t0: performance.now(), ms: 450 }
+      this.built.items.forEach((it, i) => it.node.position.copy(from[i]))
+      this.built.root.updateMatrixWorld(true)
+    }
+    this.updateSelectionFrames()
+    this.requestRender()
+  }
+
   private applyPositions() {
     if (!this.built) return
     const offsets = new Map<Item, V3>()
-    if (this.focusKey) {
+    if (this.index?.representation === 'manifest') {
+      for (const it of this.built.items) {
+        const k = this.focusKey ? (it.obj && this.focusKeys.has(it.obj.key) ? 1 : 0) : this.explode
+        const v = it.explodeVector ?? [0, 0, 0]
+        offsets.set(it, [v[0] * k, v[1] * k, v[2] * k])
+      }
+    } else if (this.focusKey) {
       const parts = this.built.items.filter(i => i.obj && this.focusKeys.has(i.obj.key))
       const center = this.objectCenters.get(this.focusKey) ?? this.vehicleCenter
       const ax = axialOffsets(parts.map((p, i) => ({ id: String(i), axial: p.axial })), center, this.vehicleCenter, this.vehicleLength)
@@ -269,16 +361,26 @@ export class Viewer {
 
   // ——— Styles ———
 
-  private colorOf(obj: VehicleObject): string {
+  private colorOf(obj: VehicleObject): string | null {
+    if (this.colorBy === 'material') return null
     return this.colorBy === 'budget' ? budgetColor(obj.budgetStatus, this.palette) : systemColor(obj.systemIndex)
   }
 
   private applyStyles() {
     if (!this.built) return
+    const selectedInterior = !this.wholeVehicleSelected && this.built.items.some(it => it.displayRole === 'interior' && it.obj && this.selection.has(it.obj.key))
+    const revealInterior = !this.built.items.some(it => it.displayRole === 'exterior') || this.explode > 0 || this.shellTransparent || this.focusKey !== null || this.propulsionMode !== 'all' || selectedInterior || this.isolatedKeys !== null || this.isolatedSystem !== null
     for (const it of this.built.items) {
-      const ghost = this.focusKey !== null && !(it.obj && this.focusKeys.has(it.obj.key))
+      const system = it.obj?.componentSystem
+      const propulsionGhost = (this.propulsionMode === 'thermal' && system === 'electric') || (this.propulsionMode === 'electric' && system === 'thermal')
+      const ghost = propulsionGhost || (this.focusKey !== null && !(it.obj && this.focusKeys.has(it.obj.key)))
+      if (this.index?.representation === 'manifest') it.node.visible = (this.isolatedSystem === null || it.obj?.systemId === this.isolatedSystem) && (this.isolatedKeys === null || (it.obj !== null && this.isolatedKeys.has(it.obj.key))) && (it.displayRole !== 'interior' || revealInterior)
       const style = { tint: it.obj ? this.colorOf(it.obj) : null, ghost, estimated: !!it.obj?.estimated }
-      for (const m of it.meshes) styleMesh(m, style)
+      for (const m of it.meshes) {
+        if (m.userData.stp_native_interior) m.visible = !revealInterior
+        const shell = system === 'body' || (!Array.isArray(m.material) && /^(body|Paint)/.test(m.material.name))
+        styleMesh(m, { ...style, ghost: ghost || ((this.shellTransparent || selectedInterior) && shell) })
+      }
       for (const l of it.lines) (l.material as THREE.LineBasicMaterial).opacity = ghost ? 0.1 : 0.9
     }
     this.updateSelectionFrames()
@@ -289,9 +391,10 @@ export class Viewer {
   private updateSelectionFrames() {
     for (const h of this.selectionFrames) { this.scene.remove(h); h.dispose() }
     this.selectionFrames = []
-    if (this.focusKey) return
-    for (const key of this.selection) {
-      const box = this.boxOf(this.itemsOf(new Set([key])))
+    if (this.focusKey || this.loading) return
+    const groups = this.selection.size > 12 ? [this.selection] : [...this.selection].map(key => new Set([key]))
+    for (const keys of groups) {
+      const box = this.boxOf(this.itemsOf(keys))
       if (box.isEmpty()) continue
       box.expandByScalar(0.03)
       const h = new THREE.Box3Helper(box, SELECTION_COLOR)
@@ -319,6 +422,17 @@ export class Viewer {
     return radius / Math.sin(Math.min(v, h) / 2)
   }
 
+  /** Une sélection ou un reset pendant l'animation cadre la pose d'arrivée, pas la pose transitoire. */
+  private frameDestination(items: Item[], dir: THREE.Vector3 | null, animate = true) {
+    if (!this.partsTween || !this.built) { this.frameItems(items, dir, animate); return }
+    const built = this.built, positions = built.items.map(it => it.node.position.clone())
+    built.items.forEach((it, i) => it.node.position.copy(this.partsTween!.to[i]))
+    built.root.updateMatrixWorld(true)
+    this.frameItems(items, dir, animate)
+    built.items.forEach((it, i) => it.node.position.copy(positions[i]))
+    built.root.updateMatrixWorld(true)
+  }
+
   /** Cadre des items ; dir = direction caméra → cible (null : direction actuelle). */
   private frameItems(items: Item[], dir: THREE.Vector3 | null, animate = true) {
     const box = this.boxOf(items)
@@ -326,7 +440,7 @@ export class Viewer {
     const sphere = box.getBoundingSphere(new THREE.Sphere())
     const d = dir ?? this.camera.position.clone().sub(this.controls.target).normalize()
     // cadrage serré sur tout le véhicule, avec du contexte autour d'un petit sous-ensemble sélectionné
-    const dist = Math.max(this.fitDistance(sphere.radius) * (dir ? 1.05 : 1.6), dir ? 1.2 : 1.5 * this.vehicleLength)
+    const dist = Math.max(this.fitDistance(sphere.radius) * (dir ? 1.08 : 1.4), dir ? 1.2 : 0.45 * this.vehicleLength)
     this.moveCamera(sphere.center.clone().add(d.clone().multiplyScalar(dist)), sphere.center, animate)
   }
 
@@ -348,7 +462,7 @@ export class Viewer {
   }
 
   private moveCamera(pos: THREE.Vector3, target: THREE.Vector3, animate: boolean) {
-    if (!animate) {
+    if (!animate || this.motionPreference.matches) {
       this.camera.position.copy(pos)
       this.controls.target.copy(target)
       this.controls.update()
@@ -369,9 +483,21 @@ export class Viewer {
 
   private readonly renderFrame = (now: number) => {
     this.frame = 0
+    if (this.partsTween && this.built) {
+      const p = this.partsTween
+      const e = motionProgress(now, p.t0, p.ms)
+      this.built.items.forEach((it, i) => {
+        if (e === 1) it.node.position.copy(p.to[i])
+        else it.node.position.lerpVectors(p.from[i], p.to[i], e)
+      })
+      this.built.root.updateMatrixWorld(true)
+      this.updateSelectionFrames()
+      if (e < 1) this.requestRender()
+      else this.partsTween = null
+    }
     if (this.tween) {
       const t = Math.min((now - this.tween.t0) / this.tween.ms, 1)
-      const e = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2
+      const e = motionProgress(now, this.tween.t0, this.tween.ms)
       this.camera.position.lerpVectors(this.tween.from[0], this.tween.to[0], e)
       this.controls.target.lerpVectors(this.tween.from[1], this.tween.to[1], e)
       this.controls.update()
@@ -381,6 +507,7 @@ export class Viewer {
     this.renderer.render(this.scene, this.camera)
     this.renders++
     this.container.dataset.renders = String(this.renders)
+    this.container.dataset.animation = this.partsTween || this.tween ? 'running' : 'idle'
   }
 
   private onResize() {
@@ -394,16 +521,24 @@ export class Viewer {
 
   // ——— Interaction ———
 
+  // Une orbite ou un zoom manuel prend immédiatement la main sur un cadrage automatique.
+  private readonly onNavigationStart = () => { this.tween = null }
+
   private pick(ev: PointerEvent | MouseEvent): VehicleObject | null {
-    if (!this.built) return null
+    if (!this.built || this.loading) return null
     const r = this.renderer.domElement.getBoundingClientRect()
     const ndc = new THREE.Vector2(((ev.clientX - r.left) / r.width) * 2 - 1, -((ev.clientY - r.top) / r.height) * 2 + 1)
     this.raycaster.setFromCamera(ndc, this.camera)
     const meshes: THREE.Object3D[] = []
     for (const it of this.built.items) {
+      if (!it.node.visible) continue
       // en focus, seuls les sous-ensembles éclatés sont cliquables (le reste est un fantôme)
       if (this.focusKey && !(it.obj && this.focusKeys.has(it.obj.key))) continue
-      for (const m of it.meshes) if (m.visible) { m.userData.item = it; meshes.push(m) }
+      for (const m of it.meshes) if (m.visible) {
+        const materials = Array.isArray(m.material) ? m.material : [m.material]
+        if (materials.every(material => material.transparent && !material.depthWrite && material.opacity <= 0.12)) continue
+        m.userData.item = it; meshes.push(m)
+      }
     }
     const hit = this.raycaster.intersectObjects(meshes, false)[0]
     return (hit?.object.userData.item as Item | undefined)?.obj ?? null
@@ -455,7 +590,9 @@ export class Viewer {
     el.removeEventListener('pointerleave', this.onPointerLeave)
     el.removeEventListener('dblclick', this.onDoubleClick)
     this.controls.removeEventListener('change', this.requestRender)
+    this.controls.removeEventListener('start', this.onNavigationStart)
     this.controls.dispose()
+    if (this.built) { this.scene.remove(this.built.root); disposeBuilt(this.built); this.built = null }
     disposeTree(this.scene)
     this.envTexture.dispose()
     this.renderer.dispose()

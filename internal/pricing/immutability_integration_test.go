@@ -100,10 +100,7 @@ func TestImmutableTablesRejectMutations(t *testing.T) {
 		{"UPDATE d'une cotation de taux", `UPDATE fx_quotes SET rate = 1 WHERE id = $1`, []any{fxID}},
 		{"DELETE d'une cotation de taux", `DELETE FROM fx_quotes WHERE id = $1`, []any{fxID}},
 		{"UPDATE d'un snapshot de prix", `UPDATE price_snapshots SET taken_at = now() WHERE id = $1`, []any{snapshotID}},
-		{"DELETE d'un snapshot de prix", `DELETE FROM price_snapshots WHERE id = $1`, []any{snapshotID}},
 		{"UPDATE d'un lien snapshot → cotation", `UPDATE price_snapshot_quotes SET price_quote_id = price_quote_id WHERE snapshot_id = $1`, []any{snapshotID}},
-		{"DELETE d'un lien snapshot → cotation", `DELETE FROM price_snapshot_quotes WHERE snapshot_id = $1`, []any{snapshotID}},
-		{"DELETE d'un lien snapshot → taux", `DELETE FROM price_snapshot_fx WHERE snapshot_id = $1`, []any{snapshotID}},
 	}
 	for _, tt := range tests {
 		t.Run("SI "+tt.name+" ALORS refus", func(t *testing.T) {

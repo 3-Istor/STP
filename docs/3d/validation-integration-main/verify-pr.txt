@@ -1,0 +1,20 @@
+./scripts/verify.sh pr
+• gofmt : ok
+• go vet : ok
+• frontières d'architecture : ok
+• contrat des routes /api/v1 : ok
+• niveaux de risque + doc agents : ok
+• secrets (index) : non lancé (gitleaks absent : make tools)
+• oxlint (web) : ok
+• go mod tidy à jour : ok
+• code sqlc à jour : ok
+• golangci-lint (dont gosec) : ok
+• tests Go -race (intégration incluse) : ok
+• govulncheck : ok
+• osv-scanner : non lancé (absent : make tools)
+• actionlint : non lancé (absent : make tools)
+• tests unitaires web : ok
+• build web (tsc + vite) : ok
+• npm audit (prod, high) : ok
+
+Moulinette verte (pr). Résumé : .verify/verify-summary.md

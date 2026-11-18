@@ -16,6 +16,7 @@ type Props = {
 // Les ETP viennent de l'API : aucun calcul côté front.
 export function Workforce({ nodes, annualHours, catalog, readOnly, onApplyAnnualHours, open = false }: Props) {
   const [hours, setHours] = useState(annualHours ?? '')
+  const [hoursError, setHoursError] = useState<string | null>(null)
   const root = nodes.find((n) => n.parent_id === null)
   const subsystems = root ? nodes.filter((n) => n.parent_id === root.id) : []
   return (
@@ -28,14 +29,17 @@ export function Workforce({ nodes, annualHours, catalog, readOnly, onApplyAnnual
           className="row"
           onSubmit={(e) => {
             e.preventDefault()
-            onApplyAnnualHours(decimalInput(hours))
+            const h = decimalInput(hours)
+            if (!/^\d+(\.\d+)?$/.test(h) || Number(h) <= 0) return setHoursError('La base horaire est un nombre positif d’heures par an (ex. 1600).')
+            onApplyAnnualHours(h)
           }}
         >
           <label>
             Base horaire (h/an){' '}
-            <input aria-label="Base horaire annuelle" inputMode="decimal" size={6} value={hours} onChange={(e) => setHours(e.target.value)} />
+            <input aria-label="Base horaire annuelle" inputMode="decimal" size={6} value={hours} aria-invalid={hoursError !== null} onChange={(e) => { setHours(e.target.value); setHoursError(null) }} />
           </label>
           {(annualHours === null || !sameDecimal(decimalInput(hours), annualHours)) && <button type="submit">Appliquer</button>}
+          {hoursError && <span role="alert" className="over">{hoursError}</span>}
         </form>
       )}
       {subsystems.length === 0 ? (

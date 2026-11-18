@@ -1,17 +1,21 @@
 // Contrat public de la vue 3D (voir ADR 0035). Aucun import de `three` ici : ce fichier est chargé avec le shell.
 import type { TreeNode } from '../../api.ts'
+import type { SceneScope } from './manifest.ts'
 
-export type RenderMode = 'simple' | 'realistic'
-export type ColorBy = 'budget' | 'system'
+export type RenderMode = 'simple' | 'realistic' | 'bound'
+export type PropulsionMode = 'all' | 'thermal' | 'electric' | 'hybrid'
+export type ColorBy = 'budget' | 'system' | 'material'
 /** Statut budget d'un nœud, calculé par le back (ADR 0018) ; la 3D ne le calcule jamais. */
 export type BudgetStatus = 'ok' | 'warn' | 'over'
 
 /** Nœud lu par la 3D : un TreeNode, éventuellement enrichi d'un statut budget quand l'API le fournit. */
 export type Vehicle3DNode = Pick<TreeNode, 'id' | 'parent_id' | 'name' | 'part_id'> & {
+  quantity?: string // quantité par parent ; interprétée exactement seulement pour le rendu lié
   budget_status?: BudgetStatus | null
 }
 
 export type Vehicle3DProps = {
+  simulationMode?: Exclude<PropulsionMode, 'all'>
   bomId: number
   nodes: Vehicle3DNode[]
   selectedNodeId: number | null
@@ -20,4 +24,7 @@ export type Vehicle3DProps = {
   colorBy: ColorBy
   /** 0 = assemblé, 1 = éclaté maximal. */
   explode: number
+  /** Le parent remet aussi son curseur contrôlé à zéro. */
+  onResetView?: () => void
+  sceneScope?: SceneScope
 }

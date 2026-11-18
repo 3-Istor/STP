@@ -179,6 +179,32 @@ export type Suggestions = {
   excluded: Candidate[]
 }
 
+// Plan de retour au budget (ADR 0052) : substitutions proposées pour un nœud hors budget, jamais appliquées d'office.
+// gain, deltas (après − avant) et cumulative_gain sont par véhicule ; covers : première action qui couvre le dépassement ;
+// remaining : ce qu'aucune action ne couvre (covered faux).
+export type PlanSide = { part_id: number; offer_id: number; part: string; supplier: string; material: string | null; quality: string | null }
+export type PlanAction = {
+  nodes: { id: number; name: string }[]
+  from: PlanSide
+  to: PlanSide
+  gain: Money
+  cumulative_gain: Money
+  co2_delta_kg: string
+  mass_delta_kg: string
+  lead_time_delta_days: number
+  covers: boolean
+}
+export type BudgetPlan = {
+  node_id: number
+  currency: string
+  budget: Money
+  cost: Money
+  overrun: Money
+  remaining: Money
+  covered: boolean
+  actions: PlanAction[]
+}
+
 // Méthode de calcul du coût (ADR 0031) : base (achat, rendu, complet) × change (taux budget, dernier taux).
 // program_volume : volume programme pour amortir l'outillage, exigé par la base « full ».
 export type CostBasis = 'purchase' | 'landed' | 'full'
@@ -237,10 +263,21 @@ export type PriceSnapshotRef = {
   scope: 'offer' | 'supplier' | 'bom' | 'catalog'
   scope_id?: number // absent pour le catalogue entier
   taken_at: string
+  in_use?: boolean // absent d'une API antérieure à la suppression des lots
+  used_by?: { kind: 'version' | 'draft'; bom_id: number; bom_name: string; version?: number }[]
 }
 
 // budgets : budgets cibles évalués sur les totaux de cette même réponse (absent d'une API antérieure au lot F).
 export type Tree = { bom: BOM; nodes: TreeNode[]; explanation: Explanation; stock: StockLine[]; planning: Planning; budgets?: NodeBudget[] }
+
+export type PowertrainMode = 'thermal' | 'electric' | 'hybrid'
+export type ConfigurationRequest = {
+  root_id: number
+  guards: { id: number; parent_id: number | null; part_id: number | null }[]
+  scenarios: { key: PowertrainMode; excluded_roots: number[] }[]
+}
+export type ConfigurationScenario = { key: PowertrainMode; active_ids: number[]; excluded_ids: number[]; delta: Money | null; delta_percent: string | null; tree: Tree }
+export type ConfigurationComparison = { root_id: number; persistent: false; price_as_of: string | null; scenarios: ConfigurationScenario[] }
 
 export type Snapshot = {
   id: number
@@ -473,6 +510,7 @@ export const api = {
   setNodeBudget: (bomID: number, nodeID: number, target: Money) => call<unknown>('PUT', `/boms/${bomID}/nodes/${nodeID}/budget`, target),
   deleteNodeBudget: (bomID: number, nodeID: number) => call<void>('DELETE', `/boms/${bomID}/nodes/${nodeID}/budget`),
   suggestions: (bomID: number, nodeID: number) => call<Suggestions>('GET', `/boms/${bomID}/nodes/${nodeID}/suggestions`),
+  budgetPlan: (bomID: number, nodeID: number) => call<BudgetPlan>('GET', `/boms/${bomID}/nodes/${nodeID}/budget-plan`),
   anomalies: (bomID: number, threshold: string) =>
     call<CostAnomalies>('GET', `/boms/${bomID}/anomalies?threshold=${encodeURIComponent(threshold)}`),
   setDestination: (id: number, country: string | null) => call<BOM>('PATCH', `/boms/${id}`, { destination_country: country }),
@@ -487,6 +525,7 @@ export const api = {
     call<MakeOrBuyResult>('POST', `/boms/${bomID}/nodes/${nodeID}/make-or-buy`, req),
   deleteBOM: (id: number) => call<void>('DELETE', `/boms/${id}`),
   tree: (id: number) => call<Tree>('GET', `/boms/${id}/tree`),
+  simulateConfigurations: (id: number, definition: ConfigurationRequest) => call<ConfigurationComparison>('POST', `/boms/${id}/configuration-simulation`, definition),
   addNode: (bomID: number, n: NewNode) => call<TreeNode>('POST', `/boms/${bomID}/nodes`, n),
   // Un seul champ par PATCH (contrat T8) : le type NodePatch l'impose.
   patchNode: (bomID: number, nodeID: number, p: NodePatch) =>
@@ -497,6 +536,8 @@ export const api = {
   usePriceSnapshot: (id: number, snapshotID: number) =>
     call<BOM>('PUT', `/boms/${id}/freeze-prices`, { price_snapshot_id: snapshotID }),
   listPriceSnapshots: () => call<PriceSnapshotRef[]>('GET', '/price-snapshots'),
+  priceSnapshotRates: (id: number) =>
+    call<{ rates: { base_currency: string; quote_currency: string }[] }>('GET', `/price-snapshots/${id}`).then((s) => s.rates),
   unfreezePrices: (id: number) => call<BOM>('DELETE', `/boms/${id}/freeze-prices`),
   // Publication tracée (ADR 0033) : 409 si un contrôle bloque, 422 si un avertissement n'est pas justifié.
   publish: (id: number, body?: PublishRequest) => call<Snapshot>('POST', `/boms/${id}/publish`, body),
@@ -525,12 +566,13 @@ export const api = {
   profile: (bomID: number) => call<VehicleProfile>('GET', `/boms/${bomID}/profile`),
   snapshotProfile: (snapshotID: number) => call<VehicleProfile>('GET', `/snapshots/${snapshotID}/profile`),
   setProfile: (bomID: number, p: { preset: string; weights: Weights }) => call<VehicleProfile>('PUT', `/boms/${bomID}/profile`, p),
+  deletePriceSnapshot: (id: number) => call<void>('DELETE', `/price-snapshots/${id}`),
 }
 
 // errorMessage : la phrase française du code d'erreur si l'API en donne un connu, sinon le texte reçu.
 export function errorMessage(e: unknown): string {
   if (e instanceof ApiError) {
-    const phrase = phraseFor(e.code)
+    const phrase = phraseFor(e.code, e.message)
     if (!phrase) return e.message
     return keepsServerDetail(e.code) && e.message ? `${phrase} (${e.message})` : phrase
   }

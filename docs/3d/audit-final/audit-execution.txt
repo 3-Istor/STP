@@ -1,0 +1,5 @@
+multipla: loading actual application
+multipla: {"total":29977,"counts":{"individual":157,"assembly_only":25754,"none":4066},"physical":{"individual":146,"assembly_only":17257,"none":2705},"locators":25695,"failedPicking":[]}
+valhalla: loading actual application
+valhalla: {"total":14903,"counts":{"individual":69,"assembly_only":7216,"none":7618},"physical":{"individual":47,"assembly_only":4995,"none":4960},"locators":7190,"failedPicking":[]}
+Audit complete: 44880 distinct occurrences; exhaustive Markdown generated

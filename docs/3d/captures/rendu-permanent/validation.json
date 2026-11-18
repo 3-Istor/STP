@@ -1,0 +1,31 @@
+{
+  "at": "2026-11-18T11:02:15.486Z",
+  "vehicles": [
+    {
+      "id": 1,
+      "name": "multipla",
+      "assets": [
+        "MultiplaExteriorPrepared",
+        "MultiplaInteriorPrepared"
+      ],
+      "view3d": true,
+      "tree3d": true,
+      "reload": true,
+      "reset": true
+    },
+    {
+      "id": 2,
+      "name": "valhalla",
+      "assets": [
+        "ValhallaExteriorPrepared",
+        "ValhallaInteriorPrepared"
+      ],
+      "view3d": true,
+      "tree3d": true,
+      "reload": true,
+      "reset": true
+    }
+  ],
+  "errors": [],
+  "legacyRequests": []
+}

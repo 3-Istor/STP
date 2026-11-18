@@ -8,7 +8,9 @@
 .v3d-overlay { position: absolute; display: flex; gap: 6px; align-items: flex-start; pointer-events: none; }
 .v3d-overlay > * { pointer-events: auto; }
 .v3d-top-left { top: 10px; left: 10px; flex-direction: column; max-width: 60%; }
-.v3d-top-right { top: 10px; right: 10px; }
+.v3d-top-right { top: 10px; right: 10px; flex-direction: column; align-items: flex-end; max-width: 38%; z-index: 1; }
+.v3d-top-right:has(.v3d-settings) { bottom: 10px; min-height: 0; }
+.v3d-top-right:has(.v3d-settings) > :not(.v3d-settings) { flex-shrink: 0; }
 .v3d-bottom-left { bottom: 10px; left: 10px; flex-direction: column; max-width: 56%; }
 .v3d-bottom-right { bottom: 8px; right: 10px; max-width: 40%; text-align: right; }
 .v3d-badge { display: inline-block; padding: 3px 8px; border-radius: 4px; background: var(--surface, #fff); border: 1px solid var(--line, #cfd6df);
@@ -20,6 +22,14 @@
 .v3d-crumbs strong { color: var(--fg, #1f2a37); }
 .v3d-button { font: inherit; padding: 4px 10px; border: 1px solid var(--control-line, #b7c2d0); border-radius: 4px; background: var(--surface, #fff); color: var(--fg, #1f2a37); cursor: pointer; }
 .v3d-button:hover { background: var(--hover, #f0f5fc); }
+.v3d-button:disabled { opacity: .5; cursor: default; }
+.v3d-transparency { display: flex; align-items: center; gap: 5px; padding: 5px 7px; margin: 0;
+  background: var(--surface, #fff); border: 1px solid var(--line, #cfd6df); border-radius: 4px; font-weight: 400; }
+@media (max-width: 600px) {
+  .v3d-top-left { max-width: 55%; }
+  .v3d-top-right { max-width: 42%; }
+  .v3d-bottom-left { max-width: calc(100% - 20px); }
+}
 .v3d-legend { display: flex; flex-wrap: wrap; gap: 4px 10px; padding: 5px 8px; background: var(--surface, #ffffffd9); border-radius: 4px; max-width: 420px; }
 .v3d-legend span { display: inline-flex; align-items: center; gap: 5px; }
 .v3d-legend i { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
@@ -28,3 +38,8 @@
 .v3d-tooltip { position: absolute; transform: translate(12px, 12px); padding: 3px 7px; border-radius: 3px; background: #1f2a37; color: #fff;
   pointer-events: none; white-space: nowrap; font-size: 11.5px; }
 .v3d-tooltip em { color: #f3c37a; font-style: normal; }
+.v3d-settings { background: var(--surface, #fff); border: 1px solid var(--line, #cfd6df); padding: 6px 8px; border-radius: 4px; width: 250px; max-width: 100%; max-height: 52vh; min-height: 0; box-sizing: border-box; overflow-y: auto; overscroll-behavior: contain; }
+.v3d-settings summary { cursor: pointer; }
+.v3d-settings label { display: flex; flex-direction: column; gap: 4px; margin: 8px 0; }
+.v3d-settings input, .v3d-settings select { max-width: 100%; font: inherit; }
+.v3d-settings ul { padding-left: 18px; overflow-wrap: anywhere; }

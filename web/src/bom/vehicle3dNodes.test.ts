@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import type { NodeBudget, TreeNode } from '../api.ts'
-import { vehicle3dKey, vehicle3dNodes } from './vehicle3dNodes.ts'
+import { boundVehicle3dKey, vehicle3dKey, vehicle3dNodes } from './vehicle3dNodes.ts'
 
 const node = (id: number, parent_id: number | null, name: string, part_id: number | null = null): TreeNode => ({
   id, parent_id, name, part_id, offer_id: null, quantity: '1', production_days: 0, strategy: null, totals: null,
@@ -34,4 +34,37 @@ test('clé de scène : stable si seuls les totaux changent, change avec la struc
   assert.notEqual(vehicle3dKey(vehicle3dNodes(moved, budgets)), k)
   assert.notEqual(vehicle3dKey(vehicle3dNodes(nodes, new Map([[3, budget(3, 'over')]]))), k)
   assert.notEqual(vehicle3dKey(vehicle3dNodes(nodes, null)), k)
+})
+
+test('remplacement physique invalide la scène ; offre seule conserve sa géométrie', () => {
+  const baseline = vehicle3dKey(vehicle3dNodes(nodes, null))
+  const cases = [
+    { patch: { part_id: 41 }, changed: true },
+    { patch: { offer_id: 900 }, changed: false },
+  ]
+  for (const c of cases) {
+    const next = nodes.map(n => n.id === 4 ? { ...n, ...c.patch } : n)
+    assert.equal(vehicle3dKey(vehicle3dNodes(next, null)) !== baseline, c.changed)
+  }
+})
+
+test('rendu lié : quantités transmises, scène renouvelée pour instances mais stable pour offres/prix', () => {
+  const baseline = boundVehicle3dKey(vehicle3dNodes(nodes, null))
+  for (const [patch, changed] of [
+    [{ quantity: '2' }, true], [{ part_id: 41 }, true], [{ parent_id: 5 }, true],
+    [{ offer_id: 900 }, false], [{ production_days: 10 }, false],
+  ] as const) {
+    const next = nodes.map(n => n.id === 4 ? { ...n, ...patch } : n)
+    assert.equal(boundVehicle3dKey(vehicle3dNodes(next, null)) !== baseline, changed)
+  }
+  assert.equal(vehicle3dNodes(nodes, null)[3].quantity, '1')
+})
+
+test('libellé catalogue lisible sans changer l’identité de l’occurrence', () => {
+  const parts = new Map([[40, { name: 'Bloc moteur fourni' }]])
+  const result = vehicle3dNodes(nodes, null, parts)
+  assert.equal(result[3].name, 'Bloc moteur fourni')
+  assert.equal(result[3].id, nodes[3].id)
+  assert.equal(result[3].part_id, 40)
+  assert.equal(result[2].name, nodes[2].name)
 })

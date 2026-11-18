@@ -1,0 +1,66 @@
+[
+  {
+    "file": "Multipla1998.glb",
+    "sha256": "a7166433396db3c54863435a0f24b0b49ead42cc6913cbb5c8bdf6282ffbdda3",
+    "bytes": 41806540,
+    "nodes": 63,
+    "meshes": 44,
+    "materials": 17,
+    "images": 0,
+    "asset": {
+      "extras": {
+        "author": "Betier Models (https://sketchfab.com/betier)",
+        "license": "CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)",
+        "source": "https://sketchfab.com/3d-models/fiat-multipla-1998-3d-model-53cb07fa6a264cca811952c7ff3f3b38",
+        "title": "Fiat Multipla 1998 3D Model"
+      },
+      "generator": "Sketchfab-13.99.0",
+      "version": "2.0"
+    }
+  },
+  {
+    "file": "Valhalla2025.glb",
+    "sha256": "eb9eacb250cfcdf19c2deb2f617fdf937c4fa5178dd8b6a1f49eae411043683f",
+    "bytes": 22738952,
+    "nodes": 249,
+    "meshes": 107,
+    "materials": 30,
+    "images": 37,
+    "asset": {
+      "extras": {
+        "author": "OUTPISTON (https://sketchfab.com/outpiston)",
+        "license": "CC-BY-NC-SA-4.0 (http://creativecommons.org/licenses/by-nc-sa/4.0/)",
+        "source": "https://sketchfab.com/3d-models/2025-aston-martin-valhalla-4294795fcf194e2b9da861b251192bd1",
+        "title": "2025 Aston Martin Valhalla"
+      },
+      "generator": "Sketchfab-0.6.0",
+      "version": "2.0"
+    }
+  },
+  {
+    "file": "MultiplaInterior.glb",
+    "sha256": "dc21ca4585e91bf7c313473250cd7f600cb5e08ec6ccb09c6de502374bc16ab4",
+    "bytes": 516324,
+    "nodes": 293,
+    "meshes": 292,
+    "materials": 0,
+    "images": 0,
+    "asset": {
+      "version": "2.0",
+      "generator": "https://github.com/mikedh/trimesh"
+    }
+  },
+  {
+    "file": "ValhallaInterior.glb",
+    "sha256": "5757861a68be2edfc232220baf3472ced4a7a48c63cc0be0701193c852ae33ba",
+    "bytes": 621468,
+    "nodes": 478,
+    "meshes": 477,
+    "materials": 0,
+    "images": 0,
+    "asset": {
+      "version": "2.0",
+      "generator": "https://github.com/mikedh/trimesh"
+    }
+  }
+]

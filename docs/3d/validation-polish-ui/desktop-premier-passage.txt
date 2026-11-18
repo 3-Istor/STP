@@ -1,0 +1,205 @@
+
+> web@0.0.0 test:e2e
+> playwright test --project=chromium-desktop --workers=1
+
+[WebServer] (node:2700093) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 70 tests using 1 worker
+
+(node:2700127) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   1 [chromium-desktop] › e2e/bom-cost-v2.spec.ts:103:1 › budgets : % et couleur de l’API dans l’arbre et la Synthèse, « — » sans budget, « n/d » indisponible (1.4s)
+  ✓   2 [chromium-desktop] › e2e/bom-cost-v2.spec.ts:124:1 › méthode : affichée avec sa date, changée par l’API avec « Recalcul en cours… » (2.7s)
+  ✓   3 [chromium-desktop] › e2e/bom-cost-v2.spec.ts:147:1 › « Pourquoi ce coût ? » : lignes de l’API, composante absente, total ; brouillon puis snapshot (1.1s)
+  ✓   4 [chromium-desktop] › e2e/bom-cost-v2.spec.ts:170:1 › « Pourquoi ce coût ? » : une erreur de l’API est affichée, jamais un coût à 0 (1.0s)
+  ✓   5 [chromium-desktop] › e2e/bom-cost-v2.spec.ts:182:1 › sans manifeste : absence explicite, aucun retour à Simple ou à un ancien modèle (9.6s)
+  ✓   6 [chromium-desktop] › e2e/bom-cost-v2.spec.ts:196:1 › Arbre + 3D : clic dans l’arbre → objet sélectionné dans la 3D ; clic dans la 3D → ligne de l’arbre (10.0s)
+[WebServer] 1:30:36 PM [vite] (client) [console.error] THREE.WebGLRenderer: THREE.WebGLRenderer: Error creating WebGL context.
+[WebServer] 1:30:36 PM [vite] (client) [console.error] THREE.WebGLRenderer: THREE.WebGLRenderer: Error creating WebGL context.
+  ✓   7 [chromium-desktop] › e2e/bom-cost-v2.spec.ts:246:1 › 3D sans WebGL : la panne reste dans le panneau 3D, l’arbre et la Synthèse restent utilisables (2.1s)
+  ✓   8 [chromium-desktop] › e2e/bom-layout.spec.ts:62:1 › arbre BOM pleine largeur et cliquable, brouillon puis snapshot (1.4s)
+  ✓   9 [chromium-desktop] › e2e/bom-navigation.spec.ts:71:1 › arbre trié, en-têtes de colonnes, premiers niveaux dépliés et recherche (1.1s)
+  ✓  10 [chromium-desktop] › e2e/bom-navigation.spec.ts:96:1 › recherche après défilement : le sous-ensemble trouvé revient en tête de la fenêtre virtuelle (1.2s)
+  ✓  11 [chromium-desktop] › e2e/bom-navigation.spec.ts:108:1 › lien profond : le nœud de l’URL est déplié, sélectionné et suit d’une étape à l’autre (1.1s)
+  ✓  12 [chromium-desktop] › e2e/bom-navigation.spec.ts:123:1 › devise de référence choisie dans la liste des devises cotées (1.1s)
+  ✓  13 [chromium-desktop] › e2e/bom-navigation.spec.ts:136:1 › une ligne de BOM montre son aperçu, « Ouvrir » mène à l’étape Structurer (778ms)
+  ✓  14 [chromium-desktop] › e2e/bom-navigation.spec.ts:151:1 › ajout d’une pièce dans une fenêtre : recherche, catégorie, offre et quantité (969ms)
+  ✓  15 [chromium-desktop] › e2e/bom-navigation.spec.ts:185:1 › aucune devise saisie au clavier : toujours une liste (549ms)
+  ✓  16 [chromium-desktop] › e2e/bom-navigation.spec.ts:193:1 › suppression et renommage d’une BOM dans les fenêtres de l’app, jamais celles du navigateur (688ms)
+  ✓  17 [chromium-desktop] › e2e/bom-navigation.spec.ts:219:1 › suppression d’un nœud depuis l’arbre, avec confirmation de l’app (656ms)
+  ✓  18 [chromium-desktop] › e2e/bom-offer-price.spec.ts:68:1 › BOM en direct : prix de la dernière cotation, « sans prix » sans cotation (575ms)
+  ✓  19 [chromium-desktop] › e2e/bom-offer-price.spec.ts:77:1 › BOM figée : prix du snapshot de prix, pas la cotation en direct (645ms)
+  ✓  20 [chromium-desktop] › e2e/bom-price-source.spec.ts:70:1 › les snapshots de prix sont nommés à la seconde près et un choix attache le snapshot (737ms)
+  ✓  21 [chromium-desktop] › e2e/bom-price-source.spec.ts:87:1 › un changement de stratégie reste affiché et dit « Recalcul en cours… » jusqu’à la relecture (2.7s)
+  ✓  22 [chromium-desktop] › e2e/bom-versions-v2.spec.ts:147:1 › Toutes les BOM : une famille, ses versions avec coût, % du budget et noms ; aperçu avec l’écart (598ms)
+  ✓  23 [chromium-desktop] › e2e/bom-versions-v2.spec.ts:165:1 › Arbitrer : comparaison V1 → Brouillon B, causes triées par montant, lien vers les nœuds ; pistes signées (740ms)
+  ✓  24 [chromium-desktop] › e2e/bom-versions-v2.spec.ts:188:1 › profil de véhicule changé → classement des alternatives changé (824ms)
+  ✓  25 [chromium-desktop] › e2e/bom-versions-v2.spec.ts:207:1 › Publier sur le brouillon B : refusée (409) par le contrat expiré, message clair, « Corriger » mène au nœud (638ms)
+  ✓  26 [chromium-desktop] › e2e/bom-versions-v2.spec.ts:219:1 › Publier : avertissements non justifiés surlignés (422), puis publication avec note, noms et justifications (685ms)
+  ✓  27 [chromium-desktop] › e2e/bom-versions-v2.spec.ts:238:1 › Chiffrer : choc de change 5 % puis 10 %, chiffres de l’API (597ms)
+  ✓  28 [chromium-desktop] › e2e/powertrain.spec.ts:46:1 › motorisations : coût API, BOM active, comparaison commune, actualisation et sortie sans écriture (866ms)
+  ✓  29 [chromium-desktop] › e2e/powertrain.spec.ts:85:1 › prix manquant : coût incomplet et écart indisponible, scénario excluant la pièce toujours calculable (587ms)
+  ✓  30 [chromium-desktop] › e2e/powertrain.spec.ts:96:1 › panne API : référence conservée, reprise explicite et aucune simulation faussement annoncée (708ms)
+  ✘  31 [chromium-desktop] › e2e/powertrain.spec.ts:113:1 › scénario choisi dans Arbre : mécanique révélée lors de chaque ouverture 3D ou Arbre + 3D (7.7s)
+(node:2703356) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  32 [chromium-desktop] › e2e/powertrain.spec.ts:129:3 › laptop 1366×768 : panneaux et listes accessibles jusqu’en bas (12.9s)
+  ✓  33 [chromium-desktop] › e2e/powertrain.spec.ts:129:3 › laptop 1280×720 : panneaux et listes accessibles jusqu’en bas (7.9s)
+  ✓  34 [chromium-desktop] › e2e/router.spec.ts:6:1 › aller-retour : chaque route se relit à l’identique (7ms)
+  ✓  35 [chromium-desktop] › e2e/router.spec.ts:19:1 › URL profonde, ancres de la V1 et adresses invalides (7ms)
+  ✓  36 [chromium-desktop] › e2e/router.spec.ts:39:1 › une ancienne ancre est réécrite sans entrée d’historique (785ms)
+  ✓  37 [chromium-desktop] › e2e/shell.spec.ts:21:1 › thème : préférence système par défaut, choix enregistré et relu au rechargement (1.3s)
+  ✓  38 [chromium-desktop] › e2e/shell.spec.ts:37:1 › thème : localStorage indisponible, la bascule marche quand même (797ms)
+  ✓  39 [chromium-desktop] › e2e/shell.spec.ts:52:1 › barre d’état : API de prix injoignable signalée, jamais masquée (676ms)
+  ✓  40 [chromium-desktop] › e2e/shell.spec.ts:58:1 › barre d’état : API de prix joignable (604ms)
+  ✓  41 [chromium-desktop] › e2e/suppliers.spec.ts:32:1 › offres isolées, variations explicites et prix manquant visible (663ms)
+  ✓  42 [chromium-desktop] › e2e/suppliers.spec.ts:63:1 › montants textuels exacts et arrondi half-even dans le moteur réel (510ms)
+  ✓  43 [chromium-desktop] › e2e/suppliers.spec.ts:87:1 › historique utilisable au clic, au clavier et au toucher (793ms)
+  ✓  44 [chromium-desktop] › e2e/suppliers.spec.ts:115:1 › ligne d’offre cliquable : courbe de prix par période, offres triées et recherche (674ms)
+  ✓  45 [chromium-desktop] › e2e/suppliers.spec.ts:139:1 › courbe de prix : période comptée depuis l’instant des statistiques, cotations réelles seulement (646ms)
+  ✓  46 [chromium-desktop] › e2e/suppliers.spec.ts:167:1 › historique lisible : un point par mois, clôture et bornes réelles du mois (642ms)
+  ✓  47 [chromium-desktop] › e2e/suppliers.spec.ts:191:1 › historique affiché en euros au taux du jour, prix d’origine et taux visibles (649ms)
+  ✓  48 [chromium-desktop] › e2e/suppliers.spec.ts:242:1 › pièce du catalogue ajoutée au fournisseur : recherche, offre complète (1.1s)
+  ✓  49 [chromium-desktop] › e2e/suppliers.spec.ts:271:1 › nouvelle pièce : tous ses attributs, et pas de doublon si l’offre est refusée (1.6s)
+  ✓  50 [chromium-desktop] › e2e/suppliers.spec.ts:312:1 › liste des fournisseurs filtrable, défilement propre sur grand écran (896ms)
+  ✓  51 [chromium-desktop] › e2e/suppliers.spec.ts:336:1 › petit écran sans débordement et commandes toujours accessibles (616ms)
+  ✓  52 [chromium-desktop] › e2e/suppliers.spec.ts:354:1 › signal de prix relu sans navigation ni fuite de connexion (810ms)
+  ✓  53 [chromium-desktop] › e2e/suppliers.spec.ts:387:1 › une réponse Atlas retardée ne remplace pas les offres Boréal (593ms)
+  ✓  54 [chromium-desktop] › e2e/suppliers.spec.ts:408:1 › erreur REST explicitement visible sans prix fabriqué (487ms)
+  ✓  55 [chromium-desktop] › e2e/suppliers.spec.ts:419:1 › repli snapshot daté explicitement visible (533ms)
+  ✓  56 [chromium-desktop] › e2e/suppliers.spec.ts:431:1 › création fournisseur : validation serveur visible et notes transmises en chaînes (719ms)
+  ✓  57 [chromium-desktop] › e2e/suppliers.spec.ts:462:1 › contrat expiré lu du serveur et édition sans conversion des paliers (711ms)
+  ✓  58 [chromium-desktop] › e2e/vehicle3d-bound.spec.ts:49:1 › manifestes : occurrences, picking, quantités, remplacement physique et offre seule (17.6s)
+  ✓  59 [chromium-desktop] › e2e/vehicle3d-bound.spec.ts:152:1 › import : portée refusée, empreinte incorrecte explicite, aucune substitution générique (5.5s)
+  ✓  60 [chromium-desktop] › e2e/vehicle3d-bound.spec.ts:176:1 › BOM complète : diagnostics différés et limités à 100 lignes à la demande (6.4s)
+  ✓  61 [chromium-desktop] › e2e/vehicle3d-bound.spec.ts:196:1 › extérieur prioritaire : intérieur révélé et cliquable à travers la coque transparente (19.6s)
+  ✓  62 [chromium-desktop] › e2e/vehicle3d-bound.spec.ts:228:1 › pièce absente : localisation explicite du groupe, identité BOM conservée (11.3s)
+  ✘  63 [chromium-desktop] › e2e/vehicle3d-viewer.spec.ts:28:3 › multipla : chargement, éclaté réversible, sélection BOM et rendu au repos (35.7s)
+(node:2710468) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  64 [chromium-desktop] › e2e/vehicle3d-viewer.spec.ts:28:3 › valhalla : chargement, éclaté réversible, sélection BOM et rendu au repos (31.3s)
+(node:2711873) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  65 [chromium-desktop] › e2e/vehicle3d-viewer.spec.ts:80:1 › GLB absent : repli explicite vers les formes générées (11.6s)
+  ✓  66 [chromium-desktop] › e2e/vehicle3d-viewer.spec.ts:87:1 › pièce physique sans géométrie : message explicite et commandes de sélection désactivées (10.5s)
+  ✓  67 [chromium-desktop] › e2e/vehicle3d-viewer.spec.ts:95:1 › GLB valide : chargement, avertissement de fidélité et attribution (5.9s)
+  ✓  68 [chromium-desktop] › e2e/vehicle3d-viewer.spec.ts:126:1 › préférence de mouvement réduit : les pièces atteignent directement leur destination (13.2s)
+  ✓  69 [chromium-desktop] › e2e/vehicle3d-viewer.spec.ts:139:1 › GLB invalide : message explicite et repli vers les formes générées (11.0s)
+[WebServer] 1:34:45 PM [vite] (client) [console.error] THREE.WebGLRenderer: THREE.WebGLRenderer: Error creating WebGL context.
+[WebServer] 1:34:45 PM [vite] (client) [console.error] THREE.WebGLRenderer: THREE.WebGLRenderer: Error creating WebGL context.
+  ✓  70 [chromium-desktop] › e2e/vehicle3d-viewer.spec.ts:148:1 › WebGL indisponible puis rétabli : erreur locale et nouvelle tentative (6.2s)
+
+
+  1) [chromium-desktop] › e2e/powertrain.spec.ts:113:1 › scénario choisi dans Arbre : mécanique révélée lors de chaque ouverture 3D ou Arbre + 3D 
+
+    Error: expect(locator).toBeChecked() failed
+
+    Locator: getByLabel('Carrosserie transparente', { exact: true })
+    Expected: checked
+    Timeout: 5000ms
+    Error: element(s) not found
+
+    Call log:
+      - Expect "toBeChecked" getByLabel('Carrosserie transparente', { exact: true }) with timeout 5000ms
+      - waiting for getByLabel('Carrosserie transparente', { exact: true })
+
+
+      120 |     for (const view of ['3D', 'Arbre + 3D']) {
+      121 |       await page.getByRole('radio', { name: view, exact: true }).click()
+    > 122 |       await expect(page.getByLabel('Carrosserie transparente', { exact: true })).toBeChecked()
+          |                                                                                  ^
+      123 |       await page.getByRole('radio', { name: 'Arbre', exact: true }).click()
+      124 |     }
+      125 |   }
+        at /home/joebuntu/Desktop/SIGL/NLPF/STP/web/e2e/powertrain.spec.ts:122:82
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/powertrain-scénario-choisi-fd35f-ue-ouverture-3D-ou-Arbre-3D-chromium-desktop/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/powertrain-scénario-choisi-fd35f-ue-ouverture-3D-ou-Arbre-3D-chromium-desktop/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/powertrain-scénario-choisi-fd35f-ue-ouverture-3D-ou-Arbre-3D-chromium-desktop/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/powertrain-scénario-choisi-fd35f-ue-ouverture-3D-ou-Arbre-3D-chromium-desktop/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  2) [chromium-desktop] › e2e/vehicle3d-viewer.spec.ts:28:3 › multipla : chargement, éclaté réversible, sélection BOM et rendu au repos 
+
+    Test timeout of 30000ms exceeded.
+
+    Error: locator.click: Test timeout of 30000ms exceeded.
+    Call log:
+      - waiting for getByRole('button', { name: 'Focus sélection', exact: true })
+
+
+      60 |     await page.getByRole('button', { name: 'Roue avant gauche', exact: true }).click()
+      61 |     await expect(page.locator('.demo-sel')).toContainText('Roue avant gauche')
+    > 62 |     await page.getByRole('button', { name: 'Focus sélection', exact: true }).click()
+         |                                                                              ^
+      63 |     await expect(page.locator('.v3d-root')).toHaveAttribute('data-focus', 'wheel_fl')
+      64 |     await page.getByLabel('Carrosserie transparente').check()
+      65 |     await page.getByRole('button', { name: 'Réinitialiser', exact: true }).click()
+        at /home/joebuntu/Desktop/SIGL/NLPF/STP/web/e2e/vehicle3d-viewer.spec.ts:62:78
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/vehicle3d-viewer-multipla--67860-ction-BOM-et-rendu-au-repos-chromium-desktop/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/vehicle3d-viewer-multipla--67860-ction-BOM-et-rendu-au-repos-chromium-desktop/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/vehicle3d-viewer-multipla--67860-ction-BOM-et-rendu-au-repos-chromium-desktop/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/vehicle3d-viewer-multipla--67860-ction-BOM-et-rendu-au-repos-chromium-desktop/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  3) [chromium-desktop] › e2e/vehicle3d-viewer.spec.ts:28:3 › valhalla : chargement, éclaté réversible, sélection BOM et rendu au repos 
+
+    Test timeout of 30000ms exceeded.
+
+    Error: locator.click: Test timeout of 30000ms exceeded.
+    Call log:
+      - waiting for getByRole('button', { name: 'Réinitialiser', exact: true })
+        - locator resolved to <button type="button" class="v3d-button">Réinitialiser</button>
+      - attempting click action
+        - waiting for element to be visible, enabled and stable
+        - element is visible, enabled and stable
+        - scrolling into view if needed
+        - done scrolling
+
+
+      63 |     await expect(page.locator('.v3d-root')).toHaveAttribute('data-focus', 'wheel_fl')
+      64 |     await page.getByLabel('Carrosserie transparente').check()
+    > 65 |     await page.getByRole('button', { name: 'Réinitialiser', exact: true }).click()
+         |                                                                            ^
+      66 |     await expect(page.locator('.v3d-root')).toHaveAttribute('data-focus', '')
+      67 |     await expect(page.getByLabel('Carrosserie transparente')).not.toBeChecked()
+      68 |     await expect(slider).toHaveValue('0')
+        at /home/joebuntu/Desktop/SIGL/NLPF/STP/web/e2e/vehicle3d-viewer.spec.ts:65:76
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/vehicle3d-viewer-valhalla--e6503-ction-BOM-et-rendu-au-repos-chromium-desktop/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/vehicle3d-viewer-valhalla--e6503-ction-BOM-et-rendu-au-repos-chromium-desktop/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/vehicle3d-viewer-valhalla--e6503-ction-BOM-et-rendu-au-repos-chromium-desktop/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/vehicle3d-viewer-valhalla--e6503-ction-BOM-et-rendu-au-repos-chromium-desktop/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  3 failed
+    [chromium-desktop] › e2e/powertrain.spec.ts:113:1 › scénario choisi dans Arbre : mécanique révélée lors de chaque ouverture 3D ou Arbre + 3D 
+    [chromium-desktop] › e2e/vehicle3d-viewer.spec.ts:28:3 › multipla : chargement, éclaté réversible, sélection BOM et rendu au repos 
+    [chromium-desktop] › e2e/vehicle3d-viewer.spec.ts:28:3 › valhalla : chargement, éclaté réversible, sélection BOM et rendu au repos 
+  67 passed (4.7m)

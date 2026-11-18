@@ -1,0 +1,31 @@
+{
+  "metrics": {
+    "renders": 4,
+    "drawCalls": 313,
+    "triangles": 1105309,
+    "geometries": 108,
+    "textures": 149,
+    "items": 1,
+    "animating": false
+  },
+  "items": [
+    {
+      "key": "node:29978/instance:exterior",
+      "meshes": 107
+    }
+  ],
+  "missing": [
+    [
+      36161,
+      "no_binding"
+    ],
+    [
+      36162,
+      "no_binding"
+    ],
+    [
+      36163,
+      "no_binding"
+    ]
+  ]
+}
