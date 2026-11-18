@@ -668,3 +668,21 @@ validation fonctionnelle et visuelle sur les assets réellement accessibles.
   tests vérifient de vrais mouvements de molette, pagination, bas des panneaux et colonne latérale.
   La fixture du profil a été complétée pour tester les réglages avec le contrat existant.
   En cours : moulinette, suite complète, parcours réel avec modèles/prix Go, captures et revue niveau 1.
+- Moulinette PR verte, `make lint`, `make test` et 52 tests unitaires front verts. Intégration
+  PostgreSQL non rejouée dans cette passe frontend ; aucun changement Go/SQL ou des dépendances.
+- Revue indépendante niveau 1 depuis `d22d17d` : aucun Important/Nit/pré-existant ; les quatre
+  tests ciblés ont été rejoués indépendamment et passent. Commit frontend `4315f7a`.
+- Le parcours réel vérifie les six combinaisons motorisation/résolution et le défilement des
+  sources, des composants retirés et du panneau latéral, avec les vrais modèles et coûts Go.
+  Sélection bidirectionnelle et éclatement Aston déjà vérifiés ; la Fiat est testée dans une page
+  distincte afin de libérer les scènes des multiples configurations précédentes. Les tentatives
+  d'outil interrompues/en échec ne sont pas comptées comme une validation complète.
+- Parcours réel final complet PASS : deux voitures en 3D / Arbre + 3D, six configurations
+  motorisation/résolution, import caché par défaut, hypothèses accessibles, pagination et bas des
+  panneaux atteints, sélection bidirectionnelle et éclaté. Zéro erreur de page, mutation API ou
+  ancien modèle demandé ; empreintes des références Fiat/Aston identiques avant/après.
+- La suite monolithique a rencontré un démarrage tardif du chunk 3D dans le test de transparence
+  et deux délais graphiques sur les fixtures historiques. Le premier test est désormais paramétré
+  par motorisation et attend le montage des contrôles avant de contrôler l'état : les six montages
+  et toutes les assertions sont conservés, aucun délai augmenté. Relance avec un navigateur neuf
+  par fichier pour isoler les ressources GPU logicielles, puis parcours mobiles concernés.

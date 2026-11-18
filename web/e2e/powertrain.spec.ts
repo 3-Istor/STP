@@ -110,20 +110,21 @@ test('panne API : référence conservée, reprise explicite et aucune simulation
   expect(f.requests).toHaveLength(1)
 })
 
-test('scénario choisi dans Arbre : mécanique révélée lors de chaque ouverture 3D ou Arbre + 3D', async ({ page }) => {
-  await fixture(page)
-  // Le test protège l'état des contrôles au montage ; aucune géométrie fictive n'est nécessaire.
-  await page.route('**/models/**', route => route.fulfill({ status: 404 }))
-  const panel = page.getByRole('region', { name: 'Simulation de motorisation' })
-  for (const mode of ['Thermique', 'Électrique', 'Hybride']) {
+for (const mode of ['Thermique', 'Électrique', 'Hybride']) {
+  test(`scénario ${mode} choisi dans Arbre : mécanique révélée lors de chaque ouverture 3D ou Arbre + 3D`, async ({ page }) => {
+    await fixture(page)
+    // Le test protège l'état des contrôles au montage ; aucune géométrie fictive n'est nécessaire.
+    await page.route('**/models/**', route => route.fulfill({ status: 404 }))
+    const panel = page.getByRole('region', { name: 'Simulation de motorisation' })
     await panel.getByRole('radio', { name: mode, exact: true }).click()
     for (const view of ['3D', 'Arbre + 3D']) {
       await page.getByRole('radio', { name: view, exact: true }).click()
+      await page.getByRole('button', { name: 'Réinitialiser', exact: true }).waitFor()
       await expect(page.getByLabel('Carrosserie transparente', { exact: true })).toBeChecked()
       await page.getByRole('radio', { name: 'Arbre', exact: true }).click()
     }
-  }
-})
+  })
+}
 
 for (const viewport of [{ width: 1366, height: 768 }, { width: 1280, height: 720 }]) {
   test(`laptop ${viewport.width}×${viewport.height} : panneaux et listes accessibles jusqu’en bas`, async ({ page }) => {
