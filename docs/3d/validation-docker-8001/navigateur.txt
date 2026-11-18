@@ -1,0 +1,3 @@
+Fiat Multipla: modèle 3D chargé sur Docker PASS
+Aston Martin Valhalla: modèle 3D chargé sur Docker PASS
+{"modes":[{"mode":"Thermique","cost":"393 970,50 £GB"},{"mode":"Électrique","cost":"369 705,74 £GB"},{"mode":"Hybride","cost":"461 381,26 £GB"}],"errors":[]}

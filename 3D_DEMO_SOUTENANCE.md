@@ -6,6 +6,27 @@ sans migration ni modification des contrats existants ou des données de référ
 
 ## Ouvrir la démonstration déjà lancée
 
+### Application complète Docker — données préparées
+
+Ouvrir **http://localhost:8001**. Le port 8000 appartient à `booking-api` et reste conservé.
+Depuis la racine STP dans WSL, une seule commande démarre ou reconstruit toute l'application :
+
+```sh
+WEB_PORT=8001 SIM_YEAR_DURATION=8760h docker compose up -d --build --wait
+```
+
+Équivalent : `make up WEB_PORT=8001 SIM_YEAR_DURATION=8760h`. Ne pas lancer les deux.
+Pour arrêter en conservant les données : `docker compose down` (sans `-v`).
+
+La base Docker `bomstudio` contient maintenant une copie des données validées : Fiat #1,
+Valhalla #2 et brouillon B #3, avec leurs identifiants et snapshots conservés. L'ancienne base
+Docker sans BOM, mais avec son historique de prix, est conservée sous le nom
+`bomstudio_avant_soutenance_20261118`. La base source `stp3d_demo` n'a pas été modifiée.
+Les modifications ultérieures sur 8001 appartiennent à la copie Docker ; elles ne synchronisent
+pas automatiquement la base source de la session de développement ci-dessous.
+
+### Session de développement préparée
+
 - [Fiat Multipla](http://127.0.0.1:41769/#/boms/1/structurer?tab=3d).
 - [Aston Martin Valhalla](http://127.0.0.1:41769/#/boms/2/structurer?tab=3d).
 - [Brouillon B : batterie remplaçable](http://127.0.0.1:41769/#/boms/3/structurer?tab=arbre-3d&node=60776).

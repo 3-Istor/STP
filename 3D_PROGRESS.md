@@ -716,3 +716,14 @@ validation fonctionnelle et visuelle sur les assets réellement accessibles.
   restent explicitement ouverts, sans seuil modifié. Tous les travaux de polish demandés sont
   appliqués ; la validation Playwright globale conserve ces limites. Aucun changement Go/SQL,
   asset ou branche protégée, aucune perte de référence BOM, aucun push/merge.
+- Lancement Docker ensuite vérifié : port 8000 réservé à `booking-api`, frontend STP sur 8001.
+  La base Docker sans BOM avait des séquences déjà avancées et un historique FX ; elle est
+  intégralement conservée sous `bomstudio_avant_soutenance_20261118`, avec export de secours dans
+  `/tmp/stp-docker-data-transfer/`. Une nouvelle base `bomstudio` reçoit une copie complète cohérente
+  de `stp3d_demo` (3 BOM, 74862 nœuds), sans modifier la source ou un snapshot existant.
+  Reprise avec `WEB_PORT=8001 SIM_YEAR_DURATION=8760h docker compose up -d --build --wait`.
+  Aucun code Go, migration, fichier Compose ou dépendance modifié pour cette opération de données.
+- Vérification réelle de l'interface Docker 8001 : liste des trois BOM présente, extérieurs Fiat
+  et Aston chargés en mode bound, coûts thermique 393970,50 GBP / électrique 369705,74 GBP /
+  hybride 461381,26 GBP, aucune erreur navigateur. Captures et comparaison du contenu des tables
+  de snapshots copiées dans `docs/3d/captures/docker-8001/` et `docs/3d/validation-docker-8001/`.
