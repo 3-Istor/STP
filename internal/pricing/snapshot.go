@@ -147,7 +147,11 @@ func (s *SnapshotService) Create(ctx context.Context, req SnapshotRequest) (Snap
 				return fmt.Errorf("freeze prices: %w: %w", ErrNoUsableSnapshot, ErrSourceUnavailable)
 			}
 		}
-		selected, err := SelectSnapshotCoverage(data, f.Offers, targets, f.Sources...)
+		selectCoverage := SelectSnapshotCoverage
+		if req.Scope == "catalog" {
+			selectCoverage = SelectCatalogCoverage
+		}
+		selected, err := selectCoverage(data, f.Offers, targets, f.Sources...)
 		if err != nil {
 			return err
 		}
@@ -187,6 +191,40 @@ func (s *SnapshotService) Get(ctx context.Context, id int64) (SnapshotResult, er
 		return SnapshotResult{}, ErrInvalidHistoryData
 	}
 	return SnapshotResult{PriceSnapshotData: data, Context: PriceContext{Mode: "snapshot", AsOf: data.TakenAt, SnapshotID: &data.ID}}, nil
+}
+
+// SelectCatalogCoverage : un lot catalog est proposé à toutes les BOM ; il garde la couverture obligatoire vers les
+// cibles demandées, puis fige aussi les autres paires disponibles entre devises du catalogue (absentes = non figées).
+func SelectCatalogCoverage(data PriceSnapshotData, offers []OfferRef, targets []money.Currency, sources ...money.Currency) (PriceSnapshotData, error) {
+	selected, err := SelectSnapshotCoverage(data, offers, targets, sources...)
+	if err != nil {
+		return selected, err
+	}
+	known := map[money.Currency]bool{}
+	for _, o := range offers {
+		known[o.Currency] = true
+	}
+	for _, c := range append(append([]money.Currency{}, targets...), sources...) {
+		known[c] = true
+	}
+	linked := map[int64]bool{}
+	for _, r := range selected.Rates {
+		linked[r.ID] = true
+	}
+	for _, r := range data.Rates {
+		if known[r.BaseCurrency] && known[r.QuoteCurrency] && !linked[r.ID] && !r.QuotedAt.After(data.TakenAt) {
+			linked[r.ID] = true
+			selected.Rates = append(selected.Rates, r)
+		}
+	}
+	sort.Slice(selected.Rates, func(i, j int) bool {
+		a, b := selected.Rates[i], selected.Rates[j]
+		if a.BaseCurrency == b.BaseCurrency {
+			return a.QuoteCurrency < b.QuoteCurrency
+		}
+		return a.BaseCurrency < b.BaseCurrency
+	})
+	return selected, nil
 }
 
 // SelectSnapshotCoverage is the pure port for a BOM consumer before attachment/publication.

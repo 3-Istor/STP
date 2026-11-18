@@ -61,6 +61,63 @@ func TestSnapshotCoverageDirectInverseAndAllGaps(t *testing.T) {
 	}
 }
 
+// Un lot catalog est proposé à toutes les BOM : gelé pour une BOM en EUR, il doit aussi figer les paires
+// disponibles vers GBP, JPY et USD. Seules les paires vers les cibles demandées restent obligatoires.
+func TestCatalogCoverageFreezesEveryAvailablePair(t *testing.T) {
+	at := time.Date(2026, 4, 5, 0, 0, 0, 0, time.UTC)
+	price := func(id, offer int64, currency string) HistoricalQuote {
+		m, _ := money.Parse("10", currency)
+		return HistoricalQuote{ID: id, OfferID: offer, Price: m, Source: "test", QuotedAt: at}
+	}
+	rate := func(id int64, base, quote string) FXQuote {
+		return FXQuote{ID: id, BaseCurrency: money.Currency(base), QuoteCurrency: money.Currency(quote), Rate: "1.1", Source: "test", QuotedAt: at}
+	}
+	offers := []OfferRef{{ID: 1, Currency: "EUR"}, {ID: 2, Currency: "USD"}, {ID: 3, Currency: "GBP"}}
+	quotes := []HistoricalQuote{price(11, 1, "EUR"), price(12, 2, "USD"), price(13, 3, "GBP")}
+	market := []FXQuote{rate(21, "USD", "EUR"), rate(22, "GBP", "EUR"), rate(23, "EUR", "USD"), rate(24, "EUR", "GBP"), rate(25, "USD", "GBP"), rate(26, "GBP", "USD")}
+	tests := []struct {
+		name  string
+		rates []FXQuote
+		want  []string // paires figées, triées
+		gap   string   // paire requise manquante
+	}{
+		{"lot gelé pour une BOM EUR : toutes les paires du marché", market,
+			[]string{"EUR->GBP", "EUR->USD", "GBP->EUR", "GBP->USD", "USD->EUR", "USD->GBP"}, ""},
+		{"paire non requise absente : le gel réussit sans elle", market[:4],
+			[]string{"EUR->GBP", "EUR->USD", "GBP->EUR", "USD->EUR"}, ""},
+		// GBP↔EUR absent dans les deux sens (l'inverse suffirait, ADR 0017).
+		{"paire requise absente : lacune nommée comme avant", []FXQuote{market[0], market[2], market[4], market[5]}, nil, "GBP->EUR"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			data := PriceSnapshotData{PriceSnapshotRef: PriceSnapshotRef{ID: 1, Scope: "catalog", TakenAt: at}, Quotes: quotes, Rates: tt.rates}
+			got, err := SelectCatalogCoverage(data, offers, []money.Currency{"EUR"})
+			if tt.gap != "" {
+				var coverage *CoverageError
+				if !errors.As(err, &coverage) || !errors.Is(err, ErrIncompletePriceSnapshot) {
+					t.Fatalf("err %v, want coverage gap %s", err, tt.gap)
+				}
+				for _, g := range coverage.Missing {
+					if string(g.Base)+"->"+string(g.Quote) == tt.gap {
+						return
+					}
+				}
+				t.Fatalf("gaps %+v, want %s", coverage.Missing, tt.gap)
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			var pairs []string
+			for _, r := range got.Rates {
+				pairs = append(pairs, string(r.BaseCurrency)+"->"+string(r.QuoteCurrency))
+			}
+			if fmt.Sprint(pairs) != fmt.Sprint(tt.want) || len(got.Quotes) != 3 {
+				t.Fatalf("pairs %v (%d quotes), want %v", pairs, len(got.Quotes), tt.want)
+			}
+		})
+	}
+}
+
 // Devises de budget (ADR 0044) : figer les prix d'une BOM fige aussi le taux de chaque devise de budget vers la
 // devise de la BOM (direct, sinon inverse) ; un taux absent est une lacune nommée, pas un budget oublié.
 func TestSnapshotCoverageIncludesBudgetCurrencies(t *testing.T) {

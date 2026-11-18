@@ -57,7 +57,8 @@ export const errorPhrases: Record<string, string> = {
 }
 
 // Codes dont le texte du serveur nomme le champ, la valeur ou le nœud en cause : on le garde après la phrase.
-const detailedCodes = new Set(['bad_request', 'invalid_input', 'invalid_threshold', 'publication_blocked', 'budget_exceeds_parent', 'cycle', 'missing_cost', 'invalid_logistics'])
+// no_rate / no_quote : the server text names the missing pair or offer and the price snapshot.
+const detailedCodes = new Set(['bad_request', 'invalid_input', 'invalid_threshold', 'publication_blocked', 'budget_exceeds_parent', 'cycle', 'missing_cost', 'invalid_logistics', 'no_rate', 'no_quote'])
 export const keepsServerDetail = (code: string | undefined): boolean => code !== undefined && detailedCodes.has(code)
 
 export function phraseFor(code: string | undefined): string | undefined {
