@@ -7,6 +7,7 @@ import { Summary } from '../shell/Summary.tsx'
 import { useAppDialog } from '../useAppDialog.tsx'
 import { AddNodeDialog } from './AddNodeDialog.tsx'
 import { Ideas } from './Ideas.tsx'
+import { LastImpact, useLastImpact } from './LastImpact.tsx'
 import { basisHint, basisLabels, fxLabels } from './costMethod.ts'
 import { ProfileSettings } from './ProfileSettings.tsx'
 import { NodePanel } from './NodePanel.tsx'
@@ -39,6 +40,7 @@ export function BomWorkspace({ route, data: sourceData, error, onPublished }: Pr
   const [tab, setTab] = useState<'detail' | 'reglages'>('detail')
   const simulation = usePowertrainSimulation(sourceData, route.step === 'structurer')
   const data = simulation.data
+  const lastImpact = useLastImpact(sourceData.version, sourceData.root?.totals)
   const selectedID = route.node !== null && data.byID.has(route.node) ? route.node : null
   const selected = selectedID !== null ? data.byID.get(selectedID)! : null
   const go = (patch: Partial<Pick<BomRoute, 'step' | 'node' | 'tab' | 'supplier'>>, replace = false) =>
@@ -133,6 +135,7 @@ export function BomWorkspace({ route, data: sourceData, error, onPublished }: Pr
       <aside className="col" aria-label="Synthèse et détail">
         <Summary data={data} onSelectNode={select} />
         {route.step === 'arbitrer' && <Ideas data={data} />}
+        <LastImpact impact={lastImpact} />
         <div className="tabs2" role="tablist" aria-label="Détail ou réglages">
           <button type="button" role="tab" aria-selected={tab === 'detail'} className={tab === 'detail' ? 'on' : ''} onClick={() => setTab('detail')}>
             Détail
@@ -158,6 +161,7 @@ export function BomWorkspace({ route, data: sourceData, error, onPublished }: Pr
                 isRoot={selected.parent_id === null}
                 onAdd={(n: NewNode) => data.run(() => api.addNode(data.target.id, n))}
                 onPatch={(p: NodePatch) => data.run(() => api.patchNode(data.target.id, selected.id, p))}
+                onRun={(action) => data.run(action)}
                 stock={data.stock}
                 anomaly={data.anomalyByNode.get(selected.id)}
                 onSetStock={(partID, q) => data.run(() => api.setPartStock(data.target.id, partID, q))}

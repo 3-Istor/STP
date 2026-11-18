@@ -11,6 +11,9 @@ import { MissingCost } from './MissingCost.tsx'
 import { productionDaysInput, quantityChanged } from './nodeEdit.ts'
 import type { Target } from '../router.ts'
 import { StockPanel } from './StockPanel.tsx'
+import { OfferEditDialog } from '../suppliers/OfferEditDialog.tsx'
+import { PartDialog } from '../suppliers/PartDialog.tsx'
+import { attempt, updateOffer, updatePart } from '../suppliers/editApi.ts'
 import { providedVariantParts } from '../features/vehicle3d/providedScene.ts'
 
 type Props = {
@@ -25,6 +28,7 @@ type Props = {
   isRoot: boolean
   onAdd: (n: NewNode) => Promise<boolean>
   onPatch: (p: NodePatch) => Promise<boolean>
+  onRun: (action: () => Promise<unknown>) => Promise<boolean> // action quelconque puis relecture de l'arbre (data.run)
   onStartMove: () => void
   onDelete: () => void
   stock: StockLine[]
@@ -46,6 +50,13 @@ export function NodePanel(p: Props) {
   const { node, explanation, volume, catalog, readOnly, isRoot } = p
   const t = node.totals
   const [adding, setAdding] = useState(false)
+  const [editing, setEditing] = useState<'part' | 'offer' | null>(null)
+  // Écrit dans le catalogue puis relit l'arbre (run) ; l'erreur reste dans la fenêtre, pas dans la bannière de la page.
+  const saveCatalog = async (call: () => Promise<unknown>) => {
+    let message: string | null = null
+    await p.onRun(async () => { message = await attempt(call) })
+    return message
+  }
   const isPart = node.part_id !== null
   const title = isPart ? partName(catalog, node.part_id!) : node.name
   const offer = isPart ? catalog.byPart.get(node.part_id!)?.offers.find((o) => o.id === node.offer_id) : undefined
@@ -185,6 +196,14 @@ export function NodePanel(p: Props) {
               {(catalog.byPart.get(node.part_id!)?.offers ?? []).map(o => <option key={o.id} value={o.id}>{o.supplier} · {o.price ? formatMoney(o.price) : 'sans prix'} · {o.lead_time_days} j</option>)}
             </select>
           </label> : null}
+          {isPart && (
+            <div className="row">
+              <button type="button" onClick={() => setEditing('part')}>Modifier la pièce</button>
+              {node.offer_id !== null && <button type="button" onClick={() => setEditing('offer')}>Modifier l’offre</button>}
+            </div>
+          )}
+          {editing === 'part' && <PartDialog partID={node.part_id!} onClose={() => setEditing(null)} save={(patch) => saveCatalog(() => updatePart(node.part_id!, patch))} />}
+          {editing === 'offer' && node.offer_id !== null && <OfferEditDialog offerID={node.offer_id} onClose={() => setEditing(null)} save={(patch) => saveCatalog(() => updateOffer(node.offer_id!, patch))} />}
           {providedVariantParts(p.target, node).length > 1 ? <PhysicalReplacement key={`replacement-${node.id}`} node={node} catalog={catalog} partIDs={providedVariantParts(p.target, node)} onPatch={p.onPatch} /> : null}
           <div className="row">
             <button type="button" className="primary" onClick={() => setAdding(true)}>

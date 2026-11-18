@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
+import { decimalInput } from '../money'
 import { errorMessage, request } from './api'
+import { scoreError, updateSupplier } from './editApi'
 import type { Contract, OfferView, Supplier, Tier } from './types'
 
 function useModal() {
@@ -8,27 +10,31 @@ function useModal() {
   useEffect(() => { if (ref.current && !ref.current.open) ref.current.showModal() }, [])
   return ref
 }
-export function SupplierDialog({ onClose, onSaved }: { onClose: () => void; onSaved: (supplier: Supplier) => void }) {
+// SupplierDialog : création, ou modification (PATCH /suppliers/{id}) quand `current` est fourni.
+export function SupplierDialog({ current, onClose, onSaved }: { current?: Supplier; onClose: () => void; onSaved: (supplier: Supplier) => void }) {
   const dialog = useModal()
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [scores, setScores] = useState({ quality_score: current?.quality_score ?? '', trust_score: current?.trust_score ?? '' })
+  const scoreErrors = { quality_score: scoreError(scores.quality_score), trust_score: scoreError(scores.trust_score) }
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    if (scoreErrors.quality_score || scoreErrors.trust_score) return
     const fields = new FormData(event.currentTarget)
+    const body = { name: String(fields.get('name')).trim(), quality_score: decimalInput(scores.quality_score), trust_score: decimalInput(scores.trust_score) }
     setSaving(true); setError('')
     try {
-      const supplier = await request<Supplier>('/suppliers', { method: 'POST', body: JSON.stringify({ name: fields.get('name'), quality_score: fields.get('quality_score'), trust_score: fields.get('trust_score') }) })
-      onSaved(supplier)
+      onSaved(current ? await updateSupplier(current.id, body) : await request<Supplier>('/suppliers', { method: 'POST', body: JSON.stringify(body) }))
     } catch (error) { setError(errorMessage(error)) } finally { setSaving(false) }
   }
   return <dialog ref={dialog} className="form-dialog" aria-labelledby="supplier-form-title" onClose={onClose} onCancel={onClose}>
-    <div className="dialog-heading"><h2 id="supplier-form-title">Nouveau fournisseur</h2><button type="button" className="icon-button" aria-label="Fermer le formulaire fournisseur" onClick={() => dialog.current?.close()}>×</button></div>
+    <div className="dialog-heading"><h2 id="supplier-form-title">{current ? 'Modifier le fournisseur' : 'Nouveau fournisseur'}</h2><button type="button" className="icon-button" aria-label="Fermer le formulaire fournisseur" onClick={() => dialog.current?.close()}>×</button></div>
     <form onSubmit={submit}>
-      <label>Nom du fournisseur<input name="name" required maxLength={300} autoComplete="organization" /></label>
-      <div className="form-columns"><label>Qualité (sur 5)<input name="quality_score" type="text" inputMode="decimal" required placeholder="4.5" /></label><label>Confiance (sur 5)<input name="trust_score" type="text" inputMode="decimal" required placeholder="4.5" /></label></div>
+      <label>Nom du fournisseur<input name="name" required maxLength={300} autoComplete="organization" defaultValue={current?.name ?? ''} /></label>
+      <div className="form-columns"><label>Qualité (sur 5)<input type="text" inputMode="decimal" required placeholder="4.5" value={scores.quality_score} aria-invalid={scoreErrors.quality_score !== ''} onChange={(event) => setScores((old) => ({ ...old, quality_score: event.target.value }))} />{scoreErrors.quality_score && <small role="alert" className="form-error">{scoreErrors.quality_score}</small>}</label><label>Confiance (sur 5)<input type="text" inputMode="decimal" required placeholder="4.5" value={scores.trust_score} aria-invalid={scoreErrors.trust_score !== ''} onChange={(event) => setScores((old) => ({ ...old, trust_score: event.target.value }))} />{scoreErrors.trust_score && <small role="alert" className="form-error">{scoreErrors.trust_score}</small>}</label></div>
       <p className="muted">Notes entre 0 et 5. Séparez les décimales par un point.</p>
       {error && <p className="form-error" role="alert">{error}</p>}
-      <div className="form-actions"><button type="button" className="secondary-button" onClick={() => dialog.current?.close()}>Annuler</button><button className="primary-button" disabled={saving}>{saving ? 'Création…' : 'Créer le fournisseur'}</button></div>
+      <div className="form-actions"><button type="button" className="secondary-button" onClick={() => dialog.current?.close()}>Annuler</button><button className="primary-button" disabled={saving}>{saving ? 'Enregistrement…' : current ? 'Enregistrer le fournisseur' : 'Créer le fournisseur'}</button></div>
     </form>
   </dialog>
 }

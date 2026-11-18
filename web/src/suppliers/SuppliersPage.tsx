@@ -3,6 +3,10 @@ import { errorMessage, request } from './api'
 import { ContractDialog, SupplierDialog } from './Forms'
 import { HistoryDialog } from './HistoryDialog'
 import { OfferDialog } from './OfferDialog'
+import { OfferEditDialog } from './OfferEditDialog'
+import { PartDialog } from './PartDialog'
+import { archiveOffer, attempt, updateOffer, updatePart } from './editApi'
+import { useAppDialog } from '../useAppDialog'
 import { formatDay, formatDecimal, formatMoney, formatUTC, formatVariation } from './format'
 import { DISPLAY_CURRENCY, displayStats } from './display'
 import { bucketLabel, bucketSeries, bucketTitle, inPeriod, monthlyChart, PERIODS, type PeriodID } from './graph'
@@ -51,6 +55,11 @@ export default function SuppliersPage({ selectedID: wanted, onSelect, onSaved }:
   const [offerQuery, setOfferQuery] = useState('')
   const [offerForm, setOfferForm] = useState(false)
   const [supplierQuery, setSupplierQuery] = useState('')
+  const [editSupplier, setEditSupplier] = useState(false)
+  const [editOfferID, setEditOfferID] = useState<number | null>(null)
+  const [editPartID, setEditPartID] = useState<number | null>(null)
+  const [notice, setNotice] = useState('')
+  const dialogs = useAppDialog()
 
   const selectedID = wanted ?? suppliers[0]?.id ?? null
 
@@ -117,6 +126,20 @@ export default function SuppliersPage({ selectedID: wanted, onSelect, onSaved }:
   const chartView = currentPage?.offers.find((view) => view.offer.id === chartOfferID) ?? shownOffers.find((view) => view.statistics?.history.length)
   const offerName = new Map((currentPage?.offers ?? []).map((view) => [view.offer.id, view.part.name]))
   function refreshData() { setPageError(''); setContractsError(''); setRefresh((version) => version + 1) }
+  // Après une modification du catalogue : relit les offres et, dans une BOM, l'arbre (totaux, impact).
+  const edited = () => { refreshData(); onSaved?.() }
+  const saveWith = async (call: () => Promise<unknown>) => { const message = await attempt(call); if (!message) edited(); return message }
+  function archive(view: OfferView) {
+    void dialogs.confirm({
+      title: 'Archiver cette offre ?',
+      message: `L’offre #${view.offer.id} de « ${view.part.name} » n’est plus proposée. Si une BOM ou un contrat l’utilise, elle est archivée et reste lisible ; sinon elle est supprimée.`,
+      confirmLabel: 'Archiver', danger: true,
+    }).then(async (ok) => {
+      if (!ok) return
+      setNotice(''); setPageError('')
+      try { const r = await archiveOffer(view.offer.id); setNotice(r.archived ? `Offre #${view.offer.id} archivée.` : `Offre #${view.offer.id} supprimée (aucune BOM ni contrat ne l’utilisait).`); edited() } catch (error) { setPageError(errorMessage(error)) }
+    })
+  }
   function chooseSupplier(id: number) {
     // Une sélection inchangée ne relance pas l'effet : conserver aussi ses erreurs visibles.
     if (id === selectedID) return
@@ -153,6 +176,7 @@ export default function SuppliersPage({ selectedID: wanted, onSelect, onSaved }:
             <div><p className="eyebrow">Fournisseur #{supplier.id}</p><h2>{supplier.name}</h2>
               <div className="muted small">Qualité <b>{formatDecimal(supplier.quality_score)}{supplier.quality_score !== null ? ' / 5' : ''}</b> · Confiance <b>{formatDecimal(supplier.trust_score)}{supplier.trust_score !== null ? ' / 5' : ''}</b></div></div>
             <div className="feed-status small" aria-live="polite"><span className={`dot ${stream === 'connected' ? 'ok' : stream === 'unavailable' ? 'over' : 'na'}`} aria-hidden="true" /> {stream === 'connected' ? 'Mises à jour automatiques actives' : stream === 'connecting' ? 'Connexion aux mises à jour…' : 'Mises à jour automatiques indisponibles, actualisez manuellement'}{loading && <span className="muted"> · actualisation…</span>}</div>
+            <button type="button" className="btn" onClick={() => setEditSupplier(true)}>Modifier</button>
             <button type="button" className="btn" onClick={refreshData} aria-label="Actualiser les données">↻ Actualiser</button>
           </div>
         </section>
@@ -162,13 +186,14 @@ export default function SuppliersPage({ selectedID: wanted, onSelect, onSaved }:
             {!!currentPage?.offers.length && <input type="search" className="offer-search" placeholder="Rechercher une pièce…" aria-label="Rechercher une offre" value={offerQuery} onChange={(event) => setOfferQuery(event.target.value)} />}
             <button type="button" className="btn" onClick={() => setOfferForm(true)}>+ Offre</button></h3>
           {currentPage?.context?.mode === 'snapshot_fallback' && <p className="notice" role="status">Source de prix indisponible. Prix du snapshot #{currentPage.context.snapshot_id}, figé au {formatUTC(currentPage.context.as_of)}.</p>}
+          {notice && <p className="notice" role="status">{notice}</p>}
           {pageError && <p className="form-error" role="alert">Impossible d’actualiser les offres : {pageError}{currentPage ? ' Les dernières données reçues restent affichées.' : ''}</p>}
           {!currentPage && loading && <p className="loading-state" role="status">Chargement des offres…</p>}
           {currentPage?.offers.length === 0 && <div className="empty-state"><strong>Aucune offre pour ce fournisseur</strong><p>Les offres rattachées à {supplier.name} apparaîtront ici.</p></div>}
           {!!currentPage?.offers.length && !shownOffers.length && <div className="empty-state"><strong>Aucune offre ne correspond à « {offerQuery} »</strong></div>}
           {!!shownOffers.length && <div className="scroll offers-scroll"><table className="offers-table">
-            <thead><tr><th>Pièce</th><th className="n">Dernière cotation</th><th className="n">Fourchette cotée</th><th className="n">Variation</th><th className="n">Délai</th><th>Origine</th><th><span className="sr-only">Historique</span></th></tr></thead>
-            <tbody>{shownOffers.map((view) => <OfferRow key={view.offer.id} view={view} selected={chartView?.offer.id === view.offer.id} onChart={() => setChartOfferID(view.offer.id)} onHistory={() => setHistoryID(view.offer.id)} />)}</tbody>
+            <thead><tr><th>Pièce</th><th className="n">Dernière cotation</th><th className="n">Fourchette cotée</th><th className="n">Variation</th><th className="n">Délai</th><th>Origine</th><th><span className="sr-only">Historique</span></th><th><span className="sr-only">Actions</span></th></tr></thead>
+            <tbody>{shownOffers.map((view) => <OfferRow key={view.offer.id} view={view} selected={chartView?.offer.id === view.offer.id} onChart={() => setChartOfferID(view.offer.id)} onHistory={() => setHistoryID(view.offer.id)} onEdit={() => setEditOfferID(view.offer.id)} onEditPart={() => setEditPartID(view.part.id)} onArchive={() => archive(view)} />)}</tbody>
           </table></div>}
           <p className="muted small in">{currentPage?.as_of ? `Prix observés au ${formatUTC(currentPage.as_of)}, dans la devise de l’offre.` : 'Les prix et leur historique apparaîtront à la réception de cotations.'} Cliquez une ligne pour sa courbe de prix.</p>
         </section>
@@ -198,11 +223,16 @@ export default function SuppliersPage({ selectedID: wanted, onSelect, onSaved }:
     {createSupplier && <SupplierDialog onClose={() => setCreateSupplier(false)} onSaved={(item) => { setSuppliers((old) => sortByName([...old.filter((s) => s.id !== item.id), item])); chooseSupplier(item.id); setCreateSupplier(false) }} />}
     {contractForm && supplier?.id === contractForm.supplierID && <ContractDialog key={contractForm.contract?.id ?? 'new'} supplierID={supplier.id} offers={currentPage?.offers ?? []} contract={contractForm.contract} onClose={() => setContractForm(null)} onSaved={() => { setContractForm(null); setRefresh((version) => version + 1); onSaved?.() }} />}
     {offerForm && supplier && <OfferDialog supplier={supplier} onClose={() => setOfferForm(false)} onSaved={() => { setOfferForm(false); refreshData(); onSaved?.() }} />}
+    {editSupplier && supplier && <SupplierDialog current={supplier} onClose={() => setEditSupplier(false)} onSaved={(item) => { setSuppliers((old) => sortByName([...old.filter((s) => s.id !== item.id), item])); setEditSupplier(false) }} />}
+    {editOfferID !== null && <OfferEditDialog key={editOfferID} offerID={editOfferID} onClose={() => setEditOfferID(null)} save={(patch) => saveWith(() => updateOffer(editOfferID, patch))} />}
+    {editPartID !== null && <PartDialog key={editPartID} partID={editPartID} onClose={() => setEditPartID(null)} save={(patch) => saveWith(() => updatePart(editPartID, patch))} />}
+    {dialogs.element}
     {historyView && <HistoryDialog key={historyView.offer.id} view={historyView} onClose={() => setHistoryID(null)} />}
   </div>
 }
 
-function OfferRow({ view, selected, onChart, onHistory }: { view: OfferView; selected: boolean; onChart: () => void; onHistory: () => void }) {
+function OfferRow({ view, selected, onChart, onHistory, onEdit, onEditPart, onArchive }: { view: OfferView; selected: boolean; onChart: () => void; onHistory: () => void; onEdit: () => void; onEditPart: () => void; onArchive: () => void }) {
+  const act = (fn: () => void) => (event: { stopPropagation: () => void }) => { event.stopPropagation(); fn() }
   const stats = view.statistics
   return (
     <tr className={`clickable offer-row ${selected ? 'sel' : ''}`} aria-label={`Offre ${view.offer.id} : ${view.part.name}`} onClick={onChart}>
@@ -213,6 +243,11 @@ function OfferRow({ view, selected, onChart, onHistory }: { view: OfferView; sel
       <td className="n">{view.offer.lead_time_days} j</td>
       <td>{view.offer.origin_country}</td>
       <td className="n"><button type="button" className="link" aria-label={`Historique de ${view.part.name}`} title="Toutes les cotations" onClick={(event) => { event.stopPropagation(); onHistory() }}>↗</button></td>
+      <td className="n offer-actions">
+        <button type="button" className="link" aria-label={`Modifier l’offre #${view.offer.id}`} onClick={act(onEdit)}>Offre</button>{' · '}
+        <button type="button" className="link" aria-label={`Modifier la pièce ${view.part.name}`} onClick={act(onEditPart)}>Pièce</button>{' · '}
+        <button type="button" className="link" aria-label={`Archiver l’offre #${view.offer.id}`} onClick={act(onArchive)}>Archiver</button>
+      </td>
     </tr>
   )
 }
