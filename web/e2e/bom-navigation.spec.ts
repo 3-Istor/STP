@@ -33,7 +33,7 @@ const parts = [
   { id: 12, name: 'Siège conducteur', category: 'Habitacle', co2_kg_per_unit: null, mass_kg: null, production_days: null, offers: [] },
 ]
 
-async function mockAPI(page: Page, added: unknown[] = []) {
+async function mockAPI(page: Page, added: unknown[] = [], treeNodes = nodes) {
   await page.route('**/api/**', async (route) => {
     const path = new URL(route.request().url()).pathname
     if (['DELETE', 'PATCH'].includes(route.request().method()) && path === '/api/v1/boms/1') {
@@ -48,7 +48,7 @@ async function mockAPI(page: Page, added: unknown[] = []) {
     }
     const json = {
       '/api/v1/boms': [bom, { ...bom, id: 2, name: 'Aston Martin', currency: 'GBP' }],
-      '/api/v1/boms/1/tree': { bom, nodes, explanation: { currency: 'EUR', price_snapshot_id: null, rates: [] }, stock: [], planning: { schedule: null, lead_time_days: 0, available_on: null, critical: [], allowed_days: null, target_met: null, late: [] } },
+      '/api/v1/boms/1/tree': { bom, nodes: treeNodes, explanation: { currency: 'EUR', price_snapshot_id: null, rates: [] }, stock: [], planning: { schedule: null, lead_time_days: 0, available_on: null, critical: [], allowed_days: null, target_met: null, late: [] } },
       '/api/v1/boms/1/anomalies': { threshold: '3', currency: 'EUR', price_snapshot_id: null, rates: [], nodes: [] },
       '/api/v1/parts': parts,
       '/api/v1/suppliers': [{ id: 1, name: 'Atlas' }, { id: 2, name: 'Boréal' }],
@@ -91,6 +91,18 @@ test('arbre trié, en-têtes de colonnes, premiers niveaux dépliés et recherch
   await expect(page.getByText('Aucun résultat pour « introuvable ».')).toBeVisible()
   await search.fill('')
   await expect(rowNames(page)).toHaveCount(5)
+})
+
+test('recherche après défilement : le sous-ensemble trouvé revient en tête de la fenêtre virtuelle', async ({ page }) => {
+  const many = [node(1, null, 'Fiat Multipla'), node(2, 1, 'Groupe recherché'),
+    ...Array.from({ length: 500 }, (_, i) => node(i + 10, 2, 'Élément ' + String(i).padStart(4, '0')))]
+  await mockAPI(page, [], many)
+  await page.goto('/#/boms/1/structurer')
+  await expect(page.getByRole('treeitem').filter({ hasText: 'Groupe recherché' })).toBeVisible()
+  await page.locator('.tree').evaluate(el => { el.scrollTop = el.scrollHeight })
+  await expect(page.getByRole('treeitem').filter({ hasText: 'Élément 0499' })).toBeVisible()
+  await page.getByRole('searchbox', { name: 'Rechercher dans la BOM' }).fill('Groupe recherché')
+  await expect(page.getByRole('treeitem').filter({ hasText: 'Groupe recherché' })).toBeVisible()
 })
 
 test('lien profond : le nœud de l’URL est déplié, sélectionné et suit d’une étape à l’autre', async ({ page }) => {

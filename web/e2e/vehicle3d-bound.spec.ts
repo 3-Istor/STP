@@ -37,7 +37,7 @@ function fixture() {
   return { nodes, buffers, manifest }
 }
 
-type Probe = { built: { root: { visible: boolean }; items: { obj: { nodeId: number }; node: { uuid: string; position: { toArray(): number[] } }; meshes: { geometry: { boundingBox: { min: { x: number }; max: { x: number } } }; material: { opacity: number } }[] }[] }; selection: Set<string>; screenPositionOf(key: string): { x: number; y: number }; diagnostics: { items: number } }
+type Probe = { built: { root: { visible: boolean }; items: { obj: { nodeId: number }; node: { uuid: string; position: { toArray(): number[] } }; meshes: { geometry: { boundingBox: { min: { x: number }; max: { x: number } } }; material: { opacity: number } }[] }[] }; selection: Set<string>; camera: { position: { toArray(): number[] } }; screenPositionOf(key: string): { x: number; y: number }; diagnostics: { items: number; animating: boolean } }
 async function probe(page: Page) {
   return page.locator('.v3d-root').evaluate(el => {
     const v = (el as HTMLElement & { __viewer: Probe }).__viewer
@@ -104,6 +104,9 @@ test('manifestes : occurrences, picking, quantités, remplacement physique et of
   releaseReplacement()
   await expect.poll(() => probe(page).then(p => p.items.find(i => i.id === 3)?.width)).toBe(2)
   expect(requests).toEqual([1, 1])
+  await page.getByRole('button', { name: 'Recentrer', exact: true }).click()
+  await expect.poll(() => page.locator('.v3d-root').evaluate(el => (el as HTMLElement & { __viewer: Probe }).__viewer.diagnostics.animating)).toBe(false)
+  const assembledCamera = await page.locator('.v3d-root').evaluate(el => (el as HTMLElement & { __viewer: Probe }).__viewer.camera.position.toArray())
   await page.screenshot({ path: testInfo.outputPath('synthetic-bound-assembled.png') })
   const assembled = (await probe(page)).items.map(i => i.position)
   await page.getByLabel('Éclatement', { exact: true }).focus()
@@ -113,6 +116,10 @@ test('manifestes : occurrences, picking, quantités, remplacement physique et of
   await page.screenshot({ path: testInfo.outputPath('synthetic-bound-exploded.png') })
   await page.getByRole('button', { name: 'Réinitialiser', exact: true }).click()
   await expect.poll(() => probe(page).then(p => p.items.map(i => i.position))).toEqual(assembled)
+  await expect.poll(async () => {
+    const at = await page.locator('.v3d-root').evaluate(el => (el as HTMLElement & { __viewer: Probe }).__viewer.camera.position.toArray())
+    return Math.max(...at.map((v, i) => Math.abs(v - assembledCamera[i])))
+  }).toBeLessThan(0.000001)
   await page.getByText('Composants et sources', { exact: true }).click()
   await page.getByLabel('Motorisation', { exact: true }).selectOption('thermal')
   await expect.poll(() => probe(page).then(p => p.items.filter(i => i.id !== 5).every(i => i.opacity === 0.12))).toBe(true)
@@ -179,4 +186,40 @@ test('BOM complète : diagnostics différés et limités à 100 lignes à la dem
   await expect(settings.locator('li')).toHaveCount(100)
   await page.getByRole('button', { name: 'Afficher 100 suivantes', exact: true }).click()
   await expect(settings.locator('li')).toHaveCount(200)
+})
+
+test('extérieur prioritaire : intérieur révélé et cliquable à travers la coque transparente', async ({ page }) => {
+  const f = fixture(), shell = boxGLB(6)
+  const manifest = { ...f.manifest, scope: { kind: 'draft', id: 80 }, assets: [
+    ...f.manifest.assets.map(a => ({ ...a, display_role: 'interior' })),
+    { ...f.manifest.assets[0], key: 'shell', path: '/models/shell.glb', sha256: createHash('sha256').update(shell).digest('hex'), display_role: 'exterior' },
+  ], bindings: [{ ...f.manifest.bindings[0], node_id: 1, parent_id: null, part_id: null, asset_key: 'shell', system: 'body', instances: [
+    { key: 'shell', position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1], explode_vector: [0, 2, 0] },
+  ] }, ...f.manifest.bindings] }
+  await page.route('**/api/v1/boms', route => route.fulfill({ json: [{ id: 80, name: 'Essai coque' }] }))
+  await page.route('**/api/v1/boms/80/tree', route => route.fulfill({ json: { nodes: f.nodes } }))
+  await page.route('**/models/manifests/draft-80.json', route => route.fulfill({ json: manifest }))
+  await page.route('**/models/box*.glb', route => route.fulfill({ body: f.buffers[Number(route.request().url().match(/box(\d)/)![1])], contentType: 'model/gltf-binary' }))
+  await page.route('**/models/shell.glb', route => route.fulfill({ body: shell, contentType: 'model/gltf-binary' }))
+  await page.goto('/vehicle3d-demo.html?bom=80&mode=bound')
+  await ready(page)
+  const visible = () => page.locator('.v3d-root').evaluate(el => {
+    const v = (el as HTMLElement & { __viewer: { built: { items: { obj: { nodeId: number }; node: { visible: boolean } }[] } } }).__viewer
+    return v.built.items.filter(i => i.node.visible).map(i => i.obj.nodeId)
+  })
+  await expect.poll(visible).toEqual([1])
+  await page.getByLabel('Carrosserie transparente', { exact: true }).check()
+  await expect.poll(visible).toEqual([1, 3, 4, 5])
+  const point = await page.locator('.v3d-root').evaluate(el => (el as HTMLElement & { __viewer: Probe }).__viewer.screenPositionOf('node:3/instance:a'))
+  const box = (await page.locator('.v3d-canvas').boundingBox())!
+  await page.mouse.click(box.x + point.x, box.y + point.y)
+  await expect(page.locator('.demo-sel')).toContainText('#3')
+  await page.getByRole('button', { name: 'Réinitialiser', exact: true }).click()
+  await expect.poll(visible).toEqual([1])
+  // An absent exterior must expose the available illustrative interior, with an explicit notice.
+  await page.route('**/models/shell.glb', route => route.fulfill({ status: 404 }))
+  await page.reload()
+  await ready(page)
+  await expect.poll(visible).toEqual([3, 4, 5])
+  await expect(page.getByText('Vue mécanique illustrative — aucun extérieur chargé.', { exact: true })).toBeVisible()
 })

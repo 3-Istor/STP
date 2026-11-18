@@ -8,6 +8,7 @@ import { budgetClass, budgetPercentText, budgetTitle } from './budget.ts'
 import { CostBreakdown } from './CostBreakdown.tsx'
 import type { Target } from '../router.ts'
 import { StockPanel } from './StockPanel.tsx'
+import { providedVariantParts } from '../features/vehicle3d/providedScene.ts'
 
 type Props = {
   node: TreeNode
@@ -144,6 +145,12 @@ export function NodePanel(p: Props) {
       {!readOnly && (
         <>
           <EditFields key={`edit-${node.id}`} node={node} onPatch={p.onPatch} />
+          {isPart ? <label className="stack small">Offre retenue
+            <select aria-label="Fournisseur pour cette pièce" value={node.offer_id ?? ''} onChange={event => void p.onPatch({ offer_id: Number(event.target.value) })}>
+              {(catalog.byPart.get(node.part_id!)?.offers ?? []).map(o => <option key={o.id} value={o.id}>{o.supplier} · {o.price ? formatMoney(o.price) : 'sans prix'} · {o.lead_time_days} j</option>)}
+            </select>
+          </label> : null}
+          {providedVariantParts(p.target, node).length > 1 ? <PhysicalReplacement key={`replacement-${node.id}`} node={node} catalog={catalog} partIDs={providedVariantParts(p.target, node)} onPatch={p.onPatch} /> : null}
           <div className="row">
             <button type="button" className="primary" onClick={() => setAdding(true)}>
               + Ajouter dessous
@@ -164,6 +171,27 @@ export function NodePanel(p: Props) {
       )}
     </section>
   )
+}
+
+function PhysicalReplacement({ node, catalog, partIDs, onPatch }: {
+  node: TreeNode; catalog: Catalog; partIDs: number[]; onPatch: (p: NodePatch) => Promise<boolean>
+}) {
+  const [partID, setPartID] = useState(node.part_id!)
+  const [offerID, setOfferID] = useState<number | null>(node.offer_id)
+  const part = catalog.byPart.get(partID)
+  return <details className="physical-replacement">
+    <summary>Remplacement physique — variante 3D illustrative</summary>
+    <form className="stack" onSubmit={event => { event.preventDefault(); if (offerID !== null) void onPatch({ part_id: partID, offer_id: offerID }) }}>
+      <p className="muted small">Gabarits illustratifs, dimensions constructeur non vérifiées. Le fournisseur et la référence physique sont deux choix distincts.</p>
+      <label>Référence physique<select aria-label="Référence physique de remplacement" value={partID} onChange={event => {
+        const next = Number(event.target.value); setPartID(next); setOfferID(catalog.byPart.get(next)?.offers[0]?.id ?? null)
+      }}>{partIDs.map(id => <option key={id} value={id}>{partName(catalog, id)}</option>)}</select></label>
+      <label>Offre du remplacement<select aria-label="Offre du remplacement" value={offerID ?? ''} onChange={event => setOfferID(Number(event.target.value))}>
+        {(part?.offers ?? []).map(o => <option key={o.id} value={o.id}>{o.supplier} · {o.price ? formatMoney(o.price) : 'sans prix'} · {o.lead_time_days} j</option>)}
+      </select></label>
+      <button type="submit" disabled={partID === node.part_id || offerID === null}>Confirmer le remplacement physique</button>
+    </form>
+  </details>
 }
 
 function EditFields({ node, onPatch }: { node: TreeNode; onPatch: (p: NodePatch) => Promise<boolean> }) {

@@ -46,7 +46,8 @@ export function BomTree(props: Props) {
   )
 
   const viewport = useRef<HTMLDivElement>(null)
-  const [scrollTop, setScrollTop] = useState(0)
+  const [scroll, setScroll] = useState({ query, top: 0 })
+  const scrollTop = scroll.query === query ? scroll.top : 0
   const [height, setHeight] = useState(600)
   useEffect(() => {
     const el = viewport.current
@@ -55,6 +56,7 @@ export function BomTree(props: Props) {
     ro.observe(el)
     return () => ro.disconnect()
   }, [])
+  useEffect(() => { viewport.current?.scrollTo({ top: 0 }) }, [query])
 
   // Sélection venue d'ailleurs (lien profond, autre étape, Synthèse) : ses ancêtres sont dépliés et la
   // ligne est ramenée dans la zone visible. Un clic dans l'arbre ne fait rien défiler (ligne déjà visible).
@@ -106,7 +108,7 @@ export function BomTree(props: Props) {
       className={moving !== null ? 'tree moving' : 'tree'}
       role="tree"
       aria-label="Arbre de la BOM"
-      onScroll={(e) => setScrollTop(e.currentTarget.scrollTop)}
+      onScroll={(e) => setScroll({ query, top: e.currentTarget.scrollTop })}
     >
       <div className="tree-head" aria-hidden="true" style={{ height: ROW_HEIGHT }}>
         <span className="name">Ensemble / pièce</span>

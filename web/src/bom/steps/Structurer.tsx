@@ -4,6 +4,7 @@ import { Vehicle3D, type ColorBy, type RenderMode, type Vehicle3DNode } from '..
 import { BomTree } from '../BomTree.tsx'
 import type { BomData } from '../useBomData.ts'
 import { boundVehicle3dKey, vehicle3dKey, vehicle3dNodes } from '../vehicle3dNodes.ts'
+import { hasProvidedScene } from '../../features/vehicle3d/providedScene.ts'
 
 export type TreeView = 'arbre' | 'arbre-3d' | '3d'
 const treeViews: { id: TreeView; label: string }[] = [
@@ -119,7 +120,7 @@ const colorModes: { id: ColorBy; label: string }[] = [
 // Vehicle3DPane : contrôles de la maquette I4-2 (Rendu, Colorer, Éclatement) au-dessus de la vue 3D. Focus
 // (I4-3) : double-clic sur un sous-ensemble, « Sortir du focus » ou Échap.
 function Vehicle3DPane({ data, selectedID, onSelect }: { data: BomData; selectedID: number | null; onSelect: (id: number) => void }) {
-  const [mode, setMode] = useState<RenderMode>('simple')
+  const [mode, setMode] = useState<RenderMode>(() => hasProvidedScene(data.target, data.nodes) ? 'bound' : 'simple')
   const [colorBy, setColorBy] = useState<ColorBy>('material')
   const [explode, setExplode] = useState(0)
   const budgets = data.budgets.unavailable === null ? data.budgets.byNode : null

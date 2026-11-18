@@ -6,6 +6,7 @@ Runtime picking reads the resulting numeric occurrence manifests, never these so
 """
 import argparse
 import base64
+import copy
 from collections import defaultdict
 import hashlib
 import json
@@ -51,6 +52,32 @@ def append_attribute(document, binary, encoded, dimension):
         accessor['max'] = [max(values[axis::3]) for axis in range(3)]
     document['accessors'].append(accessor)
     return len(document['accessors']) - 1
+
+
+def battery_variant(document, binary, nodes, children, variant):
+    """An explicitly illustrative casing variant; no capacity-to-dimension business rule."""
+    positions = []
+    for child in children:
+        primitive = document['meshes'][nodes[child]['mesh']]['primitives'][0]
+        accessor = document['accessors'][primitive['attributes']['POSITION']]
+        view = document['bufferViews'][accessor['bufferView']]
+        assert accessor['componentType'] == 5126 and accessor['type'] == 'VEC3'
+        stride = view.get('byteStride', 12)
+        offset = view.get('byteOffset', 0) + accessor.get('byteOffset', 0)
+        positions.append([struct.unpack_from('<3f', binary, offset + i * stride) for i in range(accessor['count'])])
+    center = [(min(p[axis] for mesh in positions for p in mesh) + max(p[axis] for mesh in positions for p in mesh)) / 2 for axis in range(3)]
+    copies = []
+    for child, vertices in zip(children, positions):
+        node = copy.deepcopy(nodes[child]); mesh = copy.deepcopy(document['meshes'][node['mesh']])
+        assert len(mesh['primitives']) == 1 and 'NORMAL' not in mesh['primitives'][0]['attributes']
+        values = [center[axis] + (point[axis] - center[axis]) * variant['illustrative_scale'][axis] for point in vertices for axis in range(3)]
+        data = struct.pack('<' + 'f' * len(values), *values)
+        mesh['primitives'][0]['attributes']['POSITION'] = append_attribute(document, binary, base64.b64encode(data), 3)
+        node['mesh'] = len(document['meshes']); document['meshes'].append(mesh)
+        node['name'] += '-illustrative-60ah'; copies.append(len(nodes)); nodes.append(node)
+    index = len(nodes)
+    nodes.append(dict(name=variant['source_group'], children=copies, extras=dict(accuracy=variant['note'])))
+    return index
 
 
 def prepare(vehicle, layout, inspection, exterior):
@@ -112,6 +139,9 @@ def prepare(vehicle, layout, inspection, exterior):
     roots = []
     for target, children in grouped.items():
         roots.append(len(nodes)); nodes.append(dict(name='occurrence-' + str(target), children=children))
+    if not exterior:
+        for variant in layout.get('variants', []):
+            roots.append(battery_variant(document, binary, nodes, grouped[variant['node_id']], variant))
     document['nodes'] = nodes
     document['scenes'] = [dict(name=name + (' exterior' if exterior else ' illustrative interior'), nodes=roots)]
     document['scene'] = 0
@@ -156,6 +186,10 @@ def main():
                 placement['explode_vector'] = [0, 0, 0]
                 bindings.append(dict(node_id=target, parent_id=entry['parent_id'], part_id=entry['part_id'], asset_key=definition['key'],
                                      mesh_path=['occurrence-' + str(target)], system=entry['system'], position_status='approximation', instances=[placement]))
+            if not exterior:
+                for variant in layout.get('variants', []):
+                    original = next(binding for binding in bindings if binding['node_id'] == variant['node_id'] and binding['part_id'] == variant['original_part_id'])
+                    bindings.append(dict(original, part_id=variant['part_id'], mesh_path=[variant['source_group']]))
             report.append(dict(file=filename, sha256=digest, bytes=(MODELS / filename).stat().st_size, occurrence_groups=len(records)))
         manifest.update(revision='soutenance-assembled-20261118', assets=definitions, bindings=bindings, assemblies=[])
         (MODELS / 'manifests' / f'draft-{layout["bom_id"]}.json').write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + '\n')

@@ -4419,6 +4419,21 @@
         "group": "wheel-15884",
         "system": "shared"
       }
+    ],
+    "variants": [
+      {
+        "node_id": 15896,
+        "parent_id": 15895,
+        "original_part_id": 195,
+        "part_id": 196,
+        "source_group": "occurrence-15896-battery60",
+        "illustrative_scale": [
+          1.22,
+          1.08,
+          1
+        ],
+        "note": "Variante de gabarit illustrative créée depuis le prototype fourni. Aucune cote de batterie 60 Ah constructeur vérifiée."
+      }
     ]
   },
   "valhalla": {

@@ -416,3 +416,28 @@ validation fonctionnelle et visuelle sur les assets réellement accessibles.
   Go/PR sont lancés sur une base séparée de la démonstration. Rien n'a été affaibli pour les faire passer.
 - Prochaine tâche : parcours complet dans Structurer, bonnes occurrences des sièges et moteurs,
   isolation/focus, cas de remplacement et modes hybrides, puis instructions exactes de soutenance.
+
+## Soutenance — étape 4 : parcours BOM et remplacement vérifiés
+
+- Les brouillons vérifiés 1/2/3 ouvrent les vrais modèles dans Composants. Un registre explicite
+  vérifie portée, racine et ancres ; il ne déduit aucune liaison de pièce par son nom. Le brouillon B
+  possède son manifeste d'occurrences propre, distinct des IDs de la Fiat initiale (voir ADR 0041).
+- Application et API Go réelles : sélection arbre → bloc moteur Fiat/V8 Aston, raycast → pneu Fiat
+  et moteur électrique avant Aston, Détail, chemin déplié, isolation et focus de groupe validés.
+  Les filtres thermique/électrique/hybride conservent les identités ; les trois moteurs et la batterie
+  HV sont contrôlés explicitement. Aucun SDK ou contrat backend changé.
+- Offre fournisseur accessible dans Détail de la vue combinée ; une offre seule conserve les UUID
+  et dimensions de géométrie. Remplacement physique confirmé 50 Ah → 60 Ah sur le brouillon B :
+  autre géométrie, même occurrence. Variante de boîtier **illustrative**, dimensions non constructeur.
+  Référence et offre originales restaurées et relues après le test réel.
+- Régressions reproduites avant correction : recherche après défilement virtualisé ; coque fantôme
+  interceptant un clic intérieur ; intérieur masqué si extérieur absent ; cadrage trop éloigné après
+  reset pendant l'animation. Les tests correspondants passent après correction. La caméra cadre la
+  destination et le reset de la racine restitue le cadrage global assemblé.
+- Suite Chromium desktop complète : **62 PASS**. Tests unitaires du registre ajoutés, aucune dépendance
+  ou migration modifiée. Vérification SHA-256 des huit fichiers locaux d'origine/préparés PASS.
+- Base `stp3d` conservée ; nouvelle base dédiée `stp3d_demo` semée avec les commandes existantes et
+  `SIM_YEAR_DURATION=8760h` : la démonstration reste dans l'année des taux budget 2026. Aucune donnée
+  utilisateur ni snapshot existant modifié. API 18080, Vite 41769, simulateur 18090.
+- Prochaine tâche : terminer captures finales, navigation caméra et 0/50/100/0 sur les deux GLB réels,
+  tests mobiles ciblés, moulinette PR, revue indépendante et guide `3D_DEMO_SOUTENANCE.md`.

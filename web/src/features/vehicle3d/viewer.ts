@@ -45,6 +45,7 @@ export class Viewer {
   private focusKey: string | null = null
   private focusKeys = new Set<string>()
   private selection = new Set<string>()
+  private wholeVehicleSelected = false
   private shellTransparent = false
   private selectionFrames: THREE.Box3Helper[] = []
   private colorBy: ColorBy = 'system'
@@ -229,14 +230,18 @@ export class Viewer {
     this.applyStyles()
   }
 
-  setSelection(keys: string[], frame: boolean) {
+  setSelection(keys: string[], frame: boolean, wholeVehicle = false) {
     this.selection = new Set(keys)
+    this.wholeVehicleSelected = wholeVehicle
     this.applyStyles()
-    if (frame && keys.length > 0 && !this.focusKey) this.frameItems(this.itemsOf(new Set(keys)), null)
+    if (frame && keys.length > 0 && !this.focusKey) {
+      if (wholeVehicle) this.recenter()
+      else this.frameDestination(this.itemsOf(new Set(keys)), null)
+    }
   }
 
   frameSelection() {
-    if (this.selection.size > 0) this.frameItems(this.itemsOf(this.selection), null)
+    if (this.selection.size > 0) this.frameDestination(this.itemsOf(this.selection), null)
   }
 
   focusSelection() {
@@ -292,7 +297,7 @@ export class Viewer {
   recenter(animate = true) {
     const known = this.built?.items.filter(i => !i.obj?.estimated) ?? []
     const items = known.length > 0 ? known : this.built?.items ?? []
-    this.frameItems(items, DEFAULT_VIEW, animate)
+    this.frameDestination(items, DEFAULT_VIEW, animate)
   }
 
   // ——— Positions ———
@@ -301,10 +306,10 @@ export class Viewer {
   private moveParts(frameTarget?: () => void) {
     if (!this.built) return
     const from = this.built.items.map(it => it.node.position.clone())
+    this.partsTween = null
     this.applyPositions()
     const to = this.built.items.map(it => it.node.position.clone())
     frameTarget?.() // cadrer la destination, avant de restaurer la pose de départ
-    this.partsTween = null
     if (!this.motionPreference.matches && from.some((p, i) => !p.equals(to[i]))) {
       this.partsTween = { from, to, t0: performance.now(), ms: 450 }
       this.built.items.forEach((it, i) => it.node.position.copy(from[i]))
@@ -363,8 +368,8 @@ export class Viewer {
 
   private applyStyles() {
     if (!this.built) return
-    const selectedInterior = this.selection.size < this.built.items.length && this.built.items.some(it => it.displayRole === 'interior' && it.obj && this.selection.has(it.obj.key))
-    const revealInterior = this.explode > 0 || this.shellTransparent || this.focusKey !== null || this.propulsionMode !== 'all' || selectedInterior || this.isolatedKeys !== null
+    const selectedInterior = !this.wholeVehicleSelected && this.built.items.some(it => it.displayRole === 'interior' && it.obj && this.selection.has(it.obj.key))
+    const revealInterior = !this.built.items.some(it => it.displayRole === 'exterior') || this.explode > 0 || this.shellTransparent || this.focusKey !== null || this.propulsionMode !== 'all' || selectedInterior || this.isolatedKeys !== null
     for (const it of this.built.items) {
       const system = it.obj?.componentSystem
       const propulsionGhost = (this.propulsionMode === 'thermal' && system === 'electric') || (this.propulsionMode === 'electric' && system === 'thermal')
@@ -415,6 +420,17 @@ export class Viewer {
     const v = THREE.MathUtils.degToRad(this.camera.fov)
     const h = 2 * Math.atan(Math.tan(v / 2) * this.camera.aspect)
     return radius / Math.sin(Math.min(v, h) / 2)
+  }
+
+  /** Une sélection ou un reset pendant l'animation cadre la pose d'arrivée, pas la pose transitoire. */
+  private frameDestination(items: Item[], dir: THREE.Vector3 | null, animate = true) {
+    if (!this.partsTween || !this.built) { this.frameItems(items, dir, animate); return }
+    const built = this.built, positions = built.items.map(it => it.node.position.clone())
+    built.items.forEach((it, i) => it.node.position.copy(this.partsTween!.to[i]))
+    built.root.updateMatrixWorld(true)
+    this.frameItems(items, dir, animate)
+    built.items.forEach((it, i) => it.node.position.copy(positions[i]))
+    built.root.updateMatrixWorld(true)
   }
 
   /** Cadre des items ; dir = direction caméra → cible (null : direction actuelle). */
@@ -518,7 +534,11 @@ export class Viewer {
       if (!it.node.visible) continue
       // en focus, seuls les sous-ensembles éclatés sont cliquables (le reste est un fantôme)
       if (this.focusKey && !(it.obj && this.focusKeys.has(it.obj.key))) continue
-      for (const m of it.meshes) if (m.visible) { m.userData.item = it; meshes.push(m) }
+      for (const m of it.meshes) if (m.visible) {
+        const materials = Array.isArray(m.material) ? m.material : [m.material]
+        if (materials.every(material => material.transparent && !material.depthWrite && material.opacity <= 0.12)) continue
+        m.userData.item = it; meshes.push(m)
+      }
     }
     const hit = this.raycaster.intersectObjects(meshes, false)[0]
     return (hit?.object.userData.item as Item | undefined)?.obj ?? null

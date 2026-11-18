@@ -144,8 +144,8 @@ export default function Vehicle3DView({ bomId, nodes, selectedNodeId, onSelectNo
     pickedRef.current = null
     const viewer = viewerRef.current
     if (viewer?.focused && !selection.keys.includes(viewer.focused)) viewer.setFocus(null)
-    viewer?.setSelection(selection.keys, !fromClick)
-  }, [ready, selection, selectedNodeId])
+    viewer?.setSelection(selection.keys, !fromClick, selectedNodeId === activeIndex.rootId)
+  }, [ready, selection, selectedNodeId, activeIndex.rootId])
 
   const estimated = result?.mode === 'simple' ? activeIndex.objects.filter(o => o.estimated).length : 0
   const missing = result?.missing.length ?? 0
@@ -169,6 +169,7 @@ export default function Vehicle3DView({ bomId, nodes, selectedNodeId, onSelectNo
         ) : null}
         {info ? <span className="v3d-badge"><strong>{info.vehicleLabel}</strong> · {info.representedNodes}/{info.physicalNodes} occurrences physiques représentées</span> : null}
         {info ? <span className="v3d-badge">Géométrie : {info.assets.length === 0 ? 'aucun modèle chargé' : info.assets.some(a => a.display_role === 'exterior') && info.assets.some(a => a.display_role === 'interior') ? 'extérieur détaillé · mécanique illustrative' : info.assets.some(a => a.geometry_status === 'schematic') ? 'schématique' : info.assets.some(a => a.geometry_status === 'approximation') ? 'approximative' : 'exactitude déclarée par l’auteur, à contrôler'} · {info.approximatePlacements} placement(s) approximatif(s)</span> : null}
+        {info && info.assets.some(a => a.display_role === 'interior') && !info.assets.some(a => a.display_role === 'exterior') ? <span className="v3d-notice">Vue mécanique illustrative — aucun extérieur chargé.</span> : null}
         {status.state === 'loading' ? <span className="v3d-badge" role="status">Chargement…</span> : null}
         {status.state === 'error' ? <span className="v3d-notice" role="alert">Vue 3D indisponible : {status.message}</span> : null}
         {status.state === 'error' ? <button type="button" className="v3d-button" onClick={() => setRevision(r => r + 1)}>Réessayer la vue 3D</button> : null}
@@ -249,6 +250,9 @@ export default function Vehicle3DView({ bomId, nodes, selectedNodeId, onSelectNo
           <span className="v3d-attribution">Modèle : {result.attribution} (<a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer">licence</a>)</span>
         </div>
       ) : null}
+      {info?.assets.filter(a => a.display_role === 'exterior').map(a => <div key={a.key} className="v3d-overlay v3d-bottom-right">
+        <span className="v3d-attribution">Extérieur : {a.author} · <a href={a.source_url} target="_blank" rel="noreferrer">source</a> · <a href={a.license_url} target="_blank" rel="noreferrer">{a.license}</a></span>
+      </div>)}
       {hover ? (
         <div className="v3d-tooltip" style={{ left: hover.x, top: hover.y }}>
           {hover.obj.name}{hover.obj.estimated ? <em> · position estimée</em> : null}

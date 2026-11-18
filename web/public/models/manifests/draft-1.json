@@ -22,7 +22,7 @@
     {
       "key": "MultiplaInteriorPrepared",
       "path": "/models/MultiplaInteriorPrepared.glb",
-      "sha256": "305639a2cbc182612e41f74257d397e90b2ff7a3a9572a15a8828d1be7b2a6b1",
+      "sha256": "cfd5f992c1686fcf66382dae899f6407185afd04683546ed3cd79beaafdba3ec",
       "unit_scale": 1,
       "source_url": "http://127.0.0.1:41769/models/soutenance-credits.html",
       "license": "Création originale fournie pour STP — usage local autorisé, licence publique non spécifiée",
@@ -5609,6 +5609,42 @@
             -0.65,
             -0.3,
             0.18
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 15896,
+      "parent_id": 15895,
+      "part_id": 196,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-15896-battery60"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            0.78
+          ],
+          "explode_vector": [
+            1.0,
+            -0.15,
+            0.3
           ]
         }
       ]
