@@ -44,3 +44,11 @@ export function budgetBarWidth(percent: string | null): number | null {
   if (!m) return null
   return Math.min(100, Number.parseInt(m[1], 10))
 }
+
+// allocationTitle : infobulle de l'avertissement de répartition, en français. Le texte technique du serveur
+// (anglais, taux compris) n'est pas affiché tel quel.
+export function allocationTitle(kind: 'over' | 'unverifiable'): string {
+  return kind === 'over'
+    ? 'Les sous-budgets cumulés dépassent ce budget au taux de change actuel : le change a bougé depuis leur saisie. Rien n’est bloqué.'
+    : 'La répartition n’a pas pu être vérifiée : il manque un taux de change pour convertir ce budget ou l’un de ses sous-budgets.'
+}

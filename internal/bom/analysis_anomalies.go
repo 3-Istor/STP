@@ -20,18 +20,40 @@ const (
 	AnomalyPerKg AnomalyMethod = "per_kg"
 	// AnomalyMedian : prix unitaire comparé à la médiane de la catégorie (ADR 0027).
 	AnomalyMedian AnomalyMethod = "median"
+	// AnomalyOffers : coût de l'offre retenue comparé à la médiane des offres de la même pièce (ADR 0041).
+	AnomalyOffers AnomalyMethod = "offers"
+	// AnomalyHistory : prix coté comparé à la médiane de ses cotations des 12 derniers mois (ADR 0041).
+	AnomalyHistory AnomalyMethod = "history"
+	// AnomalyMaterial : prix au kg comparé à la médiane €/kg de la famille catégorie × matière (ADR 0041).
+	AnomalyMaterial AnomalyMethod = "material"
 )
 
-// anomalyDetectorFor : le seul endroit où une méthode d'anomalie devient un détecteur (AGENTS §4), avec son
-// seuil par défaut. median garde le détecteur injecté (WithAnomalyDetector, remplaçable par une IA).
-func (s *Service) anomalyDetectorFor(m AnomalyMethod) (pricing.AnomalyDetector, decimal.Decimal, error) {
+// anomalyNeeds : ce que la méthode demande en plus du coût et de la masse (ADR 0041).
+type anomalyNeeds struct{ offers, history, family bool }
+
+// anomalySpec : une méthode d'anomalie complète : son détecteur, son seuil par défaut et ce qu'elle lit en plus.
+type anomalySpec struct {
+	detector  pricing.AnomalyDetector
+	threshold decimal.Decimal
+	needs     anomalyNeeds
+}
+
+// anomalySpecFor : le seul endroit où une méthode d'anomalie devient un détecteur et ses besoins (AGENTS §4).
+// median garde le détecteur injecté (WithAnomalyDetector, remplaçable par une IA).
+func (s *Service) anomalySpecFor(m AnomalyMethod) (anomalySpec, error) {
 	switch m {
 	case AnomalyPerKg:
-		return pricing.PerKgDetector{MinPeers: 5}, pricing.DefaultPerKgThreshold, nil
+		return anomalySpec{pricing.PerKgDetector{MinPeers: 5}, pricing.DefaultPerKgThreshold, anomalyNeeds{}}, nil
 	case AnomalyMedian:
-		return s.anomalies, pricing.DefaultAnomalyThreshold, nil
+		return anomalySpec{s.anomalies, pricing.DefaultAnomalyThreshold, anomalyNeeds{}}, nil
+	case AnomalyOffers:
+		return anomalySpec{pricing.OfferSpreadDetector{MinOffers: 2}, pricing.DefaultOfferSpreadThreshold, anomalyNeeds{offers: true}}, nil
+	case AnomalyHistory:
+		return anomalySpec{pricing.HistoryDetector{MinQuotes: 5}, pricing.DefaultHistoryThreshold, anomalyNeeds{history: true}}, nil
+	case AnomalyMaterial:
+		return anomalySpec{pricing.PerKgDetector{MinPeers: 5, ByFamily: true}, pricing.DefaultPerKgThreshold, anomalyNeeds{family: true}}, nil
 	}
-	return nil, decimal.Decimal{}, fmt.Errorf("anomaly method %q (want per_kg or median): %w", m, ErrInvalidInput)
+	return anomalySpec{}, fmt.Errorf("anomaly method %q (want per_kg, median, offers, history or material): %w", m, ErrInvalidInput)
 }
 
 // PartAnomaly : verdict d'une pièce de la BOM (à une offre retenue) et surcoût estimé par voiture.
@@ -58,14 +80,15 @@ type PartAnomalies struct {
 
 // PartAnomalies juge chaque pièce du brouillon selon la méthode ; threshold nil → seuil par défaut de la méthode.
 func (s *Service) PartAnomalies(ctx context.Context, bomID int64, method AnomalyMethod, threshold *decimal.Decimal) (PartAnomalies, error) {
-	detector, th, err := s.anomalyDetectorFor(method)
+	spec, err := s.anomalySpecFor(method)
 	if err != nil {
 		return PartAnomalies{}, fmt.Errorf("anomalies of bom %d: %w", bomID, err)
 	}
+	th := spec.threshold
 	if threshold != nil {
 		th = *threshold
 	}
-	res, judged, nodes, err := s.anomaliesWith(ctx, bomID, detector, th)
+	res, judged, nodes, err := s.anomaliesWith(ctx, bomID, spec, th)
 	if err != nil {
 		return PartAnomalies{}, err
 	}

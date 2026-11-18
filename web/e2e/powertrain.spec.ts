@@ -13,8 +13,8 @@ async function fixture(page: Page, unavailable = false, removedCount = 0) {
   const nodes = [...profile.guards, ...extras.map(([id, parent_id]) => ({ id, parent_id, part_id: null })),
     ...Array.from({ length: removedCount }, (_, i) => ({ id: 100000 + i, parent_id: 34537, part_id: 325 }))].map(n => ({ ...n,
     name: `Occurrence ${n.id}`, offer_id: n.part_id, quantity: '1', production_days: 0, strategy: null, totals: totals('987.65') }))
-  const bom = { id: 2, name: 'Aston Martin Valhalla', currency: 'GBP', volume: 1, annual_hours: '1607', destination_country: 'GB', price_snapshot_id: null, source_snapshot_id: null, created_at: '2026-01-01T00:00:00Z' }
-  const explanation = { currency: 'GBP', price_snapshot_id: null, rates: [], cost_method: { basis: 'purchase', fx: 'latest', program_volume: null }, cost_as_of: '2026-01-01T00:00:00Z', budget_rates: [] }
+  const bom = { id: 2, name: 'Aston Martin Valhalla', currency: 'GBP', volume: 1, annual_hours: '1607', destination_country: 'GB', price_snapshot_id: null as number | null, source_snapshot_id: null, created_at: '2026-01-01T00:00:00Z' }
+  const explanation = { currency: 'GBP', price_snapshot_id: null as number | null, rates: [], cost_method: { basis: 'purchase', fx: 'latest', program_volume: null }, cost_as_of: '2026-01-01T00:00:00Z', budget_rates: [] }
   const tree = { bom, nodes, explanation, stock: [], budgets: [], planning: null }
   const calls: string[] = [], requests: unknown[] = []
   let thermalAmount = '731.29'
@@ -40,7 +40,9 @@ async function fixture(page: Page, unavailable = false, removedCount = 0) {
     return route.fulfill({ json })
   })
   await page.goto('/#/boms/2/structurer')
-  return { calls, requests, changeQuote: () => { thermalAmount = '744.91' } }
+  return { calls, requests, changeQuote: () => { thermalAmount = '744.91' }, changeSettings: () => {
+    bom.volume = 100; bom.annual_hours = '1750'; bom.price_snapshot_id = 73; explanation.price_snapshot_id = 73
+  } }
 }
 
 test('motorisations : coût API, BOM active, comparaison commune, actualisation et sortie sans écriture', async ({ page }) => {
@@ -79,6 +81,23 @@ test('motorisations : coût API, BOM active, comparaison commune, actualisation 
   await panel.getByRole('button', { name: 'Quitter la simulation' }).click()
   await expect(summaryCost).toContainText('987,65')
   await expect(page.getByRole('button', { name: '+ Ajouter une pièce', exact: true })).toBeVisible()
+  expect(f.calls.every(c => c === 'POST /api/v1/boms/2/configuration-simulation')).toBe(true)
+})
+
+test('comparaison actualisée : volume et source des prix suivent les réglages capturés dans un autre onglet', async ({ page }) => {
+  const f = await fixture(page)
+  const panel = page.getByRole('region', { name: 'Simulation de motorisation' })
+  await panel.getByRole('radio', { name: 'Thermique', exact: true }).click()
+  await expect(panel.locator('[data-scenario=thermal]')).toBeVisible()
+  await page.evaluate(() => { location.hash = '/boms/2/structurer?node=32415' })
+  const detail = page.getByRole('region', { name: 'Détail du nœud' })
+  const ordered = detail.locator('dt:has-text("Quantité commandée") + dd')
+  await expect(ordered).toHaveText('1 pour 1 véhicules')
+  f.changeSettings()
+  await panel.getByRole('button', { name: 'Actualiser la comparaison' }).click()
+  await expect(ordered).toHaveText('100 pour 100 véhicules')
+  await expect(page.getByRole('region', { name: 'Synthèse', exact: true })).toContainText('Snapshot de prix #73.')
+  expect(f.requests).toHaveLength(2)
   expect(f.calls.every(c => c === 'POST /api/v1/boms/2/configuration-simulation')).toBe(true)
 })
 

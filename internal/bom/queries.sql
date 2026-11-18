@@ -32,6 +32,16 @@ UPDATE boms SET name = $2
 WHERE id = $1
 RETURNING *;
 
+-- Verrou de la BOM qui rend aussi sa devise : une règle qui en dépend (budget global, ADR 0045) est jugée sur la
+-- devise lue sous le verrou, jamais sur une lecture faite avant la transaction.
+-- name: LockBOMCurrency :one
+SELECT currency::text FROM boms
+WHERE id = $1
+FOR UPDATE;
+
+-- name: RootNodeID :one
+SELECT id FROM bom_nodes WHERE bom_id = $1 AND parent_id IS NULL;
+
 -- name: UpdateBOMSettings :one
 UPDATE boms SET currency = $2, volume = $3
 WHERE id = $1
@@ -174,6 +184,9 @@ SELECT node_id, amount, currency FROM bom_target_budgets WHERE bom_id = $1 ORDER
 INSERT INTO bom_target_budgets (bom_id, node_id, amount, currency) VALUES ($1, $2, $3, $4)
 ON CONFLICT (bom_id, node_id) DO UPDATE SET amount = EXCLUDED.amount, currency = EXCLUDED.currency
 RETURNING node_id, amount, currency;
+
+-- name: DeleteTargetBudget :exec
+DELETE FROM bom_target_budgets WHERE bom_id = $1 AND node_id = $2;
 
 -- Pistes de réduction (vision V2 §2).
 -- name: ListReductionIdeas :many

@@ -55,7 +55,7 @@ avec le simple surlignage d'un sous-ensemble à la place de l'occurrence demand�
   circuits de refroidissement n'ont pas de parcours constructeur fourni.
 - Les calculs et les snapshots restent sous les règles existantes du backend.
 
-L’ADR 0041 proposée présente les options de liaison fine : manifestes frontend explicites (recommandé),
+L’ADR 0049 proposée présente les options de liaison fine : manifestes frontend explicites (recommandé),
 identité persistée dans le catalogue/API, ou conservation des seuls schémas. Son option 1 a été
 validée explicitement par l’utilisateur dans la conversation, avec sept conditions de cohérence. L’ADR 0035 acceptée n’est pas modifiée.
 
@@ -74,7 +74,7 @@ reprendre la première tâche incomplète. Les fichiers temporaires ne sont pas 
 Audit sauvegardé (`0048639`), transitions/matériaux (`48a34a4`), absence et commandes (`ba468c4`).
 La qualité professionnelle et la géométrie fidèle des deux véhicules restent non acquises.
 Les avancées indépendantes sont détaillées dans `docs/3d/VALIDATION.md` et les points de progression.
-La prochaine tâche est l’implémentation du contrat de l’ADR 0041, option 1 explicitement autorisée.
+La prochaine tâche est l’implémentation du contrat de l’ADR 0049, option 1 explicitement autorisée.
 
 ## État après implémentation de l'option 1
 
@@ -96,7 +96,7 @@ base isolée ; ne pas modifier le backend, les snapshots publiés, les dépendan
 
 Périmètre complémentaire autorisé : retirer Simple/Rendu, conserver Composants en permanence ;
 simuler en mémoire trois BOM Valhalla avec coût complet actif via le moteur Go existant.
-L'option 1 de l'ADR 0042 et ses hypothèses ont été explicitement validées par l'utilisateur.
+L'option 1 de l'ADR 0050 et ses hypothèses ont été explicitement validées par l'utilisateur.
 La nouvelle route est additive ; aucune migration, dépendance, écriture de référence ou modification
 des formules existantes. DCT/transmission/refroidissement communs, batterie BEV adaptée manquante.
 

@@ -1,5 +1,7 @@
-# 0041 — Liaison explicite des assets aux occurrences BOM
+# 0049 — Liaison explicite des assets aux occurrences BOM
 Statut : Proposé — Date : 2026-11-17 — Décideurs : (à compléter par un humain)
+
+Renumérotation lors de l’intégration de `main` : ancien numéro 0041 sur `feat/3d-pro-v2`, déjà utilisé pour une autre décision sur `main`. Le contenu de la décision reste inchangé.
 
 ## Contexte
 La mission de refonte 3D demande des pièces sélectionnables, remplaçables et répétées sans confusion

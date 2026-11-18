@@ -223,8 +223,10 @@ func checkBudgets(in ChecksInput) PublicationCheck {
 		}
 		c.NodeIDs = append(c.NodeIDs, b.NodeID)
 		l := label(b.NodeID)
-		if pct, ok := PercentOf(b.Cost.Amount(), b.Target.Amount()); ok { // texte figé : arrondi half-even ici, une fois
-			l += " " + strings.Replace(pct.RoundBank(1).StringFixed(1), ".", ",", 1) + " %"
+		// Pourcentage du statut : calculé sur les valeurs exactes, budget converti s'il est dans une autre devise
+		// (ADR 0044), arrondi half-even une seule fois ; jamais recalculé ici en divisant deux devises.
+		if b.Percent != nil {
+			l += " " + strings.Replace(b.Percent.StringFixed(1), ".", ",", 1) + " %"
 		}
 		over = append(over, l)
 	}
@@ -271,7 +273,7 @@ func checkExpiredContracts(in ChecksInput) PublicationCheck {
 			label = fmt.Sprintf("contrat %d", u.ContractID)
 		}
 		if t, err := time.Parse(time.DateOnly, u.EndsOn); err == nil {
-			label += ", " + t.Format("02/01")
+			label += ", " + t.Format("02/01/2006")
 		}
 		if !seen[label] {
 			seen[label] = true
@@ -351,7 +353,7 @@ func (s *Service) checksInput(ctx context.Context, dc DraftCost) (ChecksInput, e
 	if err != nil {
 		return ChecksInput{}, err
 	}
-	budgets, err := EvaluateTargetBudgets(dc.Totals, dc.Budgets)
+	budgets, err := s.budgetStatuses(ctx, dc.BOM, dc.Nodes, dc.Totals, dc.Budgets)
 	if err != nil {
 		return ChecksInput{}, err
 	}

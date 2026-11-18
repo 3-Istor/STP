@@ -1,0 +1,41 @@
+{
+  "vehicles": [
+    {
+      "id": 1,
+      "name": "fiat",
+      "assets": [
+        "MultiplaExteriorPrepared",
+        "MultiplaInteriorPrepared"
+      ],
+      "before": "e24648017d6d7eba0cd2904ca32dd4dab03654860bedc42919c30d1aa562e536",
+      "after": "e24648017d6d7eba0cd2904ca32dd4dab03654860bedc42919c30d1aa562e536"
+    },
+    {
+      "id": 2,
+      "name": "valhalla",
+      "assets": [
+        "ValhallaExteriorPrepared",
+        "ValhallaInteriorPrepared"
+      ],
+      "before": "6ff1b267732b543001a4a248f7cb7d87ecaa1be310f9a58e83c8dd0cfed4b26c",
+      "after": "6ff1b267732b543001a4a248f7cb7d87ecaa1be310f9a58e83c8dd0cfed4b26c"
+    }
+  ],
+  "errors": [],
+  "mutations": [],
+  "legacy": [],
+  "scenarios": [
+    {
+      "mode": "Thermique",
+      "comparison": "THERMIQUE\t393 970,50 £\t− 67 410,77 £\t-14,61 %\t9621\t945,8\t12 897,6\t61 j"
+    },
+    {
+      "mode": "Électrique",
+      "comparison": "ÉLECTRIQUE\t369 705,74 £\t− 91 675,53 £\t-19,87 %\t8395\t954,3\t16 187,6\t61 j"
+    },
+    {
+      "mode": "Hybride",
+      "comparison": "HYBRIDE\t461 381,26 £\t0,00 £\t0 %\t10003\t1 169,9\t18 068,8\t61 j"
+    }
+  ]
+}

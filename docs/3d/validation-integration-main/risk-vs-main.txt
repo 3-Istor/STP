@@ -1,0 +1,49 @@
+## Niveau de risque : 2 Sensible
+
+Comparé à `origin/main`. Point de contrôle humain : **1 humain valide le plan avant le code, puis approuve le diff**.
+
+Relecteurs IA en contexte neuf : relecteur-code, relecteur-architecture.
+
+| Niveau | Fichier | Raison |
+|---|---|---|
+| 2 | `docs/adr/0049-liaison-explicite-des-assets-aux-occurrences-bom.md` | décision d'architecture |
+| 2 | `docs/adr/0050-simulation-reversible-des-motorisations.md` | décision d'architecture |
+| 2 | `internal/httpapi/configurations.go` | contrat /api/v1 (routes, JSON) |
+| 2 | `internal/httpapi/configurations_test.go` | contrat /api/v1 (routes, JSON) |
+| 2 | `internal/httpapi/router.go` | contrat /api/v1 (routes, JSON) |
+| 2 | `internal/httpapi/testdata/routes.golden` | contrat /api/v1 (routes, JSON) |
+| 1 | `internal/bom/configurations.go` | code ou fichier non classé (inconnu = routine) |
+| 1 | `internal/bom/configurations_test.go` | code ou fichier non classé (inconnu = routine) |
+| 1 | `web/e2e/bom-cost-v2.spec.ts` | code ou fichier non classé (inconnu = routine) |
+| 1 | `web/e2e/bom-navigation.spec.ts` | code ou fichier non classé (inconnu = routine) |
+| 1 | `web/e2e/fixtures/bound-assemblies.ts` | code ou fichier non classé (inconnu = routine) |
+| 1 | `web/e2e/powertrain.spec.ts` | code ou fichier non classé (inconnu = routine) |
+| 1 | `web/e2e/router.spec.ts` | code ou fichier non classé (inconnu = routine) |
+| 1 | `web/e2e/vehicle3d-bound.spec.ts` | code ou fichier non classé (inconnu = routine) |
+| 1 | `web/e2e/vehicle3d-viewer.spec.ts` | code ou fichier non classé (inconnu = routine) |
+| 1 | `web/public/models/manifests/draft-1.json` | code ou fichier non classé (inconnu = routine) |
+| 1 | `web/public/models/manifests/draft-2.json` | code ou fichier non classé (inconnu = routine) |
+| 1 | `web/public/models/manifests/draft-3.json` | code ou fichier non classé (inconnu = routine) |
+| 1 | `web/public/models/soutenance-credits.html` | code ou fichier non classé (inconnu = routine) |
+| 1 | `web/src/api.ts` | code ou fichier non classé (inconnu = routine) |
+| 1 | `web/src/bom/BomTree.tsx` | code ou fichier non classé (inconnu = routine) |
+| 1 | `web/src/bom/BomWorkspace.tsx` | code ou fichier non classé (inconnu = routine) |
+| 1 | `web/src/bom/NodePanel.tsx` | code ou fichier non classé (inconnu = routine) |
+| 1 | `web/src/bom/PowertrainPanel.tsx` | code ou fichier non classé (inconnu = routine) |
+| 1 | `web/src/bom/data/powertrain-valhalla.json` | code ou fichier non classé (inconnu = routine) |
+| 1 | `web/src/bom/powertrain.test.ts` | code ou fichier non classé (inconnu = routine) |
+| 1 | `web/src/bom/powertrain.ts` | code ou fichier non classé (inconnu = routine) |
+| 1 | `web/src/bom/steps/Structurer.tsx` | code ou fichier non classé (inconnu = routine) |
+| 1 | `web/src/bom/useBomData.ts` | code ou fichier non classé (inconnu = routine) |
+| 1 | `web/src/bom/usePowertrainSimulation.ts` | code ou fichier non classé (inconnu = routine) |
+| 1 | `web/src/bom/vehicle3dNodes.test.ts` | code ou fichier non classé (inconnu = routine) |
+| 1 | `web/src/bom/vehicle3dNodes.ts` | code ou fichier non classé (inconnu = routine) |
+| 1 | `web/src/features/vehicle3d/UnavailableList.tsx` | code ou fichier non classé (inconnu = routine) |
+| 1 | `web/src/features/vehicle3d/Vehicle3DView.tsx` | code ou fichier non classé (inconnu = routine) |
+| 1 | `web/src/features/vehicle3d/boundModel.test.ts` | code ou fichier non classé (inconnu = routine) |
+| 1 | `web/src/features/vehicle3d/boundModel.ts` | code ou fichier non classé (inconnu = routine) |
+| 1 | `web/src/features/vehicle3d/colors.test.ts` | code ou fichier non classé (inconnu = routine) |
+| 1 | `web/src/features/vehicle3d/colors.ts` | code ou fichier non classé (inconnu = routine) |
+| 1 | `web/src/features/vehicle3d/data/provided-scenes.json` | code ou fichier non classé (inconnu = routine) |
+| 1 | `web/src/features/vehicle3d/demo/Demo.tsx` | code ou fichier non classé (inconnu = routine) |
+| … | 263 autres fichiers | |

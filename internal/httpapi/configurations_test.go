@@ -73,8 +73,8 @@ func TestConfigurationAPI(t *testing.T) {
 				}
 			} else {
 				var e map[string]string
-				if err := json.Unmarshal(rec.Body.Bytes(), &e); err != nil || e["error"] == "" {
-					t.Fatal("missing JSON error")
+				if err := json.Unmarshal(rec.Body.Bytes(), &e); err != nil || e["error"] == "" || e["code"] == "" {
+					t.Fatal("missing JSON error or stable error code")
 				}
 			}
 		})

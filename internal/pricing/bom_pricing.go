@@ -54,15 +54,16 @@ func (p *BOMPricing) PairRates(ctx context.Context, pairs []FXPair) (map[FXPair]
 	return p.reads.PairRates(ctx, pairs)
 }
 
-// FreezePrices implémente Pricing : un snapshot de prix de scope « bom » est créé à l'instant courant de
-// la source (temps simulé) ; at, en temps réel, n'est pas utilisé. Une couverture incomplète est traduite
-// en ErrNoQuote / ErrNoRate qui listent les offres et les paires manquantes.
+// FreezePrices implémente Pricing : un snapshot de prix de scope « catalog » (toutes les offres du catalogue, ADR 0048)
+// est créé à l'instant courant de la source (temps simulé) ; at, en temps réel, n'est pas utilisé. Les taux des
+// devises de budget de la BOM sont figés avec lui. Une couverture incomplète est traduite en ErrNoQuote / ErrNoRate
+// qui listent les offres et les paires manquantes.
 func (p *BOMPricing) FreezePrices(ctx context.Context, bomID int64, offerIDs []int64, currencies []money.Currency, _ time.Time) (int64, error) {
 	targets := slices.Clone(currencies)
 	if targets == nil {
 		targets = []money.Currency{}
 	}
-	res, err := p.snapshots.Create(ctx, SnapshotRequest{Scope: "bom", ScopeID: &bomID, TargetCurrencies: targets})
+	res, err := p.snapshots.Create(ctx, SnapshotRequest{Scope: "catalog", BudgetBOMID: &bomID, TargetCurrencies: targets})
 	if cov := (*CoverageError)(nil); errors.As(err, &cov) {
 		return 0, fmt.Errorf("freeze prices of bom %d: %w", bomID, coverageErrors(cov))
 	}
@@ -70,10 +71,14 @@ func (p *BOMPricing) FreezePrices(ctx context.Context, bomID int64, offerIDs []i
 		return 0, fmt.Errorf("freeze prices of bom %d: %w", bomID, err)
 	}
 	data := res.PriceSnapshotData
-	// La portée « bom » relit l'arbre en base : elle doit couvrir les offres que l'appelant attend.
+	// Le lot couvre tout le catalogue ; une offre attendue qui n'y est pas n'existe pas au catalogue.
+	frozen := make(map[int64]struct{}, len(data.Quotes))
+	for _, q := range data.Quotes {
+		frozen[q.OfferID] = struct{}{}
+	}
 	var missing []int64
 	for _, id := range offerIDs {
-		if !slices.ContainsFunc(data.Quotes, func(q HistoricalQuote) bool { return q.OfferID == id }) {
+		if _, ok := frozen[id]; !ok {
 			missing = append(missing, id)
 		}
 	}

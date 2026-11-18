@@ -39,6 +39,7 @@ export function usePowertrainSimulation(source: BomData, visible: boolean) {
     if (!selected) return { ...source, ...guard }
     const tree = selected.tree, byID = new Map(tree.nodes.map(n => [n.id, n]))
     return { ...source, ...guard, bom: tree.bom, nodes: tree.nodes, byID, root: byID.get(comparison!.root_id),
+      currency: tree.bom.currency, volume: tree.bom.volume, annualHours: tree.bom.annual_hours, priceSnapshotID: tree.bom.price_snapshot_id,
       stock: tree.stock, planning: tree.planning, explanation: tree.explanation,
       budgets: { byNode: new Map((tree.budgets ?? []).map(b => [b.node_id, b])), unavailable: null },
       anomalies: { data: null, error: null }, anomalyByNode: new Map() }

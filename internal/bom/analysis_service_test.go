@@ -18,6 +18,14 @@ func (f fakeHistory) ReadHistory(_ context.Context, offerID int64, _, _ time.Tim
 	return f[offerID], nil
 }
 
+func (f fakeHistory) ReadWindows(_ context.Context, ws []pricing.HistoryWindow) (map[int64][]pricing.HistoricalQuote, error) {
+	out := map[int64][]pricing.HistoricalQuote{}
+	for _, w := range ws {
+		out[w.OfferID] = f[w.OfferID]
+	}
+	return out, nil
+}
+
 type fakeSuppliers []supplier.Supplier
 
 func (f fakeSuppliers) ListSuppliers(context.Context) ([]supplier.Supplier, error) { return f, nil }

@@ -1,7 +1,7 @@
 # Démonstration 3D — 18 novembre 2026
 
 Branche : `feat/3d-pro-v2`. Les services de démonstration sont préparés séparément du Docker
-habituel du projet. La simulation Go en mémoire ajoute une route de lecture/calcul (ADR 0042),
+habituel du projet. La simulation Go en mémoire ajoute une route de lecture/calcul (ADR 0050),
 sans migration ni modification des contrats existants ou des données de référence.
 
 ## Ouvrir la démonstration déjà lancée

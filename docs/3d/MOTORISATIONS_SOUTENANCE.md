@@ -1,6 +1,6 @@
 # Motorisations Valhalla — 18 novembre 2026
 
-Branche unique `feat/3d-pro-v2`, sauvegarde `0d694cf`, option 1 de l'ADR 0042 explicitement
+Branche unique `feat/3d-pro-v2`, sauvegarde `0d694cf`, option 1 de l'ADR 0050 explicitement
 validée par l'utilisateur. Aucune migration, dépendance, écriture de BOM ou de snapshot publiée.
 La fiche ADR conserve son statut formel à renseigner par un humain.
 

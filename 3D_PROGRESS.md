@@ -727,3 +727,28 @@ validation fonctionnelle et visuelle sur les assets réellement accessibles.
   et Aston chargés en mode bound, coûts thermique 393970,50 GBP / électrique 369705,74 GBP /
   hybride 461381,26 GBP, aucune erreur navigateur. Captures et comparaison du contenu des tables
   de snapshots copiées dans `docs/3d/captures/docker-8001/` et `docs/3d/validation-docker-8001/`.
+
+## 18 novembre — intégration de main explicitement autorisée
+
+- Demande utilisateur/PO : récupérer le dernier main et fusionner la branche ; cette autorisation
+  remplace l’interdiction antérieure de fusion pour cette opération précise.
+- Dernier main récupéré : `000dc0d`, branche 3D sauvegardée : `7a6d18b`, bundle complet vérifié.
+- Conflit du panneau résolu en conservant budgets de main et remplacement physique 3D.
+- Adaptation des budgets de simulation aux devises et à la hiérarchie de main, avec deux cas
+  protecteurs EUR/USD ; erreurs de simulation compatibles avec les codes API de main.
+- Les anciennes ADR 3D 0041/0042 sont renumérotées **0049/0050** pour préserver les ADR homonymes
+  de main. Les numéros précédents dans ce journal désignent les étapes historiques de la branche.
+- Moulinette PR verte avec PostgreSQL isolé ; 62 tests unitaires front ; 70 Playwright desktop et
+  70 mobiles verts. Vrais modèles et coûts vérifiés, références inchangées, aucune mutation BOM.
+- Application stable sur 8001 conservée ; vérification sur API 18081 / front 41771 et base copiée.
+- Revues code/architecture, Firefox et CI suivis avant publication finale de main.
+  Rapport et limites : [docs/3d/INTEGRATION_MAIN.md](docs/3d/INTEGRATION_MAIN.md).
+
+- Revue terminée : code sans constat ; architecture, 1 Important de cohérence des métadonnées
+  reproduit/corrigé, puis aucun constat au deuxième tour. Test rouge puis quatre projets verts.
+- Firefox : 138/140 au premier passage, deux échecs du test préexistant d’historique ; précondition
+  about:blank explicitée avec toutes les assertions intactes. **40 tests ciblés finaux PASS**
+  sur Chromium et Firefox desktop/mobile. Aucun délai relevé ni test désactivé.
+- Seconde moulinette PR verte après le changement React, intégration PostgreSQL de la première
+  passe toujours valide pour le code Go inchangé. WebKit local non exécuté : bibliothèques
+  GStreamer absentes. Publication de l’intégration sur la PR #29 avant contrôle CI distant.

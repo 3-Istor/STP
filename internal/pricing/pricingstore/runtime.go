@@ -183,7 +183,7 @@ func (s *RuntimeStore) Apply(ctx context.Context, p pricing.RuntimePlan, out pri
 			return state, pricing.ErrRuntimeDataConflict
 		}
 		state.Tick++
-		state.AsOf = state.AsOf.AddDate(0, 0, 1)
+		state.AsOf = pricing.NextAsOf(p.Config, state.AsOf) // boucle sur une année (ADR 0043)
 	}
 	if p.Current == nil {
 		config, err := json.Marshal(p.Config.Normalize())
@@ -254,16 +254,11 @@ func (s *RuntimeStore) Apply(ctx context.Context, p pricing.RuntimePlan, out pri
 	return state, nil
 }
 
+// insertRuntimePrice n'écrit que les jours absents : une cotation déjà en base fait foi, même si la fourchette de
+// l'offre a changé depuis (ADR 0046). Le conflit (offre, source, date) n'est donc pas une erreur.
 func insertRuntimePrice(ctx context.Context, q *pricingdb.Queries, v pricing.SourceQuote) error {
 	_, err := q.InsertRuntimePrice(ctx, pricingdb.InsertRuntimePriceParams{OfferID: v.OfferID, Amount: v.Price.Amount(), Currency: string(v.Price.Currency()), Source: v.Source, QuotedAt: v.QuotedAt})
 	if errors.Is(err, pgx.ErrNoRows) {
-		old, e := q.RuntimePrice(ctx, pricingdb.RuntimePriceParams{OfferID: v.OfferID, Source: v.Source, QuotedAt: v.QuotedAt})
-		if e != nil {
-			return e
-		}
-		if old.Currency != string(v.Price.Currency()) || !old.Amount.Equal(v.Price.Amount()) {
-			return fmt.Errorf("price %d at %s: %w", v.OfferID, v.QuotedAt.Format(time.DateOnly), pricing.ErrRuntimeDataConflict)
-		}
 		return nil
 	}
 	return err

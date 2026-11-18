@@ -2,6 +2,7 @@ package bom
 
 import (
 	"bomstudio/internal/money"
+	"bomstudio/internal/pricing"
 	"errors"
 	"reflect"
 	"testing"
@@ -63,6 +64,75 @@ func TestServiceConfigurationsPreserveReference(t *testing.T) {
 	}
 	if counted.single != 0 || counted.batch != 2 {
 		t.Fatalf("configuration inputs read %d single / %d batch times; want 0 / 2 (quotes, FX) for all three scenarios", counted.single, counted.batch)
+	}
+}
+
+func TestServiceConfigurationsPreserveHierarchicalBudgets(t *testing.T) {
+	tests := []struct {
+		name, amount, currency string
+		wantBatches            int
+	}{
+		{"same currency", "184", "EUR", 2},
+		{"shared budget exchange rate", "200", "USD", 3},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			f := newFixture(t)
+			f.prices.AddRate(pricing.Rate{ID: 1, From: "USD", To: "EUR", Rate: dec("0.92"), Source: "sim", QuotedAt: t0})
+			bomID, root := f.newBOM(t)
+			thermal := f.addPart(t, bomID, root, 1, 11, "2")
+			electric := f.addPart(t, bomID, root, 2, 20, "4")
+			for _, budget := range []TargetBudget{
+				{NodeID: root, Amount: dec("185"), Currency: "EUR"},
+				{NodeID: thermal, Amount: dec(tt.amount), Currency: tt.currency},
+				{NodeID: electric, Amount: dec("4"), Currency: "EUR"},
+			} {
+				if err := f.store.SetTargetBudget(t.Context(), bomID, budget); err != nil {
+					t.Fatal(err)
+				}
+			}
+			before, err := f.store.Draft(t.Context(), bomID)
+			if err != nil {
+				t.Fatal(err)
+			}
+			counted := &countingPricing{Pricing: f.prices}
+			f.svc.pricing = counted
+			req := ConfigurationRequest{RootID: root, Guards: []OccurrenceGuard{
+				{ID: root}, {ID: thermal, ParentID: &root, PartID: id(1)}, {ID: electric, ParentID: &root, PartID: id(2)},
+			}, Scenarios: []ConfigurationDefinition{
+				{Key: "hybrid"}, {Key: "thermal", ExcludedRoots: []int64{electric}}, {Key: "electric", ExcludedRoots: []int64{thermal}},
+			}}
+			result, err := f.svc.SimulateConfigurations(t.Context(), bomID, req)
+			if err != nil {
+				t.Fatal(err)
+			}
+			for i, scenario := range result.Scenarios {
+				wantLength := 2
+				if i == 0 {
+					wantLength = 3
+				}
+				if len(scenario.Tree.Budgets) != wantLength {
+					t.Fatalf("%s: budgets for excluded occurrences retained", scenario.Key)
+				}
+				for _, budget := range scenario.Tree.Budgets {
+					if budget.NodeID == root && ((i == 0) != (budget.Allocation != nil && budget.Allocation.Kind == "over")) {
+						t.Fatalf("%s: allocation warning does not follow active children: %+v", scenario.Key, budget.Allocation)
+					}
+					if budget.NodeID == thermal && tt.currency == "USD" {
+						if budget.Converted == nil || budget.Converted.String() != "184.00 EUR" || budget.Rate == nil || budget.Error != "" {
+							t.Fatalf("%s: missing shared budget conversion: %+v", scenario.Key, budget)
+						}
+					}
+				}
+			}
+			if counted.single != 0 || counted.batch != tt.wantBatches {
+				t.Fatalf("rates/prices read per scenario: %d single / %d batches; want 0 / %d", counted.single, counted.batch, tt.wantBatches)
+			}
+			after, err := f.store.Draft(t.Context(), bomID)
+			if err != nil || !reflect.DeepEqual(before, after) {
+				t.Fatal("reference budgets modified", err)
+			}
+		})
 	}
 }
 

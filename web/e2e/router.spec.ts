@@ -38,6 +38,8 @@ test('URL profonde, ancres de la V1 et adresses invalides', () => {
 
 test('une ancienne ancre est réécrite sans entrée d’historique', async ({ page }) => {
   await page.route('**/api/**', (route) => route.fulfill({ json: [] }))
+  // Engager explicitement la page de départ : Firefox remplace sinon son about:blank initial.
+  await page.goto('about:blank')
   await page.goto('/#boms')
   await expect(page).toHaveURL(/#\/boms$/)
   // about:blank puis la page : la réécriture n'a pas ajouté d'entrée (« précédent » quitte l'app).

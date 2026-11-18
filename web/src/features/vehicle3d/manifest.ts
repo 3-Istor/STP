@@ -1,4 +1,4 @@
-// Contrat frontend explicite, option 1 autorisée par l'utilisateur (voir ADR 0041).
+// Contrat frontend explicite, option 1 autorisée par l'utilisateur (voir ADR 0049).
 // Aucune dépendance à Three.js, au réseau ou à une forme de persistance.
 import type { Vehicle3DNode } from './types.ts'
 

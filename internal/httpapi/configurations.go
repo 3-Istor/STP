@@ -10,7 +10,7 @@ import (
 	"bomstudio/internal/money"
 )
 
-// ConfigurationService est un calcul en lecture seule, option 1 autorisée de l'ADR 0042.
+// ConfigurationService est un calcul en lecture seule, option 1 autorisée de l'ADR 0050.
 type ConfigurationService interface {
 	SimulateConfigurations(context.Context, int64, bom.ConfigurationRequest) (bom.ConfigurationComparison, error)
 }
@@ -70,7 +70,7 @@ func mountConfigurations(mux *http.ServeMux, service BOMService) {
 		result, err := svc.SimulateConfigurations(r.Context(), id, req)
 		if err != nil {
 			if errors.Is(err, bom.ErrInvalidInput) {
-				writeJSON(w, http.StatusUnprocessableEntity, map[string]string{"error": err.Error()})
+				writeErrorBody(w, http.StatusUnprocessableEntity, err.Error(), errorCode(err))
 				return
 			}
 			writeError(w, r, err)

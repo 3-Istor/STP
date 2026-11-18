@@ -34,6 +34,18 @@ SELECT * FROM annual_quotes
 UNION ALL SELECT * FROM reference_quote
 ORDER BY quoted_at, id;
 
+-- name: HistoricalPriceQuotesBatch :many
+-- Les trois tableaux sont parallèles : la fenêtre i est celle de l'offre offer_ids[i].
+SELECT q.* FROM price_quotes q
+WHERE q.offer_id = ANY(sqlc.arg(offer_ids)::bigint[])
+    AND EXISTS (
+        SELECT 1 FROM generate_subscripts(sqlc.arg(offer_ids)::bigint[], 1) AS i
+        WHERE (sqlc.arg(offer_ids)::bigint[])[i] = q.offer_id
+            AND q.quoted_at >= (sqlc.arg(window_starts)::timestamptz[])[i]
+            AND q.quoted_at <= (sqlc.arg(as_ofs)::timestamptz[])[i]
+    )
+ORDER BY q.offer_id, q.quoted_at, q.id;
+
 -- name: RuntimeLock :exec
 SELECT pg_advisory_xact_lock(hashtextextended(sqlc.arg(lock_key)::text, 0));
 
@@ -94,9 +106,6 @@ INSERT INTO pricing_ticks (dataset_version, tick, as_of, manifest_hash) VALUES (
 -- name: InsertRuntimePrice :one
 INSERT INTO price_quotes (offer_id, amount, currency, source, quoted_at) VALUES ($1, $2, $3, $4, $5)
 ON CONFLICT (offer_id, source, quoted_at) DO NOTHING RETURNING id;
-
--- name: RuntimePrice :one
-SELECT * FROM price_quotes WHERE offer_id = $1 AND source = $2 AND quoted_at = $3;
 
 -- name: InsertRuntimeFX :one
 INSERT INTO fx_quotes (base_currency, quote_currency, rate, source, quoted_at) VALUES ($1, $2, $3, $4, $5)
@@ -174,6 +183,10 @@ WHERE n.bom_id=$1 ORDER BY o.id;
 
 -- name: ReadBOMPriceCurrency :one
 SELECT currency FROM boms WHERE id=$1;
+
+-- Devises des budgets cibles d'une BOM (ADR 0044) : leurs taux vers la devise de la BOM sont figés avec ses prix.
+-- name: ReadBOMBudgetCurrencies :many
+SELECT DISTINCT currency::text FROM bom_target_budgets WHERE bom_id=$1 ORDER BY 1;
 
 -- name: CreatePriceSnapshot :one
 INSERT INTO price_snapshots(scope,scope_id,taken_at) VALUES ($1,$2,$3) RETURNING *;

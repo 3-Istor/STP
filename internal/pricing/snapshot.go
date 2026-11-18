@@ -17,10 +17,16 @@ type SnapshotRequest struct {
 	ScopeID          *int64           `json:"scope_id,omitempty"`
 	TargetCurrencies []money.Currency `json:"target_currencies"`
 	AsOf             *time.Time       `json:"as_of,omitempty"`
+	// BudgetBOMID : portée « catalog » seulement, interne (jamais lue du corps HTTP) : les taux des devises de budget
+	// de cette BOM sont figés avec le lot (ADR 0044, ADR 0048).
+	BudgetBOMID *int64 `json:"-"`
 }
 type SnapshotFrame struct {
 	MarketFrame
 	Targets []money.Currency
+	// Sources : devises à couvrir vers chaque cible en plus de celles des offres (devises des budgets de la BOM,
+	// ADR 0044) : une BOM figée juge ses budgets aux taux de son snapshot de prix.
+	Sources []money.Currency
 }
 type CoverageGap struct {
 	Kind    string         `json:"kind"`
@@ -65,11 +71,11 @@ func NewSnapshotService(store SnapshotRepository, cfg RunConfig) *SnapshotServic
 func (r SnapshotRequest) Validate() error {
 	switch r.Scope {
 	case "catalog":
-		if r.ScopeID != nil {
+		if r.ScopeID != nil || (r.BudgetBOMID != nil && *r.BudgetBOMID <= 0) {
 			return ErrInvalidReadRequest
 		}
 	case "offer", "supplier", "bom":
-		if r.ScopeID == nil || *r.ScopeID <= 0 {
+		if r.ScopeID == nil || *r.ScopeID <= 0 || r.BudgetBOMID != nil {
 			return ErrInvalidReadRequest
 		}
 	default:
@@ -129,7 +135,7 @@ func (s *SnapshotService) Create(ctx context.Context, req SnapshotRequest) (Snap
 				if candidate.ID != ref.ID || candidate.TakenAt.After(f.At) || !snapshotCovers(candidate, nil, nil) {
 					continue
 				}
-				if _, err := SelectSnapshotCoverage(candidate, f.Offers, targets); err != nil {
+				if _, err := SelectSnapshotCoverage(candidate, f.Offers, targets, f.Sources...); err != nil {
 					continue
 				}
 				data = candidate
@@ -141,7 +147,7 @@ func (s *SnapshotService) Create(ctx context.Context, req SnapshotRequest) (Snap
 				return fmt.Errorf("freeze prices: %w: %w", ErrNoUsableSnapshot, ErrSourceUnavailable)
 			}
 		}
-		selected, err := SelectSnapshotCoverage(data, f.Offers, targets)
+		selected, err := SelectSnapshotCoverage(data, f.Offers, targets, f.Sources...)
 		if err != nil {
 			return err
 		}
@@ -185,7 +191,9 @@ func (s *SnapshotService) Get(ctx context.Context, id int64) (SnapshotResult, er
 
 // SelectSnapshotCoverage is the pure port for a BOM consumer before attachment/publication.
 // It keeps the actual quote IDs and original pair, including when conversion will use its inverse.
-func SelectSnapshotCoverage(data PriceSnapshotData, offers []OfferRef, targets []money.Currency) (PriceSnapshotData, error) {
+// SelectSnapshotCoverage garde du snapshot les cotations des offres et les taux de chaque devise d'offre et de
+// chaque devise de sources vers chaque cible (direct, sinon inverse, ADR 0017) ; tout manque est une CoverageGap.
+func SelectSnapshotCoverage(data PriceSnapshotData, offers []OfferRef, targets []money.Currency, sources ...money.Currency) (PriceSnapshotData, error) {
 	selected := PriceSnapshotData{PriceSnapshotRef: data.PriceSnapshotRef, Quotes: []HistoricalQuote{}, Rates: []FXQuote{}}
 	if data.TakenAt.IsZero() {
 		return selected, ErrInvalidHistoryData
@@ -212,6 +220,38 @@ func SelectSnapshotCoverage(data PriceSnapshotData, offers []OfferRef, targets [
 	sort.Slice(offers, func(i, j int) bool { return offers[i].ID < offers[j].ID })
 	targets = append([]money.Currency{}, targets...)
 	sort.Slice(targets, func(i, j int) bool { return targets[i] < targets[j] })
+	// cover : taux de base vers chaque cible, une fois par paire.
+	cover := func(base money.Currency) error {
+		for _, target := range targets {
+			if target == base {
+				continue
+			}
+			p := FXPair{base, target}
+			if seenPairs[p] {
+				continue
+			}
+			seenPairs[p] = true
+			if _, err := money.ParseCurrency(string(target)); err != nil {
+				return ErrInvalidReadRequest
+			}
+			_, r, err := ResolveFX(data.Rates, base, target)
+			if err != nil || r.QuotedAt.After(data.TakenAt) {
+				gaps = append(gaps, CoverageGap{Kind: "fx", Base: base, Quote: target})
+				continue
+			}
+			already := false
+			for _, linked := range selected.Rates {
+				if linked.ID == r.ID {
+					already = true
+					break
+				}
+			}
+			if !already {
+				selected.Rates = append(selected.Rates, *r)
+			}
+		}
+		return nil
+	}
 	for _, o := range offers {
 		if seenOffers[o.ID] {
 			continue
@@ -223,34 +263,18 @@ func SelectSnapshotCoverage(data PriceSnapshotData, offers []OfferRef, targets [
 		} else {
 			selected.Quotes = append(selected.Quotes, q)
 		}
-		for _, target := range targets {
-			if target == o.Currency {
-				continue
-			}
-			p := FXPair{o.Currency, target}
-			if seenPairs[p] {
-				continue
-			}
-			seenPairs[p] = true
-			if _, err := money.ParseCurrency(string(target)); err != nil {
-				return selected, ErrInvalidReadRequest
-			}
-			_, r, err := ResolveFX(data.Rates, o.Currency, target)
-			if err != nil || r.QuotedAt.After(data.TakenAt) {
-				gaps = append(gaps, CoverageGap{Kind: "fx", Base: o.Currency, Quote: target})
-				continue
-			}
-
-			already := false
-			for _, linked := range selected.Rates {
-				if linked.ID == r.ID {
-					already = true
-					break
-				}
-			}
-			if !already {
-				selected.Rates = append(selected.Rates, *r)
-			}
+		if err := cover(o.Currency); err != nil {
+			return selected, err
+		}
+	}
+	sources = append([]money.Currency{}, sources...)
+	sort.Slice(sources, func(i, j int) bool { return sources[i] < sources[j] })
+	for _, c := range sources {
+		if _, err := money.ParseCurrency(string(c)); err != nil {
+			return selected, ErrInvalidReadRequest
+		}
+		if err := cover(c); err != nil {
+			return selected, err
 		}
 	}
 	sort.Slice(selected.Rates, func(i, j int) bool {

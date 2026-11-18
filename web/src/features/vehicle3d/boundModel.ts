@@ -1,4 +1,4 @@
-// Géométries et placements explicites (voir ADR 0041) ; aucun nom BOM ni offre ne choisit un asset.
+// Géométries et placements explicites (voir ADR 0049) ; aucun nom BOM ni offre ne choisit un asset.
 import * as THREE from 'three'
 import { clone as cloneSkeleton } from 'three/addons/utils/SkeletonUtils.js'
 import type { VehicleIndex, VehicleObject } from './mapping.ts'

@@ -99,11 +99,12 @@ export function BomWorkspace({ route, data: sourceData, error, onPublished }: Pr
     case 'sourcer':
       main = (
         <Sourcer tab={route.tab} onTab={(t) => go({ tab: t })} supplier={route.supplier} onSupplier={(s) => go({ supplier: s }, true)}
-          onOpenSupplier={(s) => go({ tab: 'fournisseurs', supplier: s })} bomID={data.target.id} version={data.version} readOnly={data.readOnly} />
+          onOpenSupplier={(s) => go({ tab: 'fournisseurs', supplier: s })} bomID={data.target.id} version={data.version} readOnly={data.readOnly}
+          onSaved={() => void data.run(async () => {})} />
       )
       break
     case 'arbitrer':
-      main = <Arbitrer data={data} selectedID={selectedID} onSelect={select} />
+      main = <Arbitrer data={data} selectedID={selectedID} onSelect={select} onGoStructurer={() => go({ step: 'structurer' })} />
       break
     case 'publier':
       main = (
@@ -146,6 +147,8 @@ export function BomWorkspace({ route, data: sourceData, error, onPublished }: Pr
               <NodePanel
                 key={selected.id}
                 node={selected}
+                byID={data.byID}
+                onSelectNode={select}
                 parentName={selected.parent_id !== null ? label(selected.parent_id) : undefined}
                 explanation={data.explanation}
                 volume={data.volume}
@@ -161,6 +164,17 @@ export function BomWorkspace({ route, data: sourceData, error, onPublished }: Pr
                 target={data.target}
                 version={data.version}
                 budget={data.budgets.byNode.get(selected.id)}
+                currency={data.currency}
+                onSetBudget={
+                  route.step === 'structurer'
+                    ? (amount, currency) =>
+                        data.run(() =>
+                          amount === null
+                            ? api.deleteNodeBudget(data.target.id, selected.id)
+                            : api.setNodeBudget(data.target.id, selected.id, { amount, currency }),
+                        )
+                    : undefined
+                }
                 onStartMove={() => {
                   setMoving(selected.id)
                   if (route.step !== 'structurer') go({ step: 'structurer' })

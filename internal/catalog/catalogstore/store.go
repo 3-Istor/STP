@@ -395,6 +395,10 @@ func decodePart(row catalogdb.Part) (catalog.Part, error) {
 		at := row.ArchivedAt.Time
 		part.ArchivedAt = &at
 	}
+	if row.Material.Valid {
+		m := row.Material.String
+		part.Material = &m
+	}
 	return part, nil
 }
 

@@ -1,0 +1,59 @@
+
+> web@0.0.0 test:e2e
+> playwright test --project=chromium-desktop --project=chromium-mobile --project=firefox-desktop --project=firefox-mobile --workers=1 e2e/powertrain.spec.ts e2e/router.spec.ts
+
+[WebServer] (node:3279456) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 40 tests using 1 worker
+
+(node:3279490) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   1 [chromium-desktop] › e2e/powertrain.spec.ts:48:1 › motorisations : coût API, BOM active, comparaison commune, actualisation et sortie sans écriture (1.0s)
+  ✓   2 [chromium-desktop] › e2e/powertrain.spec.ts:87:1 › comparaison actualisée : volume et source des prix suivent les réglages capturés dans un autre onglet (613ms)
+  ✓   3 [chromium-desktop] › e2e/powertrain.spec.ts:104:1 › prix manquant : coût incomplet et écart indisponible, scénario excluant la pièce toujours calculable (521ms)
+  ✓   4 [chromium-desktop] › e2e/powertrain.spec.ts:115:1 › panne API : référence conservée, reprise explicite et aucune simulation faussement annoncée (589ms)
+  ✓   5 [chromium-desktop] › e2e/powertrain.spec.ts:132:1 › scénario choisi dans Arbre : mécanique révélée lors de chaque ouverture 3D ou Arbre + 3D (17.2s)
+  ✓   6 [chromium-desktop] › e2e/powertrain.spec.ts:149:3 › laptop 1366×768 : panneaux et listes accessibles jusqu’en bas (5.5s)
+  ✓   7 [chromium-desktop] › e2e/powertrain.spec.ts:149:3 › laptop 1280×720 : panneaux et listes accessibles jusqu’en bas (5.6s)
+  ✓   8 [chromium-desktop] › e2e/router.spec.ts:6:1 › aller-retour : chaque route se relit à l’identique (2ms)
+  ✓   9 [chromium-desktop] › e2e/router.spec.ts:19:1 › URL profonde, ancres de la V1 et adresses invalides (4ms)
+  ✓  10 [chromium-desktop] › e2e/router.spec.ts:39:1 › une ancienne ancre est réécrite sans entrée d’historique (399ms)
+(node:3281908) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  11 [chromium-mobile] › e2e/powertrain.spec.ts:48:1 › motorisations : coût API, BOM active, comparaison commune, actualisation et sortie sans écriture (980ms)
+  ✓  12 [chromium-mobile] › e2e/powertrain.spec.ts:87:1 › comparaison actualisée : volume et source des prix suivent les réglages capturés dans un autre onglet (656ms)
+  ✓  13 [chromium-mobile] › e2e/powertrain.spec.ts:104:1 › prix manquant : coût incomplet et écart indisponible, scénario excluant la pièce toujours calculable (540ms)
+  ✓  14 [chromium-mobile] › e2e/powertrain.spec.ts:115:1 › panne API : référence conservée, reprise explicite et aucune simulation faussement annoncée (632ms)
+  ✓  15 [chromium-mobile] › e2e/powertrain.spec.ts:132:1 › scénario choisi dans Arbre : mécanique révélée lors de chaque ouverture 3D ou Arbre + 3D (18.3s)
+  ✓  16 [chromium-mobile] › e2e/powertrain.spec.ts:149:3 › laptop 1366×768 : panneaux et listes accessibles jusqu’en bas (5.5s)
+  ✓  17 [chromium-mobile] › e2e/powertrain.spec.ts:149:3 › laptop 1280×720 : panneaux et listes accessibles jusqu’en bas (5.6s)
+  ✓  18 [chromium-mobile] › e2e/router.spec.ts:6:1 › aller-retour : chaque route se relit à l’identique (2ms)
+  ✓  19 [chromium-mobile] › e2e/router.spec.ts:19:1 › URL profonde, ancres de la V1 et adresses invalides (3ms)
+  ✓  20 [chromium-mobile] › e2e/router.spec.ts:39:1 › une ancienne ancre est réécrite sans entrée d’historique (389ms)
+(node:3284860) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  21 [firefox-desktop] › e2e/powertrain.spec.ts:48:1 › motorisations : coût API, BOM active, comparaison commune, actualisation et sortie sans écriture (2.0s)
+  ✓  22 [firefox-desktop] › e2e/powertrain.spec.ts:87:1 › comparaison actualisée : volume et source des prix suivent les réglages capturés dans un autre onglet (830ms)
+  ✓  23 [firefox-desktop] › e2e/powertrain.spec.ts:104:1 › prix manquant : coût incomplet et écart indisponible, scénario excluant la pièce toujours calculable (715ms)
+  ✓  24 [firefox-desktop] › e2e/powertrain.spec.ts:115:1 › panne API : référence conservée, reprise explicite et aucune simulation faussement annoncée (857ms)
+  ✓  25 [firefox-desktop] › e2e/powertrain.spec.ts:132:1 › scénario choisi dans Arbre : mécanique révélée lors de chaque ouverture 3D ou Arbre + 3D (3.0s)
+  ✓  26 [firefox-desktop] › e2e/powertrain.spec.ts:149:3 › laptop 1366×768 : panneaux et listes accessibles jusqu’en bas (3.6s)
+  ✓  27 [firefox-desktop] › e2e/powertrain.spec.ts:149:3 › laptop 1280×720 : panneaux et listes accessibles jusqu’en bas (3.7s)
+  ✓  28 [firefox-desktop] › e2e/router.spec.ts:6:1 › aller-retour : chaque route se relit à l’identique (3ms)
+  ✓  29 [firefox-desktop] › e2e/router.spec.ts:19:1 › URL profonde, ancres de la V1 et adresses invalides (3ms)
+  ✓  30 [firefox-desktop] › e2e/router.spec.ts:39:1 › une ancienne ancre est réécrite sans entrée d’historique (533ms)
+(node:3286241) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓  31 [firefox-mobile] › e2e/powertrain.spec.ts:48:1 › motorisations : coût API, BOM active, comparaison commune, actualisation et sortie sans écriture (2.0s)
+  ✓  32 [firefox-mobile] › e2e/powertrain.spec.ts:87:1 › comparaison actualisée : volume et source des prix suivent les réglages capturés dans un autre onglet (777ms)
+  ✓  33 [firefox-mobile] › e2e/powertrain.spec.ts:104:1 › prix manquant : coût incomplet et écart indisponible, scénario excluant la pièce toujours calculable (688ms)
+  ✓  34 [firefox-mobile] › e2e/powertrain.spec.ts:115:1 › panne API : référence conservée, reprise explicite et aucune simulation faussement annoncée (736ms)
+  ✓  35 [firefox-mobile] › e2e/powertrain.spec.ts:132:1 › scénario choisi dans Arbre : mécanique révélée lors de chaque ouverture 3D ou Arbre + 3D (2.9s)
+  ✓  36 [firefox-mobile] › e2e/powertrain.spec.ts:149:3 › laptop 1366×768 : panneaux et listes accessibles jusqu’en bas (3.7s)
+  ✓  37 [firefox-mobile] › e2e/powertrain.spec.ts:149:3 › laptop 1280×720 : panneaux et listes accessibles jusqu’en bas (3.7s)
+  ✓  38 [firefox-mobile] › e2e/router.spec.ts:6:1 › aller-retour : chaque route se relit à l’identique (2ms)
+  ✓  39 [firefox-mobile] › e2e/router.spec.ts:19:1 › URL profonde, ancres de la V1 et adresses invalides (4ms)
+  ✓  40 [firefox-mobile] › e2e/router.spec.ts:39:1 › une ancienne ancre est réécrite sans entrée d’historique (551ms)
+
+  40 passed (1.6m)

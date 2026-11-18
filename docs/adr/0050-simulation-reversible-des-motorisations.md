@@ -1,5 +1,7 @@
-# 0042 — Simulation réversible des motorisations
+# 0050 — Simulation réversible des motorisations
 Statut : Proposé — Date : 2026-11-18 — Décideurs : (à compléter par un humain)
+
+Renumérotation lors de l’intégration de `main` : ancien numéro 0042 sur `feat/3d-pro-v2`, déjà utilisé pour une autre décision sur `main`. Le contenu de la décision reste inchangé.
 
 ## Contexte
 La mission de soutenance exige trois configurations Valhalla avec BOM actives et coûts Go réels.

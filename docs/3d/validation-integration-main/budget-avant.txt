@@ -1,0 +1,6 @@
+# bomstudio/internal/bom [bomstudio/internal/bom.test]
+internal/bom/configurations.go:177:66: not enough arguments in call to EvaluateTargetBudgets
+	have (Totals, []TargetBudget)
+	want (Totals, []Node, []TargetBudget, BudgetFX)
+FAIL	bomstudio/internal/bom [build failed]
+FAIL

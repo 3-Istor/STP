@@ -10,7 +10,7 @@ import (
 	"github.com/shopspring/decimal"
 )
 
-// OccurrenceGuard empêche d'appliquer un scénario à une autre identité (voir ADR 0042).
+// OccurrenceGuard empêche d'appliquer un scénario à une autre identité (voir ADR 0050).
 type OccurrenceGuard struct {
 	ID               int64
 	ParentID, PartID *int64
@@ -151,6 +151,12 @@ func (s *Service) SimulateConfigurations(ctx context.Context, bomID int64, req C
 	if err != nil {
 		return ConfigurationComparison{}, err
 	}
+	// Les budgets hiérarchiques et leurs taux suivent main (ADR 0042/0044).
+	// Une seule lecture des taux, partagée par les trois arbres actifs.
+	budgetFX, err := s.budgetFX(ctx, draft.BOM, draft.Budgets)
+	if err != nil {
+		return ConfigurationComparison{}, fmt.Errorf("configuration budget rates: %w", err)
+	}
 	for i := range results {
 		active := make(map[int64]bool, len(results[i].ActiveIDs))
 		for _, id := range results[i].ActiveIDs {
@@ -174,7 +180,7 @@ func (s *Service) SimulateConfigurations(ctx context.Context, bomID int64, req C
 				targets = append(targets, b)
 			}
 		}
-		budgets, budgetErr := EvaluateTargetBudgets(results[i].Totals, targets)
+		budgets, budgetErr := EvaluateTargetBudgets(results[i].Totals, nodes, targets, budgetFX)
 		if budgetErr != nil {
 			return ConfigurationComparison{}, fmt.Errorf("configuration budgets: %w", budgetErr)
 		}

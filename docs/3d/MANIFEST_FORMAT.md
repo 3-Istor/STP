@@ -1,6 +1,6 @@
 # Manifestes d'assemblage — contrat frontend v1
 
-Implémentation autorisée de l'option 1 de l'ADR 0041. Le fichier d'inventaire
+Implémentation autorisée de l'option 1 de l'ADR 0049. Le fichier d'inventaire
 `assets-manifest.json` est un document de recherche, pas un manifeste d'assemblage.
 
 Un manifeste d'assemblage contient :

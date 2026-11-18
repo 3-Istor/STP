@@ -1,7 +1,7 @@
 # Livraison locale des manifestes — 17 novembre 2026
 
 Branche exclusive `feat/3d-pro-v2`. Commits : `e85a0a2` (contrat), `e60082d` (chargeur),
-`1552471` (vue liée et validation). Option 1 de l'ADR 0041 autorisée dans la conversation.
+`1552471` (vue liée et validation). Option 1 de l'ADR 0049 autorisée dans la conversation.
 Backend, API, schéma PostgreSQL et dépendances inchangés. Aucun push ni merge.
 
 ## Responsabilités des fichiers

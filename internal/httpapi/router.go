@@ -75,7 +75,7 @@ func NewRouter(services ...Services) http.Handler {
 		a.routes(mux)
 		a.versionRoutes(mux)
 		mountAnalysis(mux, s.BOMs, s.Snapshots) // lot E : analyses et profils de véhicule (analysis.go)
-		mountConfigurations(mux, s.BOMs)        // simulations sans stockage, voir ADR 0042
+		mountConfigurations(mux, s.BOMs)        // simulations sans stockage, voir ADR 0050
 	}
 	return jsonNotFound(mux)
 }
@@ -93,7 +93,7 @@ func jsonNotFound(mux *http.ServeMux) http.Handler {
 		c := &notFoundCatcher{ResponseWriter: w}
 		h.ServeHTTP(c, r)
 		if c.notFound {
-			writeJSON(w, http.StatusNotFound, map[string]string{"error": "route API introuvable"})
+			writeErrorBody(w, http.StatusNotFound, "route API introuvable", "route_not_found")
 		}
 	})
 }

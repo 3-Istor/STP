@@ -19,7 +19,6 @@ import (
 	"bomstudio/internal/money"
 	"bomstudio/internal/pricing"
 	"bomstudio/internal/snapshot"
-	"bomstudio/internal/supplier"
 )
 
 // BOMService est ce que l'API attend du domaine bom ; *bom.Service la satisfait.
@@ -51,6 +50,8 @@ type BOMService interface {
 	LandedCosts(ctx context.Context, bomID, partID int64, offerIDs []int64) (bom.LandedComparison, error)
 	MakeOrBuy(ctx context.Context, bomID, nodeID int64, req bom.MakeOrBuyRequest) (bom.MakeOrBuyResult, error)
 	ClearSchedule(ctx context.Context, bomID int64) error
+	PutTargetBudget(ctx context.Context, bomID, nodeID int64, amount money.Money) (bom.TargetBudget, error)
+	DeleteTargetBudget(ctx context.Context, bomID, nodeID int64) error
 }
 
 // SnapshotService est ce que l'API attend du domaine snapshot ; *snapshot.Service la satisfait.
@@ -91,6 +92,8 @@ func (a *api) routes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/v1/boms/{id}/nodes", a.addNode)
 	mux.HandleFunc("PATCH /api/v1/boms/{id}/nodes/{nodeID}", a.patchNode)
 	mux.HandleFunc("DELETE /api/v1/boms/{id}/nodes/{nodeID}", a.deleteNode)
+	mux.HandleFunc("PUT /api/v1/boms/{id}/nodes/{nodeID}/budget", a.putBudget)
+	mux.HandleFunc("DELETE /api/v1/boms/{id}/nodes/{nodeID}/budget", a.deleteBudget)
 	mux.HandleFunc("GET /api/v1/boms/{id}/nodes/{nodeID}/suggestions", a.suggestions)
 	mux.HandleFunc("POST /api/v1/boms/{id}/nodes/{nodeID}/make-or-buy", a.makeOrBuy)
 	mux.HandleFunc("GET /api/v1/boms/{id}/anomalies", a.anomalies)
@@ -543,7 +546,7 @@ func (a *api) putStock(w http.ResponseWriter, r *http.Request) {
 	}
 	st, err := a.boms.SetPartStock(r.Context(), bomID, partID, *req.Quantity)
 	if errors.Is(err, catalog.ErrPartNotFound) { // la pièce est dans le chemin : ressource introuvable
-		writeJSON(w, http.StatusNotFound, map[string]string{"error": err.Error()})
+		writeErrorBody(w, http.StatusNotFound, err.Error(), "part_not_found")
 		return
 	}
 	if err != nil {
@@ -551,6 +554,56 @@ func (a *api) putStock(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, stockJSON{PartID: st.PartID, Quantity: st.Quantity.String()})
+}
+
+// --- Budgets cibles (ADR 0042) ---------------------------------------------------------------------------
+
+type targetBudgetJSON struct {
+	NodeID int64       `json:"node_id"`
+	Target money.Money `json:"target"`
+}
+
+// putBudget : {"amount":"3000.00","currency":"EUR"} ; 409 si les sous-budgets d'un ensemble dépasseraient son budget.
+func (a *api) putBudget(w http.ResponseWriter, r *http.Request) {
+	bomID, err := bomPathID(r, "id")
+	var nodeID int64
+	if err == nil {
+		nodeID, err = bomPathID(r, "nodeID")
+	}
+	var req money.Money
+	if err == nil {
+		err = decode(r, &req)
+	}
+	var b bom.TargetBudget
+	if err == nil {
+		b, err = a.boms.PutTargetBudget(r.Context(), bomID, nodeID, req)
+	}
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	target, err := money.New(b.Amount, b.Currency)
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, targetBudgetJSON{NodeID: b.NodeID, Target: target})
+}
+
+func (a *api) deleteBudget(w http.ResponseWriter, r *http.Request) {
+	bomID, err := bomPathID(r, "id")
+	var nodeID int64
+	if err == nil {
+		nodeID, err = bomPathID(r, "nodeID")
+	}
+	if err == nil {
+		err = a.boms.DeleteTargetBudget(r.Context(), bomID, nodeID)
+	}
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // --- Planning (ADR 0023) -----------------------------------------------------------------------------
@@ -792,39 +845,15 @@ func decodeOptional(r *http.Request, v any) error {
 	return nil
 }
 
-// statusOf traduit une erreur métier en code HTTP. Une erreur inconnue est une erreur serveur.
+// statusOf : statut HTTP d'une erreur du domaine, lu dans errorTable (un seul endroit, avec le code stable).
 func statusOf(err error) int {
-	is := func(targets ...error) bool {
-		for _, t := range targets {
-			if errors.Is(err, t) {
-				return true
-			}
-		}
-		return false
+	if e, ok := lookupError(err); ok {
+		return e.status
 	}
-	switch {
-	case is(bom.ErrBOMNotFound, bom.ErrNodeNotFound, snapshot.ErrSnapshotNotFound, pricing.ErrUnknownOffer,
-		pricing.ErrPriceSnapshotNotFound, bom.ErrIdeaNotFound):
-		return http.StatusNotFound
-	case is(bom.ErrCycle, bom.ErrHasSnapshots, bom.ErrRootNode, pricing.ErrNoQuote, pricing.ErrNoRate,
-		catalog.ErrMissingAttribute, bom.ErrMissingCost, bom.ErrNoBudgetRate, bom.ErrNoTooling, bom.ErrNoProgramVolume,
-		bom.ErrNoCostDate, bom.ErrNoCostFacts, snapshot.ErrIncompleteCost, supplier.ErrSelectionRequired,
-		pricing.ErrNoCustomsDuty, pricing.ErrNoFreightRate, pricing.ErrNoPackaging, pricing.ErrNoDestination,
-		snapshot.ErrPublicationBlocked, bom.ErrBridgeUnavailable, bom.ErrBridgeIncomplete, money.ErrCurrencyMismatch):
-		return http.StatusConflict
-	case is(snapshot.ErrJustificationRequired):
-		return http.StatusUnprocessableEntity
-	case is(errBadRequest, bom.ErrInvalidInput, pricing.ErrInvalidThreshold, bom.ErrOfferNotForPart, bom.ErrNotAPart,
-		catalog.ErrPartNotFound, catalog.ErrOfferNotFound, money.ErrUnknownCurrency):
-		return http.StatusBadRequest
-	case is(bom.ErrSuggestionsUnavailable, bom.ErrLogisticsUnavailable, bom.ErrCostSourcesUnavailable, bom.ErrIdeasUnavailable):
-		return http.StatusServiceUnavailable
-	default:
-		return http.StatusInternalServerError
-	}
+	return http.StatusInternalServerError
 }
 
-// writeError écrit {"error": "..."} ; le détail d'une erreur serveur est journalisé, pas renvoyé.
+// writeError écrit {"error": "...", "code": "..."} (code stable, voir errorTable) ; le détail d'une erreur serveur est journalisé, pas renvoyé.
 func writeError(w http.ResponseWriter, r *http.Request, err error) {
 	status := statusOf(err)
 	msg := err.Error()
@@ -832,5 +861,10 @@ func writeError(w http.ResponseWriter, r *http.Request, err error) {
 		slog.ErrorContext(r.Context(), "request failed", "method", r.Method, "path", r.URL.Path, "err", err)
 		msg = "internal error"
 	}
-	writeJSON(w, status, map[string]string{"error": msg})
+	code := errorCode(err)
+	if code == "invalid_history_data" { // donnée stockée corrompue : ni identifiant de cotation ni valeur brute au client
+		slog.ErrorContext(r.Context(), "invalid stored price data", "method", r.Method, "path", r.URL.Path, "err", err)
+		msg = "invalid stored price data"
+	}
+	writeErrorBody(w, status, msg, code)
 }

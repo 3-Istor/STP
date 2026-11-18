@@ -4,6 +4,7 @@ DELETE /api/v1/boms/{id}
 DELETE /api/v1/boms/{id}/freeze-prices
 DELETE /api/v1/boms/{id}/ideas/{ideaID}
 DELETE /api/v1/boms/{id}/nodes/{nodeID}
+DELETE /api/v1/boms/{id}/nodes/{nodeID}/budget
 DELETE /api/v1/boms/{id}/schedule
 DELETE /api/v1/customs-duties/{origin}/{destination}
 DELETE /api/v1/freight-rates/{origin}/{destination}
@@ -73,6 +74,7 @@ POST /api/v1/suppliers
 POST /api/v1/suppliers/{id}/contracts
 PUT /api/v1/boms/{id}/cost-method
 PUT /api/v1/boms/{id}/freeze-prices
+PUT /api/v1/boms/{id}/nodes/{nodeID}/budget
 PUT /api/v1/boms/{id}/profile
 PUT /api/v1/boms/{id}/schedule
 PUT /api/v1/boms/{id}/stock/{partID}
