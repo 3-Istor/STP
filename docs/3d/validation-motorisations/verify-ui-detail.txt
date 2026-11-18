@@ -1,0 +1,130 @@
+### gofmt
+### go vet
+### frontières d'architecture
+ok  	bomstudio/internal/archtest	0.111s
+### contrat des routes /api/v1
+ok  	bomstudio/internal/httpapi	0.009s
+### niveaux de risque + doc agents
+ok  	bomstudio/cmd/risk	0.003s
+### oxlint (web)
+src/bom/Comparison.tsx:13:14: warning react(only-export-components): Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components.
+src/bom/Comparison.tsx:30:17: warning react(only-export-components): Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components.
+src/bom/Ideas.tsx:12:14: warning react(only-export-components): Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components.
+src/bom/useLoad.ts:13:5: warning react-hooks(exhaustive-deps): React Hook useEffect has a missing dependency: 'load' help: Either include it or remove the dependency array.
+### go mod tidy à jour
+### code sqlc à jour
+### golangci-lint (dont gosec)
+0 issues.
+### tests Go -race (sans base)
+?   	bomstudio/cmd/priceapi	[no test files]
+ok  	bomstudio/cmd/risk	1.029s
+ok  	bomstudio/cmd/server	1.039s
+ok  	bomstudio/internal/archtest	2.295s
+ok  	bomstudio/internal/bom	1.908s
+?   	bomstudio/internal/bom/bomdb	[no test files]
+ok  	bomstudio/internal/bom/bomstore	1.033s
+ok  	bomstudio/internal/catalog	1.024s
+?   	bomstudio/internal/catalog/catalogdb	[no test files]
+ok  	bomstudio/internal/catalog/catalogstore	1.014s
+ok  	bomstudio/internal/httpapi	1.276s
+ok  	bomstudio/internal/money	1.016s
+ok  	bomstudio/internal/priceapi	1.016s
+ok  	bomstudio/internal/pricesim	1.179s
+ok  	bomstudio/internal/pricing	1.292s
+ok  	bomstudio/internal/pricing/priceclient	1.068s
+?   	bomstudio/internal/pricing/pricingdb	[no test files]
+ok  	bomstudio/internal/pricing/pricingstore	1.017s
+ok  	bomstudio/internal/sampledata	3.255s
+ok  	bomstudio/internal/sampledata/seedstore	1.034s
+ok  	bomstudio/internal/snapshot	1.050s
+?   	bomstudio/internal/snapshot/snapshotdb	[no test files]
+?   	bomstudio/internal/snapshot/snapshotstore	[no test files]
+ok  	bomstudio/internal/supplier	1.017s
+?   	bomstudio/internal/supplier/supplierdb	[no test files]
+ok  	bomstudio/internal/supplier/supplierstore	1.014s
+ok  	bomstudio/migrations	1.013s
+### govulncheck
+No vulnerabilities found.
+### tests unitaires web
+✔ largeur de barre : partie entière du pourcentage de l’API, plafonnée à 100 (1.330208ms)
+✔ couleur : état de l’API, jamais vert pour une comparaison indisponible (0.317029ms)
+✔ pourcentage affiché tel que l’API le donne, une décimale, « n/d » sans comparaison (0.375385ms)
+✔ libellés de cascade : nombres longs arrondis à l’affichage, le reste intact (1.919784ms)
+✔ profil explicite : identité de brouillon, parents et pièces vérifiés sans rapprochement par nom (2.319244ms)
+✔ statut budget : propre au nœud, null sans budget ou comparaison indisponible, jamais hérité (1.566199ms)
+✔ sans budgets dans l’API : champ absent (la 3D colore par système et le dit) (0.29558ms)
+✔ clé de scène : stable si seuls les totaux changent, change avec la structure ou un statut (0.553861ms)
+✔ remplacement physique invalide la scène ; offre seule conserve sa géométrie (0.373713ms)
+✔ rendu lié : quantités transmises, scène renouvelée pour instances mais stable pour offres/prix (0.409908ms)
+✔ libellé catalogue lisible sans changer l’identité de l’occurrence (0.23558ms)
+✔ instances : mêmes géométries, matériaux indépendants, bon node_id et transforms parents conservés (52.057986ms)
+✔ remplacement de scène : réutilisation active et libération au dernier propriétaire seulement (7.619079ms)
+✔ empreinte, modèle absent et mesh absent : aucune géométrie étrangère conservée (2.595438ms)
+✔ GLB autonome : refuse HTML, version erronée et ressources hors empreinte (0.589126ms)
+✔ couleurs budget/système puis matériaux natifs, pour chaque classification du composant (5.861581ms)
+✔ GLB articulé : squelettes indépendants et textures de peau libérées à la destruction (2.947971ms)
+✔ mixHex (1.838646ms)
+✔ budgetColor : warn/over exacts, ok adouci, absent jamais vert (0.464257ms)
+✔ resolveColorMode (0.366349ms)
+✔ systemColor : cyclique et déterministe (0.216635ms)
+✔ explodeVector (1.54422ms)
+✔ axialOffsets : roue avant gauche, frein → jante → pneu vers l’extérieur (0.467323ms)
+✔ axialOffsets : choix de l’axe (0.277306ms)
+✔ occurrences répétées : mêmes noms/pièces, clés, positions et picking distincts (3.662346ms)
+✔ édition de la BOM : variantes, offre, déplacement, ajout, suppression et instances (2.430366ms)
+✔ quantités héritées : multiplication exacte, aucune conversion flottante (0.466021ms)
+✔ portée et révision de snapshot : aucun rapprochement implicite (0.842939ms)
+✔ manifeste invalide : provenance, identité, chemins, valeurs et preuves (1.257786ms)
+✔ arbre invalide et arbre profond : pas de boucle ni de débordement de pile (74.944046ms)
+✔ normalizeName (1.34751ms)
+✔ slotFor : noms réels, variantes et inconnus (4.368245ms)
+✔ chaque slot a une forme Simple, chaque forme un slot (1.306635ms)
+✔ Multipla réelle : 56 sous-ensembles, aucun en position estimée (2.305038ms)
+✔ Valhalla réelle : noms inconnus en position estimée, jamais perdus (1.15063ms)
+✔ buildVehicleIndex : systèmes, doublons, statut budget (0.45424ms)
+✔ objectsForNode : remonte au sous-ensemble ou au système (0.478453ms)
+✔ focusGroup : roue + train seulement si présents (0.373842ms)
+✔ zones et positions estimées (1.010395ms)
+✔ transition : bornes, interpolation continue et arrivée exacte (1.116248ms)
+✔ Fiat : deux emplacements réels pour les arbres à cames et renforts de quantité deux (8.406066ms)
+✔ mode initial : seulement une portée et une structure d’installation connues (1.259289ms)
+✔ variantes : nœud, parent, pièce et portée explicites, backend toujours responsable du remplacement (1.317826ms)
+✔ GLB multi-matériaux : transparence et restauration préservent chaque matériau (3.510008ms)
+✔ absence de modèle : aucune substitution automatique par un ancêtre ou une autre occurrence (3.073321ms)
+✔ sous-ensemble absent du GLB chargé : aucune commande vers une boîte vide (0.269131ms)
+✔ manifeste : sélection par occurrence et descendants, jamais par pièce commune ou nom (0.692524ms)
+✔ localisation explicite : ancêtre fiable, sans remplacer la sélection de la pièce absente (1.639363ms)
+✔ écart signé : signe lu dans la chaîne, arrondi half-even à l’affichage (4.14644ms)
+✔ signe d’une chaîne décimale (0.23549ms)
+✔ pourcentage de l’API mis en forme, « n/d » absent (0.377039ms)
+✔ tri par valeur absolue exacte (causes d’écart), sans conversion en nombre (1.072819ms)
+ℹ tests 52
+ℹ suites 0
+ℹ pass 52
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 320.870335
+### build web (tsc + vite)
+vite v8.3.8 building client environment for production...
+transforming...
+✓ 112 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                                   0.46 kB │ gzip:   0.30 kB
+dist/assets/Vehicle3DView-Bdd_lW8X.css            3.17 kB │ gzip:   1.08 kB
+dist/assets/index-CffL60HE.css                   32.24 kB │ gzip:   7.42 kB
+dist/assets/meshopt_decoder.module-DXTYc6wn.js   26.48 kB │ gzip:   7.26 kB
+dist/assets/GLTFLoader-Buzz_16o.js               45.99 kB │ gzip:  13.45 kB
+dist/assets/index-BlZrLpRP.js                   413.09 kB │ gzip: 121.08 kB
+dist/assets/Vehicle3DView-wFuaXed0.js           705.22 kB │ gzip: 181.16 kB
+
+[plugin builtin:vite-reporter] 
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+✓ built in 541ms
+### npm audit (prod, high)
+found 0 vulnerabilities

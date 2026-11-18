@@ -50,7 +50,7 @@ manque. Le délai couvre approvisionnement et production de l'arbre actif, pas l
 | `web/src/api.ts`, `usePowertrainSimulation.ts` | Appel et cache commun des trois arbres ; garde contre réponse obsolète ; sélection/sortie locale et lecture seule |
 | `PowertrainPanel.tsx`, `bom.css` | Comparaison, sélection, limites, liste paginée des retraits ; détails à la demande |
 | `BomWorkspace.tsx`, `useBomData.ts`, `NodePanel.tsx`, `Summary.tsx` | BOM et indicateurs du scénario actif ; interdiction des mutations et absence de ventilation/anomalies provenant de la référence |
-| `Structurer.tsx`, `Vehicle3DView.tsx`, `types.ts`, `demo/Demo.tsx` | Rendu Composants permanent sur les vraies BOM ; scène construite depuis les occurrences actives ; filtre visuel indépendant |
+| `Structurer.tsx`, `Vehicle3DView.tsx`, `vehicle3d.css`, `types.ts`, `demo/Demo.tsx` | Rendu Composants permanent sur les vraies BOM ; scène construite depuis les occurrences actives ; filtre visuel indépendant ; commandes au-dessus des légendes |
 | Tests Go, `powertrain.test.ts`, `e2e/powertrain.spec.ts`, fixtures e2e | Calculs réels, communs/quantités, stratégies, erreurs, identité, absence de mutations et affichage API |
 | `tools/validate_permanent_components.mjs`, `tools/validate_powertrain.mjs`, `tools/validate_soutenance.mjs` | Parcours Chromium local avec vrais assets/API et captures reproductibles |
 
@@ -87,3 +87,39 @@ Captures : `captures/rendu-permanent/` et `captures/motorisations/`.
 Le rapport JSON des motorisations contient les sources, totaux, différences de composition,
 contrôles de scène et empreintes de référence avant/après. Aucun de ces deux outils n'édite la BOM.
 Résultats globaux et revue consignés dans `3D_PROGRESS.md` après leur exécution.
+
+## Contrôles et revue
+
+- `make lint`, `make test` et moulinette PR avec Go `-race` : verts. Les tests d'intégration ont
+  utilisé `stp3d_config_tests`, base dédiée séparée des références. Le harnais signale malgré cela
+  « not_run » pour son précontrôle PostgreSQL faute de `pg_isready` hôte ; les sorties des tests
+  de stores, migrations et seeds attestent leur exécution. Les derniers correctifs UI ont aussi
+  une moulinette verte, sans rejouer l'intégration du backend inchangé.
+- 52 tests unitaires frontend, build TypeScript/Vite, lint, govulncheck et audit npm : verts.
+  Gitleaks, osv-scanner et actionlint absents : non exécutés. Quatre avertissements oxlint déjà
+  présents et avertissement de taille du chunk Three.js ; aucune règle désactivée.
+- Suite finale **68 tests desktop PASS**, **16 tests mobiles PASS**. Parcours réel de sélection,
+  caméra, focus/isolation, éclaté et localisation des absences PASS sur Fiat et Valhalla ; variante
+  physique du brouillon B testée puis restaurée. Les réponses API des trois BOM sont strictement
+  identiques avant/après (`validation-motorisations/references-after-parcours.json`).
+- Revue niveau **2 depuis `0d694cf`** : architecture, aucun constat ; correction, un Important
+  confirmé par un test rouge (choix du scénario dans Arbre puis ouverture 3D). Initialisation de
+  transparence corrigée pour les trois modes/deux vues. Second tour : aucun constat.
+- Test mobile existant : la légende pouvait recouvrir la pagination des diagnostics et intercepter
+  le clic. Ordre CSS des commandes corrigé, test inchangé ; 16 tests mobiles verts. Troisième
+  revue du seul nouveau diff CSS : aucun constat. Aucun Important restant.
+- Relecture humaine du diff sensible à effectuer : `internal/bom/configurations.go` (périmètre
+  d'exclusion et réemploi des calculs), profil JSON (identités/hypothèses),
+  `usePowertrainSimulation.ts` (lecture seule, cache et sortie). Les avis IA ne remplacent pas
+  cette validation. CI distante, Firefox/WebKit et GPU du jury non vérifiés ; aucun push autorisé.
+
+Preuves textuelles dans `validation-motorisations/` ; captures réelles :
+[Fiat extérieure](captures/rendu-permanent/multipla-3d.png),
+[Aston extérieure](captures/rendu-permanent/valhalla-3d.png),
+[thermique](captures/motorisations/valhalla-thermal.png),
+[électrique éclatée](captures/motorisations/valhalla-electric-eclatee.png),
+[hybride et comparaison](captures/motorisations/valhalla-hybrid.png).
+Dernières captures des interactions : [Fiat](captures/regressions-motorisations/multipla-normal.png),
+[Aston](captures/regressions-motorisations/valhalla-normal.png),
+[remplacement 50 Ah](captures/regressions-motorisations/battery-50ah-illustrative.png),
+[remplacement 60 Ah](captures/regressions-motorisations/battery-60ah-illustrative.png).

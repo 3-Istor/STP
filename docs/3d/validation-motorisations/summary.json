@@ -1,0 +1,25 @@
+{
+  "branch": "feat/3d-pro-v2",
+  "base": "0d694cf",
+  "code_head": "70b0757",
+  "tests": {
+    "desktop": 68,
+    "mobile": 16
+  },
+  "frontend_unit_tests": 52,
+  "make_test": "passed on dedicated test database",
+  "make_lint": "passed",
+  "verify_pr": "passed",
+  "review_risk": 2,
+  "code_review_rounds": 3,
+  "architecture_review_rounds": 1,
+  "remaining_findings": 0,
+  "reference_boms_unchanged": true,
+  "published_snapshots_modified": false,
+  "protected_refs_unchanged": true,
+  "verified_glb_files": 8,
+  "verified_audit_backup_files": 6,
+  "remote_ci": "not_run (no push authorized)",
+  "geometry_accuracy": "detailed supplied exteriors; illustrative mechanics",
+  "electric_design_limit": "suitable BEV battery and adaptations not sized or priced"
+}

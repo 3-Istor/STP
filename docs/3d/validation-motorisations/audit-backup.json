@@ -1,0 +1,8 @@
+{
+  "3D_PLAN.md": true,
+  "3D_PROGRESS.md": true,
+  "docs/3d/AUDIT.md": true,
+  "docs/3d/assets-manifest.json": true,
+  "scripts/audit_3d_assets.py": true,
+  "scripts/test_audit_3d_assets.py": true
+}

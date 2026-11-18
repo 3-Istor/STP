@@ -1,0 +1,16 @@
+{
+  "branch": "feat/3d-pro-v2",
+  "protected_refs_checked": {
+    "refs/heads/feat/3d-pro": "940e53715950c2ed53434b9c032d88e9d3bfc665",
+    "refs/heads/main": "940e53715950c2ed53434b9c032d88e9d3bfc665",
+    "refs/remotes/origin/HEAD": "940e53715950c2ed53434b9c032d88e9d3bfc665",
+    "refs/remotes/origin/feat/3d-pro": "940e53715950c2ed53434b9c032d88e9d3bfc665",
+    "refs/remotes/origin/feat/anomalies-budgets-hierarchiques": "6bdff0b8ff2fe14c33a0dc1e26f051f9d5018636",
+    "refs/remotes/origin/feat/exploded-3d-view-models": "c935e52d9b84be21490603b4cbaa4b89e74d4961",
+    "refs/remotes/origin/feat/exploded-3d-view-viewer": "16d62d0c7d3aa18177302ae4a1579ff077fa3cde",
+    "refs/remotes/origin/main": "940e53715950c2ed53434b9c032d88e9d3bfc665",
+    "refs/remotes/origin/nlpf-67": "4dcdb4870b165c76e3ffa79683ebaad1d984e603",
+    "refs/remotes/origin/v2/implementation": "010d4d9e54d0990cbfe0f1368341ae386034107d"
+  },
+  "changes": {}
+}

@@ -613,3 +613,37 @@ validation fonctionnelle et visuelle sur les assets réellement accessibles.
   pagination. Défaut confirmé sans rapport avec un chargement lent. Correction CSS minimale :
   commandes en haut à droite au-dessus des légendes (`z-index: 1`). Assertions et délais conservés ;
   nouveau passage mobile en cours. Le passage interrompu n'est pas compté vert.
+- Correctif CSS validé : 16 tests mobiles PASS ; moulinette finale verte ; troisième tour sur le
+  seul nouveau diff : aucun constat. Aucun Important restant, architecture inchangée.
+- Le parcours réel des trois scénarios a été rejoué après choix dans Arbre puis ouverture 3D :
+  PASS complet, captures actualisées. Les empreintes des huit GLB, les six fichiers de la sauvegarde
+  d'audit et les dix références Git protégées d'origine restent identiques. Preuves sous
+  `docs/3d/validation-motorisations/`. Le contrôle réel de sélection/variante est en cours.
+
+## Livraison moteur de simulation — vérification finale
+
+- Code final : **68 tests Chromium desktop PASS** (suite complète), **16 tests Chromium mobile
+  PASS** (BOM/coûts/composants/scénarios). Aucun délai augmenté, aucune assertion retirée pour
+  obtenir ces résultats. 52 tests unitaires frontend, build, lint, Go normal et `-race` verts.
+- Parcours réel des deux voitures PASS : modèles, rotation/zoom, sélection bidirectionnelle par
+  vrais clics/raycast, isolation/focus, localisation honnête des absences, éclatement 0/50/100/0,
+  filtres visuels de la Valhalla et deux instances d'arbres à cames Fiat. Variante physique du
+  brouillon B #60776 : offre seule sans nouvelle géométrie, pièce 195 → 196 avec nouvelle forme,
+  puis référence 195 et offre initiale restaurées. Zéro erreur ou requête CarConcept.
+- Après tous ces parcours, les réponses API complètes des **trois** BOM sont identiques à leur
+  état initial (empreintes dans `validation-motorisations/references-after-parcours.json`).
+  Captures récentes : `captures/motorisations/` et `captures/regressions-motorisations/`.
+- Trois tours de revue du code, une revue architecture : un Important confirmé puis corrigé,
+  aucune remarque restante ; défaut de superposition mobile également corrigé/testé/relu.
+  Risque courant niveau 2 depuis `0d694cf`, validation humaine finale du diff à effectuer.
+- Commits de travail : `b81c77e` service/API, `3a44b6f` rendu permanent et intégration,
+  `d1f5d26` preuves et guide, `bb5421c` transparence à l'ouverture, `70b0757` commandes accessibles.
+  Aucun push, PR, merge, rebase ou reset. Branches protégées, modèles et sauvegarde d'audit conservés.
+- Services de soutenance laissés disponibles : frontend 41769, API 18080, prix 18090, PostgreSQL
+  55439 / `stp3d_demo`. Base de tests distincte `stp3d_config_tests`. Instructions et parcours exacts
+  dans `3D_DEMO_SOUTENANCE.md`, coûts/hypothèses/responsabilités dans
+  `docs/3d/MOTORISATIONS_SOUTENANCE.md`. La batterie BEV adaptée et les transformations restent
+  non dimensionnées/non chiffrées ; aucune géométrie mécanique constructeur prétendue exacte.
+- Non vérifiés : CI distante (aucun push), Firefox/WebKit, GPU du jury, scanners optionnels absents.
+  Prochaine action humaine : ouvrir la démonstration puis relire/approuver le diff sensible selon
+  les règles du projet. Aucune action technique en attente pour le périmètre autorisé.

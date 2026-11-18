@@ -1,0 +1,55 @@
+
+> web@0.0.0 test:e2e
+> playwright test --project=chromium-desktop --workers=1 e2e/powertrain.spec.ts -g scénario choisi dans Arbre
+
+[WebServer] (node:2529299) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 1 test using 1 worker
+
+(node:2529353) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  1 [chromium-desktop] › e2e/powertrain.spec.ts:104:1 › scénario choisi dans Arbre : mécanique révélée lors de chaque ouverture 3D ou Arbre + 3D (5.8s)
+
+
+  1) [chromium-desktop] › e2e/powertrain.spec.ts:104:1 › scénario choisi dans Arbre : mécanique révélée lors de chaque ouverture 3D ou Arbre + 3D 
+
+    Error: expect(locator).toBeChecked() failed
+
+    Locator:  getByLabel('Carrosserie transparente', { exact: true })
+    Expected: checked
+    Received: unchecked
+    Timeout:  5000ms
+
+    Call log:
+      - Expect "toBeChecked" getByLabel('Carrosserie transparente', { exact: true }) with timeout 5000ms
+      - waiting for getByLabel('Carrosserie transparente', { exact: true })
+        5 × locator resolved to <input disabled type="checkbox"/>
+          - unexpected value "unchecked"
+
+
+      111 |     for (const view of ['3D', 'Arbre + 3D']) {
+      112 |       await page.getByRole('radio', { name: view, exact: true }).click()
+    > 113 |       await expect(page.getByLabel('Carrosserie transparente', { exact: true })).toBeChecked()
+          |                                                                                  ^
+      114 |       await page.getByRole('radio', { name: 'Arbre', exact: true }).click()
+      115 |     }
+      116 |   }
+        at /home/joebuntu/Desktop/SIGL/NLPF/STP/web/e2e/powertrain.spec.ts:113:82
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/powertrain-scénario-choisi-fd35f-ue-ouverture-3D-ou-Arbre-3D-chromium-desktop/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/powertrain-scénario-choisi-fd35f-ue-ouverture-3D-ou-Arbre-3D-chromium-desktop/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/powertrain-scénario-choisi-fd35f-ue-ouverture-3D-ou-Arbre-3D-chromium-desktop/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/powertrain-scénario-choisi-fd35f-ue-ouverture-3D-ou-Arbre-3D-chromium-desktop/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  1 failed
+    [chromium-desktop] › e2e/powertrain.spec.ts:104:1 › scénario choisi dans Arbre : mécanique révélée lors de chaque ouverture 3D ou Arbre + 3D 

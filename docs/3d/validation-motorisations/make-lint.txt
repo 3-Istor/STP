@@ -1,0 +1,19 @@
+go vet ./...
+go tool golangci-lint run ./...
+level=warning msg="[linters_context/goanalysis] Failed to persist facts to cache: failed to save data to low-level cache by key fact_deprecated/facts for package bom: open /home/joebuntu/.cache/golangci-lint/23/23612d9814c7ed3e50b2af5fa60fef7ea9acea4f299f5c47bf440222b6c5511a-a: read-only file system"
+level=warning msg="[linters_context/goanalysis] Failed to persist facts to cache: failed to save data to low-level cache by key ctrlflow/facts for package bom: open /home/joebuntu/.cache/golangci-lint/ec/ec5c1ce712375ed7e61cb90aaefb866da3d2baf1549193bbf2ed6aa0832a1fe6-a: read-only file system"
+level=warning msg="[linters_context/goanalysis] Failed to persist facts to cache: failed to save data to low-level cache by key printf/facts for package bom: open /home/joebuntu/.cache/golangci-lint/7d/7db004de2771daab8c0c7549eb98a74839bcc31d149f8f532ca007637a118d58-a: read-only file system"
+level=warning msg="[linters_context/goanalysis] Failed to persist facts to cache: failed to save data to low-level cache by key inline/facts for package bom: open /home/joebuntu/.cache/golangci-lint/49/493cd011f3464f0d6bc6ffa90a9a35857ca1c76a40c998d2400ead870f59e23d-a: read-only file system"
+level=warning msg="[linters_context/goanalysis] Failed to persist facts to cache: failed to save data to low-level cache by key fact_purity/facts for package bom: open /home/joebuntu/.cache/golangci-lint/a7/a764dbf132dc41bf5a509fbf7e103078b43ce48c15ae99e12fd2d7dd3dd08078-d: read-only file system"
+level=warning msg="[linters_context/goanalysis] Failed to persist facts to cache: failed to save data to low-level cache by key SA5012/facts for package bom: open /home/joebuntu/.cache/golangci-lint/78/7861bf0b8b5777c195a7c33fd3562a52131bc0b77e9d814887f072170ac44a5f-a: read-only file system"
+level=warning msg="[linters_context/goanalysis] Failed to persist facts to cache: failed to save data to low-level cache by key nilness/facts for package bom: open /home/joebuntu/.cache/golangci-lint/6f/6ff0ed7fb9286e3b393c74803b038e5f0bece4e136133185c52f84fa5bee751d-d: read-only file system"
+0 issues.
+cd web && npm run lint
+
+> web@0.0.0 lint
+> oxlint
+
+src/bom/useLoad.ts:13:5: warning react-hooks(exhaustive-deps): React Hook useEffect has a missing dependency: 'load' help: Either include it or remove the dependency array.
+src/bom/Ideas.tsx:12:14: warning react(only-export-components): Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components.
+src/bom/Comparison.tsx:13:14: warning react(only-export-components): Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components.
+src/bom/Comparison.tsx:30:17: warning react(only-export-components): Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components.
