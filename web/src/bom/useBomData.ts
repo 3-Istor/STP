@@ -180,6 +180,15 @@ export function useBomData(target: Target, catalog: Catalog, onBOMChanged: () =>
     [reload, onBOMChanged],
   )
 
+  // A live draft follows the quotes (spec): one reload per new tick, never retried in a loop on failure.
+  const autoTick = useRef<number | null>(null)
+  const stale = liveDraft && staleQuotes(loadedTick, latestTick)
+  useEffect(() => {
+    if (!stale || busy || latestTick === null || autoTick.current === latestTick) return
+    autoTick.current = latestTick
+    void run(async () => {})
+  }, [stale, busy, latestTick, run])
+
   // Prix des sélecteurs d'offres : même source que les totaux (direct ou snapshot de prix). Lecture en
   // échec : aucun prix inventé, les offres restent « sans prix ».
   const priceSnapshotID = bom ? bom.bom.price_snapshot_id : snap ? snap.snapshot.price_snapshot_id : undefined
