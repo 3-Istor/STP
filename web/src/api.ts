@@ -179,6 +179,32 @@ export type Suggestions = {
   excluded: Candidate[]
 }
 
+// Plan de retour au budget (ADR 0052) : substitutions proposées pour un nœud hors budget, jamais appliquées d'office.
+// gain, deltas (après − avant) et cumulative_gain sont par véhicule ; covers : première action qui couvre le dépassement ;
+// remaining : ce qu'aucune action ne couvre (covered faux).
+export type PlanSide = { part_id: number; offer_id: number; part: string; supplier: string; material: string | null; quality: string | null }
+export type PlanAction = {
+  nodes: { id: number; name: string }[]
+  from: PlanSide
+  to: PlanSide
+  gain: Money
+  cumulative_gain: Money
+  co2_delta_kg: string
+  mass_delta_kg: string
+  lead_time_delta_days: number
+  covers: boolean
+}
+export type BudgetPlan = {
+  node_id: number
+  currency: string
+  budget: Money
+  cost: Money
+  overrun: Money
+  remaining: Money
+  covered: boolean
+  actions: PlanAction[]
+}
+
 // Méthode de calcul du coût (ADR 0031) : base (achat, rendu, complet) × change (taux budget, dernier taux).
 // program_volume : volume programme pour amortir l'outillage, exigé par la base « full ».
 export type CostBasis = 'purchase' | 'landed' | 'full'
@@ -484,6 +510,7 @@ export const api = {
   setNodeBudget: (bomID: number, nodeID: number, target: Money) => call<unknown>('PUT', `/boms/${bomID}/nodes/${nodeID}/budget`, target),
   deleteNodeBudget: (bomID: number, nodeID: number) => call<void>('DELETE', `/boms/${bomID}/nodes/${nodeID}/budget`),
   suggestions: (bomID: number, nodeID: number) => call<Suggestions>('GET', `/boms/${bomID}/nodes/${nodeID}/suggestions`),
+  budgetPlan: (bomID: number, nodeID: number) => call<BudgetPlan>('GET', `/boms/${bomID}/nodes/${nodeID}/budget-plan`),
   anomalies: (bomID: number, threshold: string) =>
     call<CostAnomalies>('GET', `/boms/${bomID}/anomalies?threshold=${encodeURIComponent(threshold)}`),
   setDestination: (id: number, country: string | null) => call<BOM>('PATCH', `/boms/${id}`, { destination_country: country }),

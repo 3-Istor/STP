@@ -21,6 +21,7 @@ GET /api/v1/boms/{id}/anomalies
 GET /api/v1/boms/{id}/budgets
 GET /api/v1/boms/{id}/cost-method
 GET /api/v1/boms/{id}/ideas
+GET /api/v1/boms/{id}/nodes/{nodeID}/budget-plan
 GET /api/v1/boms/{id}/nodes/{nodeID}/cost-breakdown
 GET /api/v1/boms/{id}/nodes/{nodeID}/suggestions
 GET /api/v1/boms/{id}/profile

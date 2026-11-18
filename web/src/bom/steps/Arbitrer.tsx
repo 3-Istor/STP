@@ -3,6 +3,7 @@ import { api } from '../../api.ts'
 import { ComparisonPanel } from '../Comparison.tsx'
 import { BomTree } from '../BomTree.tsx'
 import { StrategyPanel } from '../StrategyPanel.tsx'
+import { BudgetPlanPanel } from '../BudgetPlanPanel.tsx'
 import type { BomData } from '../useBomData.ts'
 
 // Arbitrer (maquette I4-6) : « Que garder ? ». Comparaison de deux versions (par défaut la dernière publiée →
@@ -33,6 +34,7 @@ export function Arbitrer({ data, selectedID, onSelect, onGoStructurer }: { data:
           />
         </div>
       </section>
+      {node && !data.readOnly && data.budgets.byNode.get(node.id)?.state === 'over' && <BudgetPlanPanel key={node.id} data={data} nodeID={node.id} />}
       <section className="block" aria-label="Stratégie et alternatives">
         <h3>Stratégie et alternatives{node ? ` · ${node.part_id !== null ? partName(data.catalog, node.part_id) : node.name}` : ''}</h3>
         <div className="in">

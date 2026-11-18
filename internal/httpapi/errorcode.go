@@ -64,6 +64,8 @@ var errorTable = []apiError{
 	{pricing.ErrInvalidThreshold, http.StatusBadRequest, "invalid_threshold"},
 	{bom.ErrOfferNotForPart, http.StatusBadRequest, "offer_not_for_part"},
 	{bom.ErrNotAPart, http.StatusBadRequest, "not_a_part"},
+	{bom.ErrNoBudget, http.StatusConflict, "no_budget"},
+	{bom.ErrPlanTooLarge, http.StatusUnprocessableEntity, "plan_too_large"},
 	{catalog.ErrPartNotFound, http.StatusBadRequest, "part_not_found"},
 	{catalog.ErrOfferNotFound, http.StatusBadRequest, "offer_not_found"},
 	{money.ErrUnknownCurrency, http.StatusBadRequest, "unknown_currency"},
