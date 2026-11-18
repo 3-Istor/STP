@@ -86,7 +86,6 @@ table.compact td:not(:first-child), table.compact th:not(:first-child) { text-al
 }
 
 /* La comparaison garde la hauteur minimale du viewer ; les détails restent à la demande. */
-.main4.step-structurer:has(.powertrain-panel) { overflow: auto; }
 .powertrain-panel { flex: none; }
 .powertrain-panel .in { padding: 8px 12px; }
 .powertrain-panel h3 { margin: 0 0 6px; }
@@ -95,3 +94,4 @@ table.compact td:not(:first-child), table.compact th:not(:first-child) { text-al
 .powertrain-table table { width: 100%; font-size: 12px; }
 .powertrain-table th, .powertrain-table td { padding: 5px 8px; white-space: nowrap; }
 .powertrain-table tr[aria-selected=true] { background: var(--surface-2); }
+.powertrain-removed-body { max-height: min(32dvh, 240px); overflow-y: auto; overscroll-behavior: contain; padding: 0 4px 8px; }

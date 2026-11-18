@@ -647,3 +647,24 @@ validation fonctionnelle et visuelle sur les assets réellement accessibles.
 - Non vérifiés : CI distante (aucun push), Firefox/WebKit, GPU du jury, scanners optionnels absents.
   Prochaine action humaine : ouvrir la démonstration puis relire/approuver le diff sensible selon
   les règles du projet. Aucune action technique en attente pour le périmètre autorisé.
+
+## Polish UI/UX — 18 novembre, après `d22d17d`
+
+- Départ propre sur `feat/3d-pro-v2`, version précédente entièrement commitée et conservée.
+  Périmètre courant niveau 1 : présentation/frontend uniquement, aucun calcul/API Go ou schéma modifié.
+- Mesure réelle avant correction à 1366 × 768 : visualiseur haut de 404 px, commandes hautes de
+  565 px ; l'ouverture de la liste faisait défiler le conteneur caché du canvas et sortir les
+  commandes. Test de régression rouge confirmé sur les limites du panneau et le décalage du canvas.
+- Commandes bornées entre haut/bas du viewer, boutons non comprimés, panneau de sources réductible
+  avec défilement vertical propre. Défilement de Structurer autorisé pour toutes les voitures ;
+  liste des retraits de simulation bornée à 240 px avec défilement, pagination et accès clavier.
+- Résumé électrique neutre : « Simulation électrique : scénario de démonstration avec hypothèses
+  techniques. » Batterie BEV adaptée, transformations non dimensionnées et coûts additionnels
+  non établis restent explicitement dans « Hypothèses et limites techniques », fermé par défaut.
+- Import, erreur d'import et révision déplacés dans « Avancé », fermé par défaut. Le test d'import
+  existant vérifie désormais le contrôle caché puis son ouverture ; toutes ses vérifications de
+  portée/empreinte sont conservées. Aucun bouton Simple/Réaliste/Rendu réintroduit.
+- 4 tests ciblés verts : comparaison et limites, deux tailles laptop et import avancé. Les nouveaux
+  tests vérifient de vrais mouvements de molette, pagination, bas des panneaux et colonne latérale.
+  La fixture du profil a été complétée pour tester les réglages avec le contrat existant.
+  En cours : moulinette, suite complète, parcours réel avec modèles/prix Go, captures et revue niveau 1.

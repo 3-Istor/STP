@@ -5,7 +5,7 @@ export const powertrainLabels: Record<PowertrainMode, string> = { thermal: 'Ther
 export const powertrainAssumptions: Record<PowertrainMode, string[]> = {
   hybrid: ['Architecture de référence : tous les composants de la BOM sont conservés.'],
   thermal: ['Chaîne électrique retirée. DCT, transmission et refroidissement conservés par hypothèse commune. Compatibilité technique des adaptations non certifiée.'],
-  electric: ['Simulation de conception, pas une Valhalla électrique constructeur.', 'Batterie hybride conservée pour chiffrer les composants disponibles ; capacité adaptée, autonomie et remplacement BEV non établis, ajouts nécessaires non chiffrés.', 'DCT, transmission et refroidissement conservés par hypothèse commune ; adaptations non dimensionnées.'],
+  electric: ['Scénario de démonstration illustratif, pas une Valhalla électrique constructeur.', 'Batterie hybride conservée pour chiffrer les composants disponibles ; batterie BEV adaptée, capacité et autonomie non établies.', 'DCT, transmission et refroidissement conservés par hypothèse commune ; transformations non dimensionnées et coûts additionnels non établis.'],
 }
 
 /** Installation explicite de démonstration ; les identités sont revérifiées par le service Go. */

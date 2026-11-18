@@ -3,14 +3,15 @@ import profile from '../src/bom/data/powertrain-valhalla.json' with { type: 'jso
 
 // Montants de réponse arbitraires : le navigateur doit afficher l'API, pas recalculer.
 // Les quantités, communs, prix/change et l'absence de double comptage sont prouvés en Go.
-async function fixture(page: Page, unavailable = false) {
+async function fixture(page: Page, unavailable = false, removedCount = 0) {
   const money = (amount: string) => ({ amount, currency: 'GBP' })
   const totals = (amount: string | null) => ({ real_quantity: '1', cost: amount ? money(amount) : null,
     cost_error_code: amount ? null : 'missing_cost', cost_error: amount ? null : 'offre sans cotation', missing_cost: amount ? [] : [32415],
     co2_kg: '2', mass_kg: '3', lead_time_days: 4, own_cost: null, own_lead_time_days: 0, quote: null, rate: null,
     labor_hours: null, labor_error: null, missing_labor: [], fte: null, stock_covered: null, in_stock: false })
   const extras = [[32412, 29978], [32414, 32413], [34538, 34537], [34606, 34537], [34674, 34537], [34757, 34537]]
-  const nodes = [...profile.guards, ...extras.map(([id, parent_id]) => ({ id, parent_id, part_id: null }))].map(n => ({ ...n,
+  const nodes = [...profile.guards, ...extras.map(([id, parent_id]) => ({ id, parent_id, part_id: null })),
+    ...Array.from({ length: removedCount }, (_, i) => ({ id: 100000 + i, parent_id: 34537, part_id: 325 }))].map(n => ({ ...n,
     name: `Occurrence ${n.id}`, offer_id: n.part_id, quantity: '1', production_days: 0, strategy: null, totals: totals('987.65') }))
   const bom = { id: 2, name: 'Aston Martin Valhalla', currency: 'GBP', volume: 1, annual_hours: '1607', destination_country: 'GB', price_snapshot_id: null, source_snapshot_id: null, created_at: '2026-01-01T00:00:00Z' }
   const explanation = { currency: 'GBP', price_snapshot_id: null, rates: [], cost_method: { basis: 'purchase', fx: 'latest', program_volume: null }, cost_as_of: '2026-01-01T00:00:00Z', budget_rates: [] }
@@ -33,6 +34,7 @@ async function fixture(page: Page, unavailable = false) {
       return route.fulfill({ json: { root_id: profile.root_id, persistent: false, price_as_of: '2026-01-01T00:00:00Z', scenarios } })
     }
     const json = path === '/api/v1/boms' ? [bom] : path === '/api/v1/boms/2/tree' ? tree : path.endsWith('/anomalies') ? { nodes: [], rates: [] }
+      : path.endsWith('/profile') ? { preset: null, weights: null }
       : path === '/api/v1/parts' ? [...new Set(profile.guards.flatMap(g => g.part_id === null ? [] : [g.part_id]))].map(id => ({ id, name: `Pièce ${id}`, category: 'Test', co2_kg_per_unit: '1', mass_kg: '1', production_days: 0, offers: [] }))
       : path === '/api/v1/fx' ? { rates: [] } : []
     return route.fulfill({ json })
@@ -55,7 +57,14 @@ test('motorisations : coût API, BOM active, comparaison commune, actualisation 
   await expect(page.getByRole('button', { name: '+ Ajouter une pièce', exact: true })).toHaveCount(0)
   await select('Électrique')
   await expect(summaryCost).toContainText('612,43')
-  await expect(panel).toContainText('Conception électrique incomplète')
+  await expect(panel.getByText('Simulation électrique : scénario de démonstration avec hypothèses techniques.', { exact: true })).toBeVisible()
+  const assumptions = panel.locator('details').filter({ has: page.locator('summary', { hasText: 'Hypothèses et limites techniques' }) })
+  await expect(assumptions).not.toHaveAttribute('open', '')
+  await assumptions.locator('summary').click()
+  await expect(assumptions).toContainText('batterie BEV adaptée')
+  await expect(assumptions).toContainText('coûts additionnels non établis')
+  await expect(assumptions).toContainText('transformations non dimensionnées')
+  await assumptions.locator('summary').click()
   await page.getByRole('searchbox', { name: 'Rechercher dans la BOM' }).fill('Occurrence 32413')
   await expect(page.getByRole('treeitem')).toHaveCount(0)
   await select('Hybride')
@@ -115,3 +124,51 @@ test('scénario choisi dans Arbre : mécanique révélée lors de chaque ouvertu
     }
   }
 })
+
+for (const viewport of [{ width: 1366, height: 768 }, { width: 1280, height: 720 }]) {
+  test(`laptop ${viewport.width}×${viewport.height} : panneaux et listes accessibles jusqu’en bas`, async ({ page }) => {
+    await page.setViewportSize(viewport)
+    await fixture(page, false, 300)
+    await page.route('**/models/manifests/draft-2.json', route => route.fulfill({ json: {
+      schema_version: 1, revision: 'scroll-fixture', scope: { kind: 'draft', id: 2 }, vehicle_label: 'BOM de test sans géométrie', assets: [], bindings: [], assemblies: [],
+    } }))
+    const panel = page.getByRole('region', { name: 'Simulation de motorisation' })
+    await panel.getByRole('radio', { name: 'Hybride', exact: true }).click()
+    await expect(panel.locator('[data-scenario=hybrid]')).toBeVisible()
+    for (const view of ['3D', 'Arbre + 3D']) {
+      await page.getByRole('radio', { name: view, exact: true }).click()
+      await expect(page.locator('.v3d-root')).toHaveAttribute('data-status', 'ready', { timeout: 30_000 })
+      await page.getByText('Composants et sources', { exact: true }).click()
+      await page.getByText('Occurrences indisponibles (', { exact: false }).click()
+      const settings = page.locator('.v3d-settings')
+      await expect.poll(() => settings.evaluate(el => {
+        const root = el.closest('.v3d-root')!, r = root.getBoundingClientRect(), p = el.getBoundingClientRect()
+        return root.scrollTop === 0 && p.top >= r.top && p.bottom <= r.bottom
+      })).toBe(true)
+      await expect(page.getByLabel('Manifeste d’assemblage', { exact: true })).not.toBeVisible()
+      await settings.hover()
+      await page.mouse.wheel(0, 20000)
+      await expect.poll(() => settings.evaluate(el => el.scrollHeight - el.clientHeight - el.scrollTop)).toBeLessThan(2)
+      await page.getByText('Provenance et licences', { exact: true }).click()
+      await page.getByText('Composants et sources', { exact: true }).click()
+    }
+    await panel.getByRole('radio', { name: 'Thermique', exact: true }).click()
+    await panel.locator('summary').filter({ hasText: 'Composants retirés' }).click()
+    const removed = page.getByRole('region', { name: 'Liste des composants retirés' })
+    await expect(removed.locator('li')).toHaveCount(100)
+    await expect.poll(() => removed.evaluate(el => el.scrollHeight > el.clientHeight)).toBe(true)
+    await removed.hover(); await page.mouse.wheel(0, 20000)
+    await removed.getByRole('button', { name: 'Afficher 100 suivantes', exact: true }).click()
+    await expect(removed.locator('li')).toHaveCount(200)
+    const main = page.locator('.main4')
+    await page.getByRole('radio', { name: '3D', exact: true }).click()
+    await main.hover({ position: { x: 3, y: 100 } }); await page.mouse.wheel(0, 20000)
+    await expect.poll(() => main.evaluate(el => el.scrollHeight - el.clientHeight - el.scrollTop)).toBeLessThan(2)
+    await expect(page.locator('.tfoot')).toBeInViewport()
+    await page.getByRole('tab', { name: 'Réglages de calcul', exact: true }).click()
+    const sidebar = page.locator('.col')
+    await sidebar.hover({ position: { x: 3, y: 100 } }); await page.mouse.wheel(0, 20000)
+    await expect.poll(() => sidebar.evaluate(el => el.scrollHeight - el.clientHeight - el.scrollTop)).toBeLessThan(2)
+    await expect(page.getByLabel('Pays de destination', { exact: true })).toBeInViewport()
+  })
+}

@@ -156,6 +156,9 @@ test('import : portée refusée, empreinte incorrecte explicite, aucune substitu
   await expect(page.locator('.v3d-root')).toHaveAttribute('data-status', 'error', { timeout: 30_000 })
   await page.getByText('Composants et sources', { exact: true }).click()
   const input = page.getByLabel('Manifeste d’assemblage', { exact: true })
+  await expect(input).not.toBeVisible()
+  await page.getByText('Avancé', { exact: true }).click()
+  await expect(input).toBeVisible()
   await input.setInputFiles({ name: 'wrong.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify({ ...f.manifest, scope: { kind: 'draft', id: 99 } })) })
   await expect(page.getByRole('alert').filter({ hasText: 'autre BOM' })).toBeVisible()
   const nodes = (await import('../src/features/vehicle3d/demo/multipla-nodes.json', { with: { type: 'json' } })).default

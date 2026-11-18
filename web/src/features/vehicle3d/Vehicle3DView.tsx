@@ -215,6 +215,7 @@ export default function Vehicle3DView({ bomId, nodes, selectedNodeId, onSelectNo
         <label className="v3d-transparency"><input type="checkbox" checked={transparent} disabled={!ready} onChange={e => setTransparent(e.target.checked)} />Carrosserie transparente</label>
         {mode === 'bound' ? <details className="v3d-settings">
           <summary>Composants et sources</summary>
+          <details className="v3d-advanced"><summary>Avancé</summary>
           <label>Manifeste d’assemblage<input type="file" accept=".json,application/json" onChange={async e => {
             const file = e.target.files?.[0]
             if (!file) return
@@ -228,6 +229,8 @@ export default function Vehicle3DView({ bomId, nodes, selectedNodeId, onSelectNo
           }} /></label>
           {importError ? <p role="alert">{importError}</p> : null}
           {imported ? <button type="button" className="v3d-button" onClick={() => setImported(null)}>Recharger la source du projet</button> : null}
+          {info ? <p>Révision : {info.revision}. Correspondances contrôlées sur l’arbre courant.</p> : null}
+          </details>
           <label>Filtre visuel 3D<select aria-label="Filtre visuel 3D" value={propulsion} disabled={!ready} onChange={e => {
             setPropulsion(e.target.value as PropulsionMode)
             if (e.target.value !== 'all') setTransparent(true)
@@ -240,7 +243,6 @@ export default function Vehicle3DView({ bomId, nodes, selectedNodeId, onSelectNo
           </select></label>
           <button type="button" className="v3d-button" disabled={!ready || (!isolateSelection && selection.keys.length === 0)} onClick={() => setIsolateSelection(v => !v)}>{isolateSelection ? 'Tout afficher' : 'Isoler la sélection'}</button>
           {info ? <>
-            <p>Révision : {info.revision}. Correspondances contrôlées sur l’arbre courant.</p>
             <UnavailableList unavailable={info.unavailable} nodes={nodes} onSelect={onSelectNode} />
             <details><summary>Provenance et licences</summary><ul>{info.assets.map(a => <li key={a.key}><a href={a.source_url} target="_blank" rel="noreferrer">{a.key}</a> — {a.author}, <a href={a.license_url} target="_blank" rel="noreferrer">{a.license}</a> ({a.geometry_status}){a.geometry_evidence_url ? <> · <a href={a.geometry_evidence_url} target="_blank" rel="noreferrer">preuve déclarée</a></> : null}</li>)}</ul></details>
           </> : null}

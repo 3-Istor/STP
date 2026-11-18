@@ -44,11 +44,11 @@ export function PowertrainPanel({ state, source, onSelect }: { state: ReturnType
           })}</tbody>
         </table></div>
         <p className="small muted">Masse et CO₂ : sommes des données catalogue disponibles ; « partiel » signale un attribut absent. Délai : approvisionnement et production de la BOM active, hors adaptations non conçues.</p>
-        {state.activeMode === 'electric' ? <p className="small warn">Conception électrique incomplète : batterie BEV adaptée et transformations non dimensionnées, coûts additionnels non établis.</p> : null}
+        {state.activeMode === 'electric' ? <p className="small muted">Simulation électrique : scénario de démonstration avec hypothèses techniques.</p> : null}
         <details><summary>Hypothèses et limites techniques</summary><ul className="small muted">{powertrainAssumptions[state.activeMode].map(a => <li key={a}>{a}</li>)}</ul></details>
         {active ? <details onToggle={e => setOpen(e.currentTarget.open)}><summary>Composants retirés : {active.excluded_ids.length} · composants communs conservés</summary>
-          {open ? <><ul>{active.excluded_ids.slice(0, limit).map(id => { const n = referenceNodes.get(id); return <li key={id}>#{id} · {n ? n.part_id === null ? n.name : partName(source.catalog, n.part_id) : 'Occurrence'} · quantité {n?.quantity ?? 'n/d'}</li> })}</ul>
-            {limit < active.excluded_ids.length ? <button type="button" onClick={() => setLimit(n => n + 100)}>Afficher 100 suivantes</button> : null}</> : null}
+          {open ? <div className="powertrain-removed-body" role="region" aria-label="Liste des composants retirés" tabIndex={0}><ul>{active.excluded_ids.slice(0, limit).map(id => { const n = referenceNodes.get(id); return <li key={id}>#{id} · {n ? n.part_id === null ? n.name : partName(source.catalog, n.part_id) : 'Occurrence'} · quantité {n?.quantity ?? 'n/d'}</li> })}</ul>
+            {limit < active.excluded_ids.length ? <button type="button" onClick={() => setLimit(n => n + 100)}>Afficher 100 suivantes</button> : null}</div> : null}
         </details> : null}
         {active?.tree.nodes.some(n => n.totals?.missing_cost.length) ? <p role="status">Des prix ou taux manquent : voir les erreurs nommées dans la BOM active. Les coûts de pièces disponibles restent consultables ; aucun total complet ni écart fiable n'est annoncé.</p> : null}
       </> : null}
