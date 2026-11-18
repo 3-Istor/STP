@@ -52,7 +52,9 @@ export function StrategyPanel({ bomID, node, catalog, readOnly, onPatch }: Props
           )}
         </label>
       ) : (
-        node.strategy && <p className="muted">Stratégie : {strategyLabels[node.strategy]}</p>
+        <p className="muted">
+          {node.strategy ? `Stratégie : ${strategyLabels[node.strategy]}` : 'Aucune stratégie sur ce nœud.'} Snapshot publié : lecture seule, ouvrez un brouillon pour la modifier.
+        </p>
       )}
       {isPart && !readOnly && <SuggestionList bomID={bomID} node={node} catalog={catalog} onPatch={onPatch} />}
     </div>

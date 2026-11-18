@@ -1,6 +1,7 @@
 import { partName } from '../../catalog.ts'
 import { api } from '../../api.ts'
 import { ComparisonPanel } from '../Comparison.tsx'
+import { BomTree } from '../BomTree.tsx'
 import { StrategyPanel } from '../StrategyPanel.tsx'
 import type { BomData } from '../useBomData.ts'
 
@@ -13,6 +14,25 @@ export function Arbitrer({ data, selectedID, onSelect, onGoStructurer }: { data:
   return (
     <>
       <ComparisonPanel data={data} onSelect={onSelect} />
+      <section className="block" aria-label="Arbre de la BOM">
+        <h3>Arbre · choisir un nœud</h3>
+        <div className="in" style={{ height: 320, display: 'flex' }}>
+          {/* Arbre en sélection seule (readOnly) : on y choisit le nœud dont on règle la stratégie plus bas. */}
+          <BomTree
+            key={data.target.kind + data.target.id}
+            nodes={data.nodes}
+            catalog={data.catalog}
+            readOnly
+            selectedID={selectedID}
+            onSelect={onSelect}
+            anomalies={data.anomalyByNode}
+            query=""
+            onChangeOffer={() => {}}
+            moving={null}
+            onPickParent={() => {}}
+          />
+        </div>
+      </section>
       <section className="block" aria-label="Stratégie et alternatives">
         <h3>Stratégie et alternatives{node ? ` · ${node.part_id !== null ? partName(data.catalog, node.part_id) : node.name}` : ''}</h3>
         <div className="in">

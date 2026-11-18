@@ -54,6 +54,7 @@ export function AllBoms({ boms, error, onChanged }: Props) {
   const [selected, setSelected] = useState<string | null>(null) // ref de version (« bom:3 », « snapshot:1 »)
   const [collapsed, setCollapsed] = useState<ReadonlySet<string>>(new Set())
   const [actionError, setActionError] = useState<string | null>(null)
+  const [draftingFrom, setDraftingFrom] = useState<number | null>(null) // snapshot dont un brouillon est en création
   const dialogs = useAppDialog()
   const { versions } = useVersions(boms)
   // Instant des snapshots de prix (à la seconde) pour la colonne « Prix utilisés » ; en échec, le numéro seul.
@@ -126,7 +127,9 @@ export function AllBoms({ boms, error, onChanged }: Props) {
   }
 
   function newDraft(snapshotID: number) {
+    if (draftingFrom !== null) return
     setActionError(null)
+    setDraftingFrom(snapshotID)
     api
       .newDraft(snapshotID)
       .then((b) => {
@@ -134,6 +137,7 @@ export function AllBoms({ boms, error, onChanged }: Props) {
         navigate(bomRoute({ kind: 'draft', id: b.id }))
       })
       .catch((e: unknown) => setActionError(errorMessage(e)))
+      .finally(() => setDraftingFrom(null))
   }
 
   const draftActions = (b: BOM) => (
@@ -267,8 +271,8 @@ export function AllBoms({ boms, error, onChanged }: Props) {
                                   <a className="btn" href={href(bomRoute({ kind: 'snapshot', id: v.id }))} onClick={(e) => e.stopPropagation()} aria-label={`Ouvrir ${v.label}`}>
                                     Ouvrir
                                   </a>
-                                  <button type="button" className="btn" title="Nouveau brouillon depuis cette version" aria-label={`Nouveau brouillon depuis ${v.label}`} onClick={(e) => { e.stopPropagation(); newDraft(v.id) }}>
-                                    + Brouillon
+                                  <button type="button" className="btn" title="Nouveau brouillon depuis cette version" aria-label={`Nouveau brouillon depuis ${v.label}`} disabled={draftingFrom !== null} onClick={(e) => { e.stopPropagation(); newDraft(v.id) }}>
+                                    {draftingFrom === v.id ? 'Création…' : '+ Brouillon'}
                                   </button>
                                 </>
                               )}
