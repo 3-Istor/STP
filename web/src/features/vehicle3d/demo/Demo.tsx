@@ -24,7 +24,9 @@ export function Demo() {
   const fixture = q.get('fixture')
   const [boms, setBoms] = useState<{ id: number; name: string }[]>([])
   const [loaded, setLoaded] = useState<{ bomId: number; nodes?: Vehicle3DNode[]; error?: string } | null>(null)
-  const [mode, setMode] = useState<RenderMode>((q.get('mode') as RenderMode) ?? 'simple')
+  const [requestedMode, setMode] = useState<RenderMode>((q.get('mode') as RenderMode) ?? 'simple')
+  // Le chargeur historique n'est exercé que par les fixtures techniques, jamais sur une vraie BOM.
+  const mode = requestedMode === 'realistic' && !fixture ? 'bound' : requestedMode
   const [colorBy, setColorBy] = useState<ColorBy>((q.get('color') as ColorBy) ?? 'material')
   const [explode, setExplode] = useState(Number(q.get('explode') ?? 0))
   const [fake, setFake] = useState(q.get('fakeBudget') === '1')

@@ -26,6 +26,6 @@ for vehicle,layout in layouts.items():
    if entry['group']=='front_edu' and entry['source_part_key']=='vlh.moteur-av':vector[2]=.5 if 'gauche' in desc else -.5
   # Inverse of the calibrated source rotation: values in the manifest are source-local.
   local=[vector[2],vector[1],-vector[0]] if is_ext else [-vector[0],vector[2],vector[1]]
-  binding['instances'][0]['explode_vector']=local
+  for instance in binding['instances']:instance['explode_vector']=local
  m['revision']='soutenance-exploded-20261118';p.write_text(json.dumps(m,ensure_ascii=False,indent=2)+'\n')
 print('Explicit coherent vectors installed for both manifests')

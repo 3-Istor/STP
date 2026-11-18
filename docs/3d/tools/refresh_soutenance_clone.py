@@ -7,6 +7,9 @@ source = json.loads((root / 'draft-1.json').read_text())
 previous = json.loads((root / 'draft-3.json').read_text())
 known = {(b['asset_key'], tuple(b['mesh_path'])): b for b in previous['bindings']}
 identities = {}
+layout = json.loads((Path(__file__).resolve().parents[3] / 'docs/3d/soutenance-assembly-layout.json').read_text())
+for case in layout['multipla'].get('quantified_occurrences', []):
+    identities[case['node_id']] = (case['draft_b_node_id'], case['draft_b_parent_id'])
 for binding in source['bindings']:
     match = known.get((binding['asset_key'], tuple(binding['mesh_path'])))
     if match:

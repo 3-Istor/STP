@@ -87,6 +87,22 @@ def prepare(vehicle, layout, inspection, exterior):
     original_nodes = document['nodes']
     entries = layout['exterior' if exterior else 'interior']
     source_by_name = {n.get('name'): i for i, n in enumerate(original_nodes)}
+    quantified = {} if exterior else {name: case for case in layout.get('quantified_occurrences', []) for name in case['source_nodes']}
+    for case in ([] if exterior else layout.get('quantified_occurrences', [])):
+        vertices, centers = [], []
+        for source_name in case['source_nodes']:
+            node = original_nodes[source_by_name[source_name]]
+            assert not any(field in node for field in ['matrix', 'rotation', 'scale', 'translation'])
+            primitive = document['meshes'][node['mesh']]['primitives'][0]
+            accessor = document['accessors'][primitive['attributes']['POSITION']]
+            view = document['bufferViews'][accessor['bufferView']]
+            assert accessor['componentType'] == 5126
+            points = [struct.unpack_from('<3f', binary, view.get('byteOffset', 0) + accessor.get('byteOffset', 0) + i * view.get('byteStride', 12)) for i in range(accessor['count'])]
+            vertices.append(points); centers.append([(a + b) / 2 for a, b in zip(accessor['min'], accessor['max'])])
+        assert all(len(points) == len(vertices[0]) for points in vertices)
+        error = max(abs((p[axis] - c[axis]) - (q[axis] - centers[0][axis])) for c, points in zip(centers, vertices) for p, q in zip(points, vertices[0]) for axis in range(3))
+        assert error <= case['geometry_tolerance'], 'Meshes are not translated copies: ' + str(case['node_id'])
+        case['deltas'] = [[c[axis] - centers[0][axis] for axis in range(3)] for c in centers]
     matrices, poses = {}, {}
     if exterior and vehicle == 'multipla':
         for n in json.loads((inspection / 'Multipla1998-measured.json').read_text())['nodes']:
@@ -135,6 +151,9 @@ def prepare(vehicle, layout, inspection, exterior):
                 if material not in materials: materials.append(material)
                 primitive['material'] = materials.index(material)
         target = entry['node_id']
+        case = quantified.get(entry.get('source_node'))
+        if case and entry['source_node'] != case['source_nodes'][0]:
+            continue  # the second source position is reproduced by an explicit instance, not duplicated
         grouped[target].append(len(nodes)); records.setdefault(target, entry); nodes.append(node)
     roots = []
     for target, children in grouped.items():
@@ -184,8 +203,17 @@ def main():
                     placement = dict(key='illustration', position=[0, -0.08 if vehicle == 'valhalla' else 0, 0], rotation=[-1.5707963267948966, 0, 3.141592653589793], scale=scale, explode_vector=[0, 0, 0])
                 # At this checkpoint, no explode offset: validate the assembled integration first.
                 placement['explode_vector'] = [0, 0, 0]
+                case = next((c for c in layout.get('quantified_occurrences', []) if c['node_id'] == target), None) if not exterior else None
+                instances = [placement]
+                if case:
+                    instances = []
+                    for i, delta in enumerate(case['deltas']):
+                        scaled = [value * placement['scale'][axis] for axis, value in enumerate(delta)]
+                        # Calibrated source axes: +X -> -X, +Y -> +Z, +Z -> +Y.
+                        offset = [-scaled[0], scaled[2], scaled[1]]
+                        instances.append(dict(placement, key='instance-' + str(i + 1), position=[v + offset[axis] for axis, v in enumerate(placement['position'])]))
                 bindings.append(dict(node_id=target, parent_id=entry['parent_id'], part_id=entry['part_id'], asset_key=definition['key'],
-                                     mesh_path=['occurrence-' + str(target)], system=entry['system'], position_status='approximation', instances=[placement]))
+                                     mesh_path=['occurrence-' + str(target)], system=entry['system'], position_status='approximation', instances=instances))
             if not exterior:
                 for variant in layout.get('variants', []):
                     original = next(binding for binding in bindings if binding['node_id'] == variant['node_id'] and binding['part_id'] == variant['original_part_id'])

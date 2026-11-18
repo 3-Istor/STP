@@ -501,3 +501,29 @@ validation fonctionnelle et visuelle sur les assets réellement accessibles.
   sélectionnée et annonce clairement que seule la localisation du sous-ensemble est affichée.
 - Régressions de retrait du bouton et de localisation ajoutées ; 4 scénarios liés desktop PASS,
   tests unitaires de non-substitution conservés. Audit exhaustif et validation réelle en cours.
+
+## Corrections finales — instances quantifiées et audit complet
+
+- Deux liaisons Fiat réparées : #8 / pièce #60 (deux renforts de bas de caisse), #12932 / pièce #104
+  (deux arbres à cames). Les meshes sources sont vérifiés comme copies translatées à 1e-6 près ;
+  ils réutilisent deux placements existants sans créer de forme, sans doubler les groupes d'origine.
+  Identités vérifiées aussi pour le brouillon B #44888 et #57812. Test de résolution rouge avant,
+  vert après ; vecteurs éclatés appliqués aux deux instances et empreintes GLB revérifiées.
+- Les trois autres GLB préparés et les quatre originaux sont inchangés ; seule l'organisation de
+  l'intérieur Fiat préparé évolue. Les sources intégrales restent préservées. Corps, roues et
+  matériaux externes ne sont pas modifiés. Version antérieure locale conservée dans /tmp en plus
+  de l'historique et des outils de reconstitution.
+- Audit API/scène : 44880 IDs uniques, 226 occurrences avec géométrie propre (157 Fiat, 69 Aston),
+  tous leurs raycasts isolés passent. Pièces physiques : Fiat 146/20108, Aston 47/10002.
+  Les comptes distinguent pièces physiques et groupes virtuels ; une géométrie de groupe n'est
+  jamais annoncée comme celle de chacune des pièces absentes qu'il contient.
+- Rapport exhaustif généré par `docs/3d/tools/audit_visibility.mjs` : chaque occurrence, identité,
+  parent, pièce/libellé, manifeste, mesh réel, visibilité normale/sélection/éclaté, sélection et cause.
+  Données structurées compressées dans `docs/3d/audit-final/`. Quatre captures, changements de voiture
+  par le routeur et actualisation validés, sans requête CarConcept ni erreur de chargement.
+- Restent volontairement non individualisés les cas sans preuve suffisante : cylindres/numéros
+  Valhalla, 15 modules de kit pour 12 modules BOM, soupapes/quantités divergentes, tuyauteries sans
+  parcours et radiateurs avant/latéraux portant la même clé indicative. Aucune association inventée.
+- Moulinette PR verte (intégration DB explicitement not_run dans ce passage sans base de tests) ;
+  revue indépendante niveau 1 depuis 043df31 : aucun Important/Nit/pré-existant. Suite navigateur
+  complète en cours de confirmation après un passage perturbé par un rechargement de fichiers publics.

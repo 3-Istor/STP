@@ -65,17 +65,19 @@
       },
       {
         "source_node": "chassis__mpl_renfort_bas__bas_de_caisse__1__00",
-        "node_id": 2,
-        "parent_id": 1,
-        "part_id": null,
+        "node_id": 8,
+        "parent_id": 3,
+        "part_id": 60,
         "group": "chassis",
         "system": "shared",
         "expected_path": [
           "Fiat Multipla 1.6 16V",
-          "Caisse en blanc"
+          "Caisse en blanc",
+          "Soubassement",
+          "#60"
         ],
         "source_part_key": "mpl.renfort-bas",
-        "identity_evidence": "assembly-only: no verified occurrence"
+        "identity_evidence": "Two supplied translated meshes; runtime occurrence quantity 2; source positions preserved; illustrative geometry"
       },
       {
         "source_node": "chassis__mpl_passage_roue__passage_de_roue_av__1__00",
@@ -165,17 +167,19 @@
       },
       {
         "source_node": "chassis__mpl_renfort_bas__bas_de_caisse_1__00",
-        "node_id": 2,
-        "parent_id": 1,
-        "part_id": null,
+        "node_id": 8,
+        "parent_id": 3,
+        "part_id": 60,
         "group": "chassis",
         "system": "shared",
         "expected_path": [
           "Fiat Multipla 1.6 16V",
-          "Caisse en blanc"
+          "Caisse en blanc",
+          "Soubassement",
+          "#60"
         ],
         "source_part_key": "mpl.renfort-bas",
-        "identity_evidence": "assembly-only: no verified occurrence"
+        "identity_evidence": "Two supplied translated meshes; runtime occurrence quantity 2; source positions preserved; illustrative geometry"
       },
       {
         "source_node": "chassis__mpl_passage_roue__passage_de_roue_av_1__00",
@@ -2091,33 +2095,37 @@
       },
       {
         "source_node": "engine__mpl_arbre_cames__arbre_a_cames_1__00",
-        "node_id": 12503,
-        "parent_id": 12502,
-        "part_id": null,
+        "node_id": 12932,
+        "parent_id": 12928,
+        "part_id": 104,
         "group": "engine",
         "system": "thermal",
         "expected_path": [
           "Fiat Multipla 1.6 16V",
           "Groupe motopropulseur",
-          "Moteur 1.6 16V"
+          "Moteur 1.6 16V",
+          "Culasse",
+          "#104"
         ],
         "source_part_key": "mpl.arbre-cames",
-        "identity_evidence": "assembly-only: no verified occurrence"
+        "identity_evidence": "Two supplied translated meshes; runtime occurrence quantity 2; source positions preserved; illustrative geometry"
       },
       {
         "source_node": "engine__mpl_arbre_cames__arbre_a_cames_2__00",
-        "node_id": 12503,
-        "parent_id": 12502,
-        "part_id": null,
+        "node_id": 12932,
+        "parent_id": 12928,
+        "part_id": 104,
         "group": "engine",
         "system": "thermal",
         "expected_path": [
           "Fiat Multipla 1.6 16V",
           "Groupe motopropulseur",
-          "Moteur 1.6 16V"
+          "Moteur 1.6 16V",
+          "Culasse",
+          "#104"
         ],
         "source_part_key": "mpl.arbre-cames",
-        "identity_evidence": "assembly-only: no verified occurrence"
+        "identity_evidence": "Two supplied translated meshes; runtime occurrence quantity 2; source positions preserved; illustrative geometry"
       },
       {
         "source_node": "engine__mpl_courroie_distri__carter_distribution__00",
@@ -4433,6 +4441,34 @@
           1
         ],
         "note": "Variante de gabarit illustrative créée depuis le prototype fourni. Aucune cote de batterie 60 Ah constructeur vérifiée."
+      }
+    ],
+    "quantified_occurrences": [
+      {
+        "node_id": 8,
+        "parent_id": 3,
+        "part_id": 60,
+        "draft_b_node_id": 44888,
+        "draft_b_parent_id": 44883,
+        "source_nodes": [
+          "chassis__mpl_renfort_bas__bas_de_caisse__1__00",
+          "chassis__mpl_renfort_bas__bas_de_caisse_1__00"
+        ],
+        "geometry_tolerance": 1e-06,
+        "evidence": "Two supplied translated meshes; runtime occurrence quantity 2; source positions preserved; illustrative geometry"
+      },
+      {
+        "node_id": 12932,
+        "parent_id": 12928,
+        "part_id": 104,
+        "draft_b_node_id": 57812,
+        "draft_b_parent_id": 57808,
+        "source_nodes": [
+          "engine__mpl_arbre_cames__arbre_a_cames_1__00",
+          "engine__mpl_arbre_cames__arbre_a_cames_2__00"
+        ],
+        "geometry_tolerance": 1e-06,
+        "evidence": "Two supplied translated meshes; runtime occurrence quantity 2; source positions preserved; illustrative geometry"
       }
     ]
   },

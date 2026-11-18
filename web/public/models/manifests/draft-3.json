@@ -22,7 +22,7 @@
     {
       "key": "MultiplaInteriorPrepared",
       "path": "/models/MultiplaInteriorPrepared.glb",
-      "sha256": "cfd5f992c1686fcf66382dae899f6407185afd04683546ed3cd79beaafdba3ec",
+      "sha256": "d4e894baf357f0ed2d397ff40b9c0e580ce6b0d55aed6d2b190023aa447f19b1",
       "unit_scale": 1,
       "source_url": "http://127.0.0.1:41769/models/soutenance-credits.html",
       "license": "Création originale fournie pour STP — usage local autorisé, licence publique non spécifiée",
@@ -446,6 +446,65 @@
             0,
             0,
             0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            0.95
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0.08
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 44888,
+      "parent_id": 44883,
+      "part_id": 60,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-8"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "instance-1",
+          "position": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            0.95
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0.08
+          ]
+        },
+        {
+          "key": "instance-2",
+          "position": [
+            0.0,
+            0.0,
+            1.3800000000000001
           ],
           "rotation": [
             -1.5707963267948966,
@@ -3038,6 +3097,65 @@
             0,
             0,
             0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            0.74
+          ],
+          "explode_vector": [
+            0.95,
+            0.65,
+            0.45
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 57812,
+      "parent_id": 57808,
+      "part_id": 104,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-12932"
+      ],
+      "system": "thermal",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "instance-1",
+          "position": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            0.74
+          ],
+          "explode_vector": [
+            0.95,
+            0.65,
+            0.45
+          ]
+        },
+        {
+          "key": "instance-2",
+          "position": [
+            -0.20499995350837708,
+            0.0,
+            0.0
           ],
           "rotation": [
             -1.5707963267948966,
