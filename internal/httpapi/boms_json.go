@@ -10,6 +10,7 @@ import (
 	"bomstudio/internal/money"
 	"bomstudio/internal/pricing"
 	"bomstudio/internal/snapshot"
+	"bomstudio/internal/supplier"
 )
 
 // Représentations JSON de l'API : champs en snake_case, montants en {"amount": "92.00", "currency": "EUR"}
@@ -17,21 +18,23 @@ import (
 // Les montants sont exacts (non arrondis) : l'arrondi se fait à l'affichage (ADR 0004).
 
 type bomJSON struct {
-	ID               int64     `json:"id"`
-	Name             string    `json:"name"`
-	Currency         string    `json:"currency"`
-	Volume           int32     `json:"volume"`
-	AnnualHours      string    `json:"annual_hours"`
-	Destination      *string   `json:"destination_country"` // null : non renseigné (ADR 0025)
-	PriceSnapshotID  *int64    `json:"price_snapshot_id"`   // null : prix en direct
-	SourceSnapshotID *int64    `json:"source_snapshot_id"`
-	CreatedAt        time.Time `json:"created_at"`
+	ID               int64          `json:"id"`
+	Name             string         `json:"name"`
+	Currency         string         `json:"currency"`
+	Volume           int32          `json:"volume"`
+	AnnualHours      string         `json:"annual_hours"`
+	Destination      *string        `json:"destination_country"` // null : non renseigné (ADR 0025)
+	PriceSnapshotID  *int64         `json:"price_snapshot_id"`   // null : prix en direct
+	SourceSnapshotID *int64         `json:"source_snapshot_id"`
+	CostMethod       costMethodJSON `json:"cost_method"` // ADR 0031
+	CreatedAt        time.Time      `json:"created_at"`
 }
 
 func toBOMJSON(b bom.BOM) bomJSON {
 	return bomJSON{
 		ID: b.ID, Name: b.Name, Currency: b.Currency, Volume: b.Volume, AnnualHours: b.AnnualHours.String(),
-		Destination: b.DestinationCountry, PriceSnapshotID: b.PriceSnapshotID, SourceSnapshotID: b.SourceSnapshotID, CreatedAt: b.CreatedAt,
+		Destination: b.DestinationCountry, PriceSnapshotID: b.PriceSnapshotID, SourceSnapshotID: b.SourceSnapshotID,
+		CostMethod: toCostMethodJSON(b.CostMethod), CreatedAt: b.CreatedAt,
 	}
 }
 
@@ -75,7 +78,11 @@ type candidateJSON struct {
 	CostScore    *string      `json:"cost_score"`
 	LeadScore    *string      `json:"lead_time_score"`
 	CO2Score     *string      `json:"co2_score"`
-	Excluded     *string      `json:"excluded"` // raison de l'exclusion (prix, taux ou attribut manquant)
+	MassScore    *string      `json:"mass_score"`    // profil de véhicule (ADR 0036)
+	QualityScore *string      `json:"quality_score"` // idem ; 0 quand le critère ne pèse pas
+	MassKg       *string      `json:"mass_kg"`
+	Quality      *string      `json:"quality"`
+	Excluded     *string      `json:"excluded"` // raison de l'exclusion (prix, taux, attribut ou note qualité manquant)
 }
 
 // suggestionsJSON : strategy null = aucune stratégie dans la lignée (ordre par offre).
@@ -88,6 +95,10 @@ type suggestionsJSON struct {
 	PriceSnapshotID *int64          `json:"price_snapshot_id"`
 	Candidates      []candidateJSON `json:"candidates"`
 	Excluded        []candidateJSON `json:"excluded"`
+	// Profile : profil de véhicule qui classe quand aucune stratégie de nœud ne s'applique (ADR 0036) ;
+	// weights : poids appliqués (stratégie, profil, ou tous nuls).
+	Profile *profileJSON `json:"profile"`
+	Weights *weightsJSON `json:"weights"`
 }
 
 func toSuggestionsJSON(s bom.Suggestions) suggestionsJSON {
@@ -95,7 +106,11 @@ func toSuggestionsJSON(s bom.Suggestions) suggestionsJSON {
 	out := suggestionsJSON{
 		NodeID: s.NodeID, RealQuantity: s.RealQuantity.String(), Currency: string(s.Currency),
 		PriceSnapshotID: s.PriceSnapshotID, Candidates: make([]candidateJSON, len(s.Ranked)),
-		Excluded: make([]candidateJSON, len(s.Excluded)),
+		Excluded: make([]candidateJSON, len(s.Excluded)), Weights: toWeightsJSON(s.Weights),
+	}
+	if s.Profile != nil {
+		p := toProfileJSON(s.Profile)
+		out.Profile = &p
 	}
 	if s.Strategy != "" {
 		st, from := string(s.Strategy), s.StrategyFrom
@@ -104,6 +119,7 @@ func toSuggestionsJSON(s bom.Suggestions) suggestionsJSON {
 	for i, r := range s.Ranked {
 		c := toCandidateJSON(r.Candidate)
 		c.Score, c.CostScore, c.LeadScore, c.CO2Score = score(r.Score), score(r.CostScore), score(r.LeadScore), score(r.CO2Score)
+		c.MassScore, c.QualityScore = score(r.MassScore), score(r.QualityScore)
 		out.Candidates[i] = c
 	}
 	for i, c := range s.Excluded {
@@ -115,8 +131,12 @@ func toSuggestionsJSON(s bom.Suggestions) suggestionsJSON {
 func toCandidateJSON(c bom.Candidate) candidateJSON {
 	out := candidateJSON{PartID: c.PartID, OfferID: c.OfferID, Current: c.Current, Cost: c.Cost}
 	if c.HasFacts {
-		lead, co2 := c.LeadDays, c.CO2Kg.String()
-		out.LeadTimeDays, out.CO2Kg = &lead, &co2
+		lead, co2, mass := c.LeadDays, c.CO2Kg.String(), c.MassKg.String()
+		out.LeadTimeDays, out.CO2Kg, out.MassKg = &lead, &co2, &mass
+	}
+	if c.Quality != nil {
+		q := c.Quality.String()
+		out.Quality = &q
 	}
 	if q := c.Quote; q != nil {
 		out.Quote = &quoteJSON{OfferID: q.OfferID, Price: q.Price, Source: q.Source, QuotedAt: q.QuotedAt}
@@ -227,15 +247,32 @@ func nodeTotals(t bom.Totals, id int64) *totalsJSON {
 	return out
 }
 
+// costErrorCode : code stable de la cause d'un coût absent, pour l'écran ; "missing_cost" = un descendant.
 func costErrorCode(err error) string {
-	switch {
-	case errors.Is(err, pricing.ErrNoQuote):
-		return "no_quote"
-	case errors.Is(err, pricing.ErrNoRate):
-		return "no_rate"
-	default:
-		return "missing_cost"
+	codes := []struct {
+		target error
+		code   string
+	}{
+		{bom.ErrMissingCost, "missing_cost"},
+		{pricing.ErrNoQuote, "no_quote"},
+		{pricing.ErrNoRate, "no_rate"},
+		{bom.ErrNoBudgetRate, "no_budget_rate"},
+		{bom.ErrNoTooling, "no_tooling"},
+		{bom.ErrNoProgramVolume, "no_program_volume"},
+		{bom.ErrNoCostDate, "no_cost_date"},
+		{bom.ErrNoCostFacts, "no_cost_facts"},
+		{supplier.ErrSelectionRequired, "contract_selection_required"},
+		{pricing.ErrNoDestination, "no_destination"},
+		{pricing.ErrNoCustomsDuty, "no_customs_duty"},
+		{pricing.ErrNoFreightRate, "no_freight_rate"},
+		{pricing.ErrNoPackaging, "no_packaging"},
 	}
+	for _, c := range codes {
+		if errors.Is(err, c.target) {
+			return c.code
+		}
+	}
+	return "missing_cost"
 }
 
 type treeNodeJSON struct {
@@ -245,18 +282,27 @@ type treeNodeJSON struct {
 
 // explanationJSON dit sur quoi reposent tous les totaux : devise, prix en direct (price_snapshot_id null)
 // ou snapshot de prix, taux utilisés et leur date.
+// cost_method : méthode appliquée (ADR 0031) ; cost_as_of : date de calcul (contrats, année du taux budget),
+// null pour purchase + latest ; budget_rates : taux budget utilisés.
 type explanationJSON struct {
-	Currency        string     `json:"currency"`
-	PriceSnapshotID *int64     `json:"price_snapshot_id"`
-	Rates           []rateJSON `json:"rates"`
+	Currency        string         `json:"currency"`
+	PriceSnapshotID *int64         `json:"price_snapshot_id"`
+	Rates           []rateJSON     `json:"rates"`
+	CostMethod      costMethodJSON `json:"cost_method"`
+	CostAsOf        *time.Time     `json:"cost_as_of"`
+	BudgetRates     []rateJSON     `json:"budget_rates"`
 }
 
 func toExplanationJSON(e bom.Explanation) explanationJSON {
-	rates := make([]rateJSON, len(e.Rates))
-	for i, r := range e.Rates {
-		rates[i] = toRateJSON(r)
+	conv := func(in []pricing.Rate) []rateJSON {
+		out := make([]rateJSON, len(in))
+		for i, r := range in {
+			out[i] = toRateJSON(r)
+		}
+		return out
 	}
-	return explanationJSON{Currency: string(e.Currency), PriceSnapshotID: e.PriceSnapshotID, Rates: rates}
+	return explanationJSON{Currency: string(e.Currency), PriceSnapshotID: e.PriceSnapshotID, Rates: conv(e.Rates),
+		CostMethod: toCostMethodJSON(e.Method), CostAsOf: e.CostAsOf, BudgetRates: conv(e.BudgetRates)}
 }
 
 type treeJSON struct {
@@ -265,6 +311,8 @@ type treeJSON struct {
 	Explanation explanationJSON `json:"explanation"`
 	Stock       []stockJSON     `json:"stock"`
 	Planning    planningJSON    `json:"planning"`
+	// Budgets : budgets cibles du brouillon évalués sur les totaux de cette réponse (même calcul que /budgets).
+	Budgets []budgetJSON `json:"budgets"`
 }
 
 // scheduleJSON : dates calendaires "AAAA-MM-JJ" (ADR 0023).
@@ -531,12 +579,17 @@ type snapshotJSON struct {
 	AnnualHours     *string   `json:"annual_hours"` // null : snapshot publié avant ADR 0024
 	Destination     *string   `json:"destination_country"`
 	PublishedAt     time.Time `json:"published_at"`
+	// Trace de la publication (ADR 0033) ; null si non saisie ou publiée avant.
+	Note        *string `json:"note"`
+	ProposedBy  *string `json:"proposed_by"`
+	ValidatedBy *string `json:"validated_by"`
 }
 
 func toSnapshotJSON(s snapshot.Snapshot) snapshotJSON {
 	out := snapshotJSON{
 		ID: s.ID, BOMID: s.BOMID, PriceSnapshotID: s.PriceSnapshotID, Name: s.Name,
 		Currency: s.Currency, Volume: s.Volume, PublishedAt: s.PublishedAt, Destination: s.DestinationCountry,
+		Note: s.Note, ProposedBy: s.ProposedBy, ValidatedBy: s.ValidatedBy,
 	}
 	if h := s.AnnualHours; h != nil {
 		v := h.String()
@@ -552,4 +605,22 @@ type publishedJSON struct {
 	Explanation explanationJSON `json:"explanation"`
 	Stock       []stockJSON     `json:"stock"`
 	Planning    planningJSON    `json:"planning"`
+	// Checks : contrôles avant publication figés, avec la justification de chaque avertissement (ADR 0033).
+	Checks []frozenCheckJSON `json:"checks"`
+}
+
+type frozenCheckJSON struct {
+	Code          string  `json:"code"`
+	Level         string  `json:"level"`
+	Title         string  `json:"title"`
+	Detail        string  `json:"detail"`
+	Justification *string `json:"justification"`
+}
+
+func toFrozenChecksJSON(cs []snapshot.FrozenCheck) []frozenCheckJSON {
+	out := make([]frozenCheckJSON, len(cs))
+	for i, c := range cs {
+		out[i] = frozenCheckJSON{Code: c.Code, Level: c.Level, Title: c.Title, Detail: c.Detail, Justification: c.Justification}
+	}
+	return out
 }

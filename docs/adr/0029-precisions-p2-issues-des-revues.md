@@ -1,5 +1,5 @@
 # 0029 — Précisions des features P2 issues des revues de code
-Statut : Proposé — Date : 2026-11-14 — Décideurs : à compléter
+Statut : Accepté — Date : 2026-11-14 — Décideurs : Brian P. (accord explicite dans le chat, 17/11/2026)
 
 ## Contexte
 Les relectures (une par feature P2) ont trouvé des cas que les ADR 0022 à 0028 ne tranchent pas, ou une
@@ -39,3 +39,11 @@ Questions encore ouvertes (aucun code écrit, une ADR chacune) :
 - Seuil « orange = proche » du planning (§5) : absent de la spec.
 - Le stock doit-il entrer dans le classement « délai » des stratégies ? Les catégories doivent-elles être
   comparées sans tenir compte de la casse ?
+
+Suites données en V2 (renvois ajoutés à l'acceptation, le 17/11/2026) :
+- Tables douane/transport d'une BOM figée : le coût complet les fige désormais au snapshot (ADR 0031) ; la
+  réponse « coût rendu » par pièce de la P2 reste en direct.
+- Lecture groupée des prix : faite (PR #22, `OfferPrices` / `PairRates`).
+- Budgets et contrôles figés à la publication : ADR 0033 et 0038.
+- Toujours ouvertes : population des anomalies figée, seuil orange du planning, stock dans la stratégie
+  « délai », casse des catégories.

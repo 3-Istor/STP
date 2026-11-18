@@ -1,0 +1,134 @@
+/* Feuille de tokens unique de BOM Studio (V2, voir ADR 0034) : toutes les couleurs, polices et tailles
+   partagées sont ici, et seulement ici. Les autres feuilles n'utilisent que var(--…).
+   Code couleur unique (AGENTS §5) : --ok = dans l'objectif, --warn = proche, --over = dépassé.
+   Thème sombre : mêmes noms, autres valeurs, sur [data-theme='dark'] (posé par ui/theme.ts). */
+
+:root {
+  /* IBM Plex Sans si elle est installée sur le poste (aucune police téléchargée : pas de dépendance),
+     sinon la police système. Chiffres tabulaires partout : les colonnes de montants s'alignent. */
+  --font: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+  --fs: 13px;
+  --fs-small: 12px;
+  --fs-tiny: 11px;
+  --radius: 4px;
+  --row-h: 27px;
+  --top-h: 48px;
+  --status-h: 28px;
+  --col-w: 360px;
+
+  color-scheme: light;
+  --bg: #f4f5f7;
+  --surface: #ffffff;
+  --surface-2: #fafbfc;
+  --hover: #f1f4f8;
+  --line: #e2e5ea;
+  --line-soft: #f0f2f5;
+  --control-line: #c9ced6;
+  --fg: #1b1d21;
+  --fg-2: #3a4049;
+  --muted: #5b626b;
+  --accent: #2f5d9e;
+  --accent-hover: #1f4377;
+  --accent-fg: #ffffff;
+  --link: #2f5d9e;
+  --accent-bg: #eaf0f9;
+  --accent-bg-fg: #24467a;
+  --focus: #4b7fd1;
+  --ok: #2f7d5b;
+  --warn: #9a5b00;
+  --over: #b03024;
+  --ok-fill: #2f7d5b;
+  --warn-fill: #c77a12;
+  --over-fill: #c0392b;
+  --ok-bg: #e9f6ef;
+  --warn-bg: #fff6e0;
+  --warn-line: #f0d9a8;
+  --over-bg: #fdecec;
+  --track: #eef1f5;
+  --bar: #2f5d9e;
+  --top-bg: #1f2328;
+  --top-fg: #c9ced6;
+  --top-strong: #ffffff;
+  --top-dim: #8a929c;
+  --top-on: #2d333b;
+  --top-badge: #3a3f46;
+  --top-badge-fg: #d6d9dd;
+  --top-crumb: #9aa3ad;
+  --top-sep: #5a626c;
+  --top-num: #7d858f;
+  --top-num-on: #9db4d8;
+  --top-focus: #8fb3ee;
+  --logo-bg: #2f5d9e;
+  --bdg-warn-bg: #5c4313;
+  --bdg-warn-fg: #ffd48a;
+  --bdg-over-bg: #5c1f1c;
+  --bdg-over-fg: #ffb3ad;
+  --bdg-ok-bg: #1e4634;
+  --bdg-ok-fg: #9be0bd;
+  --backdrop: #11182759;
+  --shadow: 0 18px 60px #0b24463d;
+  --v3d-bg: #eef0f3; /* fond de la vue 3D (lu par le moteur, ADR 0035) */
+}
+
+[data-theme='dark'] {
+  color-scheme: dark;
+  --v3d-bg: #2a3038;
+  --bg: #15181c;
+  --surface: #1d2126;
+  --surface-2: #22272e;
+  --hover: #262c34;
+  --line: #30363d;
+  --line-soft: #262b31;
+  --control-line: #3d444d;
+  --fg: #e3e6ea;
+  --fg-2: #c9ced6;
+  --muted: #9aa3ad;
+  --accent: #3d6db3;
+  --accent-hover: #4f7fc6;
+  --accent-fg: #ffffff;
+  --link: #8fb3ee;
+  --accent-bg: #22324a;
+  --accent-bg-fg: #a9c3ea;
+  --focus: #8fb3ee;
+  --ok: #5cc495;
+  --warn: #f0b154;
+  --over: #f07b70;
+  --ok-fill: #3f9d72;
+  --warn-fill: #d38a22;
+  --over-fill: #d5584c;
+  --ok-bg: #1b3328;
+  --warn-bg: #3a2f17;
+  --warn-line: #5c4313;
+  --over-bg: #3a1f1d;
+  --track: #2a2f36;
+  --bar: #4f7fc6;
+  --top-bg: #111417;
+  --top-on: #262b31;
+  --backdrop: #000000a0;
+  --shadow: 0 18px 60px #000000a0;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; min-width: 320px; background: var(--bg); color: var(--fg); }
+body {
+  font-family: var(--font);
+  font-size: var(--fs);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.4;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+button, input, textarea, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+a { color: var(--link); }
+a:hover { color: var(--accent-hover); }
+[data-theme='dark'] a:hover { color: var(--fg); }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+h1, h2, h3, p { margin-top: 0; }
+.t-ok, .ok { color: var(--ok); }
+.t-warn, .warn { color: var(--warn); }
+.t-over, .over { color: var(--over); }
+.muted { color: var(--muted); }
+.mono { font-family: var(--font-mono); }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; scroll-behavior: auto !important; } }

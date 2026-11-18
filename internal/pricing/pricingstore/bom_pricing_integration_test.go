@@ -64,6 +64,12 @@ func TestBOMPricingFreezesBOMScopeAndReadsFrozenFacts(t *testing.T) {
 		})
 	}
 
+	// Le lot couvre tout le catalogue : changer l'offre d'un nœud après le gel reste chiffrable (ADR 0048).
+	for _, id := range []int64{offer, other} {
+		if _, err := adapter.SnapshotOfferPrice(t.Context(), snapID, id); err != nil {
+			t.Fatalf("offer %d missing from a catalog-wide freeze: %v", id, err)
+		}
+	}
 	tests := []struct {
 		name string
 		err  func() error
@@ -71,20 +77,58 @@ func TestBOMPricingFreezesBOMScopeAndReadsFrozenFacts(t *testing.T) {
 		msg  string
 	}{
 		{"pas d'inversion implicite d'un taux figé", func() error { _, err := adapter.SnapshotRate(t.Context(), snapID, "EUR", "USD"); return err }, pricing.ErrNoRate, "EUR->USD"},
-		{"offre hors du snapshot", func() error { _, err := adapter.SnapshotOfferPrice(t.Context(), snapID, other); return err }, pricing.ErrNoQuote, ""},
+		{"offre hors BOM mais au catalogue : dans le snapshot (ADR 0048)", func() error { _, err := adapter.SnapshotOfferPrice(t.Context(), snapID, other); return err }, nil, ""},
+		{"offre inexistante : jamais dans le snapshot", func() error { _, err := adapter.SnapshotOfferPrice(t.Context(), snapID, other+1000); return err }, pricing.ErrNoQuote, ""},
 		{"snapshot inconnu", func() error { _, err := fresh.SnapshotOfferPrice(t.Context(), snapID+1000, offer); return err }, pricing.ErrPriceSnapshotNotFound, ""},
-		{"offre attendue absente de la BOM", func() error {
-			_, err := adapter.FreezePrices(t.Context(), newBOM("EUR"), []int64{offer, other}, []money.Currency{"EUR"}, wallClock)
+		{"offre attendue inexistante au catalogue", func() error {
+			_, err := adapter.FreezePrices(t.Context(), newBOM("EUR"), []int64{offer, other + 1000}, []money.Currency{"EUR"}, wallClock)
 			return err
 		}, pricing.ErrNoQuote, ""},
+		{"BOM inconnue : refus nommé, aucun lot", func() error {
+			before := runtimeCount(t, pool, "SELECT count(*) FROM price_snapshots")
+			_, err := adapter.FreezePrices(t.Context(), 987654321, nil, []money.Currency{"EUR"}, wallClock)
+			if n := runtimeCount(t, pool, "SELECT count(*) FROM price_snapshots"); n != before {
+				t.Fatalf("%d snapshot(s) written for an unknown BOM", n-before)
+			}
+			return err
+		}, pricing.ErrPriceEntityNotFound, ""},
+		{"devise de budget sans taux : le gel du catalogue la refuse aussi", func() error {
+			before := runtimeCount(t, pool, "SELECT count(*) FROM price_snapshots")
+			defer func() {
+				if n := runtimeCount(t, pool, "SELECT count(*) FROM price_snapshots"); n != before {
+					t.Fatalf("%d snapshot(s) written by a refused freeze", n-before)
+				}
+			}()
+			bom := newBOM("EUR")
+			if _, err := pool.Exec(t.Context(), "INSERT INTO bom_target_budgets(bom_id,node_id,amount,currency) SELECT $1,id,100,'JPY' FROM bom_nodes WHERE bom_id=$1 AND parent_id IS NULL", bom); err != nil {
+				t.Fatal(err)
+			}
+			_, err := adapter.FreezePrices(t.Context(), bom, []int64{offer}, []money.Currency{"EUR"}, wallClock)
+			return err
+		}, pricing.ErrNoRate, "JPY->EUR"},
 		{"SI aucun taux vers la devise de la BOM ALORS refus qui liste la paire", func() error {
 			_, err := adapter.FreezePrices(t.Context(), newBOM("JPY"), []int64{offer}, []money.Currency{"JPY"}, wallClock)
 			return err
 		}, pricing.ErrNoRate, "USD->JPY"},
+		{"offre du catalogue sans cotation, hors BOM : le gel est refusé, aucun lot", func() error {
+			before := runtimeCount(t, pool, "SELECT count(*) FROM price_snapshots")
+			_, _ = runtimeOffer(t, pool) // créée après le démarrage de la source : aucune cotation
+			_, err := adapter.FreezePrices(t.Context(), newBOM("EUR"), []int64{offer}, []money.Currency{"EUR"}, wallClock)
+			if n := runtimeCount(t, pool, "SELECT count(*) FROM price_snapshots"); n != before {
+				t.Fatalf("%d snapshot(s) written by a refused freeze", n-before)
+			}
+			return err
+		}, pricing.ErrNoQuote, ""},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := tt.err()
+			if tt.want == nil {
+				if err != nil {
+					t.Fatalf("err = %v, want none", err)
+				}
+				return
+			}
 			if !errors.Is(err, tt.want) || !strings.Contains(err.Error(), tt.msg) {
 				t.Fatalf("err = %v, want %v mentioning %q", err, tt.want, tt.msg)
 			}

@@ -1,177 +1,61 @@
-# AGENTS.md — règles du projet BOM Studio
+# AGENTS.md — carte du projet BOM Studio
 
 Source unique des règles pour **toute l'équipe et tous les agents IA** (Claude, Codex, Copilot, Cursor,
-Gemini…). Les fichiers propres à un outil (`CLAUDE.md`, `GEMINI.md`…) ne font que pointer ici :
-on ne duplique aucune règle ailleurs.
+Gemini…). `CLAUDE.md` et les autres fichiers d'outil ne font que pointer ici. Ce fichier est une **carte** :
+le détail est dans les fichiers liés, à lire quand la tâche le demande (ADR 0040).
 
-Outil de conception et de pilotage de la BOM d'une voiture. Spec fonctionnelle : `docs/features.md`.
-Les features s'implémentent une par une.
+Outil de conception et de pilotage de la BOM d'une voiture. Spec : `docs/features.md`.
+Principe : **l'IA produit, l'humain garantit.** La responsabilité ne se délègue pas au prompt.
 
-Principe du cours : **l'IA produit, l'humain garantit.** La responsabilité ne se délègue pas au prompt.
+## 1. Avant de commencer : le niveau de risque
 
----
+Calculé sur le changement, jamais sur l'auteur ni sur la confiance de l'agent : `go run ./cmd/risk`
+(`make risk`). Le plus élevé l'emporte ; on peut monter un niveau, jamais le descendre.
 
-## 1. Environnement
+| Niveau | Quand (chemins) | Humain | Relecteurs IA (contexte neuf) |
+|---|---|---|---|
+| 0 Cosmétique | `docs/` hors ADR, `*.md`, CSS, captures | aucun en direct | — |
+| 1 Routine | un seul domaine `internal/<d>/`, `web/src/`, tests ajoutés, fichier non classé | lit `.verify/verify-summary.md` | relecteur-code |
+| 2 Sensible | `migrations/`, `internal/httpapi/` (contrat `/api/v1`), plusieurs domaines, `go.mod`, `web/package.json`, Docker, `internal/sampledata/`, `docs/adr/`, `docs/features.md` | valide le plan **avant** le code, puis le diff | + relecteur-architecture |
+| 3 Critique | `internal/money/`, `internal/snapshot/`, calcul du coût (`internal/bom/cost*`, `totals*`, `bridge*`, `rootbudget*`), harnais (`.github/`, `.githooks/`, `.claude/`, `AGENTS.md`, `docs/agents/`, `cmd/risk/`, `internal/archtest/`, `scripts/`), test supprimé ou désactivé | 2 humains dont un CODEOWNER ; plan validé avant | + relecteur-securite, relecteur-metier |
 
-- Tout se lance **dans WSL (Ubuntu)** : Go, make, Docker, Node y sont installés, pas côté Windows.
-- `make run | test | cover | sec | lint | migrate | sqlc | dev` (voir `Makefile`). Les outils Go (goose, golangci-lint, govulncheck, puis sqlc)
-  sont déclarés en `tool` dans `go.mod` et lancés par `go tool <nom>` : rien à installer globalement.
-- Front : `npm ci` (pas `npm install`, qui plante avec le npm 10 du système ; pour ajouter une dépendance :
-  `npx npm@11 install <pkg>`).
-- CI : `.github/workflows/ci.yml` rejoue lint, tests et build à chaque push et PR (voir §16).
+La table vit dans `cmd/risk/rules.go` ; `TestRulesMatchAgentsDoc` échoue si ce fichier ne la suit plus.
 
-## 2. Architecture
+## 2. Commandes
 
-- `cmd/server` : câblage uniquement (config par variables d'env, dépendances, routes, démarrage).
-- `internal/httpapi` : routeur `net/http` standard (patterns `GET /api/v1/parts/{id}`), handlers fins.
-- `internal/<domaine>` : `catalog`, `bom`, `supplier`, `pricing`, `snapshot`. Chaque domaine porte ses types,
-  son service (règles métier) et son accès aux données.
-- `internal/money` : type transverse `Money` (montant décimal + devise ISO 4217, arrondi half-even en sortie,
-  voir ADR 0004). Utilisé par tous les domaines, il ne dépend d'aucun d'eux.
-- Base : PostgreSQL via pgx, requêtes typées générées par sqlc, migrations SQL goose dans `migrations/`.
-  Jamais de modification d'une migration déjà commitée : on en ajoute une nouvelle.
-- `web/` : React + TypeScript + Vite, proxy `/api` → `:8080` en dev. Three.js arrivera avec la vue 3D.
-- Pas de dépendance ajoutée sans raison : stdlib d'abord (`net/http`, `log/slog`, `testing`).
-- **Le domaine ne connaît ni écran, ni réseau, ni fournisseur de prix** : `internal/<domaine>` ne dépend
-  pas de `net/http`, du front, ni d'un client d'API externe. L'API de prix (simulée ou réelle) passe par
-  un **adapter** qui valide et normalise (devise, bornes, horodatage).
-- Face à l'API de prix : timeout → dernier snapshot valide ; prix aberrant → rejet ou quarantaine,
-  journalisé ; recalcul → on sait quelle version a été utilisée.
+Tout se lance dans WSL (Ubuntu). Détail : `docs/agents/regles.md` §1.
 
-## 3. Règles métier non négociables
+| Commande | Rôle |
+|---|---|
+| `make hooks` | une fois : pre-commit = moulinette rapide, commit-msg = trailer IA |
+| `make verify` | moulinette rapide (< 1 min) : gofmt, vet, architecture, contrat des routes, secrets, oxlint |
+| `make verify LEVEL=pr` | = la CI en local (lint, tests -race, sqlc, tidy, govulncheck, build web) |
+| `make verify LEVEL=nightly` | + fuzzing, mutation, secrets sur l'historique |
+| `make run \| test \| lint \| migrate \| sqlc \| dev \| up` | voir `Makefile` |
 
-### Montants
-- **Jamais de `float`** (Go, SQL ou TS) pour un montant, un taux de change ou un prix.
-- Un montant est toujours un couple **(valeur décimale, devise ISO 4217)** : `NUMERIC` + `CHAR(3)` en base,
-  type décimal en Go (`shopspring/decimal`), chaîne côté JSON/TS (`"92.00"`), jamais `number`.
-- On conserve le montant et la devise d'origine ; la conversion se fait au calcul, avec un taux daté.
-- Arrondi explicite aux unités mineures de la devise, uniquement en sortie (affichage, publication).
-- Additionner deux devises différentes sans conversion est une erreur, pas un cas silencieux.
+Front : `npm ci` (jamais `npm install`). Une étape non lancée est `not_run`, jamais verte.
 
-### BOM = arbre
-- Nœuds avec `parent_id` (racine : `parent_id NULL`), une seule racine par BOM.
-- **Aucun cycle** : tout déplacement vérifie que le nouveau parent n'est pas un descendant du nœud
-  (CTE récursive, dans la même transaction que la mise à jour).
-- Les totaux (coût, CO2, délai max…) sont calculés en Go en remontant l'arbre, pas stockés.
+## 3. Carte du dépôt
 
-### Brouillon vs snapshot
-- Un brouillon se modifie librement.
-- Publier crée un **snapshot immuable** : structure, quantités, réglages **et** prix fournisseurs et taux de
-  change utilisés, copiés au moment de la publication.
-- Un snapshot publié **ne se modifie jamais** : refus côté service **et** côté base (trigger qui rejette
-  `UPDATE`/`DELETE`). Pour changer, on crée un nouveau brouillon depuis le snapshot.
+- `cmd/server` câblage ; `cmd/priceapi` source de prix simulée ; `cmd/risk` niveau de risque.
+- `internal/<domaine>` (`bom`, `catalog`, `supplier`, `pricing`, `snapshot`) : types, service, règles ;
+  `*store` / `*db` = adapters PostgreSQL (sqlc). `internal/money` : `Money`, sans dépendance.
+- `internal/httpapi` : handlers fins ; `testdata/routes.golden` fige le contrat des routes.
+- `internal/archtest` : frontières vérifiées par test (domaine sans réseau, sans base, sans horloge, sans float).
+- `migrations/` (goose), `web/` (React + TS + Vite), `docs/adr/` (décisions), `.specs/` (tickets).
 
-### Résultats explicables et reproductibles
-- **Même entrée + même snapshot = même résultat.** Aucun calcul ne dépend de l'heure courante,
-  d'un ordre de map Go ou d'un aléa non semé.
-- Tout résultat (coût, CO2, délai) peut dire **sur quoi il repose** : version de BOM, snapshot de prix
-  ou « en direct », taux utilisés et leur date, devise, règles appliquées (remises…).
-- Une donnée manquante n'est jamais cachée : pas de prix à zéro, pas de conversion ignorée,
-  une erreur nommée à la place.
+## 4. Règles non négociables (détail et justification : `docs/agents/regles.md`)
 
-### IA dans le produit
-- Tout appel IA passe par une **interface Go** définie par le domaine qui l'utilise ;
-  aucun SDK de fournisseur importé hors de l'implémentation de cette interface.
-- Une proposition de l'IA ne s'applique qu'à un brouillon, après confirmation de l'utilisateur.
+- **Jamais de `float`** pour un montant, un taux, un prix : `(décimal, ISO 4217)`, chaîne en JSON.
+- Arrondi half-even uniquement en sortie ; additionner deux devises sans conversion = erreur nommée.
+- BOM = arbre sans cycle (CTE dans la même transaction) ; totaux calculés en Go, pas stockés.
+- Snapshot publié **immuable** (service **et** trigger) ; on repart d'un nouveau brouillon.
+- Même entrée + même snapshot = même résultat ; tout résultat dit sur quoi il repose ;
+  une donnée manquante est une erreur nommée, jamais un zéro.
+- Domaine sans `net/http`, sans base, sans SDK d'IA, sans horloge ; prix externes via un adapter.
+- Handlers : décoder → service → encoder. Tests table-driven qui peuvent échouer. Logs `log/slog`.
 
-## 4. Conventions de code
-
-- Tests **table-driven** (`tests := []struct{...}` + `t.Run`). Tout calcul métier (monnaie, arbre, remises,
-  budgets) a ses tests. **Pas de couverture décorative** : un test qui ne peut pas échouer n'est pas un test.
-- Erreurs enveloppées avec contexte : `fmt.Errorf("move node %d: %w", id, err)`. Erreurs métier en
-  sentinelles (`var ErrCycle = errors.New(...)`), testées avec `errors.Is`.
-- **Pas de logique métier dans les handlers HTTP** : décoder → appeler un service → encoder.
-  Les handlers traduisent les erreurs métier en codes HTTP.
-- API JSON : préfixe `/api/v1`, champs en `snake_case`, erreurs `{"error": "message explicite"}`.
-- Logs via `log/slog` (structurés, avec contexte) ; jamais de `fmt.Println` / `console.log` laissé dans le code.
-- Une nouvelle variante de calcul (`prix.v2`, `carbone.v2`) est une **stratégie** choisie à un seul endroit,
-  pas des `if` éparpillés. Tout feature toggle a un propriétaire, une raison et une **date de suppression**.
-
-## 5. UI
-
-- Claire, peu d'informations à l'écran ; **détails à la demande** (panneau latéral, survol).
-- Code couleur unique : vert = dans l'objectif, orange = proche, rouge = dépassé
-  (variables CSS `--ok`, `--warn`, `--over`).
-- Les actions courantes (ajouter, déplacer, supprimer une pièce) en un ou deux gestes.
-- Montants affichés avec leur devise, formatés par `Intl.NumberFormat`, jamais recalculés en `number`.
-
----
-
-# Travailler avec des agents IA
-
-## 6. L'humain décide, l'agent propose
-
-- L'agent **cadre, propose, implémente et vérifie** ; l'humain **choisit les compromis et assume**.
-- Toute décision d'architecture (§7) est **soumise à l'humain avant d'écrire du code** :
-  l'agent s'arrête, présente les options, et attend une réponse explicite.
-- Spec ambiguë ou cas non couvert : l'agent **pose la question** plutôt que d'inventer une règle,
-  en citant la ligne de `docs/features.md` concernée.
-- L'agent ne tranche jamais un désaccord dans l'équipe : il expose les arguments de chaque côté.
-
-## 7. Qu'est-ce qu'une décision d'architecture ?
-
-Tout ce qui est **coûteux à défaire** :
-
-- ajouter une dépendance (Go ou npm) ou un service (cache, file de messages…) ;
-- créer, fusionner ou redécouper un domaine ou une frontière (domaine / adapters) ;
-- changer le schéma d'une table partagée entre domaines, ou le modèle des snapshots / cotations ;
-- changer un contrat d'API `/api/v1` de façon non rétrocompatible ;
-- choisir une stratégie transverse : cache, synchronisation / hors-ligne, temps réel (SSE, WebSocket),
-  pannes de l'API de prix, feature toggles, versionnement des facteurs carbone ;
-- toute règle de calcul absente de la spec (arrondi, ordre d'application des remises…).
-
-Ne l'est pas : un nom de variable, un refactor local, un test en plus, un composant UI isolé.
-
-## 8. ADR (Architecture Decision Records)
-
-- Emplacement : `docs/adr/NNNN-titre-en-kebab.md` (numérotation continue, `0001`, `0002`…).
-- L'agent **rédige le brouillon** au statut `Proposé` ; **seul un humain** le passe à `Accepté`
-  et inscrit son nom dans `Décideurs`. **Un seul membre de l'équipe suffit** : pas besoin
-  de l'accord des trois.
-- Une ADR acceptée **ne se réécrit pas** : on en crée une nouvelle qui la remplace (`Remplacée par 00XX`).
-- Une page max. Format :
-
-```markdown
-# NNNN — Titre de la décision
-Statut : Proposé | Accepté | Remplacé par NNNN — Date : AAAA-MM-JJ — Décideurs : <noms>
-
-## Contexte
-Le besoin, la contrainte ou le risque (lien vers la feature / l'invariant).
-
-## Options
-1. Option A — avantages / inconvénients
-2. Option B — avantages / inconvénients
-(au moins deux, dont « ne rien faire » si pertinent)
-
-## Décision
-L'option retenue, en une phrase, et pourquoi elle gagne **dans ce contexte**.
-
-## Conséquences
-Ce que ça rend facile, ce que ça rend difficile, comment on reviendrait en arrière.
-Impact si le pivot arrive (hors-ligne, multi-source de prix, carbone versionné, multi-usine).
-```
-
-- Le code qui implémente une ADR la référence (message de commit ou commentaire : `voir ADR 0003`).
-
-## 9. Pas de code orphelin
-
-*Si l'équipe ne peut pas l'expliquer, ce code ne lui appartient pas.* À chaque livraison, l'agent fournit :
-
-1. **ce que fait le changement** et la responsabilité de chaque fichier touché ;
-2. **un cas de panne prévisible** (entrée, état ou dépendance qui le ferait échouer) ;
-3. **le test qui le met en défaut** (ou qui prouve qu'il résiste à ce cas) ;
-4. **ce qui n'est pas fait ou pas vérifié**, dit honnêtement.
-
-Du code simple qu'un humain modifie sans nouveau prompt vaut mieux que du code « malin ».
-
-## 10. Petits pas vérifiables (Test & Learn)
-
-- Hypothèse → prototype → test → mesure → décision. Une erreur doit être **rapide, observable, réversible**.
-- Livrer des **tranches verticales** (de la BOM au résultat expliqué) plutôt qu'une couche complète sans usage.
-- Un commit = une intention. Pas de commit géant mélangeant refactor, feature et formatage.
-- Avant de modifier un comportement existant : **un test qui protège l'existant d'abord**, puis le changement.
-
-## 11. Ce que l'agent ne fait jamais sans accord explicite
+## 5. Ce que l'agent ne fait jamais sans accord explicite
 
 - pousser, merger, ouvrir une PR, réécrire l'historique git ;
 - ajouter une dépendance ;
@@ -179,51 +63,42 @@ Du code simple qu'un humain modifie sans nouveau prompt vaut mieux que du code �
 - désactiver, supprimer ou affaiblir un test (ou un job de CI) pour faire passer la pipeline ;
 - toucher aux données d'un snapshot publié (même en base de dev).
 
-## 12. Préparer le pivot sans l'anticiper
+`.claude/settings.json` bloque déjà les plus dangereux (push forcé, `main`, `.env`).
 
-- Le pivot (hors-ligne strict, multiples sources de prix, carbone versionné, multi-usine / multi-devise)
-  sera imposé après la soutenance 1. On **ne code pas** ces cas « au cas où », mais on **ne ferme pas
-  la porte** : frontières nettes, pas de dépendance à l'heure ou au réseau dans le domaine, données versionnées.
-- Au moment du pivot : **cartographier l'impact avant de coder** (fichiers, ADR concernées, tests à ajouter),
-  proposer à l'humain, migrer progressivement.
+## 6. Boucle de travail
 
-## 13. Équipe multi-IA
+1. `make risk` sur l'intention ; niveau ≥ 2 → plan court soumis à l'humain **avant** le code.
+   Décision d'architecture (`docs/agents/travail-avec-agents.md` §7) → ADR `Proposé`, on attend.
+2. Un test qui protège l'existant, puis le changement (petits pas, un commit = une intention).
+3. `make verify` (puis `LEVEL=pr` avant de pousser) jusqu'au vert.
+4. Relecture IA selon le niveau (skill `revue-par-niveau`) : constats `Important` corrigés,
+   `Nit` au choix, `Pré-existant` en ticket. **3 tours au plus**, ensuite on revoit l'approche.
+5. Livrable `docs/agents/travail-avec-agents.md` §9 : ce que fait le changement, un cas de panne,
+   le test qui le couvre, ce qui n'est pas vérifié. L'approbation d'un agent ne vaut jamais celle d'un humain.
 
-- **Mêmes règles quel que soit l'outil** : ce fichier fait foi. Un fichier propre à un outil contient
-  seulement un renvoi vers `AGENTS.md` (ex. `CLAUDE.md` = `@AGENTS.md`).
-  Codex, Copilot et Cursor lisent `AGENTS.md` directement ; pour Gemini CLI, créer `GEMINI.md` avec `@AGENTS.md`.
-- Préférences personnelles (modèle, style, raccourcis) : fichiers locaux non commités
-  (`CLAUDE.local.md`, réglages de l'éditeur…), jamais dans les règles partagées.
-- **Traçabilité** : un commit écrit avec l'aide d'une IA le dit dans un trailer
-  (`Co-Authored-By: <outil / modèle> <adresse>`). L'humain qui commite reste l'auteur et le responsable.
-- Une IA peut relire le code d'une autre (ou d'un humain) ; la relecture finale avant merge est **humaine**.
-- Un agent ne reprend pas en cours la branche d'un autre sans que l'humain propriétaire soit d'accord.
+## 7. Skills et relecteurs
 
-## 14. Ownership partagé
+| Skill (`.claude/skills/`) | Quand |
+|---|---|
+| `ajouter-feature` | nouvelle tranche verticale depuis `docs/features.md` |
+| `changer-contrat-api` | route ou JSON `/api/v1` ajouté ou modifié |
+| `ajouter-migration` | changement de schéma PostgreSQL |
+| `rediger-adr` | décision coûteuse à défaire |
+| `revue-par-niveau` | avant de déclarer terminé : lance les bons relecteurs |
+| `trier-constat` | un relecteur, la CI ou un scanner signale quelque chose |
+| `audit-securite` | audit de sécurité complet, en phases, constats vérifiés |
 
-- L'agent écrit pour **toute l'équipe**, pas pour la personne qui l'utilise : noms explicites,
-  ADR et commits qui racontent le pourquoi.
-- Le dépôt doit raconter la même histoire que la soutenance : chaque choix important se retrouve
-  dans une ADR, chaque règle métier dans un test.
+Relecteurs (`.claude/agents/`, lecture seule, contexte neuf) : `relecteur-code`, `relecteur-architecture`,
+`relecteur-securite`, `relecteur-metier`. Échelle de sévérité commune : `REVIEW.md`.
 
-## 15. Définition de « terminé »
+## 8. Quand un humain manque
 
-Une tâche n'est terminée que si :
+L'agent ne tranche pas à sa place : il écrit la question dans `.specs/<ticket>/state.md` (section
+« Questions ouvertes ») avec sa recommandation et le coût d'un non, et continue sur ce qui n'en dépend pas.
 
-- `make lint` et `make test` passent en local, et la CI est verte ;
-- le livrable du §9 est fourni ;
-- une ADR existe si une décision du §7 a été prise.
+## 9. Pour aller plus loin
 
-Sinon l'agent le dit, avec la sortie de la commande qui échoue.
-
-## 16. Pipeline CI
-
-`.github/workflows/ci.yml`, sur chaque push vers `main` et chaque PR (voir ADR 0001, `docs/workflow.md`) :
-
-- **go** (service Postgres 18) : `go mod tidy -diff`, code sqlc à jour, migrations `goose up` / `reset` / `up`,
-  `go vet`, `golangci-lint` (dont `gosec`), `go test -race` + couverture (non bloquante), tests d'intégration compris ;
-- **web** : `npm ci`, `oxlint`, build (`tsc` + Vite), `npm audit` ;
-- **security** : `govulncheck`.
-
-Une PR ne se merge pas si la CI est rouge. On ajoute une étape quand le besoin existe
-(ex. service Postgres + `goose up` dès le premier test qui touche la base).
+- `docs/agents/regles.md` (§1–5) : environnement, architecture, règles métier, conventions, UI.
+- `docs/agents/travail-avec-agents.md` (§6–16) : décisions, ADR, livrable, petits pas, équipe multi-IA, CI.
+- `docs/harnais.md` : l'usine logicielle (capteurs, niveaux, CI, IA) et ses sources.
+- `docs/workflow.md`, `docs/adr/`. Les renvois « AGENTS §N » du code pointent vers `docs/agents/`.

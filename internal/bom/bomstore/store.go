@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -15,6 +16,7 @@ import (
 
 	"bomstudio/internal/bom"
 	"bomstudio/internal/bom/bomdb"
+	"bomstudio/internal/money"
 )
 
 // DB est ce dont le store a besoin : exécuter des requêtes et ouvrir une transaction.
@@ -113,11 +115,50 @@ func (s *Store) RenameBOM(ctx context.Context, id int64, name string) (bom.BOM, 
 }
 
 // UpdateSettings change la devise de référence et le volume.
-func (s *Store) UpdateSettings(ctx context.Context, id int64, currency string, volume int32) (bom.BOM, error) {
-	row, err := s.q.UpdateBOMSettings(ctx, bomdb.UpdateBOMSettingsParams{
-		ID: id, Currency: currency, Volume: volume,
+// UpdateSettings change devise et volume ; check est jugé sous le verrou de la BOM (devise actuelle, budget global),
+// dans la même transaction que l'écriture : un budget global posé en parallèle ne peut pas contourner la règle.
+func (s *Store) UpdateSettings(ctx context.Context, id int64, currency string, volume int32, check bom.SettingsCheck) (bom.BOM, error) {
+	var out bom.BOM
+	err := s.inTx(ctx, func(q *bomdb.Queries) error {
+		current, err := q.LockBOMCurrency(ctx, id)
+		if err != nil {
+			return notFound(err, bom.ErrBOMNotFound)
+		}
+		if check != nil {
+			global, err := globalBudget(ctx, q, id)
+			if err != nil {
+				return err
+			}
+			if err := check(current, global); err != nil {
+				return err
+			}
+		}
+		row, err := q.UpdateBOMSettings(ctx, bomdb.UpdateBOMSettingsParams{ID: id, Currency: currency, Volume: volume})
+		out, err = bomOrErr(row, err, "update")
+		return err
 	})
-	return bomOrErr(row, err, fmt.Sprintf("update settings of bom %d", id))
+	if err != nil {
+		return bom.BOM{}, fmt.Errorf("update settings of bom %d: %w", id, err)
+	}
+	return out, nil
+}
+
+// globalBudget : budget de la racine de la BOM (budget global), nil s'il n'y en a pas ; lu dans la transaction q.
+func globalBudget(ctx context.Context, q *bomdb.Queries, bomID int64) (*bom.TargetBudget, error) {
+	root, err := q.RootNodeID(ctx, bomID)
+	if err != nil {
+		return nil, fmt.Errorf("root of bom %d: %w", bomID, notFound(err, bom.ErrBOMNotFound))
+	}
+	rows, err := q.ListTargetBudgets(ctx, bomID)
+	if err != nil {
+		return nil, fmt.Errorf("target budgets of bom %d: %w", bomID, err)
+	}
+	for _, r := range rows {
+		if r.NodeID == root {
+			return &bom.TargetBudget{NodeID: r.NodeID, Amount: r.Amount, Currency: r.Currency}, nil
+		}
+	}
+	return nil, nil
 }
 
 // Stock renvoie le stock de la BOM, trié par pièce (ADR 0022).
@@ -270,6 +311,49 @@ func (s *Store) DeleteBOM(ctx context.Context, id int64) error {
 	return nil
 }
 
+// txOptionsBeginner : *pgxpool.Pool et *pgx.Conn ouvrent une transaction avec un niveau d'isolation.
+type txOptionsBeginner interface {
+	BeginTx(ctx context.Context, opts pgx.TxOptions) (pgx.Tx, error)
+}
+
+// Draft lit la BOM, l'arbre, le stock, le planning et les budgets dans une même transaction en lecture seule
+// REPEATABLE READ : les cinq lectures voient le même instantané de la base, même si un PATCH est validé entre
+// deux (v2-lot-g T1). Store câblé sur une transaction (tests) : un savepoint de cette transaction.
+func (s *Store) Draft(ctx context.Context, bomID int64) (bom.Draft, error) {
+	var tx pgx.Tx
+	var err error
+	if b, ok := s.db.(txOptionsBeginner); ok {
+		tx, err = b.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.RepeatableRead, AccessMode: pgx.ReadOnly})
+	} else {
+		tx, err = s.db.Begin(ctx)
+	}
+	if err != nil {
+		return bom.Draft{}, fmt.Errorf("draft of bom %d: begin: %w", bomID, err)
+	}
+	defer func() { _ = tx.Rollback(context.WithoutCancel(ctx)) }()
+	in := &Store{db: tx, q: s.q.WithTx(tx)}
+	var d bom.Draft
+	if d.BOM, err = in.GetBOM(ctx, bomID); err != nil {
+		return bom.Draft{}, err
+	}
+	if d.Nodes, err = in.Tree(ctx, bomID); err != nil {
+		return bom.Draft{}, err
+	}
+	if d.Stock, err = in.Stock(ctx, bomID); err != nil {
+		return bom.Draft{}, err
+	}
+	if d.Schedule, err = in.Schedule(ctx, bomID); err != nil {
+		return bom.Draft{}, err
+	}
+	if d.Budgets, err = in.TargetBudgets(ctx, bomID); err != nil {
+		return bom.Draft{}, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return bom.Draft{}, fmt.Errorf("draft of bom %d: commit: %w", bomID, err)
+	}
+	return d, nil
+}
+
 // Tree renvoie tous les nœuds de la BOM en une requête, triés par id.
 func (s *Store) Tree(ctx context.Context, bomID int64) ([]bom.Node, error) {
 	rows, err := s.q.ListNodes(ctx, bomID)
@@ -335,10 +419,11 @@ func (s *Store) SetNodeProductionDays(ctx context.Context, bomID, nodeID int64, 
 // MoveNode rattache le nœud à newParentID. Dans une seule transaction : verrou de la BOM (deux
 // déplacements concurrents ne peuvent pas chacun passer le contrôle), contrôle de cycle par CTE
 // récursive, puis UPDATE. Déplacer la racine est toujours un cycle (tout nœud en descend).
-func (s *Store) MoveNode(ctx context.Context, bomID, nodeID, newParentID int64) (bom.Node, error) {
+func (s *Store) MoveNode(ctx context.Context, bomID, nodeID, newParentID int64, check bom.BudgetCheck) (bom.Node, error) {
 	var out bom.Node
 	err := s.inTx(ctx, func(q *bomdb.Queries) error {
-		if _, err := q.LockBOM(ctx, bomID); err != nil {
+		currency, err := q.LockBOMCurrency(ctx, bomID)
+		if err != nil {
 			return notFound(err, bom.ErrBOMNotFound)
 		}
 		for _, id := range []int64{nodeID, newParentID} {
@@ -362,7 +447,15 @@ func (s *Store) MoveNode(ctx context.Context, bomID, nodeID, newParentID int64) 
 			return err
 		}
 		out = toNode(row)
-		return nil
+		if check == nil {
+			return nil
+		}
+		nodes, budgets, err := treeAndBudgets(ctx, q, bomID)
+		if err != nil {
+			return err
+		}
+		// erreur : la transaction est annulée, le nœud reste où il était
+		return check(bom.BudgetState{Currency: currency, Nodes: nodes, Budgets: budgets})
 	})
 	if err != nil {
 		return bom.Node{}, fmt.Errorf("move node %d under %d in bom %d: %w", nodeID, newParentID, bomID, err)
@@ -439,8 +532,43 @@ func toBOM(r bomdb.Bom) bom.BOM {
 		DestinationCountry: ptrText(r.DestinationCountry),
 		PriceSnapshotID:    ptrInt64(r.PriceSnapshotID),
 		SourceSnapshotID:   ptrInt64(r.SourceSnapshotID),
-		CreatedAt:          r.CreatedAt,
+		CostMethod: bom.CostMethod{
+			Basis: bom.CostBasis(r.CostBasis), FX: bom.FXPolicy(r.FxPolicy), ProgramVolume: ptrInt32(r.ProgramVolume),
+		},
+		CreatedAt: r.CreatedAt,
 	}
+}
+
+func ptrInt32(v pgtype.Int4) *int32 {
+	if !v.Valid {
+		return nil
+	}
+	return &v.Int32
+}
+
+// SetCostMethod enregistre la méthode de calcul du coût (ADR 0031).
+func (s *Store) SetCostMethod(ctx context.Context, id int64, m bom.CostMethod) (bom.BOM, error) {
+	var pv pgtype.Int4
+	if m.ProgramVolume != nil {
+		pv = pgtype.Int4{Int32: *m.ProgramVolume, Valid: true}
+	}
+	row, err := s.q.SetBOMCostMethod(ctx, bomdb.SetBOMCostMethodParams{
+		ID: id, CostBasis: string(m.Basis), FxPolicy: string(m.FX), ProgramVolume: pv,
+	})
+	return bomOrErr(row, err, fmt.Sprintf("set cost method of bom %d", id))
+}
+
+// TargetBudgets renvoie les budgets cibles de la BOM, triés par nœud (ADR 0018, 0031).
+func (s *Store) TargetBudgets(ctx context.Context, bomID int64) ([]bom.TargetBudget, error) {
+	rows, err := s.q.ListTargetBudgets(ctx, bomID)
+	if err != nil {
+		return nil, fmt.Errorf("target budgets of bom %d: %w", bomID, err)
+	}
+	out := make([]bom.TargetBudget, len(rows))
+	for i, r := range rows {
+		out[i] = bom.TargetBudget{NodeID: r.NodeID, Amount: r.Amount, Currency: r.Currency}
+	}
+	return out, nil
 }
 
 func toNode(r bomdb.BomNode) bom.Node {
@@ -486,4 +614,151 @@ func (s *Store) SetNodePart(ctx context.Context, bomID, nodeID, partID, offerID 
 		}
 	}
 	return nodeOrErr(row, err, fmt.Sprintf("set part of node %d in bom %d", nodeID, bomID))
+}
+
+// fkBudgetNode : budget d'un nœud absent de la BOM (migration 00012).
+const fkBudgetNode = "bom_target_budgets_bom_id_node_id_fkey"
+
+// SetTargetBudget enregistre (ou remplace) le budget cible d'un nœud.
+func (s *Store) SetTargetBudget(ctx context.Context, bomID int64, b bom.TargetBudget) error {
+	_, err := s.q.UpsertTargetBudget(ctx, bomdb.UpsertTargetBudgetParams{BomID: bomID, NodeID: b.NodeID, Amount: b.Amount, Currency: b.Currency})
+	if isConstraint(err, fkBudgetNode) {
+		return fmt.Errorf("budget of node %d in bom %d: %w", b.NodeID, bomID, bom.ErrNodeNotFound)
+	}
+	if err != nil {
+		return fmt.Errorf("budget of node %d in bom %d: %w", b.NodeID, bomID, err)
+	}
+	return nil
+}
+
+// EditTargetBudget pose ou retire un budget dans une transaction, BOM verrouillée (LockBOM, comme MoveNode) :
+// deux écritures concurrentes ne peuvent pas chacune passer la règle et la casser ensemble (ADR 0042).
+func (s *Store) EditTargetBudget(ctx context.Context, bomID, nodeID int64, b *bom.TargetBudget, check bom.BudgetCheck) error {
+	err := s.inTx(ctx, func(q *bomdb.Queries) error {
+		currency, err := q.LockBOMCurrency(ctx, bomID) // devise relue sous le verrou (ADR 0045)
+		if err != nil {
+			return notFound(err, bom.ErrBOMNotFound)
+		}
+		if _, err := q.GetNode(ctx, bomdb.GetNodeParams{BomID: bomID, ID: nodeID}); err != nil {
+			return fmt.Errorf("node %d: %w", nodeID, notFound(err, bom.ErrNodeNotFound))
+		}
+		nodes, budgets, err := treeAndBudgets(ctx, q, bomID)
+		if err != nil {
+			return err
+		}
+		budgets = slices.DeleteFunc(budgets, func(x bom.TargetBudget) bool { return x.NodeID == nodeID })
+		if b != nil {
+			budgets = append(budgets, *b)
+		}
+		if check != nil {
+			if err := check(bom.BudgetState{Currency: currency, Nodes: nodes, Budgets: budgets}); err != nil {
+				return err
+			}
+		}
+		if b == nil {
+			return q.DeleteTargetBudget(ctx, bomdb.DeleteTargetBudgetParams{BomID: bomID, NodeID: nodeID})
+		}
+		_, err = q.UpsertTargetBudget(ctx, bomdb.UpsertTargetBudgetParams{BomID: bomID, NodeID: nodeID, Amount: b.Amount, Currency: b.Currency})
+		return err
+	})
+	if err != nil {
+		return fmt.Errorf("edit budget of node %d in bom %d: %w", nodeID, bomID, err)
+	}
+	return nil
+}
+
+// treeAndBudgets lit l'arbre et les budgets dans la transaction q.
+func treeAndBudgets(ctx context.Context, q *bomdb.Queries, bomID int64) ([]bom.Node, []bom.TargetBudget, error) {
+	rows, err := q.ListNodes(ctx, bomID)
+	if err != nil {
+		return nil, nil, fmt.Errorf("tree of bom %d: %w", bomID, err)
+	}
+	nodes := make([]bom.Node, len(rows))
+	for i, r := range rows {
+		nodes[i] = toNode(r)
+	}
+	brows, err := q.ListTargetBudgets(ctx, bomID)
+	if err != nil {
+		return nil, nil, fmt.Errorf("target budgets of bom %d: %w", bomID, err)
+	}
+	budgets := make([]bom.TargetBudget, len(brows))
+	for i, r := range brows {
+		budgets[i] = bom.TargetBudget{NodeID: r.NodeID, Amount: r.Amount, Currency: r.Currency}
+	}
+	return nodes, budgets, nil
+}
+
+// --- Pistes de réduction ----------------------------------------------------------------------------
+
+var _ bom.IdeaStore = (*Store)(nil)
+
+func toIdea(r bomdb.BomReductionIdea) (bom.Idea, error) {
+	gain, err := money.New(r.GainAmount, r.GainCurrency)
+	if err != nil {
+		return bom.Idea{}, fmt.Errorf("idea %d: %w", r.ID, err)
+	}
+	return bom.Idea{ID: r.ID, BOMID: r.BomID, Title: r.Title, Owner: r.Owner, Gain: gain, Status: bom.IdeaStatus(r.Status),
+		DraftBOMID: ptrInt64(r.DraftBomID), CreatedAt: r.CreatedAt}, nil
+}
+
+func ideaOrErr(r bomdb.BomReductionIdea, err error, op string) (bom.Idea, error) {
+	if errors.Is(err, pgx.ErrNoRows) {
+		err = bom.ErrIdeaNotFound
+	}
+	if err != nil {
+		return bom.Idea{}, fmt.Errorf("%s: %w", op, err)
+	}
+	return toIdea(r)
+}
+
+// ListIdeas renvoie les pistes de la BOM, par id.
+func (s *Store) ListIdeas(ctx context.Context, bomID int64) ([]bom.Idea, error) {
+	rows, err := s.q.ListReductionIdeas(ctx, bomID)
+	if err != nil {
+		return nil, fmt.Errorf("ideas of bom %d: %w", bomID, err)
+	}
+	out := make([]bom.Idea, len(rows))
+	for i, r := range rows {
+		if out[i], err = toIdea(r); err != nil {
+			return nil, err
+		}
+	}
+	return out, nil
+}
+
+// GetIdea renvoie une piste de la BOM, ou bom.ErrIdeaNotFound.
+func (s *Store) GetIdea(ctx context.Context, bomID, id int64) (bom.Idea, error) {
+	row, err := s.q.GetReductionIdea(ctx, bomdb.GetReductionIdeaParams{BomID: bomID, ID: id})
+	return ideaOrErr(row, err, fmt.Sprintf("idea %d of bom %d", id, bomID))
+}
+
+// CreateIdea insère une piste ; bom.ErrBOMNotFound si la BOM n'existe pas.
+func (s *Store) CreateIdea(ctx context.Context, bomID int64, in bom.IdeaInput) (bom.Idea, error) {
+	row, err := s.q.CreateReductionIdea(ctx, bomdb.CreateReductionIdeaParams{BomID: bomID, Title: in.Title, Owner: in.Owner,
+		GainAmount: in.Gain.Amount(), GainCurrency: string(in.Gain.Currency()), Status: string(in.Status), DraftBomID: optInt8(in.DraftBOMID)})
+	if isConstraint(err, fkIdeaBOM) {
+		err = bom.ErrBOMNotFound
+	}
+	return ideaOrErr(row, err, fmt.Sprintf("create idea in bom %d", bomID))
+}
+
+const fkIdeaBOM = "bom_reduction_ideas_bom_id_fkey"
+
+// UpdateIdea remplace le contenu d'une piste ; bom.ErrIdeaNotFound si elle n'est pas dans la BOM.
+func (s *Store) UpdateIdea(ctx context.Context, bomID, id int64, in bom.IdeaInput) (bom.Idea, error) {
+	row, err := s.q.UpdateReductionIdea(ctx, bomdb.UpdateReductionIdeaParams{BomID: bomID, ID: id, Title: in.Title, Owner: in.Owner,
+		GainAmount: in.Gain.Amount(), GainCurrency: string(in.Gain.Currency()), Status: string(in.Status), DraftBomID: optInt8(in.DraftBOMID)})
+	return ideaOrErr(row, err, fmt.Sprintf("update idea %d of bom %d", id, bomID))
+}
+
+// DeleteIdea supprime une piste ; bom.ErrIdeaNotFound si elle n'est pas dans la BOM.
+func (s *Store) DeleteIdea(ctx context.Context, bomID, id int64) error {
+	n, err := s.q.DeleteReductionIdea(ctx, bomdb.DeleteReductionIdeaParams{BomID: bomID, ID: id})
+	if err != nil {
+		return fmt.Errorf("delete idea %d of bom %d: %w", id, bomID, err)
+	}
+	if n == 0 {
+		return fmt.Errorf("delete idea %d of bom %d: %w", id, bomID, bom.ErrIdeaNotFound)
+	}
+	return nil
 }

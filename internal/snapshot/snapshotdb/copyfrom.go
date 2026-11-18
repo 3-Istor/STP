@@ -9,6 +9,82 @@ import (
 	"context"
 )
 
+// iteratorForInsertSnapshotBudgetRates implements pgx.CopyFromSource.
+type iteratorForInsertSnapshotBudgetRates struct {
+	rows                 []InsertSnapshotBudgetRatesParams
+	skippedFirstNextCall bool
+}
+
+func (r *iteratorForInsertSnapshotBudgetRates) Next() bool {
+	if len(r.rows) == 0 {
+		return false
+	}
+	if !r.skippedFirstNextCall {
+		r.skippedFirstNextCall = true
+		return true
+	}
+	r.rows = r.rows[1:]
+	return len(r.rows) > 0
+}
+
+func (r iteratorForInsertSnapshotBudgetRates) Values() ([]interface{}, error) {
+	return []interface{}{
+		r.rows[0].SnapshotID,
+		r.rows[0].Year,
+		r.rows[0].FromCurrency,
+		r.rows[0].ToCurrency,
+		r.rows[0].Rate,
+	}, nil
+}
+
+func (r iteratorForInsertSnapshotBudgetRates) Err() error {
+	return nil
+}
+
+// Coût complet figé (ADR 0031) : taux budget de l'année de calcul et faits de coût par offre.
+func (q *Queries) InsertSnapshotBudgetRates(ctx context.Context, arg []InsertSnapshotBudgetRatesParams) (int64, error) {
+	return q.db.CopyFrom(ctx, []string{"bom_snapshot_budget_rates"}, []string{"snapshot_id", "year", "from_currency", "to_currency", "rate"}, &iteratorForInsertSnapshotBudgetRates{rows: arg})
+}
+
+// iteratorForInsertSnapshotChecks implements pgx.CopyFromSource.
+type iteratorForInsertSnapshotChecks struct {
+	rows                 []InsertSnapshotChecksParams
+	skippedFirstNextCall bool
+}
+
+func (r *iteratorForInsertSnapshotChecks) Next() bool {
+	if len(r.rows) == 0 {
+		return false
+	}
+	if !r.skippedFirstNextCall {
+		r.skippedFirstNextCall = true
+		return true
+	}
+	r.rows = r.rows[1:]
+	return len(r.rows) > 0
+}
+
+func (r iteratorForInsertSnapshotChecks) Values() ([]interface{}, error) {
+	return []interface{}{
+		r.rows[0].SnapshotID,
+		r.rows[0].Position,
+		r.rows[0].Code,
+		r.rows[0].Level,
+		r.rows[0].Title,
+		r.rows[0].Detail,
+		r.rows[0].Justification,
+	}, nil
+}
+
+func (r iteratorForInsertSnapshotChecks) Err() error {
+	return nil
+}
+
+// Contrôles avant publication et justifications figés (ADR 0033).
+func (q *Queries) InsertSnapshotChecks(ctx context.Context, arg []InsertSnapshotChecksParams) (int64, error) {
+	return q.db.CopyFrom(ctx, []string{"bom_snapshot_checks"}, []string{"snapshot_id", "position", "code", "level", "title", "detail", "justification"}, &iteratorForInsertSnapshotChecks{rows: arg})
+}
+
 // iteratorForInsertSnapshotNodes implements pgx.CopyFromSource.
 type iteratorForInsertSnapshotNodes struct {
 	rows                 []InsertSnapshotNodesParams
@@ -55,6 +131,51 @@ func (q *Queries) InsertSnapshotNodes(ctx context.Context, arg []InsertSnapshotN
 	return q.db.CopyFrom(ctx, []string{"bom_snapshot_nodes"}, []string{"snapshot_id", "node_key", "parent_key", "name", "part_id", "offer_id", "quantity", "co2_kg", "mass_kg", "production_days", "lead_time_days", "labor_hours", "strategy"}, &iteratorForInsertSnapshotNodes{rows: arg})
 }
 
+// iteratorForInsertSnapshotOfferCosts implements pgx.CopyFromSource.
+type iteratorForInsertSnapshotOfferCosts struct {
+	rows                 []InsertSnapshotOfferCostsParams
+	skippedFirstNextCall bool
+}
+
+func (r *iteratorForInsertSnapshotOfferCosts) Next() bool {
+	if len(r.rows) == 0 {
+		return false
+	}
+	if !r.skippedFirstNextCall {
+		r.skippedFirstNextCall = true
+		return true
+	}
+	r.rows = r.rows[1:]
+	return len(r.rows) > 0
+}
+
+func (r iteratorForInsertSnapshotOfferCosts) Values() ([]interface{}, error) {
+	return []interface{}{
+		r.rows[0].SnapshotID,
+		r.rows[0].OfferID,
+		r.rows[0].OriginCountry,
+		r.rows[0].DiscountPercent,
+		r.rows[0].DiscountReason,
+		r.rows[0].DiscountContractID,
+		r.rows[0].DiscountTierMin,
+		r.rows[0].CustomsPercent,
+		r.rows[0].FreightAmountPerKg,
+		r.rows[0].FreightCurrency,
+		r.rows[0].PackagingAmount,
+		r.rows[0].PackagingCurrency,
+		r.rows[0].ToolingAmount,
+		r.rows[0].ToolingCurrency,
+	}, nil
+}
+
+func (r iteratorForInsertSnapshotOfferCosts) Err() error {
+	return nil
+}
+
+func (q *Queries) InsertSnapshotOfferCosts(ctx context.Context, arg []InsertSnapshotOfferCostsParams) (int64, error) {
+	return q.db.CopyFrom(ctx, []string{"bom_snapshot_offer_costs"}, []string{"snapshot_id", "offer_id", "origin_country", "discount_percent", "discount_reason", "discount_contract_id", "discount_tier_min", "customs_percent", "freight_amount_per_kg", "freight_currency", "packaging_amount", "packaging_currency", "tooling_amount", "tooling_currency"}, &iteratorForInsertSnapshotOfferCosts{rows: arg})
+}
+
 // iteratorForInsertSnapshotStock implements pgx.CopyFromSource.
 type iteratorForInsertSnapshotStock struct {
 	rows                 []InsertSnapshotStockParams
@@ -88,4 +209,40 @@ func (r iteratorForInsertSnapshotStock) Err() error {
 // Stock figé (ADR 0022), en un COPY comme les nœuds.
 func (q *Queries) InsertSnapshotStock(ctx context.Context, arg []InsertSnapshotStockParams) (int64, error) {
 	return q.db.CopyFrom(ctx, []string{"bom_snapshot_part_stock"}, []string{"snapshot_id", "part_id", "quantity"}, &iteratorForInsertSnapshotStock{rows: arg})
+}
+
+// iteratorForInsertSnapshotTargetBudgets implements pgx.CopyFromSource.
+type iteratorForInsertSnapshotTargetBudgets struct {
+	rows                 []InsertSnapshotTargetBudgetsParams
+	skippedFirstNextCall bool
+}
+
+func (r *iteratorForInsertSnapshotTargetBudgets) Next() bool {
+	if len(r.rows) == 0 {
+		return false
+	}
+	if !r.skippedFirstNextCall {
+		r.skippedFirstNextCall = true
+		return true
+	}
+	r.rows = r.rows[1:]
+	return len(r.rows) > 0
+}
+
+func (r iteratorForInsertSnapshotTargetBudgets) Values() ([]interface{}, error) {
+	return []interface{}{
+		r.rows[0].SnapshotID,
+		r.rows[0].NodeKey,
+		r.rows[0].Amount,
+		r.rows[0].Currency,
+	}, nil
+}
+
+func (r iteratorForInsertSnapshotTargetBudgets) Err() error {
+	return nil
+}
+
+// Budgets cibles figés (v2-lot-g T3, ADR 0038), par clé de nœud figé.
+func (q *Queries) InsertSnapshotTargetBudgets(ctx context.Context, arg []InsertSnapshotTargetBudgetsParams) (int64, error) {
+	return q.db.CopyFrom(ctx, []string{"bom_snapshot_target_budgets"}, []string{"snapshot_id", "node_key", "amount", "currency"}, &iteratorForInsertSnapshotTargetBudgets{rows: arg})
 }

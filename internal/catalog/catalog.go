@@ -43,6 +43,8 @@ type Part struct {
 	LaborHours           *decimal.Decimal `json:"labor_hours"`
 	HourlyRate           *money.Money     `json:"hourly_rate"`
 	ArchivedAt           *time.Time       `json:"archived_at"`
+	// Material : matière de la pièce (famille de comparaison des prix au kg, ADR 0041) ; nil = non renseignée.
+	Material *string `json:"material"`
 }
 
 // Offer est une pièce vendue par un fournisseur. PriceMin et PriceMax sont les bornes de référence

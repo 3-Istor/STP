@@ -350,6 +350,55 @@ func (q *Queries) LockSupplierForUpdate(ctx context.Context, id int64) (Supplier
 	return i, err
 }
 
+const readAllContracts = `-- name: ReadAllContracts :many
+SELECT c.id, c.supplier_id, c.starts_on, c.ends_on, c.conditions,
+    ARRAY(SELECT co.offer_id FROM contract_offers co WHERE co.contract_id=c.id ORDER BY co.offer_id)::bigint[] AS offer_ids,
+    COALESCE((SELECT jsonb_agg(jsonb_build_object('min_quantity', t.min_quantity::text,
+        'discount_percent', t.discount_percent::text) ORDER BY t.min_quantity)
+        FROM contract_tiers t WHERE t.contract_id=c.id), '[]'::jsonb)::jsonb AS tiers_json
+FROM contracts c
+ORDER BY c.supplier_id, c.id
+`
+
+type ReadAllContractsRow struct {
+	ID         int64
+	SupplierID int64
+	StartsOn   pgtype.Date
+	EndsOn     pgtype.Date
+	Conditions string
+	OfferIds   []int64
+	TiersJson  []byte
+}
+
+// Tous les contrats en une lecture (analyses d'une BOM : un appel au lieu d'un par fournisseur, v2-lot-g T8).
+func (q *Queries) ReadAllContracts(ctx context.Context) ([]ReadAllContractsRow, error) {
+	rows, err := q.db.Query(ctx, readAllContracts)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ReadAllContractsRow
+	for rows.Next() {
+		var i ReadAllContractsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.SupplierID,
+			&i.StartsOn,
+			&i.EndsOn,
+			&i.Conditions,
+			&i.OfferIds,
+			&i.TiersJson,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const readCompleteContract = `-- name: ReadCompleteContract :one
 
 SELECT c.id, c.supplier_id, c.starts_on, c.ends_on, c.conditions,

@@ -9,7 +9,9 @@ export function AnomalySettings({
   error,
   threshold,
   onApply,
+  open = false,
 }: {
+  open?: boolean
   result: CostAnomalies | null
   error: string | null
   threshold: string
@@ -19,7 +21,7 @@ export function AnomalySettings({
   const count = result?.nodes.filter((n) => n.status === 'anomaly').length ?? 0
   const notEvaluable = result?.nodes.filter((n) => n.status === 'not_evaluable').length ?? 0
   return (
-    <details className="small">
+    <details className="small" open={open}>
       <summary>
         Anomalies de coût :{' '}
         {error ? (

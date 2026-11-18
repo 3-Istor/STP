@@ -87,6 +87,9 @@ func Load(ctx context.Context, db DB, ds sampledata.Dataset, p Params, prices Pr
 	if err := verify(ctx, tx, p.DatasetVersion, ds); err != nil {
 		return Result{}, fmt.Errorf("seed %s: %w", p.DatasetVersion, err)
 	}
+	if err := insertProfiles(ctx, tx, p.DatasetVersion, sampledata.DemoProfiles); err != nil { // lot E, ADR 0036
+		return Result{}, fmt.Errorf("seed %s: %w", p.DatasetVersion, err)
+	}
 	rows, err := tx.Query(ctx, `SELECT entity_id FROM seed_entities WHERE dataset_version = $1 AND entity_kind = 'offer' ORDER BY entity_id`,
 		p.DatasetVersion)
 	if err != nil {
@@ -148,6 +151,7 @@ func insert(ctx context.Context, tx pgx.Tx, version string, ds sampledata.Datase
 		return err
 	}
 	cols := make([][]string, 13)
+	var materials []string
 	var days []int32
 	for i, p := range ds.Parts {
 		mapped("part", p.Key, pid[i])
@@ -155,16 +159,18 @@ func insert(ctx context.Context, tx pgx.Tx, version string, ds sampledata.Datase
 			p.ManufacturingAmount, p.ManufacturingCurrency, p.LaborHours, p.HourlyAmount, p.HourlyCurrency} {
 			cols[j] = append(cols[j], v)
 		}
+		materials = append(materials, p.Material)
 		days = append(days, int32(p.ProductionDays)) // #nosec G115 -- jours écrits dans le code (< 30)
 	}
 	if _, err := tx.Exec(ctx, `INSERT INTO parts (id, name, category, zone, mass_kg, co2_kg_per_unit, recycled_percent,
 			recyclability_percent, manufacturing_amount, manufacturing_currency, labor_hours, hourly_amount, hourly_currency,
-			production_days) OVERRIDING SYSTEM VALUE
-		SELECT id, n, c, z, m::numeric, co2::numeric, rp::numeric, rc::numeric, ma::numeric, mc, lh::numeric, ha::numeric, hc, d
+			production_days, material) OVERRIDING SYSTEM VALUE
+		SELECT id, n, c, z, m::numeric, co2::numeric, rp::numeric, rc::numeric, ma::numeric, mc, lh::numeric, ha::numeric, hc, d,
+			NULLIF(mat, '')
 		FROM unnest($1::bigint[], $2::text[], $3::text[], $4::text[], $5::text[], $6::text[], $7::text[], $8::text[],
-			$9::text[], $10::text[], $11::text[], $12::text[], $13::text[], $14::int[])
-			AS u(id, n, c, z, m, co2, rp, rc, ma, mc, lh, ha, hc, d)`,
-		pid, cols[0], cols[1], cols[2], cols[3], cols[4], cols[5], cols[6], cols[7], cols[8], cols[9], cols[10], cols[11], days); err != nil {
+			$9::text[], $10::text[], $11::text[], $12::text[], $13::text[], $14::int[], $15::text[])
+			AS u(id, n, c, z, m, co2, rp, rc, ma, mc, lh, ha, hc, d, mat)`,
+		pid, cols[0], cols[1], cols[2], cols[3], cols[4], cols[5], cols[6], cols[7], cols[8], cols[9], cols[10], cols[11], days, materials); err != nil {
 		return fmt.Errorf("insert parts: %w", err)
 	}
 
@@ -173,7 +179,7 @@ func insert(ctx context.Context, tx pgx.Tx, version string, ds sampledata.Datase
 		return err
 	}
 	var oPart, oSupplier []int64
-	var oCur, oMin, oMax, oOrigin, oQuality []string
+	var oCur, oMin, oMax, oOrigin, oQuality, oPack, oPackCur, oTool, oToolCur []string
 	var oLead []int32
 	for i, o := range ds.Offers {
 		mapped("offer", o.Key, oid[i])
@@ -181,13 +187,19 @@ func insert(ctx context.Context, tx pgx.Tx, version string, ds sampledata.Datase
 		oCur, oMin, oMax = append(oCur, o.Currency), append(oMin, o.PriceMin), append(oMax, o.PriceMax)
 		oOrigin, oQuality = append(oOrigin, o.OriginCountry), append(oQuality, o.QualityScore)
 		oLead = append(oLead, int32(o.LeadTimeDays)) // #nosec G115 -- délais écrits dans le code (< 60)
+		oPack, oPackCur = append(oPack, o.PackagingAmount), append(oPackCur, o.PackagingCurrency)
+		oTool, oToolCur = append(oTool, o.ToolingAmount), append(oToolCur, o.ToolingCurrency)
 	}
+	// Emballage et outillage (ADR 0025, 0031) : chaîne vide = non renseigné (NULL), jamais 0 implicite.
 	if _, err := tx.Exec(ctx, `INSERT INTO offers (id, part_id, supplier_id, currency, price_min, price_max, lead_time_days,
-			origin_country, quality_score) OVERRIDING SYSTEM VALUE
-		SELECT id, p, s, c, lo::numeric, hi::numeric, l, o, q::numeric
-		FROM unnest($1::bigint[], $2::bigint[], $3::bigint[], $4::text[], $5::text[], $6::text[], $7::int[], $8::text[], $9::text[])
-			AS u(id, p, s, c, lo, hi, l, o, q)`,
-		oid, oPart, oSupplier, oCur, oMin, oMax, oLead, oOrigin, oQuality); err != nil {
+			origin_country, quality_score, packaging_amount, packaging_currency, tooling_amount, tooling_currency)
+		OVERRIDING SYSTEM VALUE
+		SELECT id, p, s, c, lo::numeric, hi::numeric, l, o, q::numeric, NULLIF(pa, '')::numeric, NULLIF(pc, ''),
+			NULLIF(ta, '')::numeric, NULLIF(tc, '')
+		FROM unnest($1::bigint[], $2::bigint[], $3::bigint[], $4::text[], $5::text[], $6::text[], $7::int[], $8::text[], $9::text[],
+			$10::text[], $11::text[], $12::text[], $13::text[])
+			AS u(id, p, s, c, lo, hi, l, o, q, pa, pc, ta, tc)`,
+		oid, oPart, oSupplier, oCur, oMin, oMax, oLead, oOrigin, oQuality, oPack, oPackCur, oTool, oToolCur); err != nil {
 		return fmt.Errorf("insert offers: %w", err)
 	}
 
@@ -238,6 +250,9 @@ func insert(ctx context.Context, tx pgx.Tx, version string, ds sampledata.Datase
 			return err
 		}
 	}
+	if err := insertSharedTables(ctx, tx, ds); err != nil {
+		return err
+	}
 
 	if _, err := tx.Exec(ctx, `INSERT INTO seed_entities (dataset_version, entity_kind, logical_key, entity_id)
 		SELECT $1, k, l, id FROM unnest($2::text[], $3::text[], $4::bigint[]) AS u(k, l, id)`,
@@ -253,8 +268,9 @@ func insertBOM(ctx context.Context, tx pgx.Tx, b sampledata.BOM, ref map[string]
 		return err
 	}
 	mapped("bom", b.Key, bid[0])
-	if _, err := tx.Exec(ctx, `INSERT INTO boms (id, name, currency, volume) OVERRIDING SYSTEM VALUE VALUES ($1, $2, $3, $4)`,
-		bid[0], b.Name, b.Currency, b.Volume); err != nil {
+	if _, err := tx.Exec(ctx, `INSERT INTO boms (id, name, currency, volume, destination_country, cost_basis, fx_policy, program_volume)
+		OVERRIDING SYSTEM VALUE VALUES ($1, $2, $3, $4, NULLIF($5, ''), $6, $7, NULLIF($8::int, 0))`,
+		bid[0], b.Name, b.Currency, b.Volume, b.Destination, b.CostBasis, b.FX, b.ProgramVolume); err != nil {
 		return fmt.Errorf("insert bom %s: %w", b.Key, err)
 	}
 	nid, err := ids(ctx, tx, "bom_nodes", len(b.Nodes))
@@ -277,6 +293,59 @@ func insertBOM(ctx context.Context, tx pgx.Tx, b sampledata.BOM, ref map[string]
 		FROM unnest($2::bigint[], $3::bigint[], $4::text[], $5::bigint[], $6::bigint[], $7::text[], $8::int[]) AS u(id, p, n, pt, o, q, d)`,
 		bid[0], nid, parent, name, part, offer, qty, days); err != nil {
 		return fmt.Errorf("insert bom %s nodes: %w", b.Key, err)
+	}
+	var bNode []int64
+	var bAmount, bCur []string
+	for _, bg := range b.Budgets {
+		id, ok := ref["bom_node/"+bg.NodeKey]
+		if !ok {
+			return fmt.Errorf("bom %s budget: unknown node %s", b.Key, bg.NodeKey)
+		}
+		bNode, bAmount, bCur = append(bNode, id), append(bAmount, bg.Amount), append(bCur, bg.Currency)
+	}
+	if _, err := tx.Exec(ctx, `INSERT INTO bom_target_budgets (bom_id, node_id, amount, currency)
+		SELECT $1, n, a::numeric, c FROM unnest($2::bigint[], $3::text[], $4::text[]) AS u(n, a, c)`,
+		bid[0], bNode, bAmount, bCur); err != nil {
+		return fmt.Errorf("insert bom %s budgets: %w", b.Key, err)
+	}
+	if b.StartOn != "" {
+		if _, err := tx.Exec(ctx, `INSERT INTO bom_schedule (bom_id, start_on, target_on) VALUES ($1, $2::date, NULLIF($3, '')::date)`,
+			bid[0], b.StartOn, b.TargetOn); err != nil {
+			return fmt.Errorf("insert bom %s schedule: %w", b.Key, err)
+		}
+	}
+	return nil
+}
+
+// insertSharedTables charge douane, transport et taux budget (ADR 0031). Ces tables sont partagées et
+// paramétrables : une ligne déjà présente (saisie ou autre version du jeu) est gardée telle quelle.
+func insertSharedTables(ctx context.Context, tx pgx.Tx, ds sampledata.Dataset) error {
+	var o, d, p []string
+	for _, c := range ds.CustomsDuties {
+		o, d, p = append(o, c.Origin), append(d, c.Destination), append(p, c.Percent)
+	}
+	if _, err := tx.Exec(ctx, `INSERT INTO customs_duties (origin_country, destination_country, duty_percent)
+		SELECT o, d, p::numeric FROM unnest($1::text[], $2::text[], $3::text[]) AS u(o, d, p) ON CONFLICT DO NOTHING`, o, d, p); err != nil {
+		return fmt.Errorf("insert customs duties: %w", err)
+	}
+	var fo, fd, fa, fc []string
+	for _, f := range ds.FreightRates {
+		fo, fd, fa, fc = append(fo, f.Origin), append(fd, f.Destination), append(fa, f.AmountPerKg), append(fc, f.Currency)
+	}
+	if _, err := tx.Exec(ctx, `INSERT INTO freight_rates (origin_country, destination_country, amount_per_kg, currency)
+		SELECT o, d, a::numeric, c FROM unnest($1::text[], $2::text[], $3::text[], $4::text[]) AS u(o, d, a, c)
+		ON CONFLICT DO NOTHING`, fo, fd, fa, fc); err != nil {
+		return fmt.Errorf("insert freight rates: %w", err)
+	}
+	var y []int32
+	var bf, bt, br []string
+	for _, r := range ds.BudgetRates {
+		y, bf, bt, br = append(y, r.Year), append(bf, r.From), append(bt, r.To), append(br, r.Rate)
+	}
+	if _, err := tx.Exec(ctx, `INSERT INTO budget_rates (year, from_currency, to_currency, rate)
+		SELECT y, f, t, r::numeric FROM unnest($1::int[], $2::text[], $3::text[], $4::text[]) AS u(y, f, t, r)
+		ON CONFLICT DO NOTHING`, y, bf, bt, br); err != nil {
+		return fmt.Errorf("insert budget rates: %w", err)
 	}
 	return nil
 }

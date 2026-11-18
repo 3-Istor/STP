@@ -37,7 +37,16 @@ type BOM struct {
 	PriceSnapshotID *int64
 	// SourceSnapshotID : snapshot dont ce brouillon a été créé (D3), nil sinon.
 	SourceSnapshotID *int64
-	CreatedAt        time.Time
+	// CostMethod : méthode de calcul du coût (ADR 0031) ; zéro = DefaultCostMethod.
+	CostMethod CostMethod
+	CreatedAt  time.Time
+}
+
+// TargetBudget : budget cible par voiture d'un nœud (ADR 0018, 0031) ; celui de la racine est le budget global.
+type TargetBudget struct {
+	NodeID   int64
+	Amount   decimal.Decimal
+	Currency string
 }
 
 // NewBOM décrit une BOM à créer. Sa racine porte le nom de la BOM.
@@ -98,7 +107,9 @@ type Store interface {
 	// GetBOM renvoie la BOM, ou ErrBOMNotFound.
 	GetBOM(ctx context.Context, id int64) (BOM, error)
 	RenameBOM(ctx context.Context, id int64, name string) (BOM, error)
-	UpdateSettings(ctx context.Context, id int64, currency string, volume int32) (BOM, error)
+	// UpdateSettings change devise et volume ; check (non nil) juge le changement sous le verrou de la BOM, avec sa
+	// devise actuelle et son budget global, dans la même transaction que l'écriture (ADR 0045).
+	UpdateSettings(ctx context.Context, id int64, currency string, volume int32, check SettingsCheck) (BOM, error)
 	SetAnnualHours(ctx context.Context, id int64, hours decimal.Decimal) (BOM, error)
 	SetDestination(ctx context.Context, id int64, country *string) (BOM, error)
 	// SetPriceSnapshot fige les prix (snapshotID non nil) ou les remet en direct (nil).
@@ -106,6 +117,9 @@ type Store interface {
 	// DeleteBOM supprime la BOM et son arbre ; ErrHasSnapshots si un snapshot existe.
 	DeleteBOM(ctx context.Context, id int64) error
 
+	// Draft lit la BOM, son arbre, son stock, son planning et ses budgets cibles dans une même lecture
+	// cohérente (une transaction en lecture seule) ; ErrBOMNotFound si elle n'existe pas.
+	Draft(ctx context.Context, bomID int64) (Draft, error)
 	// Tree renvoie tous les nœuds de la BOM en une requête, triés par id ; ErrBOMNotFound si elle n'existe pas.
 	Tree(ctx context.Context, bomID int64) ([]Node, error)
 	// AddNode ajoute un nœud ; ErrNodeNotFound si le parent n'est pas dans cette BOM.
@@ -119,9 +133,10 @@ type Store interface {
 	// SetNodePart remplace la pièce et l'offre d'un nœud pièce (id, quantité et enfants gardés) ; ErrNotAPart
 	// sur un sous-ensemble.
 	SetNodePart(ctx context.Context, bomID, nodeID, partID, offerID int64) (Node, error)
-	// MoveNode rattache le nœud à newParentID ; ErrCycle si newParentID est le nœud ou un descendant.
-	// Le contrôle et la mise à jour se font dans la même transaction.
-	MoveNode(ctx context.Context, bomID, nodeID, newParentID int64) (Node, error)
+	// MoveNode rattache le nœud à newParentID ; ErrCycle si newParentID est le nœud ou un descendant. check (non
+	// nil) juge l'arbre et les budgets après le déplacement (ADR 0042). Contrôles et mise à jour dans la même
+	// transaction.
+	MoveNode(ctx context.Context, bomID, nodeID, newParentID int64, check BudgetCheck) (Node, error)
 	// DeleteNode supprime le nœud et son sous-arbre ; ErrRootNode pour la racine.
 	DeleteNode(ctx context.Context, bomID, nodeID int64) error
 
@@ -136,4 +151,14 @@ type Store interface {
 	// SetSchedule enregistre (ou remplace) le planning ; ErrBOMNotFound si la BOM n'existe pas.
 	SetSchedule(ctx context.Context, bomID int64, s Schedule) (Schedule, error)
 	DeleteSchedule(ctx context.Context, bomID int64) error
+	// SetCostMethod enregistre la méthode de calcul du coût (ADR 0031) ; ErrBOMNotFound si la BOM n'existe pas.
+	SetCostMethod(ctx context.Context, id int64, m CostMethod) (BOM, error)
+	// TargetBudgets renvoie les budgets cibles de la BOM, triés par nœud.
+	TargetBudgets(ctx context.Context, bomID int64) ([]TargetBudget, error)
+	// SetTargetBudget enregistre (ou remplace) le budget cible d'un nœud ; ErrNodeNotFound s'il n'est pas dans la BOM.
+	SetTargetBudget(ctx context.Context, bomID int64, b TargetBudget) error
+	// EditTargetBudget pose (b non nil) ou retire (b nil) le budget du nœud nodeID, BOM verrouillée : check juge
+	// l'arbre et les budgets résultants avant l'écriture ; s'il échoue, rien n'est écrit (ADR 0042).
+	// ErrBOMNotFound / ErrNodeNotFound si la BOM ou le nœud n'existe pas.
+	EditTargetBudget(ctx context.Context, bomID, nodeID int64, b *TargetBudget, check BudgetCheck) error
 }

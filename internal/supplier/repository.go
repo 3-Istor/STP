@@ -9,6 +9,8 @@ type Repository interface {
 	Contract(context.Context, int64) (Contract, error)
 	ListContracts(context.Context, int64) ([]Contract, error)
 	ListOfferContracts(context.Context, int64) ([]Contract, error)
+	// ListAllContracts : tous les contrats, par fournisseur puis par id.
+	ListAllContracts(context.Context) ([]Contract, error)
 	WithinTx(context.Context, func(TxRepository) error) error
 }
 

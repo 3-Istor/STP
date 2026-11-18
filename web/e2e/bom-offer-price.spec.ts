@@ -61,8 +61,7 @@ async function mockAPI(page: Page, priceSnapshotID: number | null) {
 }
 
 async function openOfferSelect(page: Page) {
-  await page.goto('/#boms')
-  await page.getByRole('button', { name: 'Fiat Multipla', exact: true }).click()
+  await page.goto('/#/boms/1/structurer')
   return page.locator('.tree-row').filter({ hasText: 'Injecteur' }).getByRole('combobox', { name: 'Offre' })
 }
 

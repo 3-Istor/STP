@@ -155,3 +155,79 @@ func (l *Logistics) DeleteFreightRate(ctx context.Context, origin, destination s
 	}
 	return nil
 }
+
+var _ pricing.CostParamsStore = (*Logistics)(nil)
+
+// OfferCostParams lit origine, emballage et outillage des offres en une requête (ADR 0031).
+func (l *Logistics) OfferCostParams(ctx context.Context, offerIDs []int64) (map[int64]pricing.OfferCostParams, error) {
+	rows, err := l.queries.ListOfferCostParams(ctx, offerIDs)
+	if err != nil {
+		return nil, fmt.Errorf("cost params of %d offers: %w", len(offerIDs), err)
+	}
+	out := make(map[int64]pricing.OfferCostParams, len(rows))
+	for _, r := range rows {
+		p := pricing.OfferCostParams{OfferID: r.ID, Origin: r.OriginCountry}
+		if p.Packaging, err = optMoney(r.PackagingAmount, r.PackagingCurrency); err != nil {
+			return nil, fmt.Errorf("packaging of offer %d: %w", r.ID, err)
+		}
+		if p.Tooling, err = optMoney(r.ToolingAmount, r.ToolingCurrency); err != nil {
+			return nil, fmt.Errorf("tooling of offer %d: %w", r.ID, err)
+		}
+		out[r.ID] = p
+	}
+	return out, nil
+}
+
+func optMoney(amount decimal.NullDecimal, currency pgtype.Text) (*money.Money, error) {
+	if !amount.Valid || !currency.Valid {
+		return nil, nil //nolint:nilnil // NULL = non renseigné, pas une erreur
+	}
+	m, err := money.New(amount.Decimal, currency.String)
+	if err != nil {
+		return nil, err
+	}
+	return &m, nil
+}
+
+// SetOfferTooling fixe (m non nil) ou efface (nil) l'outillage de l'offre ; pricing.ErrUnknownOffer si absente.
+func (l *Logistics) SetOfferTooling(ctx context.Context, offerID int64, m *money.Money) error {
+	p := pricingdb.SetOfferToolingParams{ID: offerID}
+	if m != nil {
+		p.ToolingAmount = decimal.NullDecimal{Decimal: m.Amount(), Valid: true}
+		p.ToolingCurrency = pgtype.Text{String: string(m.Currency()), Valid: true}
+	}
+	_, err := l.queries.SetOfferTooling(ctx, p)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return fmt.Errorf("tooling of offer %d: %w", offerID, pricing.ErrUnknownOffer)
+	}
+	if err != nil {
+		return fmt.Errorf("tooling of offer %d: %w", offerID, err)
+	}
+	return nil
+}
+
+// BudgetRates lit les taux budget de l'année vers to (ADR 0031).
+func (l *Logistics) BudgetRates(ctx context.Context, year int, to money.Currency) (map[money.Currency]decimal.Decimal, error) {
+	if year < 2000 || year > 2100 {
+		return map[money.Currency]decimal.Decimal{}, nil // hors de la table : aucun taux, l'appelant nomme l'absence
+	}
+	rows, err := l.queries.ListBudgetRates(ctx, pricingdb.ListBudgetRatesParams{Year: int32(year), ToCurrency: string(to)}) // #nosec G115 -- borné ci-dessus
+	if err != nil {
+		return nil, fmt.Errorf("budget rates %d →%s: %w", year, to, err)
+	}
+	out := make(map[money.Currency]decimal.Decimal, len(rows))
+	for _, r := range rows {
+		out[money.Currency(r.FromCurrency)] = r.Rate
+	}
+	return out, nil
+}
+
+// SetBudgetRate enregistre (ou remplace) un taux budget : 1 from = rate to pour l'année.
+func (l *Logistics) SetBudgetRate(ctx context.Context, year int32, from, to money.Currency, rate decimal.Decimal) error {
+	if _, err := l.queries.UpsertBudgetRate(ctx, pricingdb.UpsertBudgetRateParams{
+		Year: year, FromCurrency: string(from), ToCurrency: string(to), Rate: rate,
+	}); err != nil {
+		return fmt.Errorf("budget rate %d %s→%s: %w", year, from, to, err)
+	}
+	return nil
+}

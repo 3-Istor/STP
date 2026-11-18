@@ -12,7 +12,7 @@ export function formatMoney(m: Money | null | undefined): string {
   if (!m) return 'n/d'
   let f = moneyFormats.get(m.currency)
   if (!f) {
-    f = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: m.currency, roundingMode: 'halfEven' })
+    f = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: m.currency, currencyDisplay: m.currency === 'GBP' ? 'narrowSymbol' : 'symbol', roundingMode: 'halfEven' })
     moneyFormats.set(m.currency, f)
   }
   return f.format(m.amount as Decimal)
@@ -67,4 +67,55 @@ export function sameDecimal(a: string, b: string): boolean {
     return f ? `${i}.${f}` : i
   }
   return canon(a) === canon(b)
+}
+
+// formatSignedMoney : écart signé « + 348,40 € » / « − 125,00 € » ; le signe vient de la chaîne, jamais d'un
+// calcul. « 0,00 € » sans signe.
+export function formatSignedMoney(m: Money | null | undefined): string {
+  if (!m) return 'n/d'
+  const neg = m.amount.startsWith('-')
+  const abs = neg ? m.amount.slice(1) : m.amount
+  const text = formatMoney({ amount: abs, currency: m.currency })
+  if (/^0+(\.0+)?$/.test(abs)) return text
+  return `${neg ? '−' : '+'} ${text}`
+}
+
+/** Signe d'une chaîne décimale : -1, 0 ou 1 (couleur d'un écart), sans conversion en nombre. */
+export function decimalSign(value: string): -1 | 0 | 1 {
+  if (/^-?0*(\.0*)?$/.test(value)) return 0
+  return value.startsWith('-') ? -1 : 1
+}
+
+const percentFormats = new Map<number, Intl.NumberFormat>()
+
+// formatPercent : pourcentage déjà calculé par l'API (chaîne), affiché avec `digits` décimales au plus.
+export function formatPercent(value: string | null | undefined, digits = 1): string {
+  if (value === null || value === undefined) return 'n/d'
+  let f = percentFormats.get(digits)
+  if (!f) {
+    f = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: digits, minimumFractionDigits: digits, roundingMode: 'halfEven' })
+    percentFormats.set(digits, f)
+  }
+  return `${f.format(value as Decimal)}\u00a0%`
+}
+
+function scaledPair(a: string, b: string): [bigint, bigint] | null {
+  const re = /^(-?)(\d+)(?:\.(\d+))?$/
+  const ma = re.exec(a), mb = re.exec(b)
+  if (!ma || !mb) return null
+  const scale = Math.max((ma[3] ?? '').length, (mb[3] ?? '').length)
+  const big = (m: RegExpExecArray) => BigInt(`${m[2]}${(m[3] ?? '').padEnd(scale, '0')}`)
+  return [big(ma), big(mb)]
+}
+
+/** Compare |a| et |b| (chaînes décimales) exactement, sans `number` : < 0 si |a| < |b|. */
+export function compareAbsDecimal(a: string, b: string): number {
+  const p = scaledPair(a, b)
+  if (!p) return 0
+  return p[0] < p[1] ? -1 : p[0] > p[1] ? 1 : 0
+}
+
+/** Montant sans son signe (affichage d'une marge : « budget tenu, marge de 510,60 € »). */
+export function absMoney(m: Money): Money {
+  return { amount: m.amount.replace(/^-/, ''), currency: m.currency }
 }

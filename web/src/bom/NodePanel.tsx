@@ -1,16 +1,21 @@
 import { useState } from 'react'
-import type { Explanation, NewNode, NodeAnomaly, NodePatch, StockLine, TreeNode } from '../api.ts'
+import type { Explanation, NewNode, NodeAnomaly, NodeBudget, NodePatch, StockLine, TreeNode } from '../api.ts'
 import { partName, type Catalog } from '../catalog.ts'
-import { formatDate, formatDecimal, formatMoney, multiplyDecimal } from '../money.ts'
+import { decimalInput, formatDate, formatDecimal, formatMoney, multiplyDecimal, sameDecimal } from '../money.ts'
+import type { Money } from '../money.ts'
 import { AddNodeDialog } from './AddNodeDialog.tsx'
 import { AnomalyFacts } from './Anomalies.tsx'
-import { LandedPanel } from './LandedPanel.tsx'
-import { MakeOrBuyPanel } from './MakeOrBuyPanel.tsx'
+import { allocationTitle, budgetClass, budgetPercentText, budgetTitle } from './budget.ts'
+import { CostBreakdown } from './CostBreakdown.tsx'
+import { MissingCost } from './MissingCost.tsx'
+import { productionDaysInput, quantityChanged } from './nodeEdit.ts'
+import type { Target } from '../router.ts'
 import { StockPanel } from './StockPanel.tsx'
-import { StrategyPanel } from './StrategyPanel.tsx'
 
 type Props = {
   node: TreeNode
+  byID: ReadonlyMap<number, TreeNode> // causes propres des pièces sans coût (rubrique « Sans prix »)
+  onSelectNode: (id: number) => void
   explanation: Explanation
   volume: number
   catalog: Catalog
@@ -21,16 +26,20 @@ type Props = {
   onStartMove: () => void
   onDelete: () => void
   stock: StockLine[]
-  bomID: number
   anomaly?: NodeAnomaly
-  treeVersion?: number
-  // destination : pays de destination de la BOM ; undefined = pas de comparaison (snapshot en lecture seule).
-  destination?: string | null
+  parentName?: string // fil du nœud (parent direct), comme la maquette I4-1
   onSetStock?: (partID: number, quantity: string) => Promise<boolean>
+  target: Target // brouillon ou snapshot : source de la ventilation « Pourquoi ce coût ? »
+  version: number // relecture de l'arbre : la ventilation est relue
+  budget?: NodeBudget // budget cible propre au nœud (API), s'il en a un
+  currency: string // devise de la BOM : devise proposée par défaut pour un budget
+  // onSetBudget : saisie du budget (onglet Structurer, brouillon) ; amount null retire le budget (ADR 0042, 0044).
+  onSetBudget?: (amount: string | null, currency: string) => Promise<boolean>
 }
 
-// NodePanel : détail d'un nœud à la demande (AGENTS §5) — totaux, sur quoi ils reposent, quantités
-// commandées — et les actions du brouillon sur ce nœud.
+// NodePanel : détail d'un nœud à la demande (AGENTS §5), dans la colonne de droite de toutes les étapes —
+// totaux, sur quoi ils reposent, quantités commandées, stock — et les actions du brouillon sur ce nœud.
+// V2 (lot C) : la stratégie est dans l'étape Arbitrer, le coût rendu et le make-or-buy dans Chiffrer.
 export function NodePanel(p: Props) {
   const { node, explanation, volume, catalog, readOnly, isRoot } = p
   const t = node.totals
@@ -40,7 +49,8 @@ export function NodePanel(p: Props) {
   const offer = isPart ? catalog.byPart.get(node.part_id!)?.offers.find((o) => o.id === node.offer_id) : undefined
 
   return (
-    <aside className="panel" aria-label="Détail du nœud">
+    <section className="node-detail" aria-label="Détail du nœud">
+      {p.parentName && <div className="muted small">{p.parentName} ›</div>}
       <h2>{title}</h2>
       <p className="muted">
         {isPart ? `Pièce #${node.part_id}, offre #${node.offer_id}${offer ? ` (${offer.supplier})` : ''}` : 'Sous-ensemble'}
@@ -52,10 +62,34 @@ export function NodePanel(p: Props) {
           <dd className={t.cost_error_code ? 'over' : undefined}>
             {t.cost ? formatMoney(t.cost) : (t.cost_error ?? 'n/d')}
           </dd>
+          {p.budget && (
+            <>
+              <dt>Budget</dt>
+              <dd title={budgetTitle(p.budget)}>
+                {formatMoney(p.budget.target)}
+                {p.budget.converted && p.budget.rate && (
+                  <span className="muted small"> (≈ {formatMoney(p.budget.converted)}, taux {p.budget.rate.from}→{p.budget.rate.to} du {formatDate(p.budget.rate.quoted_at)})</span>
+                )}{' '}
+                · <b className={budgetClass(p.budget)}>{budgetPercentText(p.budget)}</b>
+              </dd>
+            </>
+          )}
+          {p.budget?.allocation && (
+            <>
+              <dt>Répartition</dt>
+              <dd className="t-warn" title={allocationTitle(p.budget.allocation.kind)}>
+                {p.budget.allocation.kind === 'over'
+                  ? 'sous-budgets au-dessus de ce budget au taux actuel (change)'
+                  : 'répartition non vérifiable : taux de change manquant'}
+              </dd>
+            </>
+          )}
           {t.missing_cost.length > 0 && (
             <>
               <dt>Sans prix</dt>
-              <dd className="over">nœuds {t.missing_cost.join(', ')}</dd>
+              <dd className="over">
+                <MissingCost ids={t.missing_cost} byID={p.byID} catalog={catalog} onSelect={p.onSelectNode} />
+              </dd>
             </>
           )}
           {t.own_cost && (
@@ -71,7 +105,7 @@ export function NodePanel(p: Props) {
           <dd>
             {formatDecimal(multiplyDecimal(t.real_quantity, volume))} pour {formatDecimal(String(volume))} véhicules
           </dd>
-          <dt>CO2</dt>
+          <dt>CO₂</dt>
           <dd>{formatDecimal(t.co2_kg, 2)} kg</dd>
           <dt>Masse</dt>
           <dd>{formatDecimal(t.mass_kg, 2)} kg</dd>
@@ -90,22 +124,7 @@ export function NodePanel(p: Props) {
 
       <AnomalyFacts anomaly={p.anomaly} />
 
-      <StrategyPanel
-        key={`strategy-${node.id}-${p.treeVersion ?? 0}`}
-        bomID={p.bomID}
-        node={node}
-        catalog={catalog}
-        readOnly={readOnly}
-        onPatch={p.onPatch}
-      />
-
-      {!isPart && !readOnly && p.destination !== undefined && (
-        <MakeOrBuyPanel key={`mob-${node.id}-${p.treeVersion ?? 0}`} bomID={p.bomID} nodeID={node.id} currency={explanation.currency} />
-      )}
-
-      {isPart && !readOnly && p.destination !== undefined && (
-        <LandedPanel key={`landed-${node.id}-${p.treeVersion ?? 0}`} bomID={p.bomID} node={node} catalog={catalog} destination={p.destination} />
-      )}
+      <CostBreakdown target={p.target} nodeID={node.id} title={title} version={p.version} />
 
       {isPart && (
         <StockPanel
@@ -146,6 +165,16 @@ export function NodePanel(p: Props) {
         </ul>
       </details>
 
+      {!readOnly && !isPart && p.onSetBudget && (
+        <BudgetField
+          key={`budget-${node.id}-${p.budget?.target.amount ?? ''}-${p.budget?.target.currency ?? ''}`}
+          current={p.budget?.target ?? null}
+          bomCurrency={p.currency}
+          globalBudget={isRoot}
+          onSet={p.onSetBudget}
+        />
+      )}
+
       {!readOnly && (
         <>
           <EditFields key={`edit-${node.id}`} node={node} onPatch={p.onPatch} />
@@ -167,13 +196,68 @@ export function NodePanel(p: Props) {
           {adding && <AddNodeDialog parentName={title} parentID={node.id} catalog={catalog} onAdd={p.onAdd} onClose={() => setAdding(false)} />}
         </>
       )}
-    </aside>
+    </section>
+  )
+}
+
+// Devises proposées pour un budget : celles du marché simulé (SIM_FX_PAIRS), la devise de la BOM en tête. Un budget
+// dans une autre devise est converti par l'API au taux du jour (ADR 0044) ; sans taux, elle le refuse avec la raison.
+const BUDGET_CURRENCIES = ['EUR', 'USD', 'GBP', 'JPY']
+
+// BudgetField : budget cible de l'ensemble et sa devise. La règle « Σ des sous-ensembles ≤ budget de l'ensemble »
+// est vérifiée par l'API ; un refus s'affiche tel quel (data.run), le champ garde la saisie.
+// globalBudget : racine (budget global), toujours dans la devise de la BOM (ADR 0045).
+function BudgetField({ current, bomCurrency, globalBudget, onSet }: { current: Money | null; bomCurrency: string; globalBudget: boolean; onSet: (amount: string | null, currency: string) => Promise<boolean> }) {
+  // Budget global hérité dans une autre devise (avant ADR 0045) : pas de préremplissage, sinon OK enregistrerait le
+  // même nombre dans la devise de la BOM, sans conversion. Il est à ressaisir dans la devise de la BOM.
+  const foreignGlobal = globalBudget && current !== null && current.currency !== bomCurrency
+  const [value, setValue] = useState(foreignGlobal ? '' : (current?.amount ?? ''))
+  const [currency, setCurrency] = useState(globalBudget ? bomCurrency : (current?.currency ?? bomCurrency))
+  const amount = decimalInput(value)
+  const valid = /^\d+(\.\d+)?$/.test(amount)
+  const unchanged = current !== null && sameDecimal(amount, current.amount) && currency === current.currency
+  // La devise du budget actuel reste proposée même hors de la liste : le choix affiché est celui qui sera envoyé.
+  const currencies = globalBudget ? [bomCurrency] : [...new Set([bomCurrency, ...(current ? [current.currency] : []), ...BUDGET_CURRENCIES])]
+  return (
+    <form
+      className="row"
+      onSubmit={(e) => {
+        e.preventDefault()
+        if (valid) void onSet(amount, currency)
+      }}
+    >
+      <label>
+        Budget{' '}
+        <input aria-label="Budget de l'ensemble" inputMode="decimal" size={10} placeholder="aucun" value={value} onChange={(e) => setValue(e.target.value)} />
+      </label>
+      <select aria-label="Devise du budget" value={currency} onChange={(e) => setCurrency(e.target.value)}>
+        {currencies.map((c) => (
+          <option key={c} value={c}>
+            {c}
+          </option>
+        ))}
+      </select>
+      <button type="submit" disabled={!valid || unchanged}>
+        OK
+      </button>
+      {current !== null && (
+        <button type="button" className="link" onClick={() => void onSet(null, currency)}>
+          retirer
+        </button>
+      )}
+      {foreignGlobal && (
+        <span className="muted small">
+          budget global actuel en {current.currency} : à ressaisir en {bomCurrency}
+        </span>
+      )}
+    </form>
   )
 }
 
 function EditFields({ node, onPatch }: { node: TreeNode; onPatch: (p: NodePatch) => Promise<boolean> }) {
   const [qty, setQty] = useState(node.quantity)
   const [days, setDays] = useState(String(node.production_days))
+  const daysValue = productionDaysInput(days)
   const isPart = node.part_id !== null
   return (
     <div className="stack">
@@ -182,13 +266,13 @@ function EditFields({ node, onPatch }: { node: TreeNode; onPatch: (p: NodePatch)
           className="row"
           onSubmit={(e) => {
             e.preventDefault()
-            void onPatch({ quantity: qty.trim() })
+            void onPatch({ quantity: decimalInput(qty) })
           }}
         >
           <label>
             Quantité <input aria-label="Quantité" inputMode="decimal" size={6} value={qty} onChange={(e) => setQty(e.target.value)} />
           </label>
-          <button type="submit" disabled={qty.trim() === node.quantity}>
+          <button type="submit" disabled={!quantityChanged(qty, node.quantity)}>
             OK
           </button>
         </form>
@@ -199,16 +283,17 @@ function EditFields({ node, onPatch }: { node: TreeNode; onPatch: (p: NodePatch)
           className="row"
           onSubmit={(e) => {
             e.preventDefault()
-            void onPatch({ production_days: Number.parseInt(days, 10) })
+            if (daysValue !== null) void onPatch({ production_days: daysValue })
           }}
         >
           <label>
             Jours de production{' '}
             <input aria-label="Jours de production" type="number" min={0} step={1} value={days} onChange={(e) => setDays(e.target.value)} />
           </label>
-          <button type="submit" disabled={days === String(node.production_days)}>
+          <button type="submit" disabled={daysValue === null || daysValue === node.production_days}>
             OK
           </button>
+          {daysValue === null && <small role="alert">Entrez un nombre entier de jours (0 ou plus).</small>}
         </form>
       )}
     </div>

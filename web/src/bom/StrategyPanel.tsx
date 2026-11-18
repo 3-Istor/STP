@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { api, errorMessage, type NodePatch, type Strategy, type Suggestions, type TreeNode } from '../api.ts'
 import { partName, type Catalog } from '../catalog.ts'
 import { formatDecimal, formatMoney } from '../money.ts'
 import { strategyLabels } from './strategy.ts'
+import { usePresets, weightsText } from './profile.ts'
 import { useAppDialog } from '../useAppDialog.tsx'
 
 type Props = {
@@ -62,13 +63,22 @@ function SuggestionList({ bomID, node, catalog, onPatch }: Omit<Props, 'readOnly
   const [data, setData] = useState<Suggestions | null>(null)
   const [error, setError] = useState<string | null>(null)
   const dialogs = useAppDialog()
-  const load = () => {
-    setError(null)
+  const { presets } = usePresets()
+  // Lu à l'ouverture du panneau (remonté à chaque relecture de l'arbre : stratégie ou profil changés).
+  useEffect(() => {
+    let cancelled = false
     api
       .suggestions(bomID, node.id)
-      .then(setData)
-      .catch((e: unknown) => setError(errorMessage(e)))
-  }
+      .then((d) => {
+        if (!cancelled) setData(d)
+      })
+      .catch((e: unknown) => {
+        if (!cancelled) setError(errorMessage(e))
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [bomID, node.id])
   const offerLabel = (partID: number, offerID: number) => {
     const o = catalog.byPart.get(partID)?.offers.find((x) => x.id === offerID)
     return `${partName(catalog, partID)} · ${o ? o.supplier : `offre #${offerID}`}`
@@ -76,11 +86,7 @@ function SuggestionList({ bomID, node, catalog, onPatch }: Omit<Props, 'readOnly
   return (
     <>
     {dialogs.element}
-    <details
-      onToggle={(e) => {
-        if ((e.currentTarget as HTMLDetailsElement).open && data === null) load()
-      }}
-    >
+    <details open>
       <summary>Alternatives suggérées</summary>
       {error && <p className="error">{error}</p>}
       {!error && data === null && <p className="muted">Chargement…</p>}
@@ -89,7 +95,9 @@ function SuggestionList({ bomID, node, catalog, onPatch }: Omit<Props, 'readOnly
           <p className="muted small">
             {data.strategy
               ? `Triées par ${strategyLabels[data.strategy]} (stratégie du nœud #${data.strategy_from})`
-              : 'Aucune stratégie dans la lignée : ordre par offre.'}{' '}
+              : data.profile?.preset
+                ? `Classées selon le profil « ${presets?.find((p) => p.preset === data.profile!.preset)?.label ?? data.profile.preset} »${data.weights ? ` (${weightsText(data.weights)})` : ''}`
+                : 'Aucune stratégie ni profil de véhicule : ordre par offre.'}{' '}
             · {formatDecimal(data.real_quantity)} u. par véhicule ·{' '}
             {data.price_snapshot_id === null ? 'prix en direct' : `prix figés #${data.price_snapshot_id}`}
           </p>
@@ -100,7 +108,7 @@ function SuggestionList({ bomID, node, catalog, onPatch }: Omit<Props, 'readOnly
                 <th>Coût</th>
                 <th>Délai</th>
                 <th>CO2</th>
-                <th>Score</th>
+                <th title="Score pondéré calculé par l’API : 0 = meilleur">Score</th>
                 <th />
               </tr>
             </thead>
@@ -109,7 +117,7 @@ function SuggestionList({ bomID, node, catalog, onPatch }: Omit<Props, 'readOnly
                 <tr
                   key={c.offer_id}
                   title={[
-                    `scores : coût ${c.cost_score} · délai ${c.lead_time_score} · CO2 ${c.co2_score}`,
+                    `scores (0 = meilleur) : coût ${c.cost_score} · délai ${c.lead_time_score} · CO2 ${c.co2_score}${c.mass_score ? ` · masse ${c.mass_score}` : ''}${c.quality_score ? ` · qualité ${c.quality_score}` : ''}`,
                     c.quote ? `cotation ${formatMoney(c.quote.price)} (${c.quote.source})` : '',
                     c.rate ? `taux 1 ${c.rate.from} = ${c.rate.rate} ${c.rate.to} (${c.rate.source})` : '',
                   ]

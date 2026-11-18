@@ -186,3 +186,30 @@ func TestHistoryObservationIsPersistedMaximumAndMissingIsError(t *testing.T) {
 		t.Fatalf("observation depended on insertion or wall clock: %s, %v", got, err)
 	}
 }
+
+// ReadWindows : une seule requête pour plusieurs offres, chacune bornée par sa propre fenêtre, sans la référence
+// d'avant la fenêtre ni les cotations d'une autre offre.
+func TestReadWindowsIsOneStatementWithOneWindowPerOffer(t *testing.T) {
+	tx := historyDB(t)
+	a, b := historyOffer(t, tx), historyOffer(t, tx)
+	insertQuote(t, tx, a, "1", "2020-01-01T00:00:00Z", "before")
+	inA := insertQuote(t, tx, a, "100", "2026-03-01T00:00:00Z", "in-a")
+	insertQuote(t, tx, a, "999", "2026-12-01T00:00:00Z", "after-a")
+	insertQuote(t, tx, b, "2", "2026-03-01T00:00:00Z", "before-b") // dans la fenêtre de a, pas de b
+	inB := insertQuote(t, tx, b, "200", "2026-09-01T00:00:00Z", "in-b")
+	counted := &countedHistoryDB{DBTX: tx}
+	store := pricingstore.New(counted)
+	got, err := store.ReadWindows(t.Context(), []pricing.HistoryWindow{
+		{OfferID: a, From: quoteTime(t, "2025-11-05T00:00:00Z"), To: quoteTime(t, "2026-11-05T00:00:00Z")},
+		{OfferID: b, From: quoteTime(t, "2026-06-01T00:00:00Z"), To: quoteTime(t, "2026-11-05T00:00:00Z")},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if counted.queries != 1 || len(got[a]) != 1 || got[a][0].ID != inA.ID || len(got[b]) != 1 || got[b][0].ID != inB.ID {
+		t.Fatalf("%d queries, a=%+v b=%+v", counted.queries, got[a], got[b])
+	}
+	if _, err := store.ReadWindows(t.Context(), []pricing.HistoryWindow{{OfferID: 0}}); !errors.Is(err, pricing.ErrInvalidHistoryRequest) {
+		t.Fatalf("invalid window: %v", err)
+	}
+}

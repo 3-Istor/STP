@@ -26,6 +26,14 @@ var (
 	// ErrPopulationNotFrozen : la BOM a des prix figés ; son snapshot de prix ne contient que ses propres offres,
 	// pas celles des autres pièces de la catégorie : la comparaison n'est pas possible à ces prix.
 	ErrPopulationNotFrozen = errors.New("category prices are not frozen with this bom")
+	// ErrTooFewOffers : la pièce a moins d'offres chiffrées que le minimum (2 par défaut), rien à comparer.
+	ErrTooFewOffers = errors.New("too few priced offers for this part")
+	// ErrTooFewQuotes : l'offre a moins de cotations sur 12 mois que le minimum (5 par défaut).
+	ErrTooFewQuotes = errors.New("too few quotes in the last 12 months")
+	// ErrNoMaterial : la pièce n'a pas de matière au catalogue, sa famille de comparaison est inconnue.
+	ErrNoMaterial = errors.New("part has no material")
+	// ErrPartArchived : la pièce est archivée, donc hors de la population active : ses offres ne sont pas comparées.
+	ErrPartArchived = errors.New("part is archived")
 )
 
 // DefaultAnomalyThreshold : 3× la médiane de la catégorie (docs/features.md, cost-anomalies).
@@ -36,7 +44,30 @@ type CostSample struct {
 	PartID   int64
 	Category string
 	Cost     *money.Money
-	Err      error
+	// MassKg : masse unitaire de la pièce (prix au kg, ADR 0037) ; nil si non renseignée.
+	MassKg *decimal.Decimal
+	Err    error
+	// Family : clé de comparaison de la méthode « matière » (catégorie × matière, ADR 0041) ; vide si inconnue.
+	Family string
+	// OfferCosts : coût unitaire de toutes les offres actives de la pièce (devise commune). L'offre retenue y est
+	// comprise tant qu'elle est active : une offre retenue archivée n'y figure pas (ArchivedOffers la compte).
+	// MissingOffers : offres actives écartées faute de prix ou de taux ; ArchivedOffers : offres archivées
+	// ignorées (méthode « offres », ADR 0041).
+	OfferCosts     []money.Money
+	MissingOffers  int
+	ArchivedOffers int
+	// Trail : prix coté de l'offre retenue et ses cotations des 12 derniers mois, dans la devise de l'offre
+	// (méthode « historique », ADR 0041) ; nil si non lu.
+	Trail *PriceTrail
+}
+
+// PriceTrail : cotation courante d'une offre et ses cotations passées, toutes dans la devise de l'offre : le
+// change n'entre pas dans le verdict « plus cher qu'avant ».
+type PriceTrail struct {
+	Current money.Money
+	Past    []money.Money
+	// OtherCurrency : cotations de la fenêtre écartées parce qu'elles sont dans une autre devise que la courante.
+	OtherCurrency int
 }
 
 // AnomalyStatus : verdict d'une pièce. NotEvaluable n'est jamais lu comme « normal ».
@@ -59,6 +90,11 @@ type Anomaly struct {
 	Peers    int              // pièces de la catégorie qui ont un coût (la pièce elle-même si elle est active)
 	Missing  int              // pièces de la catégorie écartées faute de prix ou de taux (jamais cachées)
 	Err      error            // pourquoi la pièce n'est pas évaluable
+	Family   string           // famille de comparaison (méthode « matière »)
+	// Excess : coût unitaire − coût de référence (médiane, ou médiane €/kg × masse) ; négatif sous la référence.
+	Excess *money.Money
+	// PerKg, MedianPerKg : prix au kg de la pièce et médiane de la famille (PerKgDetector seulement).
+	PerKg, MedianPerKg *money.Money
 }
 
 // AnomalyDetector juge chaque sujet par rapport à la population (même devise pour tous les coûts).
@@ -128,7 +164,8 @@ func (d MedianDetector) Detect(subjects, population []CostSample, threshold deci
 				return nil, fmt.Errorf("part %d: cost in %s, median in %s: %w", s.PartID, s.Cost.Currency(), m.Currency(), money.ErrCurrencyMismatch)
 			}
 			r := s.Cost.Amount().DivRound(m.Amount(), ratioPrecision)
-			a.Median, a.Ratio = &m, &r
+			excess, _ := money.New(s.Cost.Amount().Sub(m.Amount()), string(m.Currency()))
+			a.Median, a.Ratio, a.Excess = &m, &r, &excess
 			a.Status = AnomalyNormal
 			if s.Cost.Amount().GreaterThanOrEqual(threshold.Mul(m.Amount())) {
 				a.Status = AnomalyDetected

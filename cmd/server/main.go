@@ -83,9 +83,7 @@ func run() error {
 		slog.Warn("PRICE_API_URL is not set: BOM prices are an empty in-memory stub")
 	}
 	logistics := pricing.NewLogisticsService(pricingstore.NewLogistics(pool))
-	boms := bom.NewService(bomstore.New(pool), catalogService, prices).
-		WithCatalogListing(catalogService).WithLogistics(logistics.Store())
-	bomSnapshots := snapshot.NewService(snapshotstore.New(pool), boms, catalogService, prices)
+	boms, bomSnapshots := domainServices(pool, catalogService, supplierService, prices)
 
 	handler := httpapi.NewRouter(httpapi.Services{
 		Catalog: catalogService, Supplier: supplierService, History: historyService,
@@ -121,6 +119,21 @@ func run() error {
 		return err
 	}
 	return nil
+}
+
+// domainServices câble les domaines bom et snapshot sur la base et une source de prix (serveur et seed).
+func domainServices(pool *pgxpool.Pool, cat *catalog.Service, sup *supplier.Service, prices pricing.Pricing) (*bom.Service, *snapshot.Service) {
+	logisticsStore := pricingstore.NewLogistics(pool)
+	boms := bom.NewService(bomstore.New(pool), cat, prices).
+		WithCatalogListing(cat).WithLogistics(pricing.NewLogisticsService(logisticsStore).Store()).
+		WithCostSources(logisticsStore, sup).            // méthode de calcul du coût, ADR 0031
+		WithIdeas(bomstore.New(pool)).                   // pistes de réduction
+		WithProfiles(bomstore.New(pool)).                // profils de véhicule, ADR 0036
+		WithAnalysisSources(pricingstore.New(pool), sup) // analyses du lot E (historique, fournisseurs)
+	snaps := snapshot.NewService(snapshotstore.New(pool), boms, cat, prices).
+		WithSupplierNames(sup) // explications de la comparaison, ADR 0032
+	boms.WithDraftFamily(snaps) // brouillon lié à une piste : même famille de versions (v2-lot-g T6)
+	return boms, snaps
 }
 
 func envOr(key, fallback string) string {

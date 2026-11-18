@@ -67,7 +67,14 @@ func NewRouter(services ...Services) http.Handler {
 		if now == nil {
 			now = func() time.Time { return time.Now().UTC() }
 		}
-		(&api{boms: s.BOMs, snapshots: s.Snapshots, now: now}).routes(mux)
+		a := &api{boms: s.BOMs, snapshots: s.Snapshots, now: now}
+		a.costs, _ = s.BOMs.(CostService)
+		a.snapCosts, _ = s.Snapshots.(SnapshotCostService)
+		a.versions, _ = s.Snapshots.(VersionsService)
+		a.review, _ = s.BOMs.(ReviewService)
+		a.routes(mux)
+		a.versionRoutes(mux)
+		mountAnalysis(mux, s.BOMs, s.Snapshots) // lot E : analyses et profils de véhicule (analysis.go)
 	}
 	return jsonNotFound(mux)
 }
@@ -85,7 +92,7 @@ func jsonNotFound(mux *http.ServeMux) http.Handler {
 		c := &notFoundCatcher{ResponseWriter: w}
 		h.ServeHTTP(c, r)
 		if c.notFound {
-			writeJSON(w, http.StatusNotFound, map[string]string{"error": "route API introuvable"})
+			writeErrorBody(w, http.StatusNotFound, "route API introuvable", "route_not_found")
 		}
 	})
 }

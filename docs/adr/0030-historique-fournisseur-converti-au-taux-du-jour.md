@@ -1,5 +1,5 @@
 # 0030 — Historique des prix fournisseur converti au taux du jour de chaque cotation
-Statut : Proposé — Date : 2026-11-14 — Décideurs : à compléter (option 1 choisie par Arthur Presle dans le chat, ADR à valider)
+Statut : Accepté — Date : 2026-11-14 — Décideurs : Brian P. (accord explicite dans le chat, 17/11/2026)
 
 ## Contexte
 La page fournisseur affiche l'historique annuel d'une offre dans sa devise d'origine (GBP, JPY…), ce qui

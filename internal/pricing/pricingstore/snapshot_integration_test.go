@@ -305,3 +305,54 @@ func TestLegacySnapshotsRemainClosedAndUnchanged(t *testing.T) {
 	_, err = pool.Exec(t.Context(), "INSERT INTO price_snapshot_fx VALUES ($1,$2,'USD','EUR')", id, before.Rates[0].ID)
 	assertClosed(t, err)
 }
+
+// Figer les prix d'une BOM ffige aussi les taux de ses budgets vers sa devise (ADR 0044) : un budget en USD dans
+// une BOM en EUR sans aucune offre en USD apporte le taux USD→EUR ; un budget dans une devise sans taux refuse le
+// gel avec le manque nommé (décision : on ne fige pas un budget non évaluable).
+func TestSnapshotFreezesBudgetCurrencyRates(t *testing.T) {
+	pool := runtimeDB(t)
+	_, _ = runtimeOffer(t, pool)
+	cfg := runtimeConfig()
+	if _, _, err := pricing.NewRuntime(pricesim.Simulator{}, &RuntimeStore{pool: pool}, nil).Initialize(t.Context(), cfg); err != nil {
+		t.Fatal(err)
+	}
+	var bom, root int64
+	if err := pool.QueryRow(t.Context(), "INSERT INTO boms(name,currency,volume) VALUES ('budgets','EUR',1) RETURNING id").Scan(&bom); err != nil {
+		t.Fatal(err)
+	}
+	if err := pool.QueryRow(t.Context(), "INSERT INTO bom_nodes(bom_id,name) VALUES ($1,'root') RETURNING id", bom).Scan(&root); err != nil {
+		t.Fatal(err)
+	}
+	service := pricing.NewSnapshotService(NewSnapshotStore(pool), cfg)
+	freeze := func() (pricing.SnapshotResult, error) {
+		return service.Create(t.Context(), pricing.SnapshotRequest{Scope: "bom", ScopeID: &bom, TargetCurrencies: []money.Currency{"EUR"}})
+	}
+	got, err := freeze()
+	if err != nil || len(got.Rates) != 0 {
+		t.Fatalf("no budget, no offer: %d rates (%v), want none", len(got.Rates), err)
+	}
+	budget := func(currency string) {
+		t.Helper()
+		if _, err := pool.Exec(t.Context(), "DELETE FROM bom_target_budgets WHERE bom_id=$1", bom); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := pool.Exec(t.Context(), "INSERT INTO bom_target_budgets(bom_id,node_id,amount,currency) VALUES ($1,$2,100,$3)", bom, root, currency); err != nil {
+			t.Fatal(err)
+		}
+	}
+	budget("USD")
+	got, err = freeze()
+	if err != nil || len(got.Rates) != 1 || got.Rates[0].BaseCurrency != "USD" || got.Rates[0].QuoteCurrency != "EUR" {
+		t.Fatalf("USD budget: rates %+v (%v), want the frozen USD→EUR rate", got.Rates, err)
+	}
+	budget("JPY")
+	before := runtimeCount(t, pool, "SELECT count(*) FROM price_snapshots")
+	_, err = freeze()
+	var coverage *pricing.CoverageError
+	if !errors.As(err, &coverage) || len(coverage.Missing) != 1 {
+		t.Fatalf("JPY budget without rate: %+v (%v), want one named gap", coverage, err)
+	}
+	if n := runtimeCount(t, pool, "SELECT count(*) FROM price_snapshots"); n != before {
+		t.Fatal("a partial snapshot was written")
+	}
+}

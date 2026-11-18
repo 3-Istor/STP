@@ -126,7 +126,7 @@ func (s supplierOffersReader) page(ctx context.Context, supplierID int64, reques
 func (s supplierOffersReader) register(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/suppliers/{id}/offers", func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Allow", "GET, HEAD")
-		writeJSON(w, http.StatusMethodNotAllowed, map[string]string{"error": "méthode HTTP non autorisée"})
+		writeErrorBody(w, http.StatusMethodNotAllowed, "méthode HTTP non autorisée", "method_not_allowed")
 	})
 	mux.HandleFunc("GET /api/v1/suppliers/{id}/offers", func(w http.ResponseWriter, r *http.Request) {
 		id, err := pathID(r, "id")
@@ -172,7 +172,7 @@ func (s supplierOffersReader) register(mux *http.ServeMux) {
 				pricingError(w, r, err)
 			default:
 				slog.ErrorContext(r.Context(), "supplier offers read failed", "err", err)
-				writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "lecture des offres indisponible"})
+				writeErrorBody(w, http.StatusInternalServerError, "lecture des offres indisponible", "internal")
 			}
 			return
 		}

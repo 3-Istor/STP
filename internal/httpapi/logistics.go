@@ -1,7 +1,6 @@
 package httpapi
 
 import (
-	"errors"
 	"fmt"
 	"net/http"
 
@@ -169,12 +168,5 @@ func (h logisticsHandler) putPackaging(w http.ResponseWriter, r *http.Request) {
 }
 
 func logisticsError(w http.ResponseWriter, r *http.Request, err error) {
-	switch {
-	case errors.Is(err, pricing.ErrUnknownOffer):
-		writeJSON(w, http.StatusNotFound, map[string]string{"error": err.Error()})
-	case errors.Is(err, pricing.ErrInvalidLogistics):
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
-	default:
-		writeError(w, r, err)
-	}
+	writeError(w, r, err) // ErrUnknownOffer (404) et ErrInvalidLogistics (400) sont dans errorTable
 }

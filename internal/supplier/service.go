@@ -91,6 +91,15 @@ func (s *Service) ListContracts(ctx context.Context, supplierID int64) ([]Contra
 	}
 	return c, nil
 }
+
+// ListAllContracts renvoie tous les contrats en une lecture, par fournisseur puis par id.
+func (s *Service) ListAllContracts(ctx context.Context) ([]Contract, error) {
+	c, err := s.repo.ListAllContracts(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("list all contracts: %w", err)
+	}
+	return c, nil
+}
 func (s *Service) CreateContract(ctx context.Context, supplierID int64, in ContractInput) (Contract, error) {
 	if supplierID <= 0 {
 		return Contract{}, invalid("supplier id must be positive")

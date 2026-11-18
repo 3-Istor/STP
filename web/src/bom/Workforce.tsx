@@ -9,16 +9,17 @@ type Props = {
   catalog: Catalog
   readOnly: boolean
   onApplyAnnualHours?: (hours: string) => void
+  open?: boolean // déplié d'emblée (carte de l'étape Chiffrer)
 }
 
 // Workforce : ETP par sous-système (enfants directs de la racine, ADR 0024), à la demande, et base horaire.
 // Les ETP viennent de l'API : aucun calcul côté front.
-export function Workforce({ nodes, annualHours, catalog, readOnly, onApplyAnnualHours }: Props) {
+export function Workforce({ nodes, annualHours, catalog, readOnly, onApplyAnnualHours, open = false }: Props) {
   const [hours, setHours] = useState(annualHours ?? '')
   const root = nodes.find((n) => n.parent_id === null)
   const subsystems = root ? nodes.filter((n) => n.parent_id === root.id) : []
   return (
-    <details className="small">
+    <details className="small" open={open}>
       <summary>ETP par sous-système</summary>
       {readOnly || !onApplyAnnualHours ? (
         <p className="muted">Base horaire : {annualHours ? `${formatDecimal(annualHours, 2)} h/an` : 'non figée'}</p>

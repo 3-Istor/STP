@@ -1,0 +1,24 @@
+# Propriétaires des chemins de niveau 3 (AGENTS.md §1, ADR 0039) : leur relecture est requise
+# quand la protection de branche « Require review from Code Owners » est active sur main.
+# Identifiants GitHub déduits de l'historique git : à vérifier ; ajouter Joe et new1901.
+# Le dernier motif qui correspond l'emporte.
+
+# Règles métier non négociables
+/internal/money/        @bruart205 @TheGostsniperfr
+/internal/snapshot/     @bruart205 @TheGostsniperfr
+/internal/bom/cost*     @bruart205 @TheGostsniperfr
+/internal/bom/totals*   @bruart205 @TheGostsniperfr
+/internal/bom/bridge*   @bruart205 @TheGostsniperfr
+/migrations/            @bruart205 @TheGostsniperfr
+
+# Harnais : règles des agents, hooks, CI, relecteurs
+/AGENTS.md              @bruart205 @TheGostsniperfr
+/CLAUDE.md              @bruart205 @TheGostsniperfr
+/REVIEW.md              @bruart205 @TheGostsniperfr
+/docs/agents/           @bruart205 @TheGostsniperfr
+/.claude/               @bruart205 @TheGostsniperfr
+/.github/               @bruart205 @TheGostsniperfr
+/.githooks/             @bruart205 @TheGostsniperfr
+/cmd/risk/              @bruart205 @TheGostsniperfr
+/internal/archtest/     @bruart205 @TheGostsniperfr
+/scripts/               @bruart205 @TheGostsniperfr

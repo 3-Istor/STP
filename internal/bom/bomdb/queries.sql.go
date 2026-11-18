@@ -61,7 +61,7 @@ const createBOM = `-- name: CreateBOM :one
 INSERT INTO boms (name, currency, volume, source_snapshot_id, annual_hours, destination_country)
 VALUES ($1, $2, $3, $4, $5,
     $6)
-RETURNING id, name, currency, volume, created_at, price_snapshot_id, source_snapshot_id, annual_hours, destination_country
+RETURNING id, name, currency, volume, created_at, price_snapshot_id, source_snapshot_id, annual_hours, destination_country, cost_basis, fx_policy, program_volume
 `
 
 type CreateBOMParams struct {
@@ -95,6 +95,50 @@ func (q *Queries) CreateBOM(ctx context.Context, arg CreateBOMParams) (Bom, erro
 		&i.SourceSnapshotID,
 		&i.AnnualHours,
 		&i.DestinationCountry,
+		&i.CostBasis,
+		&i.FxPolicy,
+		&i.ProgramVolume,
+	)
+	return i, err
+}
+
+const createReductionIdea = `-- name: CreateReductionIdea :one
+INSERT INTO bom_reduction_ideas (bom_id, title, owner, gain_amount, gain_currency, status, draft_bom_id)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
+RETURNING id, bom_id, title, owner, gain_amount, gain_currency, status, draft_bom_id, created_at
+`
+
+type CreateReductionIdeaParams struct {
+	BomID        int64
+	Title        string
+	Owner        string
+	GainAmount   decimal.Decimal
+	GainCurrency string
+	Status       string
+	DraftBomID   pgtype.Int8
+}
+
+func (q *Queries) CreateReductionIdea(ctx context.Context, arg CreateReductionIdeaParams) (BomReductionIdea, error) {
+	row := q.db.QueryRow(ctx, createReductionIdea,
+		arg.BomID,
+		arg.Title,
+		arg.Owner,
+		arg.GainAmount,
+		arg.GainCurrency,
+		arg.Status,
+		arg.DraftBomID,
+	)
+	var i BomReductionIdea
+	err := row.Scan(
+		&i.ID,
+		&i.BomID,
+		&i.Title,
+		&i.Owner,
+		&i.GainAmount,
+		&i.GainCurrency,
+		&i.Status,
+		&i.DraftBomID,
+		&i.CreatedAt,
 	)
 	return i, err
 }
@@ -177,6 +221,23 @@ func (q *Queries) DeletePartStock(ctx context.Context, arg DeletePartStockParams
 	return result.RowsAffected(), nil
 }
 
+const deleteReductionIdea = `-- name: DeleteReductionIdea :execrows
+DELETE FROM bom_reduction_ideas WHERE bom_id = $1 AND id = $2
+`
+
+type DeleteReductionIdeaParams struct {
+	BomID int64
+	ID    int64
+}
+
+func (q *Queries) DeleteReductionIdea(ctx context.Context, arg DeleteReductionIdeaParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteReductionIdea, arg.BomID, arg.ID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const deleteSchedule = `-- name: DeleteSchedule :execrows
 DELETE FROM bom_schedule
 WHERE bom_id = $1
@@ -190,8 +251,22 @@ func (q *Queries) DeleteSchedule(ctx context.Context, bomID int64) (int64, error
 	return result.RowsAffected(), nil
 }
 
+const deleteTargetBudget = `-- name: DeleteTargetBudget :exec
+DELETE FROM bom_target_budgets WHERE bom_id = $1 AND node_id = $2
+`
+
+type DeleteTargetBudgetParams struct {
+	BomID  int64
+	NodeID int64
+}
+
+func (q *Queries) DeleteTargetBudget(ctx context.Context, arg DeleteTargetBudgetParams) error {
+	_, err := q.db.Exec(ctx, deleteTargetBudget, arg.BomID, arg.NodeID)
+	return err
+}
+
 const getBOM = `-- name: GetBOM :one
-SELECT id, name, currency, volume, created_at, price_snapshot_id, source_snapshot_id, annual_hours, destination_country FROM boms
+SELECT id, name, currency, volume, created_at, price_snapshot_id, source_snapshot_id, annual_hours, destination_country, cost_basis, fx_policy, program_volume FROM boms
 WHERE id = $1
 `
 
@@ -208,6 +283,9 @@ func (q *Queries) GetBOM(ctx context.Context, id int64) (Bom, error) {
 		&i.SourceSnapshotID,
 		&i.AnnualHours,
 		&i.DestinationCountry,
+		&i.CostBasis,
+		&i.FxPolicy,
+		&i.ProgramVolume,
 	)
 	return i, err
 }
@@ -239,6 +317,32 @@ func (q *Queries) GetNode(ctx context.Context, arg GetNodeParams) (BomNode, erro
 	return i, err
 }
 
+const getReductionIdea = `-- name: GetReductionIdea :one
+SELECT id, bom_id, title, owner, gain_amount, gain_currency, status, draft_bom_id, created_at FROM bom_reduction_ideas WHERE bom_id = $1 AND id = $2
+`
+
+type GetReductionIdeaParams struct {
+	BomID int64
+	ID    int64
+}
+
+func (q *Queries) GetReductionIdea(ctx context.Context, arg GetReductionIdeaParams) (BomReductionIdea, error) {
+	row := q.db.QueryRow(ctx, getReductionIdea, arg.BomID, arg.ID)
+	var i BomReductionIdea
+	err := row.Scan(
+		&i.ID,
+		&i.BomID,
+		&i.Title,
+		&i.Owner,
+		&i.GainAmount,
+		&i.GainCurrency,
+		&i.Status,
+		&i.DraftBomID,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const getSchedule = `-- name: GetSchedule :one
 SELECT bom_id, start_on, target_on FROM bom_schedule
 WHERE bom_id = $1
@@ -249,6 +353,35 @@ func (q *Queries) GetSchedule(ctx context.Context, bomID int64) (BomSchedule, er
 	row := q.db.QueryRow(ctx, getSchedule, bomID)
 	var i BomSchedule
 	err := row.Scan(&i.BomID, &i.StartOn, &i.TargetOn)
+	return i, err
+}
+
+const getVehicleProfile = `-- name: GetVehicleProfile :one
+SELECT preset, weight_cost, weight_co2, weight_lead_time, weight_mass, weight_quality
+FROM bom_vehicle_profiles WHERE bom_id = $1
+`
+
+type GetVehicleProfileRow struct {
+	Preset         string
+	WeightCost     int16
+	WeightCo2      int16
+	WeightLeadTime int16
+	WeightMass     int16
+	WeightQuality  int16
+}
+
+// Profil de véhicule (ADR 0036) : pondérations du classement des alternatives.
+func (q *Queries) GetVehicleProfile(ctx context.Context, bomID int64) (GetVehicleProfileRow, error) {
+	row := q.db.QueryRow(ctx, getVehicleProfile, bomID)
+	var i GetVehicleProfileRow
+	err := row.Scan(
+		&i.Preset,
+		&i.WeightCost,
+		&i.WeightCo2,
+		&i.WeightLeadTime,
+		&i.WeightMass,
+		&i.WeightQuality,
+	)
 	return i, err
 }
 
@@ -281,7 +414,7 @@ func (q *Queries) IsInSubtree(ctx context.Context, arg IsInSubtreeParams) (bool,
 }
 
 const listBOMs = `-- name: ListBOMs :many
-SELECT id, name, currency, volume, created_at, price_snapshot_id, source_snapshot_id, annual_hours, destination_country FROM boms
+SELECT id, name, currency, volume, created_at, price_snapshot_id, source_snapshot_id, annual_hours, destination_country, cost_basis, fx_policy, program_volume FROM boms
 ORDER BY id
 `
 
@@ -304,6 +437,9 @@ func (q *Queries) ListBOMs(ctx context.Context) ([]Bom, error) {
 			&i.SourceSnapshotID,
 			&i.AnnualHours,
 			&i.DestinationCountry,
+			&i.CostBasis,
+			&i.FxPolicy,
+			&i.ProgramVolume,
 		); err != nil {
 			return nil, err
 		}
@@ -379,6 +515,72 @@ func (q *Queries) ListPartStock(ctx context.Context, bomID int64) ([]BomPartStoc
 	return items, nil
 }
 
+const listReductionIdeas = `-- name: ListReductionIdeas :many
+SELECT id, bom_id, title, owner, gain_amount, gain_currency, status, draft_bom_id, created_at FROM bom_reduction_ideas WHERE bom_id = $1 ORDER BY id
+`
+
+// Pistes de réduction (vision V2 §2).
+func (q *Queries) ListReductionIdeas(ctx context.Context, bomID int64) ([]BomReductionIdea, error) {
+	rows, err := q.db.Query(ctx, listReductionIdeas, bomID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []BomReductionIdea
+	for rows.Next() {
+		var i BomReductionIdea
+		if err := rows.Scan(
+			&i.ID,
+			&i.BomID,
+			&i.Title,
+			&i.Owner,
+			&i.GainAmount,
+			&i.GainCurrency,
+			&i.Status,
+			&i.DraftBomID,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listTargetBudgets = `-- name: ListTargetBudgets :many
+SELECT node_id, amount, currency FROM bom_target_budgets WHERE bom_id = $1 ORDER BY node_id
+`
+
+type ListTargetBudgetsRow struct {
+	NodeID   int64
+	Amount   decimal.Decimal
+	Currency string
+}
+
+// Budgets cibles par nœud (ADR 0018, 0031) ; le budget de la racine est le budget global.
+func (q *Queries) ListTargetBudgets(ctx context.Context, bomID int64) ([]ListTargetBudgetsRow, error) {
+	rows, err := q.db.Query(ctx, listTargetBudgets, bomID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListTargetBudgetsRow
+	for rows.Next() {
+		var i ListTargetBudgetsRow
+		if err := rows.Scan(&i.NodeID, &i.Amount, &i.Currency); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const lockBOM = `-- name: LockBOM :one
 SELECT id FROM boms
 WHERE id = $1
@@ -394,10 +596,25 @@ func (q *Queries) LockBOM(ctx context.Context, id int64) (int64, error) {
 	return id_2, err
 }
 
+const lockBOMCurrency = `-- name: LockBOMCurrency :one
+SELECT currency::text FROM boms
+WHERE id = $1
+FOR UPDATE
+`
+
+// Verrou de la BOM qui rend aussi sa devise : une règle qui en dépend (budget global, ADR 0045) est jugée sur la
+// devise lue sous le verrou, jamais sur une lecture faite avant la transaction.
+func (q *Queries) LockBOMCurrency(ctx context.Context, id int64) (string, error) {
+	row := q.db.QueryRow(ctx, lockBOMCurrency, id)
+	var currency string
+	err := row.Scan(&currency)
+	return currency, err
+}
+
 const renameBOM = `-- name: RenameBOM :one
 UPDATE boms SET name = $2
 WHERE id = $1
-RETURNING id, name, currency, volume, created_at, price_snapshot_id, source_snapshot_id, annual_hours, destination_country
+RETURNING id, name, currency, volume, created_at, price_snapshot_id, source_snapshot_id, annual_hours, destination_country, cost_basis, fx_policy, program_volume
 `
 
 type RenameBOMParams struct {
@@ -418,14 +635,28 @@ func (q *Queries) RenameBOM(ctx context.Context, arg RenameBOMParams) (Bom, erro
 		&i.SourceSnapshotID,
 		&i.AnnualHours,
 		&i.DestinationCountry,
+		&i.CostBasis,
+		&i.FxPolicy,
+		&i.ProgramVolume,
 	)
 	return i, err
+}
+
+const rootNodeID = `-- name: RootNodeID :one
+SELECT id FROM bom_nodes WHERE bom_id = $1 AND parent_id IS NULL
+`
+
+func (q *Queries) RootNodeID(ctx context.Context, bomID int64) (int64, error) {
+	row := q.db.QueryRow(ctx, rootNodeID, bomID)
+	var id int64
+	err := row.Scan(&id)
+	return id, err
 }
 
 const setBOMAnnualHours = `-- name: SetBOMAnnualHours :one
 UPDATE boms SET annual_hours = $2
 WHERE id = $1
-RETURNING id, name, currency, volume, created_at, price_snapshot_id, source_snapshot_id, annual_hours, destination_country
+RETURNING id, name, currency, volume, created_at, price_snapshot_id, source_snapshot_id, annual_hours, destination_country, cost_basis, fx_policy, program_volume
 `
 
 type SetBOMAnnualHoursParams struct {
@@ -447,6 +678,48 @@ func (q *Queries) SetBOMAnnualHours(ctx context.Context, arg SetBOMAnnualHoursPa
 		&i.SourceSnapshotID,
 		&i.AnnualHours,
 		&i.DestinationCountry,
+		&i.CostBasis,
+		&i.FxPolicy,
+		&i.ProgramVolume,
+	)
+	return i, err
+}
+
+const setBOMCostMethod = `-- name: SetBOMCostMethod :one
+UPDATE boms SET cost_basis = $2, fx_policy = $3, program_volume = $4
+WHERE id = $1
+RETURNING id, name, currency, volume, created_at, price_snapshot_id, source_snapshot_id, annual_hours, destination_country, cost_basis, fx_policy, program_volume
+`
+
+type SetBOMCostMethodParams struct {
+	ID            int64
+	CostBasis     string
+	FxPolicy      string
+	ProgramVolume pgtype.Int4
+}
+
+// Méthode de calcul du coût (ADR 0031).
+func (q *Queries) SetBOMCostMethod(ctx context.Context, arg SetBOMCostMethodParams) (Bom, error) {
+	row := q.db.QueryRow(ctx, setBOMCostMethod,
+		arg.ID,
+		arg.CostBasis,
+		arg.FxPolicy,
+		arg.ProgramVolume,
+	)
+	var i Bom
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Currency,
+		&i.Volume,
+		&i.CreatedAt,
+		&i.PriceSnapshotID,
+		&i.SourceSnapshotID,
+		&i.AnnualHours,
+		&i.DestinationCountry,
+		&i.CostBasis,
+		&i.FxPolicy,
+		&i.ProgramVolume,
 	)
 	return i, err
 }
@@ -454,7 +727,7 @@ func (q *Queries) SetBOMAnnualHours(ctx context.Context, arg SetBOMAnnualHoursPa
 const setBOMDestination = `-- name: SetBOMDestination :one
 UPDATE boms SET destination_country = $1
 WHERE id = $2
-RETURNING id, name, currency, volume, created_at, price_snapshot_id, source_snapshot_id, annual_hours, destination_country
+RETURNING id, name, currency, volume, created_at, price_snapshot_id, source_snapshot_id, annual_hours, destination_country, cost_basis, fx_policy, program_volume
 `
 
 type SetBOMDestinationParams struct {
@@ -476,6 +749,9 @@ func (q *Queries) SetBOMDestination(ctx context.Context, arg SetBOMDestinationPa
 		&i.SourceSnapshotID,
 		&i.AnnualHours,
 		&i.DestinationCountry,
+		&i.CostBasis,
+		&i.FxPolicy,
+		&i.ProgramVolume,
 	)
 	return i, err
 }
@@ -483,7 +759,7 @@ func (q *Queries) SetBOMDestination(ctx context.Context, arg SetBOMDestinationPa
 const setBOMPriceSnapshot = `-- name: SetBOMPriceSnapshot :one
 UPDATE boms SET price_snapshot_id = $1
 WHERE id = $2
-RETURNING id, name, currency, volume, created_at, price_snapshot_id, source_snapshot_id, annual_hours, destination_country
+RETURNING id, name, currency, volume, created_at, price_snapshot_id, source_snapshot_id, annual_hours, destination_country, cost_basis, fx_policy, program_volume
 `
 
 type SetBOMPriceSnapshotParams struct {
@@ -505,6 +781,9 @@ func (q *Queries) SetBOMPriceSnapshot(ctx context.Context, arg SetBOMPriceSnapsh
 		&i.SourceSnapshotID,
 		&i.AnnualHours,
 		&i.DestinationCountry,
+		&i.CostBasis,
+		&i.FxPolicy,
+		&i.ProgramVolume,
 	)
 	return i, err
 }
@@ -695,7 +974,7 @@ func (q *Queries) SetNodeStrategy(ctx context.Context, arg SetNodeStrategyParams
 const updateBOMSettings = `-- name: UpdateBOMSettings :one
 UPDATE boms SET currency = $2, volume = $3
 WHERE id = $1
-RETURNING id, name, currency, volume, created_at, price_snapshot_id, source_snapshot_id, annual_hours, destination_country
+RETURNING id, name, currency, volume, created_at, price_snapshot_id, source_snapshot_id, annual_hours, destination_country, cost_basis, fx_policy, program_volume
 `
 
 type UpdateBOMSettingsParams struct {
@@ -717,6 +996,53 @@ func (q *Queries) UpdateBOMSettings(ctx context.Context, arg UpdateBOMSettingsPa
 		&i.SourceSnapshotID,
 		&i.AnnualHours,
 		&i.DestinationCountry,
+		&i.CostBasis,
+		&i.FxPolicy,
+		&i.ProgramVolume,
+	)
+	return i, err
+}
+
+const updateReductionIdea = `-- name: UpdateReductionIdea :one
+UPDATE bom_reduction_ideas
+SET title = $3, owner = $4, gain_amount = $5, gain_currency = $6, status = $7, draft_bom_id = $8
+WHERE bom_id = $1 AND id = $2
+RETURNING id, bom_id, title, owner, gain_amount, gain_currency, status, draft_bom_id, created_at
+`
+
+type UpdateReductionIdeaParams struct {
+	BomID        int64
+	ID           int64
+	Title        string
+	Owner        string
+	GainAmount   decimal.Decimal
+	GainCurrency string
+	Status       string
+	DraftBomID   pgtype.Int8
+}
+
+func (q *Queries) UpdateReductionIdea(ctx context.Context, arg UpdateReductionIdeaParams) (BomReductionIdea, error) {
+	row := q.db.QueryRow(ctx, updateReductionIdea,
+		arg.BomID,
+		arg.ID,
+		arg.Title,
+		arg.Owner,
+		arg.GainAmount,
+		arg.GainCurrency,
+		arg.Status,
+		arg.DraftBomID,
+	)
+	var i BomReductionIdea
+	err := row.Scan(
+		&i.ID,
+		&i.BomID,
+		&i.Title,
+		&i.Owner,
+		&i.GainAmount,
+		&i.GainCurrency,
+		&i.Status,
+		&i.DraftBomID,
+		&i.CreatedAt,
 	)
 	return i, err
 }
@@ -758,5 +1084,86 @@ func (q *Queries) UpsertSchedule(ctx context.Context, arg UpsertScheduleParams) 
 	row := q.db.QueryRow(ctx, upsertSchedule, arg.BomID, arg.StartOn, arg.TargetOn)
 	var i BomSchedule
 	err := row.Scan(&i.BomID, &i.StartOn, &i.TargetOn)
+	return i, err
+}
+
+const upsertTargetBudget = `-- name: UpsertTargetBudget :one
+INSERT INTO bom_target_budgets (bom_id, node_id, amount, currency) VALUES ($1, $2, $3, $4)
+ON CONFLICT (bom_id, node_id) DO UPDATE SET amount = EXCLUDED.amount, currency = EXCLUDED.currency
+RETURNING node_id, amount, currency
+`
+
+type UpsertTargetBudgetParams struct {
+	BomID    int64
+	NodeID   int64
+	Amount   decimal.Decimal
+	Currency string
+}
+
+type UpsertTargetBudgetRow struct {
+	NodeID   int64
+	Amount   decimal.Decimal
+	Currency string
+}
+
+func (q *Queries) UpsertTargetBudget(ctx context.Context, arg UpsertTargetBudgetParams) (UpsertTargetBudgetRow, error) {
+	row := q.db.QueryRow(ctx, upsertTargetBudget,
+		arg.BomID,
+		arg.NodeID,
+		arg.Amount,
+		arg.Currency,
+	)
+	var i UpsertTargetBudgetRow
+	err := row.Scan(&i.NodeID, &i.Amount, &i.Currency)
+	return i, err
+}
+
+const upsertVehicleProfile = `-- name: UpsertVehicleProfile :one
+INSERT INTO bom_vehicle_profiles (bom_id, preset, weight_cost, weight_co2, weight_lead_time, weight_mass, weight_quality)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
+ON CONFLICT (bom_id) DO UPDATE SET preset = EXCLUDED.preset, weight_cost = EXCLUDED.weight_cost,
+    weight_co2 = EXCLUDED.weight_co2, weight_lead_time = EXCLUDED.weight_lead_time,
+    weight_mass = EXCLUDED.weight_mass, weight_quality = EXCLUDED.weight_quality
+RETURNING preset, weight_cost, weight_co2, weight_lead_time, weight_mass, weight_quality
+`
+
+type UpsertVehicleProfileParams struct {
+	BomID          int64
+	Preset         string
+	WeightCost     int16
+	WeightCo2      int16
+	WeightLeadTime int16
+	WeightMass     int16
+	WeightQuality  int16
+}
+
+type UpsertVehicleProfileRow struct {
+	Preset         string
+	WeightCost     int16
+	WeightCo2      int16
+	WeightLeadTime int16
+	WeightMass     int16
+	WeightQuality  int16
+}
+
+func (q *Queries) UpsertVehicleProfile(ctx context.Context, arg UpsertVehicleProfileParams) (UpsertVehicleProfileRow, error) {
+	row := q.db.QueryRow(ctx, upsertVehicleProfile,
+		arg.BomID,
+		arg.Preset,
+		arg.WeightCost,
+		arg.WeightCo2,
+		arg.WeightLeadTime,
+		arg.WeightMass,
+		arg.WeightQuality,
+	)
+	var i UpsertVehicleProfileRow
+	err := row.Scan(
+		&i.Preset,
+		&i.WeightCost,
+		&i.WeightCo2,
+		&i.WeightLeadTime,
+		&i.WeightMass,
+		&i.WeightQuality,
+	)
 	return i, err
 }

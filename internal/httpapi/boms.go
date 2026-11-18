@@ -50,11 +50,13 @@ type BOMService interface {
 	LandedCosts(ctx context.Context, bomID, partID int64, offerIDs []int64) (bom.LandedComparison, error)
 	MakeOrBuy(ctx context.Context, bomID, nodeID int64, req bom.MakeOrBuyRequest) (bom.MakeOrBuyResult, error)
 	ClearSchedule(ctx context.Context, bomID int64) error
+	PutTargetBudget(ctx context.Context, bomID, nodeID int64, amount money.Money) (bom.TargetBudget, error)
+	DeleteTargetBudget(ctx context.Context, bomID, nodeID int64) error
 }
 
 // SnapshotService est ce que l'API attend du domaine snapshot ; *snapshot.Service la satisfait.
 type SnapshotService interface {
-	Publish(ctx context.Context, bomID int64, at time.Time) (snapshot.Snapshot, error)
+	Publish(ctx context.Context, bomID int64, at time.Time, req snapshot.PublishRequest) (snapshot.Snapshot, error)
 	Get(ctx context.Context, id int64) (snapshot.Published, error)
 	NewDraft(ctx context.Context, id int64) (bom.BOM, error)
 }
@@ -72,7 +74,13 @@ const maxBodyBytes = 1 << 20
 type api struct {
 	boms      BOMService
 	snapshots SnapshotService
-	now       func() time.Time
+	// costs, snapCosts : méthode de coût et ventilation (ADR 0031) ; routes montées seulement si fournies.
+	costs     CostService
+	snapCosts SnapshotCostService
+	// versions, review : comparaison, versions, contrôles et pistes (ADR 0032, 0033) ; montées si fournies.
+	versions VersionsService
+	review   ReviewService
+	now      func() time.Time
 }
 
 func (a *api) routes(mux *http.ServeMux) {
@@ -84,6 +92,8 @@ func (a *api) routes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/v1/boms/{id}/nodes", a.addNode)
 	mux.HandleFunc("PATCH /api/v1/boms/{id}/nodes/{nodeID}", a.patchNode)
 	mux.HandleFunc("DELETE /api/v1/boms/{id}/nodes/{nodeID}", a.deleteNode)
+	mux.HandleFunc("PUT /api/v1/boms/{id}/nodes/{nodeID}/budget", a.putBudget)
+	mux.HandleFunc("DELETE /api/v1/boms/{id}/nodes/{nodeID}/budget", a.deleteBudget)
 	mux.HandleFunc("GET /api/v1/boms/{id}/nodes/{nodeID}/suggestions", a.suggestions)
 	mux.HandleFunc("POST /api/v1/boms/{id}/nodes/{nodeID}/make-or-buy", a.makeOrBuy)
 	mux.HandleFunc("GET /api/v1/boms/{id}/anomalies", a.anomalies)
@@ -98,6 +108,15 @@ func (a *api) routes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/v1/boms/{id}/publish", a.publish)
 	mux.HandleFunc("GET /api/v1/snapshots/{id}", a.getSnapshot)
 	mux.HandleFunc("POST /api/v1/snapshots/{id}/drafts", a.newDraft)
+	if a.costs != nil {
+		mux.HandleFunc("GET /api/v1/boms/{id}/cost-method", a.getCostMethod)
+		mux.HandleFunc("PUT /api/v1/boms/{id}/cost-method", a.putCostMethod)
+		mux.HandleFunc("GET /api/v1/boms/{id}/nodes/{nodeID}/cost-breakdown", a.costBreakdown)
+		mux.HandleFunc("GET /api/v1/boms/{id}/budgets", a.budgets)
+	}
+	if a.snapCosts != nil {
+		mux.HandleFunc("GET /api/v1/snapshots/{id}/nodes/{nodeID}/cost-breakdown", a.snapshotCostBreakdown)
+	}
 }
 
 // --- BOM ---------------------------------------------------------------------------------------------
@@ -226,7 +245,7 @@ func (a *api) tree(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, http.StatusOK, treeJSON{
 		BOM: toBOMJSON(t.BOM), Nodes: nodes, Explanation: toExplanationJSON(t.Totals.Explanation), Stock: toStockJSON(t.Stock),
-		Planning: toPlanningJSON(t.Planning),
+		Planning: toPlanningJSON(t.Planning), Budgets: toBudgetsJSON(t.Budgets),
 	})
 }
 
@@ -527,7 +546,7 @@ func (a *api) putStock(w http.ResponseWriter, r *http.Request) {
 	}
 	st, err := a.boms.SetPartStock(r.Context(), bomID, partID, *req.Quantity)
 	if errors.Is(err, catalog.ErrPartNotFound) { // la pièce est dans le chemin : ressource introuvable
-		writeJSON(w, http.StatusNotFound, map[string]string{"error": err.Error()})
+		writeErrorBody(w, http.StatusNotFound, err.Error(), "part_not_found")
 		return
 	}
 	if err != nil {
@@ -535,6 +554,56 @@ func (a *api) putStock(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, stockJSON{PartID: st.PartID, Quantity: st.Quantity.String()})
+}
+
+// --- Budgets cibles (ADR 0042) ---------------------------------------------------------------------------
+
+type targetBudgetJSON struct {
+	NodeID int64       `json:"node_id"`
+	Target money.Money `json:"target"`
+}
+
+// putBudget : {"amount":"3000.00","currency":"EUR"} ; 409 si les sous-budgets d'un ensemble dépasseraient son budget.
+func (a *api) putBudget(w http.ResponseWriter, r *http.Request) {
+	bomID, err := bomPathID(r, "id")
+	var nodeID int64
+	if err == nil {
+		nodeID, err = bomPathID(r, "nodeID")
+	}
+	var req money.Money
+	if err == nil {
+		err = decode(r, &req)
+	}
+	var b bom.TargetBudget
+	if err == nil {
+		b, err = a.boms.PutTargetBudget(r.Context(), bomID, nodeID, req)
+	}
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	target, err := money.New(b.Amount, b.Currency)
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, targetBudgetJSON{NodeID: b.NodeID, Target: target})
+}
+
+func (a *api) deleteBudget(w http.ResponseWriter, r *http.Request) {
+	bomID, err := bomPathID(r, "id")
+	var nodeID int64
+	if err == nil {
+		nodeID, err = bomPathID(r, "nodeID")
+	}
+	if err == nil {
+		err = a.boms.DeleteTargetBudget(r.Context(), bomID, nodeID)
+	}
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // --- Planning (ADR 0023) -----------------------------------------------------------------------------
@@ -665,7 +734,14 @@ func (a *api) publish(w http.ResponseWriter, r *http.Request) {
 		writeError(w, r, err)
 		return
 	}
-	s, err := a.snapshots.Publish(r.Context(), id, a.now())
+	var req publishRequest
+	if err := decodeOptional(r, &req); err != nil {
+		writeError(w, r, err)
+		return
+	}
+	s, err := a.snapshots.Publish(r.Context(), id, a.now(), snapshot.PublishRequest{
+		Note: req.Note, ProposedBy: req.ProposedBy, ValidatedBy: req.ValidatedBy, Justifications: req.Justifications,
+	})
 	if err != nil {
 		writeError(w, r, err)
 		return
@@ -697,7 +773,7 @@ func (a *api) getSnapshot(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, http.StatusOK, publishedJSON{
 		Snapshot: toSnapshotJSON(p.Snapshot), Nodes: nodes, Explanation: toExplanationJSON(p.Totals.Explanation),
-		Stock: toStockJSON(p.Stock), Planning: toPlanningJSON(p.Planning),
+		Stock: toStockJSON(p.Stock), Planning: toPlanningJSON(p.Planning), Checks: toFrozenChecksJSON(p.Checks),
 	})
 }
 
@@ -741,34 +817,43 @@ func decode(r *http.Request, v any) error {
 	return nil
 }
 
-// statusOf traduit une erreur métier en code HTTP. Une erreur inconnue est une erreur serveur.
-func statusOf(err error) int {
-	is := func(targets ...error) bool {
-		for _, t := range targets {
-			if errors.Is(err, t) {
-				return true
-			}
-		}
-		return false
-	}
-	switch {
-	case is(bom.ErrBOMNotFound, bom.ErrNodeNotFound, snapshot.ErrSnapshotNotFound, pricing.ErrUnknownOffer,
-		pricing.ErrPriceSnapshotNotFound):
-		return http.StatusNotFound
-	case is(bom.ErrCycle, bom.ErrHasSnapshots, bom.ErrRootNode, pricing.ErrNoQuote, pricing.ErrNoRate,
-		catalog.ErrMissingAttribute):
-		return http.StatusConflict
-	case is(errBadRequest, bom.ErrInvalidInput, pricing.ErrInvalidThreshold, bom.ErrOfferNotForPart, bom.ErrNotAPart,
-		catalog.ErrPartNotFound, catalog.ErrOfferNotFound, money.ErrUnknownCurrency):
-		return http.StatusBadRequest
-	case is(bom.ErrSuggestionsUnavailable, bom.ErrLogisticsUnavailable):
-		return http.StatusServiceUnavailable
-	default:
-		return http.StatusInternalServerError
-	}
+// publishRequest : corps facultatif de la publication tracée (ADR 0033).
+type publishRequest struct {
+	Note           string            `json:"note"`
+	ProposedBy     string            `json:"proposed_by"`
+	ValidatedBy    string            `json:"validated_by"`
+	Justifications map[string]string `json:"justifications"`
 }
 
-// writeError écrit {"error": "..."} ; le détail d'une erreur serveur est journalisé, pas renvoyé.
+// decodeOptional lit un objet JSON comme decode, mais un corps vide laisse v à sa valeur zéro.
+func decodeOptional(r *http.Request, v any) error {
+	body, err := io.ReadAll(io.LimitReader(r.Body, maxBodyBytes))
+	if err != nil {
+		return fmt.Errorf("read body: %w: %w", err, errBadRequest)
+	}
+	if len(strings.TrimSpace(string(body))) == 0 {
+		return nil
+	}
+	dec := json.NewDecoder(strings.NewReader(string(body)))
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(v); err != nil {
+		return fmt.Errorf("invalid JSON body: %w: %w", err, errBadRequest)
+	}
+	if dec.More() {
+		return fmt.Errorf("invalid JSON body: trailing data: %w", errBadRequest)
+	}
+	return nil
+}
+
+// statusOf : statut HTTP d'une erreur du domaine, lu dans errorTable (un seul endroit, avec le code stable).
+func statusOf(err error) int {
+	if e, ok := lookupError(err); ok {
+		return e.status
+	}
+	return http.StatusInternalServerError
+}
+
+// writeError écrit {"error": "...", "code": "..."} (code stable, voir errorTable) ; le détail d'une erreur serveur est journalisé, pas renvoyé.
 func writeError(w http.ResponseWriter, r *http.Request, err error) {
 	status := statusOf(err)
 	msg := err.Error()
@@ -776,5 +861,10 @@ func writeError(w http.ResponseWriter, r *http.Request, err error) {
 		slog.ErrorContext(r.Context(), "request failed", "method", r.Method, "path", r.URL.Path, "err", err)
 		msg = "internal error"
 	}
-	writeJSON(w, status, map[string]string{"error": msg})
+	code := errorCode(err)
+	if code == "invalid_history_data" { // donnée stockée corrompue : ni identifiant de cotation ni valeur brute au client
+		slog.ErrorContext(r.Context(), "invalid stored price data", "method", r.Method, "path", r.URL.Path, "err", err)
+		msg = "invalid stored price data"
+	}
+	writeErrorBody(w, status, msg, code)
 }
