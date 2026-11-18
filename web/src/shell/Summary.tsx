@@ -7,6 +7,7 @@ import { shareWidths } from './share.ts'
 import { basisHint, costTitle, methodLabel } from '../bom/costMethod.ts'
 import { budgetBarWidth, budgetClass, budgetPercentText, budgetTitle } from '../bom/budget.ts'
 import { powertrainLabels } from '../bom/powertrain.ts'
+import { missingPairs, type FrozenRate, type Pair } from './snapshotCoverage.ts'
 
 // Nombre de snapshots de prix montrés d'emblée ; les autres à la demande (« Tous les snapshots »).
 const SHOWN_SNAPSHOTS = 3
@@ -215,6 +216,29 @@ function usePriceSnapshots(current: number | null) {
   return { list, error }
 }
 
+// Frozen lots never change: their rates are fetched once per page.
+const lotRates = new Map<number, Promise<FrozenRate[]>>()
+
+// useLotGaps : for each listed lot, the BOM pairs it cannot convert (empty while unknown; the server still decides).
+function useLotGaps(ids: number[], required: Pair[]): Map<number, Pair[]> {
+  const [rates, setRates] = useState<Map<number, FrozenRate[]>>(new Map())
+  const key = ids.join(',')
+  useEffect(() => {
+    let cancelled = false
+    for (const id of key ? key.split(',').map(Number) : []) {
+      if (!lotRates.has(id)) lotRates.set(id, api.priceSnapshotRates(id))
+      lotRates.get(id)!.then(
+        (r) => { if (!cancelled) setRates((m) => (m.has(id) ? m : new Map(m).set(id, r))) },
+        () => lotRates.delete(id),
+      )
+    }
+    return () => { cancelled = true }
+  }, [key])
+  const gaps = new Map<number, Pair[]>()
+  for (const [id, r] of rates) gaps.set(id, missingPairs(r, required))
+  return gaps
+}
+
 // PricesUsed : source des prix (PR #23, déplacée de l'en-tête V1). En direct, ou un snapshot de prix existant
 // nommé par son instant à la seconde près, ou « Figer maintenant ». L'API refuse un snapshot qui ne couvre
 // pas la BOM (offres manquantes listées) : l'erreur s'affiche, la BOM ne bouge pas.
@@ -227,6 +251,7 @@ function PricesUsed({ data }: { data: BomData }) {
   // Le snapshot attaché reste toujours visible, même ancien ou absent de la liste (liste en échec).
   const attached = current !== null ? sorted.find((s) => s.id === current) : undefined
   if (attached && !shown.includes(attached)) shown = [...shown, attached]
+  const gaps = useLotGaps(shown.map((s) => s.id), data.explanation.rates.map((r) => ({ from: r.from, to: r.to })))
   const choose = (value: number | null) => {
     if (data.readOnly || value === current) return
     const bomID = data.target.id
@@ -258,15 +283,19 @@ function PricesUsed({ data }: { data: BomData }) {
             <span className="muted">{list === null && !error ? 'chargement…' : 'date indisponible'}</span>
           </label>
         )}
-        {(data.readOnly ? shown.filter((s) => s.id === current) : shown).map((s) => (
-          <label key={s.id} className={`snap ${s.id === current ? 'on' : ''}`}>
-            <input type="radio" name="price-source" checked={s.id === current} disabled={data.busy || data.readOnly} onChange={() => choose(s.id)} />
-            <span>
-              #{s.id} · {formatDateTime(s.taken_at)}
-            </span>
-            <span className="muted">{scopeLabel(s)}</span>
-          </label>
-        ))}
+        {(data.readOnly ? shown.filter((s) => s.id === current) : shown).map((s) => {
+          const missing = s.id === current ? [] : (gaps.get(s.id) ?? [])
+          const reason = missing.length > 0 ? `Taux manquants : ${missing.map((p) => `${p.from}→${p.to}`).join(', ')}` : undefined
+          return (
+            <label key={s.id} className={`snap ${s.id === current ? 'on' : ''}`} title={reason} style={reason ? { opacity: 0.55 } : undefined}>
+              <input type="radio" name="price-source" checked={s.id === current} disabled={data.busy || data.readOnly || reason !== undefined} onChange={() => choose(s.id)} />
+              <span>
+                #{s.id} · {formatDateTime(s.taken_at)}
+              </span>
+              <span className="muted">{reason ? `sans ${data.currency}` : scopeLabel(s)}</span>
+            </label>
+          )
+        })}
       </div>
       {!data.readOnly && sorted.length > SHOWN_SNAPSHOTS && (
         <button type="button" className="link small" onClick={() => setAll((v) => !v)}>

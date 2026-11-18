@@ -507,6 +507,8 @@ export const api = {
   usePriceSnapshot: (id: number, snapshotID: number) =>
     call<BOM>('PUT', `/boms/${id}/freeze-prices`, { price_snapshot_id: snapshotID }),
   listPriceSnapshots: () => call<PriceSnapshotRef[]>('GET', '/price-snapshots'),
+  priceSnapshotRates: (id: number) =>
+    call<{ rates: { base_currency: string; quote_currency: string }[] }>('GET', `/price-snapshots/${id}`).then((s) => s.rates),
   unfreezePrices: (id: number) => call<BOM>('DELETE', `/boms/${id}/freeze-prices`),
   // Publication tracée (ADR 0033) : 409 si un contrôle bloque, 422 si un avertissement n'est pas justifié.
   publish: (id: number, body?: PublishRequest) => call<Snapshot>('POST', `/boms/${id}/publish`, body),
