@@ -19,6 +19,7 @@ import {
 import type { Catalog } from '../catalog.ts'
 import { loadOfferPrices, noOfferPrices, withOfferPrices, type OfferPrices } from '../offerPrices.ts'
 import type { Target } from '../router.ts'
+import { staleQuotes } from './liveQuotes.ts'
 
 export type BomData = {
   simulation?: { mode: 'thermal' | 'electric' | 'hybrid'; pending: boolean; priceAsOf: string | null }
@@ -46,6 +47,7 @@ export type BomData = {
   anomalyByNode: ReadonlyMap<number, NodeAnomaly>
   threshold: string
   applyThreshold: (th: string) => void
+  newQuotes: boolean // un tick de prix plus récent que les totaux affichés a été validé (brouillon en direct)
   version: number // change à chaque relecture de l'arbre
   busy: boolean
   // run exécute une action de l'utilisateur puis relit l'arbre ; une erreur de l'API est affichée telle quelle.
@@ -77,6 +79,8 @@ export function useBomData(target: Target, catalog: Catalog, onBOMChanged: () =>
   const [threshold, setThreshold] = useState('3')
   const [anomalies, setAnomalies] = useState<{ data: CostAnomalies | null; error: string | null }>(emptyAnomalies)
   const anomalyRequest = useRef(0)
+  const [loadedTick, setLoadedTick] = useState<number | null>(null)
+  const [latestTick, setLatestTick] = useState<number | null>(null)
   const isDraft = target.kind === 'draft'
   const id = target.id
 
@@ -98,15 +102,22 @@ export function useBomData(target: Target, catalog: Catalog, onBOMChanged: () =>
     [id],
   )
 
+  // Tick lu avant l'arbre : au pire le calcul est plus récent que le tick retenu (jamais l'inverse).
+  const loadTree = useCallback(async () => {
+    const tick = await api.pricingStatus().then((s) => s.tick ?? null, () => null)
+    const t = await api.tree(id)
+    return { t, tick }
+  }, [id])
+
   useEffect(() => {
     // Le composant est remonté (clé) à chaque changement de BOM : aucun état à remettre à zéro ici.
     let cancelled = false
     if (isDraft) {
-      api
-        .tree(id)
-        .then((t) => {
+      loadTree()
+        .then(({ t, tick }) => {
           if (cancelled) return
           setBOM(t)
+          setLoadedTick(tick)
           void loadAnomalies('3')
         })
         .catch((e: unknown) => {
@@ -125,14 +136,30 @@ export function useBomData(target: Target, catalog: Catalog, onBOMChanged: () =>
     return () => {
       cancelled = true
     }
-  }, [id, isDraft, loadAnomalies])
+  }, [id, isDraft, loadAnomalies, loadTree])
 
   const reload = useCallback(async () => {
-    const t = await api.tree(id)
+    const { t, tick } = await loadTree()
     setBOM(t)
+    setLoadedTick(tick)
     setVersion((v) => v + 1)
     void loadAnomalies(threshold)
-  }, [id, loadAnomalies, threshold])
+  }, [loadTree, loadAnomalies, threshold])
+
+  // Flux de prix : seulement pour un brouillon en direct ; on retient le dernier tick validé, sans recharger l'arbre.
+  const liveDraft = bom !== null && isDraft && bom.bom.price_snapshot_id === null
+  useEffect(() => {
+    if (!liveDraft) return
+    const source = new EventSource('/api/v1/quotes/stream')
+    const onTick = (e: MessageEvent<string>) => {
+      try {
+        const tick = (JSON.parse(e.data) as { tick?: unknown }).tick
+        if (typeof tick === 'number') setLatestTick((t) => (t === null || tick > t ? tick : t))
+      } catch { /* événement illisible : ignoré */ }
+    }
+    source.addEventListener('tick', onTick)
+    return () => source.close()
+  }, [liveDraft])
 
   const run = useCallback(
     async (action: () => Promise<unknown>, opts: { bomChanged?: boolean } = {}) => {
@@ -205,6 +232,7 @@ export function useBomData(target: Target, catalog: Catalog, onBOMChanged: () =>
         priceSnapshotID: bom.bom.price_snapshot_id, nodes: bom.nodes, byID, root: bom.nodes.find((n) => n.parent_id === null),
         explanation: bom.explanation, stock: bom.stock, planning: bom.planning, catalog: pricedCatalog, budgets,
         anomalies, anomalyByNode, threshold, applyThreshold, version, busy, run,
+        newQuotes: liveDraft && staleQuotes(loadedTick, latestTick),
       },
     }
   } else if (snap && !isDraft) {
@@ -215,7 +243,7 @@ export function useBomData(target: Target, catalog: Catalog, onBOMChanged: () =>
         currency: snap.snapshot.currency, volume: snap.snapshot.volume, annualHours: snap.snapshot.annual_hours,
         priceSnapshotID: snap.snapshot.price_snapshot_id, nodes: snap.nodes, byID, root: snap.nodes.find((n) => n.parent_id === null),
         explanation: snap.explanation, stock: snap.stock, planning: snap.planning, catalog: pricedCatalog, budgets,
-        anomalies: emptyAnomalies, anomalyByNode, threshold, applyThreshold, version, busy: false,
+        anomalies: emptyAnomalies, anomalyByNode, threshold, applyThreshold, version, busy: false, newQuotes: false,
         run: async () => false,
       },
     }

@@ -45,5 +45,5 @@ export function usePowertrainSimulation(source: BomData, visible: boolean) {
       anomalies: { data: null, error: null }, anomalyByNode: new Map() }
   }, [source, enabled, activeMode, pending, comparison, selected])
   return { eligible, requestedMode, activeMode, comparison, pending, error, data,
-    select: setMode, refresh: () => setReload(n => n + 1), exit: () => { setMode(null); setReload(n => n + 1) } }
+    select: setMode, refresh: () => setReload(n => n + 1), exit: () => { setMode(null); setReload(n => n + 1); void source.run(async () => {}) } }
 }

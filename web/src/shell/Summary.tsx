@@ -28,6 +28,7 @@ export function Summary({ data, onSelectNode }: { data: BomData; onSelectNode: (
   let state: { text: string; cls?: string; status?: boolean }
   if (data.busy) state = { text: 'Recalcul en cours…', cls: 'recalc', status: true }
   else if (t?.cost_error_code) state = { text: `incomplet : ${t.missing_cost.length} nœud(s) sans prix`, cls: 'over' }
+  else if (data.newQuotes && !data.simulation) state = { text: 'nouvelles cotations disponibles', cls: 'recalc', status: true }
   else state = { text: data.simulation ? 'scénario calculé · référence inchangée' : data.readOnly ? 'figé (snapshot publié)' : 'à jour' }
 
   return (
@@ -41,6 +42,14 @@ export function Summary({ data, onSelectNode }: { data: BomData; onSelectNode: (
         <span className={state.cls} role={state.status ? 'status' : undefined}>
           {state.text}
         </span>
+        {data.newQuotes && !data.simulation && (
+          <>
+            {' '}
+            <button type="button" className="btn" onClick={() => void data.run(async () => {})}>
+              Recalculer
+            </button>
+          </>
+        )}
       </p>
       <div className="totals total" aria-busy={data.busy}>
         <span className="lb">{costTitle(data.explanation.cost_method)}</span>
