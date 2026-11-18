@@ -190,19 +190,7 @@ test('BOM complète : diagnostics différés et limités à 100 lignes à la dem
 })
 
 test('extérieur prioritaire : intérieur révélé et cliquable à travers la coque transparente', async ({ page }) => {
-  const f = fixture(), shell = boxGLB(6)
-  f.nodes.find(n => n.id === 6)!.parent_id = 2
-  const manifest = { ...f.manifest, scope: { kind: 'draft', id: 80 }, assets: [
-    ...f.manifest.assets.map(a => ({ ...a, display_role: 'interior' })),
-    { ...f.manifest.assets[0], key: 'shell', path: '/models/shell.glb', sha256: createHash('sha256').update(shell).digest('hex'), display_role: 'exterior' },
-  ], bindings: [{ ...f.manifest.bindings[0], node_id: 1, parent_id: null, part_id: null, asset_key: 'shell', system: 'body', instances: [
-    { key: 'shell', position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1], explode_vector: [0, 2, 0] },
-  ] }, ...f.manifest.bindings] }
-  await page.route('**/api/v1/boms', route => route.fulfill({ json: [{ id: 80, name: 'Essai coque' }] }))
-  await page.route('**/api/v1/boms/80/tree', route => route.fulfill({ json: { nodes: f.nodes } }))
-  await page.route('**/models/manifests/draft-80.json', route => route.fulfill({ json: manifest }))
-  await page.route('**/models/box*.glb', route => route.fulfill({ body: f.buffers[Number(route.request().url().match(/box(\d)/)![1])], contentType: 'model/gltf-binary' }))
-  await page.route('**/models/shell.glb', route => route.fulfill({ body: shell, contentType: 'model/gltf-binary' }))
+  await shellFixture(page)
   await page.goto('/vehicle3d-demo.html?bom=80&mode=bound')
   await ready(page)
   const visible = () => page.locator('.v3d-root').evaluate(el => {
@@ -225,6 +213,16 @@ test('extérieur prioritaire : intérieur révélé et cliquable à travers la c
   await page.getByLabel('Isoler un système', { exact: true }).selectOption('')
   await expect.poll(visible).toEqual([1])
   await page.getByText('Composants et sources', { exact: true }).click()
+  // An absent exterior must expose the available illustrative interior, with an explicit notice.
+  await page.route('**/models/shell.glb', route => route.fulfill({ status: 404 }))
+  await page.reload()
+  await ready(page)
+  await expect.poll(visible).toEqual([3, 4, 5])
+  await expect(page.getByText('Vue mécanique illustrative — aucun extérieur chargé.', { exact: true })).toBeVisible()
+})
+
+test('pièce absente : localisation explicite du groupe, identité BOM conservée', async ({ page }) => {
+  await shellFixture(page)
   await page.goto('/vehicle3d-demo.html?bom=80&mode=bound&select=6')
   await ready(page)
   await expect(page.getByText('Modèle 3D de cette pièce indisponible.', { exact: false })).toBeVisible()
@@ -233,10 +231,20 @@ test('extérieur prioritaire : intérieur révélé et cliquable à travers la c
   await expect(page.getByText('Sous-ensemble localisé : Propulsion (#2). La pièce exacte reste sans modèle.', { exact: true })).toBeVisible()
   await expect(page.locator('.demo-sel')).toContainText('#6')
   await expect.poll(() => probe(page).then(p => p.selection)).toEqual(['node:3/instance:a', 'node:4/instance:a', 'node:5/instance:a'])
-  // An absent exterior must expose the available illustrative interior, with an explicit notice.
-  await page.route('**/models/shell.glb', route => route.fulfill({ status: 404 }))
-  await page.reload()
-  await ready(page)
-  await expect.poll(visible).toEqual([3, 4, 5])
-  await expect(page.getByText('Vue mécanique illustrative — aucun extérieur chargé.', { exact: true })).toBeVisible()
 })
+
+async function shellFixture(page: Page) {
+  const f = fixture(), shell = boxGLB(6)
+  f.nodes.find(n => n.id === 6)!.parent_id = 2
+  const manifest = { ...f.manifest, scope: { kind: 'draft', id: 80 }, assets: [
+    ...f.manifest.assets.map(a => ({ ...a, display_role: 'interior' })),
+    { ...f.manifest.assets[0], key: 'shell', path: '/models/shell.glb', sha256: createHash('sha256').update(shell).digest('hex'), display_role: 'exterior' },
+  ], bindings: [{ ...f.manifest.bindings[0], node_id: 1, parent_id: null, part_id: null, asset_key: 'shell', system: 'body', instances: [
+    { key: 'shell', position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1], explode_vector: [0, 2, 0] },
+  ] }, ...f.manifest.bindings] }
+  await page.route('**/api/v1/boms', route => route.fulfill({ json: [{ id: 80, name: 'Essai coque' }] }))
+  await page.route('**/api/v1/boms/80/tree', route => route.fulfill({ json: { nodes: f.nodes } }))
+  await page.route('**/models/manifests/draft-80.json', route => route.fulfill({ json: manifest }))
+  await page.route('**/models/box*.glb', route => route.fulfill({ body: f.buffers[Number(route.request().url().match(/box(\d)/)![1])], contentType: 'model/gltf-binary' }))
+  await page.route('**/models/shell.glb', route => route.fulfill({ body: shell, contentType: 'model/gltf-binary' }))
+}

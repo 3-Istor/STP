@@ -4,16 +4,18 @@ import { chromium } from '../../../web/node_modules/playwright-core/index.mjs'
 import { expect } from '../../../web/node_modules/@playwright/test/index.mjs'
 import { mkdir, writeFile } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
+import { resolve } from 'node:path'
 
 const base = process.env.STP_3D_URL ?? 'http://127.0.0.1:41769'
 if (!['127.0.0.1', 'localhost'].includes(new URL(base).hostname)) throw new Error('Local demonstration only')
-const output = fileURLToPath(new URL('../captures/soutenance/', import.meta.url))
+const output = resolve(process.env.STP_3D_OUTPUT ?? fileURLToPath(new URL('../captures/soutenance/', import.meta.url))) + '/'
 await mkdir(output, { recursive: true })
 const browser = await chromium.launch({ headless: true, args: ['--no-sandbox'] })
-const report = { at: new Date().toISOString(), base, vehicles: [], errors: [] }
+const report = { at: new Date().toISOString(), base, vehicles: [], errors: [], legacyModelRequests: [] }
 const page = await browser.newPage({ viewport: { width: 1500, height: 1000 } })
 page.setDefaultTimeout(30_000)
 page.on('pageerror', error => report.errors.push(error.message))
+page.on('request', request => { if (request.url().includes('/models/CarConcept')) report.legacyModelRequests.push(request.url()) })
 
 const probe = () => page.locator('.v3d-root').evaluate(el => {
   const v = el.__viewer
@@ -28,6 +30,7 @@ async function capture(name) { await idle(); await page.mouse.move(2, 2); await 
 async function ready() {
   await expect(page.locator('.v3d-root')).toHaveAttribute('data-status', 'ready', { timeout: 120_000 })
   await expect(page.locator('.v3d-root')).toHaveAttribute('data-mode', 'bound')
+  await expect(page.getByRole('radio', { name: 'Réaliste', exact: true })).toHaveCount(0)
   await idle()
 }
 async function treePick(label, id) {
@@ -73,8 +76,8 @@ async function clickOccurrence(id) {
 try {
   const catalog = await (await page.request.get(base + '/api/v1/parts')).json()
   const parts = new Map(catalog.map(p => [p.id, p]))
-  const scenarios = process.env.STP_3D_ONLY_VARIANT === '1' ? [] : [{ name: 'multipla', bom: 1, fromBom: 12505, from3D: 15865, group: 12502 },
-    { name: 'valhalla', bom: 2, fromBom: 32415, from3D: 34539, group: 32412 }]
+  const scenarios = process.env.STP_3D_ONLY_VARIANT === '1' ? [] : [{ name: 'multipla', bom: 1, fromBom: 12505, from3D: 15865, group: 12502, absent: 12934, located: 'Culasse' },
+    { name: 'valhalla', bom: 2, fromBom: 32415, from3D: 34539, group: 32412, absent: 34760, located: 'Batterie haute tension' }]
   for (const scenario of scenarios) {
     const record = { ...scenario, steps: [] }; report.vehicles.push(record)
     try {
@@ -162,6 +165,23 @@ try {
         }
         record.steps.push('Thermal / electric / hybrid, three motors and HV battery, same occurrence keys')
       }
+      if (scenario.name === 'multipla') {
+        await page.evaluate(() => { location.hash = '/boms/1/structurer?tab=arbre-3d&node=12932' })
+        await expect.poll(() => probe().then(p => p.selected), { timeout: 30_000 }).toEqual(['node:12932/instance:instance-1', 'node:12932/instance:instance-2'])
+        expect((await probe()).items.filter(i => i.id === 12932)).toHaveLength(2)
+        await capture('multipla-arbres-a-cames-repares')
+        record.steps.push('Repaired camshaft occurrence: two supplied meshes at explicit distinct instance positions')
+      }
+      await page.evaluate(({ bom, node }) => { location.hash = '/boms/' + bom + '/structurer?tab=arbre-3d&node=' + node }, { bom: scenario.bom, node: scenario.absent })
+      await expect(page.getByText('Modèle 3D de cette pièce indisponible.', { exact: false })).toBeVisible()
+      await expect.poll(() => probe().then(p => p.selected), { timeout: 30_000 }).toEqual([])
+      await page.getByRole('button', { name: 'Localiser le sous-ensemble « ' + scenario.located + ' »', exact: true }).click()
+      await expect(page.getByText('Sous-ensemble localisé : ' + scenario.located, { exact: false })).toBeVisible()
+      await expect(page).toHaveURL(new RegExp('node=' + scenario.absent))
+      await expect.poll(() => probe().then(p => p.selected.length), { timeout: 30_000 }).toBeGreaterThan(0)
+      expect((await probe()).selected.some(k => k.startsWith('node:' + scenario.absent + '/'))).toBe(false)
+      await capture(scenario.name + '-localisation-sous-ensemble')
+      record.steps.push('Absent part stays absent and keeps its BOM ID; explicit ancestor locator frames the reliable assembly')
       process.stdout.write(scenario.name + ': ' + record.steps.join('; ') + '\n')
     } catch (error) {
       process.stderr.write(scenario.name + ': ' + error.message + '\n')
@@ -228,6 +248,7 @@ try {
     }
   }
 } finally {
+  if (report.legacyModelRequests.length) report.errors.push('Legacy model requested')
   await writeFile(output + (process.env.STP_3D_ONLY_VARIANT === '1' ? 'validation-variant.json' : 'validation.json'), JSON.stringify(report, null, 2) + '\n')
   await browser.close()
 }

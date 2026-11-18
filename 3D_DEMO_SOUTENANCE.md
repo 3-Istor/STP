@@ -10,8 +10,8 @@ habituel du projet. Le code Go, les migrations et les contrats API n'ont pas ét
 - [Brouillon B : batterie remplaçable](http://127.0.0.1:41769/#/boms/3/structurer?tab=arbre-3d&node=60776).
 
 Les installations vérifiées ouvrent le mode **Composants** : les modèles fournis sont chargés
-depuis les manifestes d'occurrences. Les modes historiques Simple et Réaliste restent disponibles ;
-le second utilise le modèle générique CarConcept et ne sert pas à présenter ces deux voitures.
+depuis les manifestes d'occurrences. Le mode Simple reste un schéma explicitement annoncé.
+L'ancienne option Réaliste est retirée : l'application ne propose plus le modèle générique CarConcept.
 Au premier chargement, laisser finir le téléchargement local des GLB et la compilation des shaders.
 
 ## Redémarrer dans WSL
@@ -98,6 +98,21 @@ déplacée hors de sa liaison ou une quantité sans emplacement validé ne reço
 Les manifestes sont propres à l'installation semée et aux brouillons 1/2/3. Une autre base ou un
 nouveau snapshot exige son manifeste vérifié ; l'absence est affichée. Les snapshots publiés ne sont
 pas modifiés. Les performances observées en Chromium logiciel ne préjugent pas du GPU du jury.
+
+## Pièce sans modèle individuel
+
+Un bouton **Localiser le sous-ensemble** apparaît seulement si l'ascendance de la BOM permet
+de trouver un groupe réellement représenté. La pièce reste sélectionnée dans la BOM ; le message
+précise que sa géométrie individuelle est absente. Exemple : soupape Fiat #12934 → Culasse,
+module HV Aston #34760 → Batterie haute tension. Les deux arbres à cames Fiat #12932 sont désormais
+liés à leurs deux emplacements existants, avec une quantité deux et deux clés d'instance distinctes.
+
+Audit exhaustif de toutes les occurrences et causes : `docs/3d/COMPOSANTS_NON_VISIBLES.md`.
+Captures après corrections : `docs/3d/captures/corrections-finales/`. Pour le régénérer en lecture seule :
+
+```sh
+PLAYWRIGHT_BROWSERS_PATH=/tmp/stp-3d-toolchain/browsers node docs/3d/tools/audit_visibility.mjs
+```
 
 ## Reconstituer les fichiers locaux si nécessaire
 

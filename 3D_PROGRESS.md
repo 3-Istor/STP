@@ -527,3 +527,29 @@ validation fonctionnelle et visuelle sur les assets réellement accessibles.
 - Moulinette PR verte (intégration DB explicitement not_run dans ce passage sans base de tests) ;
   revue indépendante niveau 1 depuis 043df31 : aucun Important/Nit/pré-existant. Suite navigateur
   complète en cours de confirmation après un passage perturbé par un rechargement de fichiers publics.
+
+## Corrections finales — livraison vérifiée
+
+- Suite complète desktop : **63 PASS** ; parcours BOM/composants mobile : **14 PASS**. Le nouveau
+  scénario de localisation est séparé de celui de coque/transparence, sans retirer d'assertion ni
+  augmenter les délais. Les premiers passages interrompus/surchargés ne sont pas comptés verts.
+- Parcours réel final : **zéro erreur et zéro requête CarConcept**, les deux voitures en modes 3D et
+  Arbre + 3D, actualisation et changement de route. Rotation/zoom, sélection bidirectionnelle, éclaté
+  0/50/100/0, trois motorisations Aston, camshafts deux instances et localisations explicites vérifiés.
+  Référence physique remplacée sur B puis part_id 195 / offer_id 474 restaurés ; offre seule sans
+  changement géométrique. Captures dans `docs/3d/captures/corrections-finales/`.
+- Comptes tous nœuds (y compris groupes) : Fiat 29977 = 157 géométrie propre + 25754 sous-ensemble
+  seulement + 4066 sans géométrie/localisation fiable. Aston 14903 = 69 + 7216 + 7618.
+  Pièces physiques : Fiat 20108 = 146 + 17257 + 2705 ; Aston 10002 = 47 + 4995 + 4960.
+  Les pièces localisables restent sans modèle individuel, annoncé explicitement dans l'interface.
+- `docs/3d/COMPOSANTS_NON_VISIBLES.md` contient les 44880 lignes d'occurrences et les causes exactes.
+  Synthèse lisible, IDs des correspondances ambiguës, responsabilités et limites :
+  `docs/3d/CORRECTIONS_FINALES.md`. Source et données d'audit disponibles pour reproduction.
+  226 occurrences chargées ont un raycast positif après isolation/cadrage ; la visibilité globale
+  peut rester occultée par d'autres pièces, d'où la commande d'isolation existante.
+- 2 liaisons Fiat réparées, 52 mappings Fiat et 74 Aston encore non prouvés et volontairement refusés.
+  Aucun problème de chargement, d'identité active ou de picking isolé restant détecté. Le retrait de
+  Réaliste est global ; les localisations ajoutées ne sont pas comptées comme de nouveaux modèles.
+- Revue niveau 1, un tour, aucun constat de correction. Moulinette PR verte ; intégration PostgreSQL,
+  scanners optionnels absents, CI distante, Firefox/WebKit et GPU du jury non vérifiés dans ce passage.
+  Le backend, PostgreSQL et les branches protégées sont inchangés. Aucun push/merge effectué.

@@ -1,0 +1,2813 @@
+{
+  "at": "2026-11-18T09:40:37.373Z",
+  "base": "http://127.0.0.1:41769",
+  "errors": [],
+  "legacyRequests": [],
+  "vehicles": [
+    {
+      "name": "multipla",
+      "bom": 1,
+      "at": "2026-11-18T09:38:56.040Z",
+      "total": 29977,
+      "manifestSha256": "fdcf5e397079ad5eb84d2f625a02d1cd8340e68c39d861803bf962d235251e1c",
+      "counts": {
+        "individual": 157,
+        "assembly_only": 25754,
+        "none": 4066
+      },
+      "physicalCounts": {
+        "individual": 146,
+        "assembly_only": 17257,
+        "none": 2705
+      },
+      "newLocators": 25695,
+      "geometry": [
+        {
+          "id": 1,
+          "keys": [
+            "node:1/instance:exterior"
+          ],
+          "meshCount": 16,
+          "realGeometry": true,
+          "normal": true,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 2,
+          "keys": [
+            "node:2/instance:illustration"
+          ],
+          "meshCount": 10,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 4,
+          "keys": [
+            "node:4/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 5,
+          "keys": [
+            "node:5/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 8,
+          "keys": [
+            "node:8/instance:instance-1",
+            "node:8/instance:instance-2"
+          ],
+          "meshCount": 2,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 2412,
+          "keys": [
+            "node:2412/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 2413,
+          "keys": [
+            "node:2413/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 2414,
+          "keys": [
+            "node:2414/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 12503,
+          "keys": [
+            "node:12503/instance:illustration"
+          ],
+          "meshCount": 35,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 12505,
+          "keys": [
+            "node:12505/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 12506,
+          "keys": [
+            "node:12506/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 12509,
+          "keys": [
+            "node:12509/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 12510,
+          "keys": [
+            "node:12510/instance:illustration"
+          ],
+          "meshCount": 3,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 12511,
+          "keys": [
+            "node:12511/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 12513,
+          "keys": [
+            "node:12513/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 12514,
+          "keys": [
+            "node:12514/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 12515,
+          "keys": [
+            "node:12515/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 12517,
+          "keys": [
+            "node:12517/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 12518,
+          "keys": [
+            "node:12518/instance:illustration"
+          ],
+          "meshCount": 3,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 12519,
+          "keys": [
+            "node:12519/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 12521,
+          "keys": [
+            "node:12521/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 12522,
+          "keys": [
+            "node:12522/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 12523,
+          "keys": [
+            "node:12523/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 12525,
+          "keys": [
+            "node:12525/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 12526,
+          "keys": [
+            "node:12526/instance:illustration"
+          ],
+          "meshCount": 3,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 12527,
+          "keys": [
+            "node:12527/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 12529,
+          "keys": [
+            "node:12529/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 12530,
+          "keys": [
+            "node:12530/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 12531,
+          "keys": [
+            "node:12531/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 12533,
+          "keys": [
+            "node:12533/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 12534,
+          "keys": [
+            "node:12534/instance:illustration"
+          ],
+          "meshCount": 3,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 12535,
+          "keys": [
+            "node:12535/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 12537,
+          "keys": [
+            "node:12537/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 12538,
+          "keys": [
+            "node:12538/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 12539,
+          "keys": [
+            "node:12539/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 12540,
+          "keys": [
+            "node:12540/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 12541,
+          "keys": [
+            "node:12541/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 12542,
+          "keys": [
+            "node:12542/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 12929,
+          "keys": [
+            "node:12929/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 12931,
+          "keys": [
+            "node:12931/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 12932,
+          "keys": [
+            "node:12932/instance:instance-1",
+            "node:12932/instance:instance-2"
+          ],
+          "meshCount": 2,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 13191,
+          "keys": [
+            "node:13191/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 13193,
+          "keys": [
+            "node:13193/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 13195,
+          "keys": [
+            "node:13195/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 13196,
+          "keys": [
+            "node:13196/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 13197,
+          "keys": [
+            "node:13197/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 13198,
+          "keys": [
+            "node:13198/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 13330,
+          "keys": [
+            "node:13330/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 13331,
+          "keys": [
+            "node:13331/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 13333,
+          "keys": [
+            "node:13333/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 14169,
+          "keys": [
+            "node:14169/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 14170,
+          "keys": [
+            "node:14170/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 14172,
+          "keys": [
+            "node:14172/instance:illustration"
+          ],
+          "meshCount": 7,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 14174,
+          "keys": [
+            "node:14174/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 14175,
+          "keys": [
+            "node:14175/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 14176,
+          "keys": [
+            "node:14176/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 14487,
+          "keys": [
+            "node:14487/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 14488,
+          "keys": [
+            "node:14488/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 14489,
+          "keys": [
+            "node:14489/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 14491,
+          "keys": [
+            "node:14491/instance:illustration"
+          ],
+          "meshCount": 23,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 14492,
+          "keys": [
+            "node:14492/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 14493,
+          "keys": [
+            "node:14493/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 14494,
+          "keys": [
+            "node:14494/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 14597,
+          "keys": [
+            "node:14597/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 14598,
+          "keys": [
+            "node:14598/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 14599,
+          "keys": [
+            "node:14599/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 14600,
+          "keys": [
+            "node:14600/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 14764,
+          "keys": [
+            "node:14764/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 14765,
+          "keys": [
+            "node:14765/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 14766,
+          "keys": [
+            "node:14766/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 14900,
+          "keys": [
+            "node:14900/instance:illustration"
+          ],
+          "meshCount": 18,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 14903,
+          "keys": [
+            "node:14903/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 14904,
+          "keys": [
+            "node:14904/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 14956,
+          "keys": [
+            "node:14956/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 15009,
+          "keys": [
+            "node:15009/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 15010,
+          "keys": [
+            "node:15010/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 15011,
+          "keys": [
+            "node:15011/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 15013,
+          "keys": [
+            "node:15013/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 15014,
+          "keys": [
+            "node:15014/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 15015,
+          "keys": [
+            "node:15015/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 15051,
+          "keys": [
+            "node:15051/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 15056,
+          "keys": [
+            "node:15056/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 15057,
+          "keys": [
+            "node:15057/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 15109,
+          "keys": [
+            "node:15109/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 15162,
+          "keys": [
+            "node:15162/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 15163,
+          "keys": [
+            "node:15163/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 15164,
+          "keys": [
+            "node:15164/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 15166,
+          "keys": [
+            "node:15166/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 15167,
+          "keys": [
+            "node:15167/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 15168,
+          "keys": [
+            "node:15168/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 15204,
+          "keys": [
+            "node:15204/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 15209,
+          "keys": [
+            "node:15209/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 15210,
+          "keys": [
+            "node:15210/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 15245,
+          "keys": [
+            "node:15245/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 15246,
+          "keys": [
+            "node:15246/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 15248,
+          "keys": [
+            "node:15248/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 15249,
+          "keys": [
+            "node:15249/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 15286,
+          "keys": [
+            "node:15286/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 15287,
+          "keys": [
+            "node:15287/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 15322,
+          "keys": [
+            "node:15322/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 15323,
+          "keys": [
+            "node:15323/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 15325,
+          "keys": [
+            "node:15325/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 15326,
+          "keys": [
+            "node:15326/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 15362,
+          "keys": [
+            "node:15362/instance:illustration"
+          ],
+          "meshCount": 2,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 15363,
+          "keys": [
+            "node:15363/instance:illustration"
+          ],
+          "meshCount": 3,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 15364,
+          "keys": [
+            "node:15364/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 15559,
+          "keys": [
+            "node:15559/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 15560,
+          "keys": [
+            "node:15560/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 15565,
+          "keys": [
+            "node:15565/instance:illustration"
+          ],
+          "meshCount": 2,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 15697,
+          "keys": [
+            "node:15697/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 15698,
+          "keys": [
+            "node:15698/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 15863,
+          "keys": [
+            "node:15863/instance:exterior"
+          ],
+          "meshCount": 5,
+          "realGeometry": true,
+          "normal": true,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 15865,
+          "keys": [
+            "node:15865/instance:exterior"
+          ],
+          "meshCount": 2,
+          "realGeometry": true,
+          "normal": true,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 15870,
+          "keys": [
+            "node:15870/instance:exterior"
+          ],
+          "meshCount": 5,
+          "realGeometry": true,
+          "normal": true,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 15872,
+          "keys": [
+            "node:15872/instance:exterior"
+          ],
+          "meshCount": 2,
+          "realGeometry": true,
+          "normal": true,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 15877,
+          "keys": [
+            "node:15877/instance:exterior"
+          ],
+          "meshCount": 5,
+          "realGeometry": true,
+          "normal": true,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 15879,
+          "keys": [
+            "node:15879/instance:exterior"
+          ],
+          "meshCount": 2,
+          "realGeometry": true,
+          "normal": true,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 15884,
+          "keys": [
+            "node:15884/instance:exterior"
+          ],
+          "meshCount": 5,
+          "realGeometry": true,
+          "normal": true,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 15886,
+          "keys": [
+            "node:15886/instance:exterior"
+          ],
+          "meshCount": 2,
+          "realGeometry": true,
+          "normal": true,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 15896,
+          "keys": [
+            "node:15896/instance:illustration"
+          ],
+          "meshCount": 3,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 15898,
+          "keys": [
+            "node:15898/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 15966,
+          "keys": [
+            "node:15966/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 26307,
+          "keys": [
+            "node:26307/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 26317,
+          "keys": [
+            "node:26317/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 26320,
+          "keys": [
+            "node:26320/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 27050,
+          "keys": [
+            "node:27050/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 27051,
+          "keys": [
+            "node:27051/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 27052,
+          "keys": [
+            "node:27052/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 27060,
+          "keys": [
+            "node:27060/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 27061,
+          "keys": [
+            "node:27061/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 27239,
+          "keys": [
+            "node:27239/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 27240,
+          "keys": [
+            "node:27240/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 27241,
+          "keys": [
+            "node:27241/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 27249,
+          "keys": [
+            "node:27249/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 27250,
+          "keys": [
+            "node:27250/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 27428,
+          "keys": [
+            "node:27428/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 27429,
+          "keys": [
+            "node:27429/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 27430,
+          "keys": [
+            "node:27430/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 27438,
+          "keys": [
+            "node:27438/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 27439,
+          "keys": [
+            "node:27439/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 27618,
+          "keys": [
+            "node:27618/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 27619,
+          "keys": [
+            "node:27619/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 27620,
+          "keys": [
+            "node:27620/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 27628,
+          "keys": [
+            "node:27628/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 27629,
+          "keys": [
+            "node:27629/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 27806,
+          "keys": [
+            "node:27806/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 27807,
+          "keys": [
+            "node:27807/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 27808,
+          "keys": [
+            "node:27808/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 27816,
+          "keys": [
+            "node:27816/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 27817,
+          "keys": [
+            "node:27817/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 27994,
+          "keys": [
+            "node:27994/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 27995,
+          "keys": [
+            "node:27995/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 27996,
+          "keys": [
+            "node:27996/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 28004,
+          "keys": [
+            "node:28004/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 28005,
+          "keys": [
+            "node:28005/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 29776,
+          "keys": [
+            "node:29776/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 29780,
+          "keys": [
+            "node:29780/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        }
+      ],
+      "resolution": {
+        "instances": 159,
+        "physicalNodes": 20108
+      },
+      "diagnostics": {
+        "renders": 5,
+        "drawCalls": 134,
+        "triangles": 3700249,
+        "geometries": 45,
+        "textures": 5,
+        "items": 159,
+        "animating": false
+      },
+      "loadedAssets": [
+        "MultiplaExteriorPrepared",
+        "MultiplaInteriorPrepared"
+      ],
+      "mappingRepairs": [
+        8,
+        12932
+      ],
+      "navigation": {
+        "view3d": true,
+        "viewTree3d": true,
+        "reloadedBound": true,
+        "switchedUsingRouter": false
+      }
+    },
+    {
+      "name": "valhalla",
+      "bom": 2,
+      "at": "2026-11-18T09:40:23.910Z",
+      "total": 14903,
+      "manifestSha256": "b437a4c180b632df5537a295d30bd274b342b29366e4e22bd7ef8c73239e6c96",
+      "counts": {
+        "individual": 69,
+        "assembly_only": 7216,
+        "none": 7618
+      },
+      "physicalCounts": {
+        "individual": 47,
+        "assembly_only": 4995,
+        "none": 4960
+      },
+      "newLocators": 7190,
+      "geometry": [
+        {
+          "id": 29978,
+          "keys": [
+            "node:29978/instance:exterior"
+          ],
+          "meshCount": 31,
+          "realGeometry": true,
+          "normal": true,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 29980,
+          "keys": [
+            "node:29980/instance:illustration"
+          ],
+          "meshCount": 2,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 29981,
+          "keys": [
+            "node:29981/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 30226,
+          "keys": [
+            "node:30226/instance:illustration"
+          ],
+          "meshCount": 2,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 30422,
+          "keys": [
+            "node:30422/instance:illustration"
+          ],
+          "meshCount": 2,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 31005,
+          "keys": [
+            "node:31005/instance:exterior"
+          ],
+          "meshCount": 17,
+          "realGeometry": true,
+          "normal": true,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 31251,
+          "keys": [
+            "node:31251/instance:exterior"
+          ],
+          "meshCount": 17,
+          "realGeometry": true,
+          "normal": true,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 31550,
+          "keys": [
+            "node:31550/instance:exterior"
+          ],
+          "meshCount": 6,
+          "realGeometry": true,
+          "normal": true,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 32139,
+          "keys": [
+            "node:32139/instance:exterior"
+          ],
+          "meshCount": 6,
+          "realGeometry": true,
+          "normal": true,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 32413,
+          "keys": [
+            "node:32413/instance:illustration"
+          ],
+          "meshCount": 37,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 32415,
+          "keys": [
+            "node:32415/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 32416,
+          "keys": [
+            "node:32416/instance:illustration"
+          ],
+          "meshCount": 6,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 32474,
+          "keys": [
+            "node:32474/instance:illustration"
+          ],
+          "meshCount": 2,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 32767,
+          "keys": [
+            "node:32767/instance:illustration"
+          ],
+          "meshCount": 4,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 32948,
+          "keys": [
+            "node:32948/instance:illustration"
+          ],
+          "meshCount": 4,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 33131,
+          "keys": [
+            "node:33131/instance:illustration"
+          ],
+          "meshCount": 10,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 33132,
+          "keys": [
+            "node:33132/instance:illustration"
+          ],
+          "meshCount": 5,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 33133,
+          "keys": [
+            "node:33133/instance:illustration"
+          ],
+          "meshCount": 10,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 33202,
+          "keys": [
+            "node:33202/instance:illustration"
+          ],
+          "meshCount": 10,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 33203,
+          "keys": [
+            "node:33203/instance:illustration"
+          ],
+          "meshCount": 5,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 33204,
+          "keys": [
+            "node:33204/instance:illustration"
+          ],
+          "meshCount": 10,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 33273,
+          "keys": [
+            "node:33273/instance:illustration"
+          ],
+          "meshCount": 3,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 34537,
+          "keys": [
+            "node:34537/instance:illustration"
+          ],
+          "meshCount": 21,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 34539,
+          "keys": [
+            "node:34539/instance:illustration"
+          ],
+          "meshCount": 15,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 34607,
+          "keys": [
+            "node:34607/instance:illustration"
+          ],
+          "meshCount": 15,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 34675,
+          "keys": [
+            "node:34675/instance:illustration"
+          ],
+          "meshCount": 13,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 34757,
+          "keys": [
+            "node:34757/instance:illustration"
+          ],
+          "meshCount": 21,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 34758,
+          "keys": [
+            "node:34758/instance:illustration"
+          ],
+          "meshCount": 6,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 34807,
+          "keys": [
+            "node:34807/instance:illustration"
+          ],
+          "meshCount": 9,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 34808,
+          "keys": [
+            "node:34808/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 34949,
+          "keys": [
+            "node:34949/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 34950,
+          "keys": [
+            "node:34950/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 35054,
+          "keys": [
+            "node:35054/instance:illustration"
+          ],
+          "meshCount": 2,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 35055,
+          "keys": [
+            "node:35055/instance:illustration"
+          ],
+          "meshCount": 12,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 35056,
+          "keys": [
+            "node:35056/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 35057,
+          "keys": [
+            "node:35057/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 35207,
+          "keys": [
+            "node:35207/instance:illustration"
+          ],
+          "meshCount": 68,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 35390,
+          "keys": [
+            "node:35390/instance:illustration"
+          ],
+          "meshCount": 2,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 35460,
+          "keys": [
+            "node:35460/instance:illustration"
+          ],
+          "meshCount": 40,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 35461,
+          "keys": [
+            "node:35461/instance:exterior"
+          ],
+          "meshCount": 3,
+          "realGeometry": true,
+          "normal": true,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 35463,
+          "keys": [
+            "node:35463/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 35464,
+          "keys": [
+            "node:35464/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 35465,
+          "keys": [
+            "node:35465/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 35467,
+          "keys": [
+            "node:35467/instance:illustration"
+          ],
+          "meshCount": 7,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 35588,
+          "keys": [
+            "node:35588/instance:illustration"
+          ],
+          "meshCount": 19,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 35598,
+          "keys": [
+            "node:35598/instance:exterior"
+          ],
+          "meshCount": 3,
+          "realGeometry": true,
+          "normal": true,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 35600,
+          "keys": [
+            "node:35600/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 35601,
+          "keys": [
+            "node:35601/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 35602,
+          "keys": [
+            "node:35602/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 35604,
+          "keys": [
+            "node:35604/instance:illustration"
+          ],
+          "meshCount": 7,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 35725,
+          "keys": [
+            "node:35725/instance:illustration"
+          ],
+          "meshCount": 19,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 35735,
+          "keys": [
+            "node:35735/instance:exterior"
+          ],
+          "meshCount": 3,
+          "realGeometry": true,
+          "normal": true,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 35737,
+          "keys": [
+            "node:35737/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 35738,
+          "keys": [
+            "node:35738/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 35739,
+          "keys": [
+            "node:35739/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 35741,
+          "keys": [
+            "node:35741/instance:illustration"
+          ],
+          "meshCount": 7,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 35862,
+          "keys": [
+            "node:35862/instance:illustration"
+          ],
+          "meshCount": 19,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 35872,
+          "keys": [
+            "node:35872/instance:exterior"
+          ],
+          "meshCount": 3,
+          "realGeometry": true,
+          "normal": true,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 35874,
+          "keys": [
+            "node:35874/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 35875,
+          "keys": [
+            "node:35875/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 35876,
+          "keys": [
+            "node:35876/instance:illustration"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 35878,
+          "keys": [
+            "node:35878/instance:illustration"
+          ],
+          "meshCount": 7,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 35999,
+          "keys": [
+            "node:35999/instance:illustration"
+          ],
+          "meshCount": 19,
+          "realGeometry": true,
+          "normal": false,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 36135,
+          "keys": [
+            "node:36135/instance:exterior"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": true,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 36140,
+          "keys": [
+            "node:36140/instance:exterior"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": true,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 36145,
+          "keys": [
+            "node:36145/instance:exterior"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": true,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 36150,
+          "keys": [
+            "node:36150/instance:exterior"
+          ],
+          "meshCount": 1,
+          "realGeometry": true,
+          "normal": true,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 44231,
+          "keys": [
+            "node:44231/instance:exterior"
+          ],
+          "meshCount": 7,
+          "realGeometry": true,
+          "normal": true,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        },
+        {
+          "id": 44334,
+          "keys": [
+            "node:44334/instance:exterior"
+          ],
+          "meshCount": 7,
+          "realGeometry": true,
+          "normal": true,
+          "selected": true,
+          "exploded": true,
+          "pickable": true
+        }
+      ],
+      "resolution": {
+        "instances": 69,
+        "physicalNodes": 10002
+      },
+      "diagnostics": {
+        "renders": 4,
+        "drawCalls": 313,
+        "triangles": 1105309,
+        "geometries": 108,
+        "textures": 42,
+        "items": 69,
+        "animating": false
+      },
+      "loadedAssets": [
+        "ValhallaExteriorPrepared",
+        "ValhallaInteriorPrepared"
+      ],
+      "mappingRepairs": [],
+      "navigation": {
+        "view3d": true,
+        "viewTree3d": true,
+        "reloadedBound": true,
+        "switchedUsingRouter": true
+      }
+    }
+  ]
+}

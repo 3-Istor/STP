@@ -1,0 +1,29 @@
+
+> web@0.0.0 test:e2e
+> playwright test --project=chromium-mobile e2e/vehicle3d-bound.spec.ts e2e/bom-navigation.spec.ts
+
+[WebServer] (node:2255702) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 14 tests using 2 workers
+
+(node:2255737) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:2255736) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✓   2 [chromium-mobile] › e2e/bom-navigation.spec.ts:71:1 › arbre trié, en-têtes de colonnes, premiers niveaux dépliés et recherche (827ms)
+  ✓   1 [chromium-mobile] › e2e/bom-navigation.spec.ts:96:1 › recherche après défilement : le sous-ensemble trouvé revient en tête de la fenêtre virtuelle (1.3s)
+  ✓   3 [chromium-mobile] › e2e/bom-navigation.spec.ts:108:1 › lien profond : le nœud de l’URL est déplié, sélectionné et suit d’une étape à l’autre (638ms)
+  ✓   4 [chromium-mobile] › e2e/bom-navigation.spec.ts:123:1 › devise de référence choisie dans la liste des devises cotées (752ms)
+  ✓   5 [chromium-mobile] › e2e/bom-navigation.spec.ts:136:1 › une ligne de BOM montre son aperçu, « Ouvrir » mène à l’étape Structurer (629ms)
+  ✓   7 [chromium-mobile] › e2e/bom-navigation.spec.ts:185:1 › aucune devise saisie au clavier : toujours une liste (622ms)
+  ✓   6 [chromium-mobile] › e2e/bom-navigation.spec.ts:151:1 › ajout d’une pièce dans une fenêtre : recherche, catégorie, offre et quantité (1.0s)
+  ✓   8 [chromium-mobile] › e2e/bom-navigation.spec.ts:193:1 › suppression et renommage d’une BOM dans les fenêtres de l’app, jamais celles du navigateur (772ms)
+  ✓   9 [chromium-mobile] › e2e/bom-navigation.spec.ts:219:1 › suppression d’un nœud depuis l’arbre, avec confirmation de l’app (678ms)
+  ✓  11 [chromium-mobile] › e2e/vehicle3d-bound.spec.ts:151:1 › import : portée refusée, empreinte incorrecte explicite, aucune substitution générique (9.4s)
+  ✓  10 [chromium-mobile] › e2e/vehicle3d-bound.spec.ts:49:1 › manifestes : occurrences, picking, quantités, remplacement physique et offre seule (17.0s)
+  ✓  12 [chromium-mobile] › e2e/vehicle3d-bound.spec.ts:172:1 › BOM complète : diagnostics différés et limités à 100 lignes à la demande (7.5s)
+  ✓  14 [chromium-mobile] › e2e/vehicle3d-bound.spec.ts:224:1 › pièce absente : localisation explicite du groupe, identité BOM conservée (10.1s)
+  ✓  13 [chromium-mobile] › e2e/vehicle3d-bound.spec.ts:192:1 › extérieur prioritaire : intérieur révélé et cliquable à travers la coque transparente (15.9s)
+
+  14 passed (37.5s)
