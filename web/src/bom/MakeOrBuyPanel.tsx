@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { CurrencySelect } from '../CurrencySelect.tsx'
 import { api, errorMessage, type CostLine, type MakeOrBuyResult } from '../api.ts'
 import { decimalInput, formatMoney, type Money } from '../money.ts'
@@ -39,8 +39,18 @@ export function MakeOrBuyPanel({ bomID, nodeID, currency }: { bomID: number; nod
     setValues((v) => ({ ...v, [k]: { ...v[k], ...part } }))
   }
   const request = useRef(0)
+  const [busy, setBusy] = useState(false)
+  const [elapsed, setElapsed] = useState(0)
+  useEffect(() => {
+    if (!busy) return
+    const t = setInterval(() => setElapsed((n) => n + 1), 1000)
+    return () => clearInterval(t)
+  }, [busy])
   const submit = () => {
+    if (busy) return
     const req = ++request.current
+    setBusy(true)
+    setElapsed(0)
     setError(null)
     setResult(null)
     const norm = (m: Money): Money => ({ amount: decimalInput(m.amount), currency: m.currency })
@@ -57,6 +67,9 @@ export function MakeOrBuyPanel({ bomID, nodeID, currency }: { bomID: number; nod
       })
       .catch((e: unknown) => {
         if (req === request.current) setError(errorMessage(e))
+      })
+      .finally(() => {
+        if (req === request.current) setBusy(false)
       })
   }
   const diff = result?.difference
@@ -80,7 +93,14 @@ export function MakeOrBuyPanel({ bomID, nodeID, currency }: { bomID: number; nod
         <label className="row">
           Origine Tier 1 <input aria-label="Origine Tier 1" size={3} required pattern="[A-Za-z]{2}" value={origin} onChange={(e) => setOrigin(e.target.value)} />
         </label>
-        <button type="submit">Simuler</button>
+        <button type="submit" disabled={busy}>
+          {busy ? 'Calcul en cours…' : 'Simuler'}
+        </button>
+        {busy && (
+          <p className="muted small" role="status">
+            Calcul en cours… {elapsed} s (peut prendre une vingtaine de secondes).
+          </p>
+        )}
       </form>
       {error && <p className="error">{error}</p>}
       {result && (

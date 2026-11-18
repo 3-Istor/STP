@@ -43,12 +43,14 @@ function PublishDraft({ data, reload, onFix, onPublished }: { data: BomData; rel
   const [validatedBy, setValidatedBy] = useState('')
   const [result, setResult] = useState<{ kind: 'ok'; snapshot: Snapshot } | { kind: 'blocked' | 'missing' | 'error'; message: string } | null>(null)
   const [busy, setBusy] = useState(false)
+  const [done, setDone] = useState(false) // formulaire vidé après publication : pas de re-publication sans nouvelle saisie
   const list: PublicationCheck[] = checks.status === 'ready' ? checks.data : []
   const warns = list.filter((c) => c.level === 'warn')
   const blocks = list.filter((c) => c.level === 'block')
   const missing = new Set(result?.kind === 'missing' ? warns.filter((c) => !(justify[c.code] ?? '').trim()).map((c) => c.code) : [])
 
   async function publish() {
+    if (busy || done || blocks.length > 0) return
     setBusy(true)
     setResult(null)
     const justifications: Record<string, string> = {}
@@ -56,6 +58,12 @@ function PublishDraft({ data, reload, onFix, onPublished }: { data: BomData; rel
     try {
       const s = await api.publish(bomID, { note: note.trim(), proposed_by: proposedBy.trim(), validated_by: validatedBy.trim(), justifications })
       setResult({ kind: 'ok', snapshot: s })
+      setNote('')
+      setProposedBy('')
+      setValidatedBy('')
+      setJustify({})
+      setOpen({})
+      setDone(true)
       onPublished(s)
     } catch (e) {
       if (e instanceof ApiError && e.status === 409) {
@@ -125,22 +133,23 @@ function PublishDraft({ data, reload, onFix, onPublished }: { data: BomData; rel
             void publish()
           }}
         >
-          <textarea aria-label="Note de décision" rows={3} placeholder="Ce qui est retenu, ce qui est accepté et pourquoi." value={note} onChange={(e) => setNote(e.target.value)} />
+          <textarea aria-label="Note de décision" rows={3} placeholder="Ce qui est retenu, ce qui est accepté et pourquoi." value={note} onChange={(e) => { setDone(false); setNote(e.target.value) }} />
           <div className="row">
             <label>
-              Proposé par <input aria-label="Proposé par" value={proposedBy} onChange={(e) => setProposedBy(e.target.value)} />
+              Proposé par <input aria-label="Proposé par" value={proposedBy} onChange={(e) => { setDone(false); setProposedBy(e.target.value) }} />
             </label>
             <label>
-              Validé par <input aria-label="Validé par" placeholder="nom du valideur" value={validatedBy} onChange={(e) => setValidatedBy(e.target.value)} />
+              Validé par <input aria-label="Validé par" placeholder="nom du valideur" value={validatedBy} onChange={(e) => { setDone(false); setValidatedBy(e.target.value) }} />
             </label>
             <span className="sp" />
-            <button type="submit" className="btn pri" disabled={busy || data.busy}>
+            <button type="submit" className="btn pri" disabled={busy || data.busy || done || blocks.length > 0}>
               {busy ? 'Publication…' : 'Publier ce brouillon'}
             </button>
           </div>
           <p className="muted small">
             Publier crée un snapshot immuable : structure, quantités, réglages, méthode, profil, prix et taux copiés, avec cette note, les noms et les justifications (texte libre, non vérifié).
-            {blocks.length > 0 && <b className="t-over"> {blocks.length} contrôle(s) bloquant(s) : la publication sera refusée.</b>}
+            {blocks.length > 0 && <b className="t-over"> Publication impossible : {blocks.length} contrôle(s) bloquant(s) ({blocks.map((c) => c.title).join(' ; ')}).</b>}
+            {done && blocks.length === 0 && ' Version publiée : saisir une nouvelle note pour en publier une autre.'}
           </p>
           {result?.kind === 'ok' && (
             <p role="status" className="notice">
