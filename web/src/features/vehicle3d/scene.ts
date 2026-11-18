@@ -15,6 +15,7 @@ export type Item = {
   baseWorld: THREE.Vector3
   depth: number
   explodeVector?: [number, number, number] // déplacement explicite du manifeste en repère véhicule
+  displayRole?: 'exterior' | 'interior'
 }
 
 export type Built = {

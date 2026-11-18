@@ -75,3 +75,11 @@ Occurrences, variantes physiques, instances, absence et filtres de motorisation 
 Voir les preuves et limites dans `3D_PROGRESS.md`. Les modèles fidèles ne sont toujours pas acquis :
 prochaine tranche dépendante = importer les vrais modèles autorisés, documenter unités, repères et
 placements, puis valider assemblage/éclaté et huit angles de chaque voiture sur la BOM complète.
+
+## Priorité soutenance reçue le 18 novembre
+
+Ordre demandé : extérieurs (sauvegardés `a0f1421`), intérieurs, éclatés, parcours BOM, stabilisation.
+Les nouveaux packs remplacent le blocage d'accès aux modèles : sources/attributions réellement
+inspectées dans `docs/3d/SOUTENANCE_ASSETS.md`. Les géométries mécaniques restent illustratives.
+Préserver les extérieurs en vue normale, révéler l'intérieur à la demande, vérifier les vrais IDs de la
+base isolée ; ne pas modifier le backend, les snapshots publiés, les dépendances ou les branches protégées.

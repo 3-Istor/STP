@@ -9,6 +9,7 @@ import type { PropulsionMode, Vehicle3DProps } from './types.ts'
 import { BoundAssetStore, buildBoundScene } from './boundModel.ts'
 import { parseManifest, resolveManifest, type SceneManifest } from './manifest.ts'
 import { staticManifestSource } from './manifestSource.ts'
+import { UnavailableList } from './UnavailableList.tsx'
 import { Viewer, type LoadResult } from './viewer.ts'
 import './vehicle3d.css'
 
@@ -222,7 +223,7 @@ export default function Vehicle3DView({ bomId, nodes, selectedNodeId, onSelectNo
           </select></label>
           {info ? <>
             <p>Révision : {info.revision}. Correspondances contrôlées sur l’arbre courant.</p>
-            <details><summary>Occurrences indisponibles ({info.unavailable.size})</summary><ul>{[...info.unavailable].map(([id, reason]) => <li key={id}><button type="button" onClick={() => onSelectNode(id)}>#{id} {nodes.find(n => n.id === id)?.name}</button> : {({ no_binding: 'liaison absente', part_changed: 'variante physique sans modèle', parent_changed: 'placement du nouveau parent absent', invalid_quantity: 'quantité non représentable', positions_missing: 'positions d’instances insuffisantes' } as Record<string, string>)[reason] ?? reason}</li>)}</ul></details>
+            <UnavailableList unavailable={info.unavailable} nodes={nodes} onSelect={onSelectNode} />
             <details><summary>Provenance et licences</summary><ul>{info.assets.map(a => <li key={a.key}><a href={a.source_url} target="_blank" rel="noreferrer">{a.key}</a> — {a.author}, <a href={a.license_url} target="_blank" rel="noreferrer">{a.license}</a> ({a.geometry_status}){a.geometry_evidence_url ? <> · <a href={a.geometry_evidence_url} target="_blank" rel="noreferrer">preuve déclarée</a></> : null}</li>)}</ul></details>
           </> : null}
         </details> : null}

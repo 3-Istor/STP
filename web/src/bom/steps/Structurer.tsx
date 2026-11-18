@@ -123,7 +123,7 @@ function Vehicle3DPane({ data, selectedID, onSelect }: { data: BomData; selected
   const [colorBy, setColorBy] = useState<ColorBy>('material')
   const [explode, setExplode] = useState(0)
   const budgets = data.budgets.unavailable === null ? data.budgets.byNode : null
-  const next = useMemo(() => vehicle3dNodes(data.nodes, budgets), [data.nodes, budgets])
+  const next = useMemo(() => vehicle3dNodes(data.nodes, budgets, data.catalog.byPart), [data.nodes, budgets, data.catalog.byPart])
   const key = useMemo(() => mode === 'bound' ? boundVehicle3dKey(next) : vehicle3dKey(next), [next, mode])
   // Même scène tant que la structure et les statuts ne changent pas (les totaux, eux, changent à chaque relecture).
   const [stable, setStable] = useState<{ key: string; nodes: Vehicle3DNode[] }>({ key, nodes: next })

@@ -178,14 +178,15 @@ export async function buildBoundScene(resolution: ManifestResolution, nodes: Veh
         }
         const offset = new THREE.Vector3(...p.explode_vector).applyEuler(new THREE.Euler(...p.rotation)).add(new THREE.Vector3(...instance.assembly_explode))
         const item: Item = { obj, part: obj.name, axial: 1, node: group, meshes: [], lines: [],
-          baseLocal: new THREE.Vector3(), baseWorld: new THREE.Vector3(), depth: 1, explodeVector: offset.toArray() }
+          baseLocal: new THREE.Vector3(), baseWorld: new THREE.Vector3(), depth: 1, explodeVector: offset.toArray(), displayRole: instance.asset.display_role }
         clone.traverse(o => {
           const mesh = o as THREE.Mesh
           if (!mesh.isMesh) return
           if ((mesh as THREE.SkinnedMesh).isSkinnedMesh) skeletons.add((mesh as THREE.SkinnedMesh).skeleton)
           const copies = (Array.isArray(mesh.material) ? mesh.material : [mesh.material]).map(m => { const copy = m.clone(); materials.add(copy); return copy })
           mesh.material = Array.isArray(mesh.material) ? copies : copies[0]
-          mesh.castShadow = true; mesh.receiveShadow = true
+          mesh.castShadow = instance.asset.geometry_status !== 'schematic'
+          mesh.receiveShadow = true
           rememberMaterial(mesh, true) // la lecture budget/système concerne chaque composant ; le mode Matériaux restaure la source
           item.meshes.push(mesh)
         })

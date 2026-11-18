@@ -59,3 +59,12 @@ test('rendu lié : quantités transmises, scène renouvelée pour instances mais
   }
   assert.equal(vehicle3dNodes(nodes, null)[3].quantity, '1')
 })
+
+test('libellé catalogue lisible sans changer l’identité de l’occurrence', () => {
+  const parts = new Map([[40, { name: 'Bloc moteur fourni' }]])
+  const result = vehicle3dNodes(nodes, null, parts)
+  assert.equal(result[3].name, 'Bloc moteur fourni')
+  assert.equal(result[3].id, nodes[3].id)
+  assert.equal(result[3].part_id, 40)
+  assert.equal(result[2].name, nodes[2].name)
+})

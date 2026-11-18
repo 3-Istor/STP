@@ -160,3 +160,23 @@ test('import : portée refusée, empreinte incorrecte explicite, aucune substitu
   await expect(page.getByText('Empreinte incorrecte', { exact: false })).toBeVisible()
   await expect(page.locator('.v3d-root')).toHaveAttribute('data-mode', 'bound')
 })
+
+test('BOM complète : diagnostics différés et limités à 100 lignes à la demande', async ({ page }) => {
+  const nodes = [{ id: 1, parent_id: null, part_id: null, name: 'BOM volumineuse', quantity: '1' },
+    ...Array.from({ length: 20_000 }, (_, i) => ({ id: i + 2, parent_id: 1, part_id: 40, name: 'Occurrence ' + (i + 2), quantity: '1' }))]
+  await page.route('**/api/v1/boms', route => route.fulfill({ json: [{ id: 77, name: 'BOM volumineuse' }] }))
+  await page.route('**/api/v1/boms/77/tree', route => route.fulfill({ json: { nodes } }))
+  await page.route('**/models/manifests/draft-77.json', route => route.fulfill({ json: {
+    schema_version: 1, revision: 'large-test', scope: { kind: 'draft', id: 77 }, vehicle_label: 'Fixture volumineuse', assets: [], bindings: [], assemblies: [],
+  } }))
+  await page.goto('/vehicle3d-demo.html?bom=77&mode=bound')
+  await ready(page)
+  const settings = page.locator('.v3d-settings')
+  await expect(settings.locator('li')).toHaveCount(0)
+  await page.getByText('Composants et sources', { exact: true }).click()
+  await expect(settings.locator('li')).toHaveCount(0)
+  await page.getByText('Occurrences indisponibles (20000)', { exact: true }).click()
+  await expect(settings.locator('li')).toHaveCount(100)
+  await page.getByRole('button', { name: 'Afficher 100 suivantes', exact: true }).click()
+  await expect(settings.locator('li')).toHaveCount(200)
+})

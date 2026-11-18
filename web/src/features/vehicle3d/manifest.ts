@@ -10,6 +10,7 @@ export type AssetDefinition = {
   key: string; path: string; sha256: string; unit_scale: number
   source_url: string; license: string; license_url: string; author: string
   geometry_status: GeometryStatus; geometry_evidence_url?: string
+  display_role?: 'exterior' | 'interior'
 }
 export type InstancePlacement = {
   key: string; position: V3; rotation: V3; scale: V3; explode_vector: V3
@@ -103,6 +104,7 @@ export function parseManifest(input: unknown): SceneManifest {
       source_url: url(a.source_url, 'asset.source_url'), license: text(a.license, 'asset.license'),
       license_url: url(a.license_url, 'asset.license_url'), author: text(a.author, 'asset.author'),
       geometry_status: status, geometry_evidence_url: proof,
+      display_role: a.display_role === undefined ? undefined : oneOf(a.display_role, ['exterior', 'interior'] as const, 'asset.display_role'),
     }
   })
   unique(assets, a => a.key, 'clé d’asset dupliquée')

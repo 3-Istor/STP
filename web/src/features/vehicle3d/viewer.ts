@@ -225,6 +225,7 @@ export class Viewer {
   setExplode(k: number) {
     this.explode = Number.isFinite(k) ? Math.min(Math.max(k, 0), 1) : 0
     if (!this.focusKey) this.moveParts()
+    this.applyStyles()
   }
 
   setSelection(keys: string[], frame: boolean) {
@@ -359,15 +360,17 @@ export class Viewer {
 
   private applyStyles() {
     if (!this.built) return
+    const selectedInterior = this.selection.size < this.built.items.length && this.built.items.some(it => it.displayRole === 'interior' && it.obj && this.selection.has(it.obj.key))
+    const revealInterior = this.explode > 0 || this.shellTransparent || this.focusKey !== null || this.propulsionMode !== 'all' || selectedInterior
     for (const it of this.built.items) {
       const system = it.obj?.componentSystem
       const propulsionGhost = (this.propulsionMode === 'thermal' && system === 'electric') || (this.propulsionMode === 'electric' && system === 'thermal')
       const ghost = propulsionGhost || (this.focusKey !== null && !(it.obj && this.focusKeys.has(it.obj.key)))
-      if (this.index?.representation === 'manifest') it.node.visible = this.isolatedSystem === null || it.obj?.systemId === this.isolatedSystem
+      if (this.index?.representation === 'manifest') it.node.visible = (this.isolatedSystem === null || it.obj?.systemId === this.isolatedSystem) && (it.displayRole !== 'interior' || revealInterior)
       const style = { tint: it.obj ? this.colorOf(it.obj) : null, ghost, estimated: !!it.obj?.estimated }
       for (const m of it.meshes) {
         const shell = system === 'body' || (!Array.isArray(m.material) && /^(body|Paint)/.test(m.material.name))
-        styleMesh(m, { ...style, ghost: ghost || (this.shellTransparent && shell) })
+        styleMesh(m, { ...style, ghost: ghost || ((this.shellTransparent || selectedInterior) && shell) })
       }
       for (const l of it.lines) (l.material as THREE.LineBasicMaterial).opacity = ghost ? 0.1 : 0.9
     }

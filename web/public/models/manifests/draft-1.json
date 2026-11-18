@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "revision": "soutenance-exterior-20261118",
+  "revision": "soutenance-assembled-20261118",
   "scope": {
     "kind": "draft",
     "id": 1
@@ -8,15 +8,28 @@
   "vehicle_label": "Fiat Multipla 1998",
   "assets": [
     {
-      "key": "Multipla1998",
-      "path": "/models/Multipla1998.glb",
-      "sha256": "a7166433396db3c54863435a0f24b0b49ead42cc6913cbb5c8bdf6282ffbdda3",
+      "key": "MultiplaExteriorPrepared",
+      "path": "/models/MultiplaExteriorPrepared.glb",
+      "sha256": "f88f75cfa4304cbd9f920cbd5ed6067825edb2eeee2dd268f3a3c4d2f560179f",
       "unit_scale": 0.89,
       "source_url": "https://sketchfab.com/3d-models/fiat-multipla-1998-3d-model-53cb07fa6a264cca811952c7ff3f3b38",
       "license": "CC BY 4.0",
       "license_url": "https://creativecommons.org/licenses/by/4.0/",
       "author": "Betier Models",
-      "geometry_status": "approximation"
+      "geometry_status": "approximation",
+      "display_role": "exterior"
+    },
+    {
+      "key": "MultiplaInteriorPrepared",
+      "path": "/models/MultiplaInteriorPrepared.glb",
+      "sha256": "305639a2cbc182612e41f74257d397e90b2ff7a3a9572a15a8828d1be7b2a6b1",
+      "unit_scale": 1,
+      "source_url": "http://127.0.0.1:41769/models/soutenance-credits.html",
+      "license": "Création originale fournie pour STP — usage local autorisé, licence publique non spécifiée",
+      "license_url": "http://127.0.0.1:41769/models/soutenance-credits.html",
+      "author": "Pack illustratif fourni par l’utilisateur",
+      "geometry_status": "schematic",
+      "display_role": "interior"
     }
   ],
   "bindings": [
@@ -24,8 +37,10 @@
       "node_id": 1,
       "parent_id": null,
       "part_id": null,
-      "asset_key": "Multipla1998",
-      "mesh_path": [],
+      "asset_key": "MultiplaExteriorPrepared",
+      "mesh_path": [
+        "occurrence-1"
+      ],
       "system": "body",
       "position_status": "approximation",
       "instances": [
@@ -44,6 +59,5550 @@
           "scale": [
             1,
             1,
+            1
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 15865,
+      "parent_id": 15863,
+      "part_id": 187,
+      "asset_key": "MultiplaExteriorPrepared",
+      "mesh_path": [
+        "occurrence-15865"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "exterior",
+          "position": [
+            1.3257072252,
+            -0.0068766473,
+            0.009876
+          ],
+          "rotation": [
+            0,
+            -1.5707963267948966,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 15863,
+      "parent_id": 14900,
+      "part_id": null,
+      "asset_key": "MultiplaExteriorPrepared",
+      "mesh_path": [
+        "occurrence-15863"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "exterior",
+          "position": [
+            1.3257072252,
+            -0.0068766473,
+            0.009876
+          ],
+          "rotation": [
+            0,
+            -1.5707963267948966,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 15872,
+      "parent_id": 15870,
+      "part_id": 187,
+      "asset_key": "MultiplaExteriorPrepared",
+      "mesh_path": [
+        "occurrence-15872"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "exterior",
+          "position": [
+            1.3257072252,
+            -0.0068766473,
+            0.009876
+          ],
+          "rotation": [
+            0,
+            -1.5707963267948966,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 15870,
+      "parent_id": 14900,
+      "part_id": null,
+      "asset_key": "MultiplaExteriorPrepared",
+      "mesh_path": [
+        "occurrence-15870"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "exterior",
+          "position": [
+            1.3257072252,
+            -0.0068766473,
+            0.009876
+          ],
+          "rotation": [
+            0,
+            -1.5707963267948966,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 15879,
+      "parent_id": 15877,
+      "part_id": 187,
+      "asset_key": "MultiplaExteriorPrepared",
+      "mesh_path": [
+        "occurrence-15879"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "exterior",
+          "position": [
+            1.3257072252,
+            -0.0068766473,
+            0.009876
+          ],
+          "rotation": [
+            0,
+            -1.5707963267948966,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 15877,
+      "parent_id": 14900,
+      "part_id": null,
+      "asset_key": "MultiplaExteriorPrepared",
+      "mesh_path": [
+        "occurrence-15877"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "exterior",
+          "position": [
+            1.3257072252,
+            -0.0068766473,
+            0.009876
+          ],
+          "rotation": [
+            0,
+            -1.5707963267948966,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 15886,
+      "parent_id": 15884,
+      "part_id": 187,
+      "asset_key": "MultiplaExteriorPrepared",
+      "mesh_path": [
+        "occurrence-15886"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "exterior",
+          "position": [
+            1.3257072252,
+            -0.0068766473,
+            0.009876
+          ],
+          "rotation": [
+            0,
+            -1.5707963267948966,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 15884,
+      "parent_id": 14900,
+      "part_id": null,
+      "asset_key": "MultiplaExteriorPrepared",
+      "mesh_path": [
+        "occurrence-15884"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "exterior",
+          "position": [
+            1.3257072252,
+            -0.0068766473,
+            0.009876
+          ],
+          "rotation": [
+            0,
+            -1.5707963267948966,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 4,
+      "parent_id": 3,
+      "part_id": 46,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-4"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            0.95
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 5,
+      "parent_id": 3,
+      "part_id": 47,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-5"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            0.95
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 2,
+      "parent_id": 1,
+      "part_id": null,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-2"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            0.95
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 15362,
+      "parent_id": 15361,
+      "part_id": 163,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-15362"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            0.95
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 2413,
+      "parent_id": 2411,
+      "part_id": 58,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-2413"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            0.95
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 2412,
+      "parent_id": 2411,
+      "part_id": 50,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-2412"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            0.95
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 2414,
+      "parent_id": 2411,
+      "part_id": 51,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-2414"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            0.95
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 15363,
+      "parent_id": 15361,
+      "part_id": 164,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-15363"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            0.95
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 27050,
+      "parent_id": 27049,
+      "part_id": 241,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-27050"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            1.1
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 27052,
+      "parent_id": 27049,
+      "part_id": 243,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-27052"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            1.1
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 27060,
+      "parent_id": 27059,
+      "part_id": 254,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-27060"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            1.1
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 27061,
+      "parent_id": 27059,
+      "part_id": 256,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-27061"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            1.1
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 27051,
+      "parent_id": 27049,
+      "part_id": 242,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-27051"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            1.1
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 27239,
+      "parent_id": 27238,
+      "part_id": 241,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-27239"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            1.1
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 27241,
+      "parent_id": 27238,
+      "part_id": 243,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-27241"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            1.1
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 27249,
+      "parent_id": 27248,
+      "part_id": 254,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-27249"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            1.1
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 27250,
+      "parent_id": 27248,
+      "part_id": 256,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-27250"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            1.1
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 27240,
+      "parent_id": 27238,
+      "part_id": 242,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-27240"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            1.1
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 27428,
+      "parent_id": 27427,
+      "part_id": 241,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-27428"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            1.1
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 27430,
+      "parent_id": 27427,
+      "part_id": 243,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-27430"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            1.1
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 27438,
+      "parent_id": 27437,
+      "part_id": 254,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-27438"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            1.1
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 27439,
+      "parent_id": 27437,
+      "part_id": 256,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-27439"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            1.1
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 27429,
+      "parent_id": 27427,
+      "part_id": 242,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-27429"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            1.1
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 27618,
+      "parent_id": 27617,
+      "part_id": 241,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-27618"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            1.1
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 27620,
+      "parent_id": 27617,
+      "part_id": 243,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-27620"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            1.1
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 27628,
+      "parent_id": 27627,
+      "part_id": 254,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-27628"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            1.1
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 27629,
+      "parent_id": 27627,
+      "part_id": 256,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-27629"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            1.1
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 27619,
+      "parent_id": 27617,
+      "part_id": 242,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-27619"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            1.1
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 27806,
+      "parent_id": 27805,
+      "part_id": 241,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-27806"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            1.1
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 27808,
+      "parent_id": 27805,
+      "part_id": 243,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-27808"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            1.1
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 27816,
+      "parent_id": 27815,
+      "part_id": 254,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-27816"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            1.1
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 27817,
+      "parent_id": 27815,
+      "part_id": 256,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-27817"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            1.1
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 27807,
+      "parent_id": 27805,
+      "part_id": 242,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-27807"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            1.1
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 27994,
+      "parent_id": 27993,
+      "part_id": 241,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-27994"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            1.1
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 27996,
+      "parent_id": 27993,
+      "part_id": 243,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-27996"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            1.1
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 28004,
+      "parent_id": 28003,
+      "part_id": 254,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-28004"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            1.1
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 28005,
+      "parent_id": 28003,
+      "part_id": 256,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-28005"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            1.1
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 27995,
+      "parent_id": 27993,
+      "part_id": 242,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-27995"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            1.1
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 26317,
+      "parent_id": 26315,
+      "part_id": 208,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-26317"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            1.1
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 29780,
+      "parent_id": 29775,
+      "part_id": 262,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-29780"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            1.1
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 26307,
+      "parent_id": 26306,
+      "part_id": 209,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-26307"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            1.1
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 26320,
+      "parent_id": 26315,
+      "part_id": 266,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-26320"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            1.1
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 15560,
+      "parent_id": 15558,
+      "part_id": 168,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-15560"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            1.1
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 15565,
+      "parent_id": 15558,
+      "part_id": 172,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-15565"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            1.1
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 15966,
+      "parent_id": 15894,
+      "part_id": 207,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-15966"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            1.1
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 12505,
+      "parent_id": 12504,
+      "part_id": 91,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-12505"
+      ],
+      "system": "thermal",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            0.74
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 12929,
+      "parent_id": 12928,
+      "part_id": 92,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-12929"
+      ],
+      "system": "thermal",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            0.74
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 12931,
+      "parent_id": 12928,
+      "part_id": 111,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-12931"
+      ],
+      "system": "thermal",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            0.74
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 12541,
+      "parent_id": 12504,
+      "part_id": 109,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-12541"
+      ],
+      "system": "thermal",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            0.74
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 12506,
+      "parent_id": 12504,
+      "part_id": 93,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-12506"
+      ],
+      "system": "thermal",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            0.74
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 12509,
+      "parent_id": 12508,
+      "part_id": 95,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-12509"
+      ],
+      "system": "thermal",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            0.74
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 12511,
+      "parent_id": 12508,
+      "part_id": 94,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-12511"
+      ],
+      "system": "thermal",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            0.74
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 12510,
+      "parent_id": 12508,
+      "part_id": 96,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-12510"
+      ],
+      "system": "thermal",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            0.74
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 12515,
+      "parent_id": 12508,
+      "part_id": 124,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-12515"
+      ],
+      "system": "thermal",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            0.74
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 12514,
+      "parent_id": 12508,
+      "part_id": 123,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-12514"
+      ],
+      "system": "thermal",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            0.74
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 12513,
+      "parent_id": 12508,
+      "part_id": 120,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-12513"
+      ],
+      "system": "thermal",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            0.74
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 12503,
+      "parent_id": 12502,
+      "part_id": null,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-12503"
+      ],
+      "system": "thermal",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            0.74
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 12517,
+      "parent_id": 12516,
+      "part_id": 95,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-12517"
+      ],
+      "system": "thermal",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            0.74
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 12519,
+      "parent_id": 12516,
+      "part_id": 94,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-12519"
+      ],
+      "system": "thermal",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            0.74
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 12518,
+      "parent_id": 12516,
+      "part_id": 96,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-12518"
+      ],
+      "system": "thermal",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            0.74
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 12523,
+      "parent_id": 12516,
+      "part_id": 124,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-12523"
+      ],
+      "system": "thermal",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            0.74
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 12522,
+      "parent_id": 12516,
+      "part_id": 123,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-12522"
+      ],
+      "system": "thermal",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            0.74
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 12521,
+      "parent_id": 12516,
+      "part_id": 120,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-12521"
+      ],
+      "system": "thermal",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            0.74
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 12525,
+      "parent_id": 12524,
+      "part_id": 95,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-12525"
+      ],
+      "system": "thermal",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            0.74
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 12527,
+      "parent_id": 12524,
+      "part_id": 94,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-12527"
+      ],
+      "system": "thermal",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            0.74
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 12526,
+      "parent_id": 12524,
+      "part_id": 96,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-12526"
+      ],
+      "system": "thermal",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            0.74
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 12531,
+      "parent_id": 12524,
+      "part_id": 124,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-12531"
+      ],
+      "system": "thermal",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            0.74
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 12530,
+      "parent_id": 12524,
+      "part_id": 123,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-12530"
+      ],
+      "system": "thermal",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            0.74
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 12529,
+      "parent_id": 12524,
+      "part_id": 120,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-12529"
+      ],
+      "system": "thermal",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            0.74
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 12533,
+      "parent_id": 12532,
+      "part_id": 95,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-12533"
+      ],
+      "system": "thermal",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            0.74
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 12535,
+      "parent_id": 12532,
+      "part_id": 94,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-12535"
+      ],
+      "system": "thermal",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            0.74
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 12534,
+      "parent_id": 12532,
+      "part_id": 96,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-12534"
+      ],
+      "system": "thermal",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            0.74
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 12539,
+      "parent_id": 12532,
+      "part_id": 124,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-12539"
+      ],
+      "system": "thermal",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            0.74
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 12538,
+      "parent_id": 12532,
+      "part_id": 123,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-12538"
+      ],
+      "system": "thermal",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            0.74
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 12537,
+      "parent_id": 12532,
+      "part_id": 120,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-12537"
+      ],
+      "system": "thermal",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            0.74
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 13191,
+      "parent_id": 13190,
+      "part_id": 105,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-13191"
+      ],
+      "system": "thermal",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            0.74
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 13193,
+      "parent_id": 13190,
+      "part_id": 107,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-13193"
+      ],
+      "system": "thermal",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            0.74
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 12542,
+      "parent_id": 12504,
+      "part_id": 108,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-12542"
+      ],
+      "system": "thermal",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            0.74
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 13330,
+      "parent_id": 13329,
+      "part_id": 197,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-13330"
+      ],
+      "system": "thermal",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            0.74
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 29776,
+      "parent_id": 29775,
+      "part_id": 258,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-29776"
+      ],
+      "system": "thermal",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            0.74
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 13195,
+      "parent_id": 13194,
+      "part_id": 112,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-13195"
+      ],
+      "system": "thermal",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            0.74
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 14597,
+      "parent_id": 14596,
+      "part_id": 113,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-14597"
+      ],
+      "system": "thermal",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            0.74
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 13197,
+      "parent_id": 13194,
+      "part_id": 121,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-13197"
+      ],
+      "system": "thermal",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            0.74
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 13196,
+      "parent_id": 13194,
+      "part_id": 122,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-13196"
+      ],
+      "system": "thermal",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            0.74
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 13198,
+      "parent_id": 13194,
+      "part_id": 116,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-13198"
+      ],
+      "system": "thermal",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            0.74
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 13333,
+      "parent_id": 13329,
+      "part_id": 115,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-13333"
+      ],
+      "system": "thermal",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            0.74
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 14174,
+      "parent_id": 14173,
+      "part_id": 141,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-14174"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            0.9
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 14172,
+      "parent_id": 12502,
+      "part_id": null,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-14172"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            0.9
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 14175,
+      "parent_id": 14173,
+      "part_id": 142,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-14175"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            0.9
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 14176,
+      "parent_id": 14173,
+      "part_id": 143,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-14176"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            0.9
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 14488,
+      "parent_id": 14172,
+      "part_id": 146,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-14488"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            0.9
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 14489,
+      "parent_id": 14172,
+      "part_id": 150,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-14489"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            0.9
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 12540,
+      "parent_id": 12504,
+      "part_id": 114,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-12540"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            0.9
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 15204,
+      "parent_id": 15203,
+      "part_id": 151,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-15204"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            0.9
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 15051,
+      "parent_id": 15050,
+      "part_id": 151,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-15051"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            0.9
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 14487,
+      "parent_id": 14485,
+      "part_id": 149,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-14487"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            0.9
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 15010,
+      "parent_id": 15008,
+      "part_id": 165,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-15010"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            1
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 14900,
+      "parent_id": 1,
+      "part_id": null,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-14900"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            1
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 14903,
+      "parent_id": 14902,
+      "part_id": 153,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-14903"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            1
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 14904,
+      "parent_id": 14902,
+      "part_id": 155,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-14904"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            1
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 14956,
+      "parent_id": 14955,
+      "part_id": 158,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-14956"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            1
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 15009,
+      "parent_id": 15008,
+      "part_id": 166,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-15009"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            1
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 15163,
+      "parent_id": 15161,
+      "part_id": 165,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-15163"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            1
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 15056,
+      "parent_id": 15055,
+      "part_id": 153,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-15056"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            1
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 15057,
+      "parent_id": 15055,
+      "part_id": 155,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-15057"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            1
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 15109,
+      "parent_id": 15108,
+      "part_id": 158,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-15109"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            1
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 15162,
+      "parent_id": 15161,
+      "part_id": 166,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-15162"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            1
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 15245,
+      "parent_id": 15244,
+      "part_id": 165,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-15245"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            1
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 15209,
+      "parent_id": 15208,
+      "part_id": 154,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-15209"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            1
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 15210,
+      "parent_id": 15208,
+      "part_id": 156,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-15210"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            1
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 15322,
+      "parent_id": 15321,
+      "part_id": 165,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-15322"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            1
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 15286,
+      "parent_id": 15285,
+      "part_id": 154,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-15286"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            1
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 15287,
+      "parent_id": 15285,
+      "part_id": 156,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-15287"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            1
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 15559,
+      "parent_id": 15558,
+      "part_id": 167,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-15559"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            1
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 15364,
+      "parent_id": 15361,
+      "part_id": 161,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-15364"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            1
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 15013,
+      "parent_id": 15012,
+      "part_id": 174,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-15013"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            1
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 15014,
+      "parent_id": 15012,
+      "part_id": 175,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-15014"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            1
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 15015,
+      "parent_id": 15012,
+      "part_id": 176,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-15015"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            1
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 15011,
+      "parent_id": 15008,
+      "part_id": 181,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-15011"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            1
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 15166,
+      "parent_id": 15165,
+      "part_id": 174,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-15166"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            1
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 15167,
+      "parent_id": 15165,
+      "part_id": 175,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-15167"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            1
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 15168,
+      "parent_id": 15165,
+      "part_id": 176,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-15168"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            1
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 15164,
+      "parent_id": 15161,
+      "part_id": 181,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-15164"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            1
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 15248,
+      "parent_id": 15247,
+      "part_id": 177,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-15248"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            1
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 15249,
+      "parent_id": 15247,
+      "part_id": 178,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-15249"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            1
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 15246,
+      "parent_id": 15244,
+      "part_id": 181,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-15246"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            1
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 15325,
+      "parent_id": 15324,
+      "part_id": 177,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-15325"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            1
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 15326,
+      "parent_id": 15324,
+      "part_id": 178,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-15326"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            1
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 15323,
+      "parent_id": 15321,
+      "part_id": 181,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-15323"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            1
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 15697,
+      "parent_id": 15696,
+      "part_id": 179,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-15697"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            1
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 15698,
+      "parent_id": 15696,
+      "part_id": 180,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-15698"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            1
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 14492,
+      "parent_id": 14491,
+      "part_id": 130,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-14492"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            0.78
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 14491,
+      "parent_id": 12502,
+      "part_id": null,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-14491"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            0.78
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 14493,
+      "parent_id": 14491,
+      "part_id": 131,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-14493"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            0.78
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 14494,
+      "parent_id": 14491,
+      "part_id": 132,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-14494"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            0.78
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 15896,
+      "parent_id": 15895,
+      "part_id": 195,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-15896"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            0.78
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 14170,
+      "parent_id": 12503,
+      "part_id": 206,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-14170"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            0.78
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 15898,
+      "parent_id": 15895,
+      "part_id": 199,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-15898"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            0.78
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 13331,
+      "parent_id": 13329,
+      "part_id": 198,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-13331"
+      ],
+      "system": "shared",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            0.78
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 14765,
+      "parent_id": 14764,
+      "part_id": 125,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-14765"
+      ],
+      "system": "thermal",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            1
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 14766,
+      "parent_id": 14764,
+      "part_id": 126,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-14766"
+      ],
+      "system": "thermal",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            1
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 14764,
+      "parent_id": 12502,
+      "part_id": null,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-14764"
+      ],
+      "system": "thermal",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            1
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 14599,
+      "parent_id": 14596,
+      "part_id": 137,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-14599"
+      ],
+      "system": "thermal",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            1
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 14598,
+      "parent_id": 14596,
+      "part_id": 135,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-14598"
+      ],
+      "system": "thermal",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            1
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 14600,
+      "parent_id": 14596,
+      "part_id": 138,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-14600"
+      ],
+      "system": "thermal",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
+            1
+          ],
+          "explode_vector": [
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    {
+      "node_id": 14169,
+      "parent_id": 14166,
+      "part_id": 136,
+      "asset_key": "MultiplaInteriorPrepared",
+      "mesh_path": [
+        "occurrence-14169"
+      ],
+      "system": "thermal",
+      "position_status": "approximation",
+      "instances": [
+        {
+          "key": "illustration",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -1.5707963267948966,
+            0,
+            3.141592653589793
+          ],
+          "scale": [
+            1,
+            0.92,
             1
           ],
           "explode_vector": [

@@ -19,6 +19,11 @@ du véhicule (Y vertical). Aucun recentrage ou choix d'axe ne doit être déduit
 `mesh_path` est une liste de noms d'enfants glTF successifs et non ambigus ; `[]` désigne tout l'asset.
 Ces noms décrivent le fichier 3D, jamais une identité métier de la BOM.
 
+Un asset peut préciser `display_role: "exterior"|"interior"`. Sans ce champ, le comportement
+historique est conservé. Un intérieur illustratif est masqué en vue normale pour préserver le
+meilleur extérieur fourni ; il apparaît avec l'éclatement, la transparence, le focus, un filtre
+de motorisation ou la sélection d'une pièce interne. Ce rôle ne change aucune identité BOM.
+
 `geometry_status` vaut `schematic`, `approximation` ou `verified_exact` ; ce dernier exige
 `geometry_evidence_url`. `position_status` vaut `approximation` ou `verified` ; ce dernier exige
 `position_evidence_url`. Les preuves sont déclarées par l'auteur du manifeste et doivent être

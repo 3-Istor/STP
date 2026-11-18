@@ -371,3 +371,29 @@ validation fonctionnelle et visuelle sur les assets réellement accessibles.
   API 18080, simulateur 18090, Vite 41769. Aucun code backend ni base utilisateur modifié.
 - Prochaine tâche : intégrer une seule copie de chaque intérieur, vérifier les liaisons indicatives
   contre `seed_entities` et l'arbre réel, puis préparer les déplacements éclatés.
+
+## Soutenance — étape 2 : intérieurs intégrés
+
+- Base complète V2 exportée en lecture seule : 29977 nœuds Fiat, 14903 Aston, brouillon B 29981.
+  Correspondances catalogue vérifiées dans `seed_entities`, puis pièces/parents/chemins dans l'API.
+  Le résolveur runtime ne rapproche pas de noms : le résultat est un manifeste numérique explicite.
+- Copie de travail Fiat aplatie sans changer les sommets ; Valhalla figée dans la pose effectivement
+  affichée via GLTFLoader (positions, normales et tangentes skinnées). Original et licence conservés.
+  Matériaux/textures extérieurs conservés. Aucun script de pack exécuté ni dépendance ajoutée.
+- Une seule copie des intérieurs, groupée par occurrence ; pneus/jantes illustratifs retirés là où
+  l'extérieur fourni est meilleur. Six sièges Fiat, moteur/boîte, V8/DCT, trois moteurs électriques,
+  batterie, refroidissement, structure et trains intégrés avec calibration visuelle approximative.
+- PBR des prototypes amélioré à partir de leur palette fournie. Intérieur masqué par défaut en vue
+  normale, révélé sur demande (transparence, sélection interne, motorisation, éclaté). Cela préserve
+  le bel extérieur et évite que les prototypes soient présentés comme une amélioration de l'habitacle.
+- Couverture physique : Fiat 144/20108 occurrences, Aston 47/10002, en plus des groupes illustrés.
+  Les fixations et les références sans liaison vérifiée restent explicitement indisponibles. Les
+  associations ambiguës des ZIP sont reliées au sous-ensemble, pas inventées comme des pièces exactes.
+- Copies dérivées et empreintes : `soutenance-prepared-assets.json`. Associations et preuves d'identité
+  source/runtime : `soutenance-assembly-layout.json`. Un placement demeure approximatif même si l'ID
+  de sélection est vérifié. Les extérieurs originaux restent inchangés et vérifiables par SHA-256.
+- Sur la vraie BOM, la liste de 20000 indisponibles créait un gros DOM et des recherches quadratiques :
+  détails différés, accès par Map et pages de 100. Test navigateur spécifique 20000 occurrences PASS.
+- Tests frontend/build/lint PASS ; trois scénarios liés desktop PASS. Captures transparentes inspectées :
+  organes dans les carrosseries, approximation visible et annoncée ; aucune erreur JavaScript.
+- Prochaine tâche : déplacements mécaniques ordonnés et réversibles, isolation et cadrage de l'éclaté.
