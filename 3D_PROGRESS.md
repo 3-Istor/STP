@@ -711,3 +711,8 @@ validation fonctionnelle et visuelle sur les assets réellement accessibles.
   chacun passé. Aucun seuil n'est augmenté, aucune assertion retirée. Les comptes 71/72 desktop
   et 11/11 mobile ci-dessus décrivent les campagnes exploratoires paramétrées, pas une suite finale
   entièrement verte. Limites détaillées dans `docs/3d/POLISH_UI_SOUTENANCE.md`.
+- Troisième revue statique du diff final `d22d17d..d92bd22` : aucun constat. La moulinette PR
+  après restauration de la fonction de test reste verte ; les deux dépassements de temps graphiques
+  restent explicitement ouverts, sans seuil modifié. Tous les travaux de polish demandés sont
+  appliqués ; la validation Playwright globale conserve ces limites. Aucun changement Go/SQL,
+  asset ou branche protégée, aucune perte de référence BOM, aucun push/merge.

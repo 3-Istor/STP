@@ -31,5 +31,9 @@
     "remaining": "original combined six-mount test exceeds 30000ms"
   },
   "final_e2e_status": "not entirely green; no thresholds increased or assertions removed",
-  "original_test_function_preserved": true
+  "original_test_function_preserved": true,
+  "final_code_head": "d92bd22",
+  "review_rounds": 3,
+  "risk_tool_final": "1 Routine; original test function retained",
+  "final_verify_pr": "passed; graphical timeouts remain documented separately"
 }

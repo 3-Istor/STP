@@ -51,6 +51,9 @@ retiré après le signalement du contrôle de risque ; le diff final ne supprime
 - Revue niveau 1 : aucun constat sur le polish ; nouveau diff de tests/périmètre CSS relu sans
   constat. Le second rejeu indépendant a été interrompu pour éviter deux campagnes GPU simultanées
   et n'est pas compté vert. Le premier relecteur a indépendamment rejoué les quatre tests ciblés.
+- Troisième revue statique du diff final après restauration de la fonction de test : aucun
+  Important/Nit/pré-existant. Calcul de risque final : **1 Routine**, sans exemption ni changement
+  du harnais. Cette revue ne rend pas verts les dépassements graphiques signalés.
 - Parcours réel : les six couples motorisation/résolution, les deux voitures en 3D / Arbre + 3D,
   défilements, hypothèses, contrôle d'import caché, sélection bidirectionnelle et éclaté passent.
   Zéro erreur de page, mutation API ou requête d'ancien modèle. Les empreintes des deux références
