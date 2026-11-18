@@ -162,6 +162,7 @@ function PublishDraft({ data, reload, onFix, onPublished }: { data: BomData; rel
 function SnapshotTrace({ data, onOpenDraft }: { data: BomData; onOpenDraft: (bomID: number) => void }) {
   const s = data.snapshot!
   const [error, setError] = useState<string | null>(null)
+  const [creating, setCreating] = useState(false)
   const checks = data.frozenChecks
   return (
     <>
@@ -185,15 +186,18 @@ function SnapshotTrace({ data, onOpenDraft }: { data: BomData; onOpenDraft: (bom
             <button
               type="button"
               className="btn pri"
+              disabled={creating}
               onClick={() => {
                 setError(null)
+                setCreating(true)
                 api
                   .newDraft(s.id)
                   .then((b) => onOpenDraft(b.id))
                   .catch((e: unknown) => setError(errorMessage(e)))
+                  .finally(() => setCreating(false))
               }}
             >
-              Nouveau brouillon depuis ce snapshot
+              {creating ? 'Création du brouillon…' : 'Nouveau brouillon depuis ce snapshot'}
             </button>
           </div>
           {error && (
