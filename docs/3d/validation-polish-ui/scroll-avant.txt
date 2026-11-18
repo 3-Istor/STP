@@ -1,0 +1,49 @@
+
+> web@0.0.0 test:e2e
+> playwright test --project=chromium-desktop --workers=1 e2e/powertrain.spec.ts -g laptop 1366
+
+[WebServer] (node:2638713) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 1 test using 1 worker
+
+(node:2638800) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  1 [chromium-desktop] › e2e/powertrain.spec.ts:128:3 › laptop 1366×768 : panneaux et listes accessibles jusqu’en bas (11.5s)
+
+
+  1) [chromium-desktop] › e2e/powertrain.spec.ts:128:3 › laptop 1366×768 : panneaux et listes accessibles jusqu’en bas 
+
+    Error: expect(received).toBe(expected) // Object.is equality
+
+    Expected: true
+    Received: false
+
+    Call Log:
+    - Timeout 5000ms exceeded while waiting on the predicate
+
+      144 |         const root = el.closest('.v3d-root')!, r = root.getBoundingClientRect(), p = el.getBoundingClientRect()
+      145 |         return root.scrollTop === 0 && p.top >= r.top && p.bottom <= r.bottom
+    > 146 |       })).toBe(true)
+          |           ^
+      147 |       await expect(page.getByLabel('Manifeste d’assemblage', { exact: true })).not.toBeVisible()
+      148 |       await settings.hover()
+      149 |       await page.mouse.wheel(0, 20000)
+        at /home/joebuntu/Desktop/SIGL/NLPF/STP/web/e2e/powertrain.spec.ts:146:11
+
+    attachment #1: screenshot (image/png) ──────────────────────────────────────────────────────────
+    test-results/powertrain-laptop-1366×768-54f4c-es-accessibles-jusqu’en-bas-chromium-desktop/test-failed-1.png
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+    Error Context: test-results/powertrain-laptop-1366×768-54f4c-es-accessibles-jusqu’en-bas-chromium-desktop/error-context.md
+
+    attachment #3: trace (application/zip) ─────────────────────────────────────────────────────────
+    test-results/powertrain-laptop-1366×768-54f4c-es-accessibles-jusqu’en-bas-chromium-desktop/trace.zip
+    Usage:
+
+        npx playwright show-trace test-results/powertrain-laptop-1366×768-54f4c-es-accessibles-jusqu’en-bas-chromium-desktop/trace.zip
+
+    ────────────────────────────────────────────────────────────────────────────────────────────────
+
+  1 failed
+    [chromium-desktop] › e2e/powertrain.spec.ts:128:3 › laptop 1366×768 : panneaux et listes accessibles jusqu’en bas 

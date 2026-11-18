@@ -1,0 +1,12 @@
+go vet ./...
+go tool golangci-lint run ./...
+0 issues.
+cd web && npm run lint
+
+> web@0.0.0 lint
+> oxlint
+
+src/bom/Ideas.tsx:12:14: warning react(only-export-components): Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components.
+src/bom/Comparison.tsx:13:14: warning react(only-export-components): Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components.
+src/bom/Comparison.tsx:30:17: warning react(only-export-components): Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components.
+src/bom/useLoad.ts:13:5: warning react-hooks(exhaustive-deps): React Hook useEffect has a missing dependency: 'load' help: Either include it or remove the dependency array.

@@ -1,0 +1,7 @@
+{
+  viewer: { top: 293.1875, bottom: 697.015625, height: 403.828125 },
+  settings: { top: 297.9375, bottom: 697.296875, height: 399.359375 },
+  controls: { top: 132.1875, bottom: 697.296875, height: 565.109375 },
+  main: { top: 48, bottom: 740, height: 692 },
+  aside: { top: 48, bottom: 740, height: 692 }
+}

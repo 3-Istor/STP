@@ -113,6 +113,23 @@ installation nécessite une définition contrôlée. Les calculs couvrent toute 
 seulement les 47 occurrences physiques dotées d'une géométrie.
 Périmètre et preuves : [motorisations et comparaison](docs/3d/MOTORISATIONS_SOUTENANCE.md).
 
+## Présentation et navigation sur laptop
+
+La vue électrique présente le résumé neutre **« Simulation électrique : scénario de démonstration
+avec hypothèses techniques. »** Les détails sur la batterie BEV adaptée, les transformations non
+dimensionnées et les coûts additionnels non établis restent accessibles dans **Hypothèses et limites
+techniques**, fermé par défaut. Aucun résultat de calcul ou périmètre technique n'a été modifié.
+
+À 1366 × 768 et 1280 × 720, la zone centrale et la colonne de droite défilent indépendamment.
+**Composants et sources** défile à l'intérieur de la hauteur disponible du visualiseur, y compris
+ses listes, sous-panneaux et licences. **Composants retirés** possède sa liste défilante avec pagination.
+La molette sur la voiture conserve sa fonction de zoom ; utiliser le panneau ou la marge de la
+zone centrale pour faire défiler leurs contenus.
+
+L'import de manifeste et sa révision sont rangés dans **Composants et sources → Avancé**, fermé
+par défaut. Il n'est pas nécessaire de l'ouvrir pour le parcours du jury. Les sources et licences
+restent accessibles, et les crédits des modèles restent affichés dans la scène.
+
 ## Pièce sans modèle individuel
 
 Un bouton **Localiser le sous-ensemble** apparaît seulement si l'ascendance de la BOM permet

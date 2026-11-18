@@ -1,0 +1,36 @@
+
+> web@0.0.0 test:e2e
+> playwright test --config=/tmp/stp-polish-baseline/playwright.config.mjs -g multipla : chargement
+
+[WebServer] (node:2761871) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 1 test using 1 worker
+
+(node:2761956) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ✘  1 ../../../../../../../tmp/stp-polish-baseline/legacy.spec.ts:28:3 › multipla : chargement, éclaté réversible, sélection BOM et rendu au repos (31.4s)
+
+
+  1) ../../../../../../../tmp/stp-polish-baseline/legacy.spec.ts:28:3 › multipla : chargement, éclaté réversible, sélection BOM et rendu au repos 
+
+    Test timeout of 30000ms exceeded.
+
+    Error: locator.check: Test timeout of 30000ms exceeded.
+    Call log:
+      - waiting for getByLabel('Carrosserie transparente')
+
+
+      62 |     await page.getByRole('button', { name: 'Focus sélection', exact: true }).click()
+      63 |     await expect(page.locator('.v3d-root')).toHaveAttribute('data-focus', 'wheel_fl')
+    > 64 |     await page.getByLabel('Carrosserie transparente').check()
+         |                                                       ^
+      65 |     await page.getByRole('button', { name: 'Réinitialiser', exact: true }).click()
+      66 |     await expect(page.locator('.v3d-root')).toHaveAttribute('data-focus', '')
+      67 |     await expect(page.getByLabel('Carrosserie transparente')).not.toBeChecked()
+        at /tmp/stp-polish-baseline/legacy.spec.ts:64:55
+
+    Error Context: ../../../../../../../tmp/stp-polish-baseline/results/legacy-multipla-chargement-e594a-ction-BOM-et-rendu-au-repos/error-context.md
+
+  1 failed
+    ../../../../../../../tmp/stp-polish-baseline/legacy.spec.ts:28:3 › multipla : chargement, éclaté réversible, sélection BOM et rendu au repos 

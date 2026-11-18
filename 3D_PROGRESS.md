@@ -686,3 +686,18 @@ validation fonctionnelle et visuelle sur les assets réellement accessibles.
   par motorisation et attend le montage des contrôles avant de contrôler l'état : les six montages
   et toutes les assertions sont conservés, aucun délai augmenté. Relance avec un navigateur neuf
   par fichier pour isoler les ressources GPU logicielles, puis parcours mobiles concernés.
+- Validation finale du polish : parcours réel complet PASS aux deux tailles laptop avec les
+  nouveaux modèles ; 11 tests mobiles PASS ; campagne desktop par fichier 71 PASS / 1 échec.
+  Le seul échec restant est le délai de 30000 ms du parcours technique Multipla de l'ancien rendu.
+  Même dépassement reproduit avec le test et le CSS de `d22d17d`, lus via Git dans `/tmp`, sans
+  changer le dépôt. Aucun seuil, assertion ou fonctionnalité n'a été retiré pour obtenir du vert.
+  Ticket local UI-LEGACY-001 dans `docs/3d/POLISH_UI_SOUTENANCE.md` ; suite globale non déclarée verte.
+- Deux revues de code niveau 1 sans constat restant (première avec 4 tests ciblés indépendants,
+  seconde statique ; son rejeu interrompu pour éviter la concurrence GPU n'est pas compté vert).
+  Moulinette PR finale verte, 52 tests unitaires frontend et build verts. PostgreSQL/CI distante,
+  Firefox/WebKit et GPU du jury non rejoués/vérifiés dans cette passe.
+- Commits fonctionnels `4315f7a`, tests `dc277ad`, périmètre CSS `c4573f3`. Guide de démonstration
+  actualisé ; captures, sources des mesures, résultats et limite de vérification dans
+  `docs/3d/captures/polish-ui/` et `docs/3d/validation-polish-ui/`.
+  Backend, cotations, références BOM, assets, sauvegarde d'audit et branches protégées conservés.
+  Aucun push, PR, merge, rebase ou reset. Démonstration disponible sur le frontend 41769 / API 18080.
