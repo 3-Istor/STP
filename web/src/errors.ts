@@ -39,6 +39,8 @@ export const errorPhrases: Record<string, string> = {
   bridge_unavailable: 'Le pont de coût est indisponible pour cette BOM.',
   bridge_incomplete: 'Le pont de coût est incomplet : des pièces n’ont pas de coût.',
   invalid_history_data: 'Une donnée de prix enregistrée est invalide : la conversion du budget est impossible pour le moment.',
+  no_budget: 'Ce nœud n’a pas de budget cible : définissez-en un avant de chercher un retour au budget.',
+  plan_too_large: 'Ce sous-ensemble contient trop de pièces pour un plan de retour au budget : choisissez un sous-ensemble plus petit.',
   budgets_changed: 'Les budgets ont changé pendant l’enregistrement : rien n’a été écrit, recommencez.',
   currency_mismatch: 'Deux montants en devises différentes ne peuvent pas être additionnés sans taux.',
   justification_required: 'Une justification est nécessaire pour continuer.',
