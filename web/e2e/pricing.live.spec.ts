@@ -31,7 +31,7 @@ test('tick réel, contexte figé et reconnexion sans navigation', async ({ page,
   // Daily quotes can round to the same cents; the observed quote/date must still advance.
   expect(await price.locator('..').textContent()).not.toBe(oldPrice)
   await expect(page.getByTestId(`variation-${info.second}`)).toHaveText(formatVariation(view.statistics!.variation_percent, view.statistics!.trend))
-  await expect(supplier).toHaveAttribute('aria-current', 'page')
+  await expect(supplier).toHaveAttribute('aria-current', 'true')
   await expect(page.getByRole('dialog')).toBeVisible()
   expect(await (await request.get(location)).json()).toEqual(frozenBefore)
   // Drop the actual connection, commit while it is down, then let EventSource
@@ -40,7 +40,7 @@ test('tick réel, contexte figé et reconnexion sans navigation', async ({ page,
   expect((await request.post('/api/v1/__test/tick')).status()).toBe(204)
   const resumed = await (await request.get(`/api/v1/suppliers/${id}/offers`)).json() as OffersPage
   await expect(price).toHaveText(formatMoney(resumed.offers[0].statistics!.current_quote!.price))
-  await expect(supplier).toHaveAttribute('aria-current', 'page')
+  await expect(supplier).toHaveAttribute('aria-current', 'true')
   expect(navigations).toBe(0)
 })
 
