@@ -606,3 +606,10 @@ validation fonctionnelle et visuelle sur les assets réellement accessibles.
   3D après sélection du scénario depuis Arbre laissait la coque opaque. Initialisation minimale
   de transparence corrigée ; le test couvre les trois modes et les deux vues et passe sur desktop.
   Vérification mobile et second tour du seul relecteur concerné en cours.
+- Second tour de correction : aucun constat restant sur `d1f5d26..bb5421c`. La moulinette du
+  correctif frontend est également verte (intégration non rejouée dans ce passage, backend inchangé).
+- Un test mobile existant de diagnostics 20000 occurrences a ensuite révélé une superposition :
+  la trace Playwright montre `.v3d-legend` / `.v3d-bottom-left` interceptant les clics sur la
+  pagination. Défaut confirmé sans rapport avec un chargement lent. Correction CSS minimale :
+  commandes en haut à droite au-dessus des légendes (`z-index: 1`). Assertions et délais conservés ;
+  nouveau passage mobile en cours. Le passage interrompu n'est pas compté vert.
